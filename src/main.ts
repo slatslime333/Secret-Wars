@@ -6,6 +6,9 @@ import { PlaceholderScene } from './scenes/PlaceholderScene';
 import { TitleScene } from './scenes/TitleScene';
 import { GAME_HEIGHT, GAME_WIDTH } from './ui/theme';
 
+// The game is built for a fixed 16:9 landscape canvas (960x540).
+// Phaser FIT scaling letterboxes it on other aspect ratios, and a CSS
+// overlay prompts touch-first mobile users to rotate to landscape.
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
