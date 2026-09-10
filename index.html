@@ -6,11 +6,15 @@
     <meta name="theme-color" content="#070a12" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- Legacy hint for browsers like UC/Baidu to prefer landscape;
+         modern browsers rely on CSS + the Screen Orientation API instead. -->
     <meta name="screen-orientation" content="landscape" />
+
     <title>Secret Wars</title>
   </head>
   <body>
     <main id="game" aria-label="Secret Wars game"></main>
+    <!-- Hidden by default; shown via CSS on touch-first devices held in portrait. -->
     <aside id="rotate-device" aria-live="polite">
       <div class="rotate-icon">↻</div>
       <strong>ROTATE TO LANDSCAPE</strong>
