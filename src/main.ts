@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import './style.css';
 import { initOrientationHandling } from './orientation';
+import { BattleScene } from './scenes/BattleScene';
 import { BootScene } from './scenes/BootScene';
 import { HomeScene } from './scenes/HomeScene';
-import { PlaceholderScene } from './scenes/PlaceholderScene';
 import { TitleScene } from './scenes/TitleScene';
 import { GAME_HEIGHT, GAME_WIDTH } from './ui/theme';
 
@@ -26,7 +26,7 @@ new Phaser.Game({
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   input: {
-    activePointers: 3,
+    activePointers: 5,
   },
-  scene: [BootScene, TitleScene, HomeScene, PlaceholderScene],
+  scene: [BootScene, TitleScene, HomeScene, BattleScene],
 });
