@@ -67,17 +67,22 @@ canvas {
   font-size: 58px;
   line-height: 1;
   text-shadow: 4px 4px 0 #a71d31;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
 }
 
 /* The game is authored at a fixed 16:9 (960x540) landscape resolution.
    On touch-first phones/tablets held in portrait the play area would be
    too small to use, so prompt the player to rotate the device.
    Desktop PCs with a mouse/trackpad are exempted because they typically
-   have enough real estate even in a portrait window. */
-@media (orientation: portrait) and (hover: none) and (pointer: coarse) {
-  #rotate-device {
-    display: flex;
-  }
+   have enough real estate even in a portrait window.
+   The .is-visible class is applied by the orientation helper in orientation.ts. */
+#rotate-device.is-visible {
+  display: flex;
 }
 
 
