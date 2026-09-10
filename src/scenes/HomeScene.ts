@@ -59,7 +59,7 @@ export class HomeScene extends Phaser.Scene {
         onPress: () =>
           this.openModal(
             'SETTINGS',
-            'Music, sound, display, and controls\\nwill arrive with the full menu pass.',
+            'Music, sound, display, and controls\nwill arrive with the full menu pass.',
           ),
       }),
       new ActionButton(this, 194, 446, {
@@ -69,7 +69,7 @@ export class HomeScene extends Phaser.Scene {
         onPress: () =>
           this.openModal(
             'CREDITS',
-            'SECRET WARS\\nOriginal prototype by the Secret Wars team.',
+            'SECRET WARS\nOriginal prototype by the Secret Wars team.',
           ),
       }),
     ];
@@ -267,7 +267,7 @@ export class HomeScene extends Phaser.Scene {
       return;
     }
     this.cameras.main.fadeOut(220, 7, 10, 18);
-    this.time.delayedCall(230, () => this.scene.start('Placeholder'));
+    this.time.delayedCall(230, () => this.scene.start('Battle'));
   }
 
   private openModal(title: string, copy: string): void {
