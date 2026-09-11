@@ -204,9 +204,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private onRestartKey(): void {
-    if (this.round.isLocked) {
-      this.restartBattle();
-    }
+    this.restartBattle();
   }
 
   private restartBattle(): void {
