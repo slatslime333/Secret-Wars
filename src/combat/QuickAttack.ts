@@ -159,7 +159,7 @@ export class QuickAttack {
         const trailStartAngle = Math.max(startAngle, currentEndAngle - totalArc * 0.75);
 
         // Broad white glow arc
-        graphics.lineStyle(finisher ? 12 : 8, 0xffffff, 0.6 * anim.alpha);
+        graphics.lineStyle(finisher ? 12 : 8, 0xffffff, 0.55 * anim.alpha);
         graphics.beginPath();
         graphics.arc(0, 0, radius, trailStartAngle, currentEndAngle);
         graphics.strokePath();
@@ -171,24 +171,24 @@ export class QuickAttack {
         graphics.strokePath();
 
         // Second inner parallel white slash line for comic energy feel
-        graphics.lineStyle(2, 0xffffff, 0.85 * anim.alpha);
+        graphics.lineStyle(finisher ? 3 : 2, 0xffffff, 0.9 * anim.alpha);
         graphics.beginPath();
         graphics.arc(0, 0, radius - 6, trailStartAngle, currentEndAngle);
         graphics.strokePath();
+
+        // Third inner white slash line for finisher
+        if (finisher) {
+          graphics.lineStyle(2, 0xffffff, 0.85 * anim.alpha);
+          graphics.beginPath();
+          graphics.arc(0, 0, radius - 12, trailStartAngle, currentEndAngle);
+          graphics.strokePath();
+        }
 
         // White slash spark tip at leading edge
         const tipX = Math.cos(currentEndAngle) * radius;
         const tipY = Math.sin(currentEndAngle) * radius;
         graphics.fillStyle(0xffffff, 1 * anim.alpha);
         graphics.fillCircle(tipX, tipY, finisher ? 5 : 3.5);
-
-        // Core cyan/gold accent for finisher
-        if (finisher) {
-          graphics.lineStyle(3, COLORS.cyan, 0.9 * anim.alpha);
-          graphics.beginPath();
-          graphics.arc(0, 0, radius - 3, trailStartAngle, currentEndAngle);
-          graphics.strokePath();
-        }
       },
     });
 
