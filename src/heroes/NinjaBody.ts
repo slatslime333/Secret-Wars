@@ -58,16 +58,23 @@ export class NinjaBody {
     return this.sprite.y;
   }
 
-  get body(): Phaser.Physics.Arcade.Body {
-    return this.sprite.body as Phaser.Physics.Arcade.Body;
-  }
-
   get down(): boolean {
     return this.health <= 0;
   }
 
+  get body(): Phaser.Physics.Arcade.Body | undefined {
+    return this.sprite.body as Phaser.Physics.Arcade.Body | undefined;
+  }
+
   private now(): number {
     return this.scene.time.now;
+  }
+
+  private physics(): Phaser.Physics.Arcade.Body | undefined {
+    if (!this.sprite.active) {
+      return undefined;
+    }
+    return this.body;
   }
 
   syncView(): void {
@@ -83,13 +90,17 @@ export class NinjaBody {
   }
 
   applyMove(move: Phaser.Math.Vector2): void {
+    const body = this.physics();
+    if (!body) {
+      return;
+    }
     const now = this.now();
     const speed = NINJA.moveSpeed * this.status.moveMultiplier(now);
-    this.body.setVelocity(move.x * speed, move.y * speed);
+    body.setVelocity(move.x * speed, move.y * speed);
   }
 
   stop(): void {
-    this.body.setVelocity(0, 0);
+    this.physics()?.setVelocity(0, 0);
   }
 
   isInvulnerable(now: number): boolean {
@@ -105,10 +116,14 @@ export class NinjaBody {
       return;
     }
     const now = this.now();
+    const body = this.physics();
+    if (!body) {
+      return;
+    }
     this.health = Math.max(0, this.health - options.damage);
     this.drainStamina(options.staminaDamage, now);
     const length = Math.hypot(options.dirX, options.dirY) || 1;
-    this.body.setVelocity((options.dirX / length) * options.knockback, (options.dirY / length) * options.knockback);
+    body.setVelocity((options.dirX / length) * options.knockback, (options.dirY / length) * options.knockback);
     this.status.applyHitReaction(now);
     this.status.applyHitStop(
       now,
@@ -131,11 +146,11 @@ export class NinjaBody {
 
   applyRecoil(dirX: number, dirY: number, power: number): void {
     const length = Math.hypot(dirX, dirY) || 1;
-    this.body.setVelocity((dirX / length) * power, (dirY / length) * power);
+    this.physics()?.setVelocity((dirX / length) * power, (dirY / length) * power);
   }
 
   setSpeedCap(speed: number): void {
-    this.body.setMaxVelocity(speed, speed);
+    this.physics()?.setMaxVelocity(speed, speed);
   }
 
   setAim(aim: Phaser.Math.Vector2 | number, aimY?: number): void {
@@ -210,8 +225,11 @@ export class NinjaBody {
       },
     });
 
-    this.body.velocity.x += this.aim.x * profile.lungeImpulse;
-    this.body.velocity.y += this.aim.y * profile.lungeImpulse;
+    const body = this.physics();
+    if (body) {
+      body.velocity.x += this.aim.x * profile.lungeImpulse;
+      body.velocity.y += this.aim.y * profile.lungeImpulse;
+    }
   }
 
   playBlockRecoil(now: number, heavy: boolean): void {

@@ -25,7 +25,6 @@ export class RivalBrain {
 
   update(now: number, cpu: NinjaBody, player: NinjaBody): void {
     if (cpu.down || player.down) {
-      cpu.stop();
       return;
     }
 

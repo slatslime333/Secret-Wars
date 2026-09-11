@@ -105,8 +105,6 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.round.isLocked) {
-      this.ninja.stop();
-      this.rival?.stop();
       this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
       return;
     }

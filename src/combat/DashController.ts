@@ -53,7 +53,7 @@ export class DashController {
       return;
     }
     const speed = dashSpeed();
-    ninja.body.setVelocity(this.dir.x * speed, this.dir.y * speed);
+    ninja.body?.setVelocity(this.dir.x * speed, this.dir.y * speed);
   }
 
   private spawnStreaks(ninja: NinjaBody): void {
