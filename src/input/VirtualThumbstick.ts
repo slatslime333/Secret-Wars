@@ -13,11 +13,14 @@ type VirtualThumbstickOptions = {
  */
 export class VirtualThumbstick {
   private readonly scene: Phaser.Scene;
-  private readonly originX: number;
-  private readonly originY: number;
+  private originX: number;
+  private originY: number;
   private readonly radius: number;
+  private readonly accent: number;
   private readonly vector = new Phaser.Math.Vector2();
+  private readonly base: Phaser.GameObjects.Graphics;
   private readonly knob: Phaser.GameObjects.Arc;
+  private readonly label: Phaser.GameObjects.Text;
   private readonly zone: Phaser.GameObjects.Zone;
   private pointerId?: number;
 
@@ -26,16 +29,10 @@ export class VirtualThumbstick {
     this.originX = x;
     this.originY = y;
     this.radius = options.radius;
+    this.accent = options.accent;
 
-    const base = scene.add.graphics().setScrollFactor(0).setDepth(110);
-    base.fillStyle(COLORS.ink, 0.62);
-    base.fillCircle(x, y, this.radius + 10);
-    base.lineStyle(3, options.accent, 0.75);
-    base.strokeCircle(x, y, this.radius + 3);
-    base.lineStyle(1, COLORS.paper, 0.22);
-    base.strokeCircle(x, y, this.radius - 16);
-    base.lineBetween(x - this.radius + 14, y, x + this.radius - 14, y);
-    base.lineBetween(x, y - this.radius + 14, x, y + this.radius - 14);
+    this.base = scene.add.graphics().setScrollFactor(0).setDepth(110);
+    this.drawBase();
 
     this.knob = scene.add
       .circle(x, y, this.radius * 0.4, COLORS.ink, 0.82)
@@ -43,7 +40,7 @@ export class VirtualThumbstick {
       .setScrollFactor(0)
       .setDepth(112);
 
-    scene.add
+    this.label = scene.add
       .text(x, y + this.radius + 12, options.label, {
         fontFamily: 'Arial, sans-serif',
         fontSize: '11px',
@@ -65,6 +62,29 @@ export class VirtualThumbstick {
       .setDepth(113);
 
     this.zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this.onDown, this);
+  }
+
+  private drawBase(): void {
+    this.base.clear();
+    this.base.fillStyle(COLORS.ink, 0.62);
+    this.base.fillCircle(this.originX, this.originY, this.radius + 10);
+    this.base.lineStyle(3, this.accent, 0.75);
+    this.base.strokeCircle(this.originX, this.originY, this.radius + 3);
+    this.base.lineStyle(1, COLORS.paper, 0.22);
+    this.base.strokeCircle(this.originX, this.originY, this.radius - 16);
+    this.base.lineBetween(this.originX - this.radius + 14, this.originY, this.originX + this.radius - 14, this.originY);
+    this.base.lineBetween(this.originX, this.originY - this.radius + 14, this.originX, this.originY + this.radius - 14);
+  }
+
+  setPosition(x: number, y: number): void {
+    this.originX = x;
+    this.originY = y;
+    this.drawBase();
+    if (!this.active) {
+      this.knob.setPosition(x, y);
+    }
+    this.label.setPosition(x, y + this.radius + 12);
+    this.zone.setPosition(x, y);
   }
 
   get active(): boolean {

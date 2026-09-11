@@ -4,7 +4,7 @@ import { INPUT } from '../config/input';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
 import { SettingSlider } from '../ui/SettingSlider';
-import { COLORS, FONTS, GAME_HEIGHT, hex } from '../ui/theme';
+import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
 
 export class SettingsScene extends Phaser.Scene {
@@ -19,13 +19,26 @@ export class SettingsScene extends Phaser.Scene {
     this.returning = false;
     createBackdrop(this, { accent: COLORS.cyan });
     this.cameras.main.fadeIn(220, 7, 10, 18);
+
+    const width = this.scale.width;
+    const height = this.scale.height;
+    const isPortrait = width < height;
+
     this.createHeader();
-    this.createSliders();
-    this.createFullscreenRow();
-    this.createControlsHelp();
-    this.createBackButton();
+    this.createSliders(width, isPortrait);
+    this.createFullscreenRow(isPortrait);
+    this.createControlsHelp(width, isPortrait);
+    this.createBackButton(width, height, isPortrait);
     this.input.keyboard?.on('keydown-ESC', this.returnToMenu, this);
+
+    const onResize = () => {
+      if (!this.returning) {
+        this.scene.restart();
+      }
+    };
+    this.scale.on(Phaser.Scale.Events.RESIZE, onResize);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, onResize);
       this.input.keyboard?.off('keydown-ESC', this.returnToMenu, this);
     });
   }
@@ -53,14 +66,18 @@ export class SettingsScene extends Phaser.Scene {
       .setOrigin(0, 0);
   }
 
-  private createSliders(): void {
-    new SettingSlider(this, 270, 128, {
+  private createSliders(width: number, isPortrait: boolean): void {
+    const sliderX = isPortrait ? width / 2 : 270;
+    const musicY = isPortrait ? 130 : 128;
+    const sfxY = isPortrait ? 198 : 198;
+
+    new SettingSlider(this, sliderX, musicY, {
       label: 'MUSIC',
       value: audioSettings.getMusicVolume(),
       onChange: (value) => audioSettings.setMusicVolume(value),
     });
 
-    new SettingSlider(this, 270, 198, {
+    new SettingSlider(this, sliderX, sfxY, {
       label: 'SFX',
       value: audioSettings.getSfxVolume(),
       onChange: (value) => audioSettings.setSfxVolume(value),
@@ -68,8 +85,8 @@ export class SettingsScene extends Phaser.Scene {
     });
   }
 
-  private createFullscreenRow(): void {
-    if (this.sys.game.device.input.touch) {
+  private createFullscreenRow(isPortrait: boolean): void {
+    if (this.sys.game.device.input.touch || isPortrait) {
       return;
     }
 
@@ -114,16 +131,17 @@ export class SettingsScene extends Phaser.Scene {
     }
   }
 
-  private createControlsHelp(): void {
-    const x = 560;
-    const y = 108;
+  private createControlsHelp(width: number, isPortrait: boolean): void {
+    const cardW = isPortrait ? Math.min(360, width - 40) : 360;
+    const x = isPortrait ? (width - cardW) / 2 : Math.max(540, width - cardW - 40);
+    const y = isPortrait ? 260 : 108;
     const graphics = this.add.graphics();
     graphics.fillStyle(COLORS.ink, 0.72);
     graphics.fillPoints(
       [
         new Phaser.Geom.Point(x + 10, y + 10),
-        new Phaser.Geom.Point(x + 372, y + 10),
-        new Phaser.Geom.Point(x + 352, y + 292),
+        new Phaser.Geom.Point(x + cardW + 12, y + 10),
+        new Phaser.Geom.Point(x + cardW - 8, y + 292),
         new Phaser.Geom.Point(x - 12, y + 292),
       ],
       true,
@@ -132,8 +150,8 @@ export class SettingsScene extends Phaser.Scene {
     graphics.fillPoints(
       [
         new Phaser.Geom.Point(x, y),
-        new Phaser.Geom.Point(x + 360, y),
-        new Phaser.Geom.Point(x + 338, y + 280),
+        new Phaser.Geom.Point(x + cardW, y),
+        new Phaser.Geom.Point(x + cardW - 22, y + 280),
         new Phaser.Geom.Point(x - 22, y + 280),
       ],
       true,
@@ -142,8 +160,8 @@ export class SettingsScene extends Phaser.Scene {
     graphics.strokePoints(
       [
         new Phaser.Geom.Point(x, y),
-        new Phaser.Geom.Point(x + 360, y),
-        new Phaser.Geom.Point(x + 338, y + 280),
+        new Phaser.Geom.Point(x + cardW, y),
+        new Phaser.Geom.Point(x + cardW - 22, y + 280),
         new Phaser.Geom.Point(x - 22, y + 280),
       ],
       true,
@@ -180,8 +198,9 @@ export class SettingsScene extends Phaser.Scene {
     });
   }
 
-  private createBackButton(): void {
-    new ActionButton(this, 140, GAME_HEIGHT - 48, {
+  private createBackButton(width: number, height: number, isPortrait: boolean): void {
+    const btnX = isPortrait ? width / 2 : 140;
+    new ActionButton(this, btnX, height - 48, {
       label: 'BACK',
       width: 180,
       height: 52,

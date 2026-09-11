@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, FONTS, GAME_HEIGHT, GAME_WIDTH, hex } from './theme';
+import { COLORS, FONTS, hex } from './theme';
 
 type DevMenuOptions = {
   onToggleCpu: () => void;
@@ -17,9 +17,11 @@ export class DevMenu {
 
   constructor(scene: Phaser.Scene, options: DevMenuOptions) {
     this.options = options;
+    const width = scene.scale.width;
+    const height = scene.scale.height;
 
     this.toggle = scene.add
-      .text(GAME_WIDTH - 12, GAME_HEIGHT - 12, 'DEV', {
+      .text(width - 12, height - 12, 'DEV', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
@@ -33,7 +35,7 @@ export class DevMenu {
       .setInteractive({ useHandCursor: true });
 
     this.panel = scene.add
-      .rectangle(GAME_WIDTH - 12, GAME_HEIGHT - 48, 168, 78, COLORS.ink, 0.92)
+      .rectangle(width - 12, height - 48, 168, 78, COLORS.ink, 0.92)
       .setOrigin(1, 1)
       .setScrollFactor(0)
       .setDepth(221)
@@ -41,7 +43,7 @@ export class DevMenu {
       .setVisible(false);
 
     this.title = scene.add
-      .text(GAME_WIDTH - 24, GAME_HEIGHT - 118, 'PLAYLIST', {
+      .text(width - 24, height - 118, 'PLAYLIST', {
         fontFamily: FONTS.display,
         fontSize: '11px',
         color: hex(COLORS.yellow),
@@ -53,7 +55,7 @@ export class DevMenu {
       .setVisible(false);
 
     this.action = scene.add
-      .text(GAME_WIDTH - 24, GAME_HEIGHT - 96, cpuLabel(options.cpuPresent()), {
+      .text(width - 24, height - 96, cpuLabel(options.cpuPresent()), {
         fontFamily: FONTS.body,
         fontSize: '13px',
         fontStyle: 'bold',
@@ -75,6 +77,13 @@ export class DevMenu {
       this.options.onToggleCpu();
       this.sync(this.options.cpuPresent());
     });
+  }
+
+  layout(width: number, height: number): void {
+    this.toggle.setPosition(width - 12, height - 12);
+    this.panel.setPosition(width - 12, height - 48);
+    this.title.setPosition(width - 24, height - 118);
+    this.action.setPosition(width - 24, height - 96);
   }
 
   sync(cpuPresent: boolean): void {

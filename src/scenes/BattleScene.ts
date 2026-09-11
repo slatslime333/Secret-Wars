@@ -12,7 +12,7 @@ import { BattleHud } from '../ui/BattleHud';
 import { createGrassyArena } from '../ui/createGrassyArena';
 import { DevMenu } from '../ui/DevMenu';
 import { RoundOverlay } from '../ui/RoundOverlay';
-import { COLORS, FONTS, GAME_WIDTH, hex } from '../ui/theme';
+import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
 
 /** Ninja vs rival Ninja. Dev menu can spawn or remove the CPU. */
@@ -33,6 +33,8 @@ export class BattleScene extends Phaser.Scene {
   private hud!: BattleHud;
   private round!: RoundOverlay;
   private devMenu?: DevMenu;
+  private chromeBar?: Phaser.GameObjects.Rectangle;
+  private menuButton?: ActionButton;
 
   constructor() {
     super('Battle');
@@ -89,7 +91,9 @@ export class BattleScene extends Phaser.Scene {
       }
     };
     window.addEventListener('keydown', onDomKey);
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
       this.input.keyboard?.off('keydown-ESC', this.returnToMenu, this);
       this.input.keyboard?.off('keydown-R', this.onRestartKey, this);
       window.removeEventListener('keydown', onDomKey);
@@ -194,8 +198,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private createChrome(): void {
-    const bar = this.add.rectangle(GAME_WIDTH / 2, 22, GAME_WIDTH, 44, COLORS.ink, 0.78);
-    bar.setStrokeStyle(2, COLORS.paper).setScrollFactor(0).setDepth(99);
+    const width = this.scale.width;
+    this.chromeBar = this.add.rectangle(width / 2, 22, width, 44, COLORS.ink, 0.78);
+    this.chromeBar.setStrokeStyle(2, COLORS.paper).setScrollFactor(0).setDepth(99);
 
     this.add
       .text(22, 22, 'SECRET WARS  //  NINJA VS NINJA', {
@@ -210,13 +215,24 @@ export class BattleScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(100);
 
-    const menu = new ActionButton(this, GAME_WIDTH - 108, 22, {
+    this.menuButton = new ActionButton(this, width - 108, 22, {
       label: 'MENU',
       width: 150,
       height: 40,
       onPress: () => this.returnToMenu(),
     });
-    menu.setScrollFactor(0).setDepth(120);
+    this.menuButton.setScrollFactor(0).setDepth(120);
+  }
+
+  private onResize(gameSize: Phaser.Structs.Size): void {
+    const width = gameSize.width;
+    const height = gameSize.height;
+    this.chromeBar?.setPosition(width / 2, 22).setSize(width, 44);
+    this.menuButton?.setPosition(width - 108, 22);
+    this.hud?.layout(width);
+    this.inputReader?.layout(width, height);
+    this.devMenu?.layout(width, height);
+    this.cameras.main.setSize(width, height);
   }
 
   private onRestartKey(): void {

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { createBackdrop } from '../ui/createBackdrop';
 import { createLogo } from '../ui/createLogo';
-import { COLORS, FONTS, GAME_HEIGHT, GAME_WIDTH, hex } from '../ui/theme';
+import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
 
 export class TitleScene extends Phaser.Scene {
@@ -12,16 +12,21 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
-    createBackdrop(this, { accent: COLORS.redBright, embers: true });
-    this.createSlashAccents();
+    const width = this.scale.width;
+    const height = this.scale.height;
 
-    const logo = createLogo(this, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 30, 1);
-    logo.setAlpha(0).setScale(1.18);
+    createBackdrop(this, { accent: COLORS.redBright, embers: true });
+    this.createSlashAccents(width);
+
+    const logoY = height < 600 ? height * 0.4 : height * 0.42;
+    const logoScale = Math.min(1, (width - 40) / 600);
+    const logo = createLogo(this, width / 2, logoY, logoScale);
+    logo.setAlpha(0).setScale(logoScale * 1.18);
 
     this.tweens.add({
       targets: logo,
       alpha: 1,
-      scale: 1,
+      scale: logoScale,
       duration: 520,
       ease: 'Stepped',
       easeParams: [7],
@@ -29,8 +34,9 @@ export class TitleScene extends Phaser.Scene {
 
     this.cameras.main.shake(180, 0.006);
 
+    const promptY = height < 600 ? height - 76 : height * 0.78;
     const prompt = this.add
-      .text(GAME_WIDTH / 2, 440, this.getContinuePrompt(), {
+      .text(width / 2, promptY, this.getContinuePrompt(), {
         fontFamily: FONTS.display,
         fontSize: '21px',
         color: hex(COLORS.paper),
@@ -40,7 +46,8 @@ export class TitleScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    const promptBar = this.add.rectangle(GAME_WIDTH / 2, 440, 420, 44, COLORS.ink, 0.82);
+    const barWidth = Math.min(420, width - 40);
+    const promptBar = this.add.rectangle(width / 2, promptY, barWidth, 44, COLORS.ink, 0.82);
     promptBar.setStrokeStyle(2, COLORS.redBright);
     prompt.setDepth(1);
 
@@ -55,7 +62,7 @@ export class TitleScene extends Phaser.Scene {
     });
 
     this.add
-      .text(24, GAME_HEIGHT - 22, 'PRE-ALPHA // DEMO 1', {
+      .text(24, height - 22, 'PRE-ALPHA // DEMO 1', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -67,6 +74,16 @@ export class TitleScene extends Phaser.Scene {
     this.input.once(Phaser.Input.Events.POINTER_DOWN, () => this.continue());
     this.input.keyboard?.once('keydown-ENTER', () => this.continue());
     this.input.keyboard?.once('keydown-SPACE', () => this.continue());
+
+    const onResize = () => {
+      if (!this.continuing) {
+        this.scene.restart();
+      }
+    };
+    this.scale.on(Phaser.Scale.Events.RESIZE, onResize);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, onResize);
+    });
   }
 
   private getContinuePrompt(): string {
@@ -83,10 +100,10 @@ export class TitleScene extends Phaser.Scene {
     fadeToScene(this, 'MainMenu', 260);
   }
 
-  private createSlashAccents(): void {
+  private createSlashAccents(width: number): void {
     const graphics = this.add.graphics();
     graphics.fillStyle(COLORS.paper, 0.06);
-    for (let x = -130; x < GAME_WIDTH + 100; x += 150) {
+    for (let x = -130; x < width + 100; x += 150) {
       graphics.fillPoints(
         [
           new Phaser.Geom.Point(x, 85),

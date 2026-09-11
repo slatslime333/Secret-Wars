@@ -4,7 +4,7 @@ import { COMBAT } from '../config/combat';
 import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { NinjaBody } from '../heroes/NinjaBody';
-import { COLORS, FONTS, GAME_WIDTH, hex } from './theme';
+import { COLORS, FONTS, hex } from './theme';
 
 export class BattleHud {
   private readonly ninjaFill: Phaser.GameObjects.Rectangle;
@@ -17,6 +17,7 @@ export class BattleHud {
   private readonly foeCaption: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene) {
+    const width = scene.scale.width;
     scene.add.rectangle(148, 56, 224, 10, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
     this.ninjaFill = scene.add.rectangle(36, 56, 224, 10, COLORS.redBright).setOrigin(0, 0.5);
     this.ninjaFill.setScrollFactor(0).setDepth(102);
@@ -26,7 +27,7 @@ export class BattleHud {
     this.staminaFill.setScrollFactor(0).setDepth(102);
 
     this.comboText = scene.add
-      .text(GAME_WIDTH / 2, 22, '', {
+      .text(width / 2, 22, '', {
         fontFamily: FONTS.display,
         fontSize: '20px',
         color: hex(COLORS.orange),
@@ -39,7 +40,7 @@ export class BattleHud {
       .setDepth(102);
 
     this.verbText = scene.add
-      .text(GAME_WIDTH - 30, 82, 'K BLOCK   L DASH', {
+      .text(width - 30, 82, 'K BLOCK   L DASH', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -69,6 +70,11 @@ export class BattleHud {
       .setOrigin(0.5, 1);
     this.foeBar.add([track, this.foeFill, staminaTrack, this.foeStaminaFill, this.foeCaption]);
     this.foeBar.setVisible(false);
+  }
+
+  layout(width: number): void {
+    this.comboText.setX(width / 2);
+    this.verbText.setX(width - 30);
   }
 
   sync(

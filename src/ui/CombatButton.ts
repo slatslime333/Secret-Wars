@@ -12,24 +12,23 @@ type CombatButtonOptions = {
  * Viewport-fixed; press is a tap, not a hold.
  */
 export class CombatButton {
-  private readonly x: number;
-  private readonly y: number;
+  private x: number;
+  private y: number;
+  private readonly accent: number;
+  private readonly art: Phaser.GameObjects.Graphics;
   private readonly pie: Phaser.GameObjects.Graphics;
   private readonly label: Phaser.GameObjects.Text;
+  private readonly zone: Phaser.GameObjects.Zone;
   private cooldownEndsAt = 0;
   private cooldownDuration = 1;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: CombatButtonOptions) {
     this.x = x;
     this.y = y;
+    this.accent = options.accent;
 
-    const art = scene.add.graphics().setScrollFactor(0).setDepth(114);
-    art.fillStyle(COLORS.ink, 0.75);
-    art.fillCircle(x + 4, y + 5, 32);
-    art.fillStyle(COLORS.panel, 0.96);
-    art.fillCircle(x, y, 30);
-    art.lineStyle(3, options.accent);
-    art.strokeCircle(x, y, 30);
+    this.art = scene.add.graphics().setScrollFactor(0).setDepth(114);
+    this.drawArt();
 
     this.pie = scene.add.graphics().setScrollFactor(0).setDepth(115);
     this.label = scene.add
@@ -44,17 +43,35 @@ export class CombatButton {
       .setScrollFactor(0)
       .setDepth(116);
 
-    const zone = scene.add
+    this.zone = scene.add
       .zone(x, y, 64, 64)
       .setInteractive(new Phaser.Geom.Circle(32, 32, 32), Phaser.Geom.Circle.Contains)
       .setScrollFactor(0)
       .setDepth(117);
-    zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => {
+    this.zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => {
       if (scene.time.now < this.cooldownEndsAt) {
         return;
       }
       options.onPress();
     });
+  }
+
+  private drawArt(): void {
+    this.art.clear();
+    this.art.fillStyle(COLORS.ink, 0.75);
+    this.art.fillCircle(this.x + 4, this.y + 5, 32);
+    this.art.fillStyle(COLORS.panel, 0.96);
+    this.art.fillCircle(this.x, this.y, 30);
+    this.art.lineStyle(3, this.accent);
+    this.art.strokeCircle(this.x, this.y, 30);
+  }
+
+  setPosition(x: number, y: number): void {
+    this.x = x;
+    this.y = y;
+    this.drawArt();
+    this.label.setPosition(x, y);
+    this.zone.setPosition(x, y);
   }
 
   startCooldown(durationMs: number, now: number): void {
