@@ -82,7 +82,19 @@ canvas {
    have enough real estate even in a portrait window.
    The .is-visible class is applied by the orientation helper in orientation.ts. */
 #rotate-device.is-visible {
-  display: flex;
+  display: flex !important;
+}
+
+#rotate-continue {
+  margin-top: 8px;
+  padding: 10px 18px;
+  color: #070a12;
+  background: #49dce1;
+  border: 3px solid #f6f1de;
+  font: 700 13px/1 Arial, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 

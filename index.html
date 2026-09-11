@@ -11,17 +11,70 @@
          instead we use JavaScript + CSS to prompt for landscape on phones. -->
 
     <title>Secret Wars</title>
+    <!-- Inline critical CSS so a JS/CSS miss cannot brick the page as a white
+         rotate prompt. GitHub Pages currently serves this source HTML, not the
+         Vite dist, so style.css from main.ts may never load. -->
+    <style>
+      html,
+      body,
+      #game {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #070a12;
+      }
+
+      #rotate-device {
+        display: none !important;
+      }
+
+      #rotate-device.is-visible {
+        display: flex !important;
+      }
+    </style>
   </head>
   <body>
     <main id="game" aria-label="Secret Wars game"></main>
-    <!-- Hidden by default; shown via JavaScript on touch-first devices held in portrait. -->
-    <aside id="rotate-device" aria-live="polite">
+    <!-- Hidden in HTML. JS adds .is-visible on touch-first portrait devices. -->
+    <aside id="rotate-device" hidden style="display: none" aria-live="polite">
       <button class="rotate-icon" type="button" aria-label="Rotate to landscape">
         ↻
       </button>
       <strong>ROTATE TO LANDSCAPE</strong>
       <span>Secret Wars is built for widescreen play.</span>
+      <button id="rotate-continue" type="button">Continue anyway</button>
     </aside>
     <script type="module" src="/src/main.ts"></script>
+    <script type="module">
+      // GitHub Pages deploys the repo root, which cannot compile TypeScript.
+      // Vite dev injects @vite/client; a real `vite build` rewrites the entry
+      // to assets/game.js. Only the uncompiled Pages HTML needs this fallback.
+      const sources = Array.from(document.scripts).map(
+        (script) => script.getAttribute('src') || script.src || '',
+      );
+      const servingUncompiledSource = sources.some((src) => src.includes('/src/main.ts'));
+      const alreadyBundled = sources.some((src) => src.includes('assets/game.js'));
+      const viteDev = sources.some((src) => src.includes('@vite/client'));
+
+      if (servingUncompiledSource && !alreadyBundled && !viteDev) {
+        const href = location.href.split('#')[0].split('?')[0];
+        const dir = href.endsWith('/')
+          ? href
+          : href.endsWith('.html')
+            ? href.replace(/[^/]+$/, '')
+            : `${href}/`;
+
+        const css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = `${dir}assets/game.css`;
+        document.head.appendChild(css);
+
+        const bundle = document.createElement('script');
+        bundle.type = 'module';
+        bundle.src = `${dir}assets/game.js`;
+        document.body.appendChild(bundle);
+      }
+    </script>
   </body>
 </html>

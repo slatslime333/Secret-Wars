@@ -1,3 +1,6 @@
+# The live site is still "Deploy from branch /", so this Actions deploy does
+# not reach players until Pages is switched to GitHub Actions. The playable
+# site is the repo-root bundle in assets/ (see sync-pages-bundle.yml).
 name: Deploy to GitHub Pages
 
 on:
