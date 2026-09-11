@@ -1,31 +1,34 @@
 import Phaser from 'phaser';
 import { ARENA } from '../config/arena';
+import { ChaseBrain } from '../ai/ChaseBrain';
 import { BlockController } from '../combat/BlockController';
+import { ChaserAttack } from '../combat/ChaserAttack';
 import { DashController } from '../combat/DashController';
 import { HitMarker } from '../combat/HitMarker';
 import { QuickAttack } from '../combat/QuickAttack';
-import { DummyTarget } from '../heroes/DummyTarget';
+import { ChaserBody } from '../heroes/ChaserBody';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
 import { BattleHud } from '../ui/BattleHud';
 import { createArena } from '../ui/createArena';
+import { RoundOverlay } from '../ui/RoundOverlay';
 import { COLORS, FONTS, GAME_WIDTH, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
 
-/**
- * Phase 3 battle: combo finisher, timed block, dash. Dummy still does not fight.
- */
+/** Phase 4 battle: Ninja vs a chasing opponent. KO → restart or menu. */
 export class BattleScene extends Phaser.Scene {
   private returning = false;
   private ninja!: NinjaBody;
-  private dummy!: DummyTarget;
+  private chaser!: ChaserBody;
   private inputReader!: BattleInput;
   private marker!: HitMarker;
   private attacks!: QuickAttack;
   private block!: BlockController;
   private dash!: DashController;
+  private brain!: ChaseBrain;
   private hud!: BattleHud;
+  private round!: RoundOverlay;
 
   constructor() {
     super('Battle');
@@ -42,15 +45,20 @@ export class BattleScene extends Phaser.Scene {
     );
 
     this.ninja = new NinjaBody(this, ARENA.playerSpawn.x, ARENA.playerSpawn.y);
-    this.dummy = new DummyTarget(this, ARENA.enemySpawn.x, ARENA.enemySpawn.y);
-    this.physics.add.collider(this.ninja.sprite, this.dummy.sprite);
+    this.chaser = new ChaserBody(this, ARENA.enemySpawn.x, ARENA.enemySpawn.y);
+    this.physics.add.collider(this.ninja.sprite, this.chaser.sprite);
 
     this.marker = new HitMarker(this);
     this.attacks = new QuickAttack(this, this.marker);
     this.block = new BlockController(this);
     this.dash = new DashController(this);
+    this.brain = new ChaseBrain(new ChaserAttack(this));
     this.inputReader = new BattleInput(this);
     this.hud = new BattleHud(this);
+    this.round = new RoundOverlay(this, {
+      onRestart: () => this.restartBattle(),
+      onMenu: () => this.returnToMenu(),
+    });
 
     this.cameras.main.setBounds(0, 0, ARENA.width, ARENA.height);
     this.cameras.main.startFollow(this.ninja.sprite, true, 0.16, 0.16);
@@ -61,13 +69,25 @@ export class BattleScene extends Phaser.Scene {
     this.game.canvas.setAttribute('tabindex', '0');
     this.game.canvas.focus();
     this.input.keyboard?.on('keydown-ESC', this.returnToMenu, this);
+    this.input.keyboard?.on('keydown-R', this.onRestartKey, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off('keydown-ESC', this.returnToMenu, this);
+      this.input.keyboard?.off('keydown-R', this.onRestartKey, this);
     });
   }
 
   update(_time: number, delta: number): void {
     const now = this.time.now;
+    this.ninja.syncView();
+    this.chaser.syncView();
+
+    if (this.round.isLocked) {
+      this.ninja.stop();
+      this.chaser.stop();
+      this.hud.sync(this.ninja, this.chaser, now, this.attacks.comboStep, this.block, this.dash);
+      return;
+    }
+
     const frame = this.inputReader.sample(this.ninja.x, this.ninja.y);
 
     if (frame.blockPressed && !this.dash.isActive(now) && this.block.tryStart(now, this.ninja)) {
@@ -78,24 +98,31 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.dash.apply(now, this.ninja);
-    if (!this.dash.isActive(now)) {
+    if (!this.dash.isActive(now) && !this.ninja.isStunned(now) && !this.ninja.down) {
       this.ninja.applyMove(frame.move);
     }
 
-    this.ninja.syncView();
-    this.dummy.syncView();
     this.ninja.setAim(frame.aim);
     this.ninja.regenStamina(delta, now);
     this.marker.sync(this.ninja.x, this.ninja.y, this.ninja.aim.x, this.ninja.aim.y);
     this.block.sync(now, this.ninja);
+    this.brain.update(now, this.chaser, this.ninja, this.block);
 
-    if (!this.block.isActive(now) && !this.dash.isActive(now)) {
-      this.attacks.update(now, frame.attackHeld, frame.attackPressed, this.ninja, this.dummy);
+    if (
+      !this.ninja.down &&
+      !this.ninja.isStunned(now) &&
+      !this.block.isActive(now) &&
+      !this.dash.isActive(now)
+    ) {
+      this.attacks.update(now, frame.attackHeld, frame.attackPressed, this.ninja, this.chaser);
     }
 
-    this.dummy.update(now);
-    this.hud.sync(this.ninja, this.dummy, now, this.attacks.comboStep, this.block, this.dash);
+    this.hud.sync(this.ninja, this.chaser, now, this.attacks.comboStep, this.block, this.dash);
     this.inputReader.syncButtons(now);
+
+    if (this.ninja.down || this.chaser.down) {
+      this.round.lock(this.chaser.down ? 'ninja' : 'chaser');
+    }
   }
 
   private createChrome(): void {
@@ -103,7 +130,7 @@ export class BattleScene extends Phaser.Scene {
     bar.setStrokeStyle(2, COLORS.paper).setScrollFactor(0).setDepth(99);
 
     this.add
-      .text(22, 22, 'SECRET WARS  //  NINJA', {
+      .text(22, 22, 'SECRET WARS  //  NINJA VS CHASER', {
         fontFamily: FONTS.display,
         fontSize: '15px',
         color: hex(COLORS.paper),
@@ -122,6 +149,20 @@ export class BattleScene extends Phaser.Scene {
       onPress: () => this.returnToMenu(),
     });
     menu.setScrollFactor(0).setDepth(120);
+  }
+
+  private onRestartKey(): void {
+    if (this.round.isLocked) {
+      this.restartBattle();
+    }
+  }
+
+  private restartBattle(): void {
+    if (this.returning) {
+      return;
+    }
+    this.returning = true;
+    this.scene.restart();
   }
 
   private returnToMenu(): void {

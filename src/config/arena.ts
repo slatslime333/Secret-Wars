@@ -6,6 +6,7 @@ export const ARENA = {
   width: 1400,
   height: 860,
   wallThickness: 40,
-  playerSpawn: { x: 260, y: 430 },
-  enemySpawn: { x: 1140, y: 430 },
+  playerSpawn: { x: 280, y: 430 },
+  /** On-screen to the right so the chaser walks in immediately. */
+  enemySpawn: { x: 640, y: 430 },
 } as const;

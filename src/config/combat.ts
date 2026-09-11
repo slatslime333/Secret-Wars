@@ -8,10 +8,10 @@ export const COMBAT = {
   staminaRegenDelayMs: 650,
   hitStunMs: 160,
   knockbackDurationMs: 150,
-  dummyRadius: 18,
-  /** Extra pixels so a dummy inside the visible wedge still counts. */
+  /** Extra pixels so a body inside the visible wedge still counts. */
   hitForgiveness: 12,
-  dummyResetMs: 1800,
+  /** Telegraph before the chaser swing. Phase 4. */
+  chaserWindupMs: 280,
   /** Timed tool, not a holdable shield. Phase 3. */
   blockDurationMs: 350,
   blockCooldownMs: 4000,

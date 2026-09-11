@@ -33,7 +33,7 @@ replace it with a generic "swing toward cursor" with no readable hit area.
 ```
 Boot → Title → Main Menu ⇄ Settings
                  ↓ PLAY
-               Battle (Ninja vs dummy) → MENU / ESC → Main Menu
+               Battle (Ninja vs chaser) → KO → RESTART or MENU / ESC
 ```
 
 PLAY must enter a real battle. Spawn as Ninja. Control immediately.
@@ -48,8 +48,8 @@ PLAY must enter a real battle. Spawn as Ninja. Control immediately.
 | **4 Opponent** | Chaser enemy, restart, juice | `ai/`, HUD polish | The 17-point list below |
 
 Phase 2 includes light damage, knockback, stamina drain, and hit feedback so a
-hit can be evaluated. Phase 3 adds combo, block, and dash. Dummy still does
-not fight back.
+hit can be evaluated. Phase 3 adds combo, block, and dash. Phase 4 replaces the
+dummy with a chasing opponent, round restart, and extra hit juice.
 
 ## Config map
 
@@ -58,6 +58,7 @@ not fight back.
 - `src/config/combat.ts` — arc, stamina cost, block/dash timings
 - `src/config/input.ts` — sticks, keyboard, right-stick priority
 - `src/config/arena.ts` — medium battlefield size and spawns
+- `src/config/chaser.ts` — practice-opponent ratings, weaker than Ninja
 - `src/ui/theme.ts` — colors, canvas size
 
 ## Input
@@ -103,7 +104,7 @@ Remembered for later:
 6. Enter an actual battle
 7. Control Ninja
 8. Aim with the aura/hitmarker independently of movement
-9. Attack the dummy
+9. Attack the chaser
 10. See health and damage
 11. Experience knockback
 12. Use stamina
@@ -113,4 +114,4 @@ Remembered for later:
 16. Fight a basic enemy
 17. Restart or return to the menu
 
-Phase 3 needs items 13–15 (combo, block, dash). Item 16 is Phase 4.
+Phase 4 is the last Demo 1 slice: items 16–17, plus juice on every hit.

@@ -24,5 +24,5 @@ npm run build
 
 ## Current status
 
-**Phase 3 — Fight feel.** Combo finisher, timed block, and dash are in.
-A chasing enemy is Phase 4.
+**Phase 4 — Opponent.** A chasing enemy, KO restart, and hit juice.
+Demo 1 is playable end to end.

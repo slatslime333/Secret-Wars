@@ -1,5 +1,6 @@
 export { ARENA } from './arena';
 export { AUDIO } from './audio';
+export { CHASER } from './chaser';
 export { COMBAT, attackHalfArcRad } from './combat';
 export { NINJA } from './ninja';
 export { INPUT } from './input';

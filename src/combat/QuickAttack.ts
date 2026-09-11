@@ -1,13 +1,15 @@
 import Phaser from 'phaser';
 import { attackHalfArcRad, COMBAT } from '../config/combat';
+import { CHASER } from '../config/chaser';
 import { NINJA } from '../config/ninja';
 import { applyDefense } from './damage';
 import { ComboTracker } from './ComboTracker';
 import { HitMarker } from './HitMarker';
 import { isInAttackArc } from './hitDetection';
 import { spawnCombatCallout } from '../effects/combatCallout';
+import { playHitJuice } from '../effects/hitJuice';
 import { spawnHitSpark } from '../effects/hitSpark';
-import { DummyTarget } from '../heroes/DummyTarget';
+import { Hurtbox } from './Hurtbox';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { COLORS } from '../ui/theme';
 
@@ -37,7 +39,7 @@ export class QuickAttack {
     held: boolean,
     pressed: boolean,
     ninja: NinjaBody,
-    dummy: DummyTarget,
+    dummy: Hurtbox,
   ): void {
     const tapQueued = this.pendingTaps > 0;
     this.combo.expire(now, COMBAT.comboWindowMs, held || tapQueued || pressed);
@@ -86,7 +88,10 @@ export class QuickAttack {
     }
   }
 
-  private tryHit(ninja: NinjaBody, dummy: DummyTarget, finisher: boolean): void {
+  private tryHit(ninja: NinjaBody, dummy: Hurtbox, finisher: boolean): void {
+    if (dummy.down) {
+      return;
+    }
     const connected = isInAttackArc(
       ninja.x,
       ninja.y,
@@ -96,7 +101,7 @@ export class QuickAttack {
       dummy.y,
       NINJA.attackRange + COMBAT.hitForgiveness,
       attackHalfArcRad,
-      COMBAT.dummyRadius,
+      CHASER.bodyRadius,
     );
     if (!connected) {
       return;
@@ -105,15 +110,16 @@ export class QuickAttack {
     const raw = finisher
       ? NINJA.attackDamage * COMBAT.comboFinisherDamageMultiplier
       : NINJA.attackDamage;
-    const damage = applyDefense(raw, NINJA.defense);
-    const knockback = finisher ? COMBAT.comboFinisherKnockbackMultiplier : 1;
+    const damage = applyDefense(raw, CHASER.defense);
+    const knockback =
+      NINJA.knockbackPower * (finisher ? COMBAT.comboFinisherKnockbackMultiplier : 1);
     dummy.takeHit(damage, ninja.aim.x, ninja.aim.y, knockback);
     spawnHitSpark(
       this.scene,
       dummy.x + ninja.aim.x * 12,
       dummy.y + ninja.aim.y * 12,
     );
-    this.scene.cameras.main.shake(finisher ? 140 : 90, finisher ? 0.012 : 0.008);
+    playHitJuice(this.scene, dummy.x, dummy.y, { damage, finisher });
   }
 
   private flashSlash(ninja: NinjaBody, finisher: boolean): void {

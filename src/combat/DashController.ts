@@ -30,6 +30,7 @@ export class DashController {
     this.activeUntil = now + COMBAT.dashDurationMs;
     this.readyAt = now + COMBAT.dashCooldownMs;
     ninja.setSpeedCap(dashSpeed());
+    ninja.grantInvulnerable(now + COMBAT.dashDurationMs);
     this.spawnStreaks(ninja);
     spawnCombatCallout(this.scene, ninja.x, ninja.y, 'DASH', COLORS.orange);
     return true;

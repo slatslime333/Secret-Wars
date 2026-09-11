@@ -9,11 +9,14 @@ export class NinjaBody {
   readonly view: Phaser.GameObjects.Container;
   health = NINJA.maxHealth;
   stamina = NINJA.maxStamina;
+  readonly defense = NINJA.defense;
   readonly aim = new Phaser.Math.Vector2(1, 0);
   private facing: CardinalFacing = 'east';
   private readonly art: Phaser.GameObjects.Graphics;
   private staminaLockUntil = 0;
   private staminaDeniedAt = 0;
+  private stunnedUntil = 0;
+  private invulnerableUntil = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     ensureBodyTexture(scene);
@@ -48,6 +51,47 @@ export class NinjaBody {
 
   applyMove(move: Phaser.Math.Vector2): void {
     this.body.setVelocity(move.x * NINJA.moveSpeed, move.y * NINJA.moveSpeed);
+  }
+
+  stop(): void {
+    this.body.setVelocity(0, 0);
+  }
+
+  get down(): boolean {
+    return this.health <= 0;
+  }
+
+  isStunned(now: number): boolean {
+    return now < this.stunnedUntil;
+  }
+
+  isInvulnerable(now: number): boolean {
+    return now < this.invulnerableUntil;
+  }
+
+  grantInvulnerable(until: number): void {
+    this.invulnerableUntil = until;
+  }
+
+  takeHit(damage: number, dirX: number, dirY: number, knockback: number): void {
+    if (this.down) {
+      return;
+    }
+    this.health = Math.max(0, this.health - damage);
+    const length = Math.hypot(dirX, dirY) || 1;
+    this.body.setVelocity((dirX / length) * knockback, (dirY / length) * knockback);
+    this.stunnedUntil = this.view.scene.time.now + COMBAT.hitStunMs;
+    this.view.setScale(1.16);
+    this.view.scene.tweens.add({
+      targets: this.view,
+      scale: 1,
+      duration: 110,
+      ease: 'Stepped',
+      easeParams: [3],
+    });
+    if (this.down) {
+      this.stop();
+    }
   }
 
   setSpeedCap(speed: number): void {
