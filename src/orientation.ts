@@ -1,10 +1,9 @@
 /**
  * Mobile orientation helper for Secret Wars.
  *
- * The game is authored for landscape play. On touch-first phones and tablets
- * held in portrait the HUD and dual-stick layout do not fit, so a full-screen
- * prompt asks the player to rotate. Desktop PCs are exempt: they have enough
- * screen real estate even in a tall window.
+ * The game fills the visible viewport in any orientation. On touch-first
+ * phones held in portrait a prompt still suggests landscape, but Continue
+ * anyway leaves portrait playable. Desktop PCs never see the overlay.
  *
  * Foldables make orientation tricky. Several signals are combined (Screen
  * Orientation API, `window.orientation`, CSS orientation, and the visible

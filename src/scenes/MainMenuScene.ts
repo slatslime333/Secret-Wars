@@ -24,9 +24,9 @@ export class MainMenuScene extends Phaser.Scene {
     const height = this.scale.height;
     const isPortrait = width < height;
 
-    this.createHeader(width, isPortrait);
-    this.createMissionCard(width, isPortrait);
-    this.createNavigation(width, isPortrait);
+    this.createHeader(width, height, isPortrait);
+    this.createMissionCard(width, height, isPortrait);
+    this.createNavigation(width, height, isPortrait);
     this.createFooter(width, height);
     this.bindKeyboard();
 
@@ -41,19 +41,21 @@ export class MainMenuScene extends Phaser.Scene {
     });
   }
 
-  private createHeader(width: number, isPortrait: boolean): void {
+  private createHeader(width: number, height: number, isPortrait: boolean): void {
     if (isPortrait) {
-      createLogo(this, width / 2, 75, 0.40);
+      const logoY = Math.min(90, height * 0.1);
+      createLogo(this, width / 2, logoY, Math.min(0.4, width / 900));
       const barW = Math.min(360, width - 60);
       const startX = (width - barW) / 2;
+      const barY = logoY + 60;
       const graphics = this.add.graphics();
       graphics.fillStyle(COLORS.cyan);
-      graphics.fillRect(startX, 135, barW * 0.8, 4);
+      graphics.fillRect(startX, barY, barW * 0.8, 4);
       graphics.fillStyle(COLORS.redBright);
-      graphics.fillRect(startX + barW * 0.8, 135, barW * 0.2, 4);
+      graphics.fillRect(startX + barW * 0.8, barY, barW * 0.2, 4);
 
       this.add
-        .text(width / 2, 146, 'COMMAND SCREEN', {
+        .text(width / 2, barY + 11, 'COMMAND SCREEN', {
           fontFamily: FONTS.body,
           fontSize: '12px',
           fontStyle: 'bold',
@@ -65,16 +67,17 @@ export class MainMenuScene extends Phaser.Scene {
     }
 
     const leftCenterX = Math.max(185, Math.min(220, width * 0.22));
-    createLogo(this, leftCenterX, 107, 0.43);
+    const logoY = Math.min(107, height * 0.2);
+    createLogo(this, leftCenterX, logoY, Math.min(0.43, height / 1250));
 
     const graphics = this.add.graphics();
     graphics.fillStyle(COLORS.cyan);
-    graphics.fillRect(leftCenterX - 155, 177, 318, 4);
+    graphics.fillRect(leftCenterX - 155, logoY + 70, 318, 4);
     graphics.fillStyle(COLORS.redBright);
-    graphics.fillRect(leftCenterX + 163, 177, 68, 4);
+    graphics.fillRect(leftCenterX + 163, logoY + 70, 68, 4);
 
     this.add
-      .text(leftCenterX - 151, 190, 'COMMAND SCREEN', {
+      .text(leftCenterX - 151, logoY + 83, 'COMMAND SCREEN', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
@@ -84,19 +87,23 @@ export class MainMenuScene extends Phaser.Scene {
       .setOrigin(0, 0);
   }
 
-  private createNavigation(width: number, isPortrait: boolean): void {
+  private createNavigation(width: number, height: number, isPortrait: boolean): void {
     if (isPortrait) {
-      const startY = 535;
+      const showExit = !isTouchPrimary();
+      const playH = Math.min(72, height * 0.08);
+      const gap = 12;
+      const stackH = playH + gap + 56 + (showExit ? gap + 46 : 0);
+      const startY = height - 28 - stackH + playH / 2;
       const btnW = Math.min(340, width - 60);
       this.buttons = [
         new ActionButton(this, width / 2, startY, {
           label: 'PLAY',
           width: btnW,
-          height: 72,
+          height: playH,
           primary: true,
           onPress: () => this.openBattle(),
         }),
-        new ActionButton(this, width / 2, startY + 84, {
+        new ActionButton(this, width / 2, startY + playH / 2 + gap + 28, {
           label: 'SETTINGS',
           width: btnW - 30,
           height: 56,
@@ -104,9 +111,9 @@ export class MainMenuScene extends Phaser.Scene {
         }),
       ];
 
-      if (!isTouchPrimary()) {
+      if (showExit) {
         this.buttons.push(
-          new ActionButton(this, width / 2, startY + 154, {
+          new ActionButton(this, width / 2, startY + playH / 2 + gap + 56 + gap + 23, {
             label: 'EXIT',
             width: btnW - 60,
             height: 46,
@@ -116,28 +123,29 @@ export class MainMenuScene extends Phaser.Scene {
       }
     } else {
       const leftCenterX = Math.max(185, Math.min(220, width * 0.22));
+      const playY = height * 0.52;
       this.buttons = [
-        new ActionButton(this, leftCenterX + 25, 286, {
+        new ActionButton(this, leftCenterX + 25, playY, {
           label: 'PLAY',
-          width: 330,
-          height: 78,
+          width: Math.min(330, width * 0.36),
+          height: Math.min(78, height * 0.16),
           primary: true,
           onPress: () => this.openBattle(),
         }),
-        new ActionButton(this, leftCenterX + 17, 378, {
+        new ActionButton(this, leftCenterX + 17, playY + height * 0.17, {
           label: 'SETTINGS',
-          width: 290,
-          height: 58,
+          width: Math.min(290, width * 0.32),
+          height: Math.min(58, height * 0.12),
           onPress: () => this.openSettings(),
         }),
       ];
 
       if (!isTouchPrimary()) {
         this.buttons.push(
-          new ActionButton(this, leftCenterX + 9, 454, {
+          new ActionButton(this, leftCenterX + 9, playY + height * 0.31, {
             label: 'EXIT',
-            width: 250,
-            height: 48,
+            width: Math.min(250, width * 0.28),
+            height: Math.min(48, height * 0.1),
             onPress: () => this.exitGame(),
           }),
         );
@@ -148,7 +156,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.updateFocus();
   }
 
-  private createMissionCard(width: number, isPortrait: boolean): void {
+  private createMissionCard(width: number, height: number, isPortrait: boolean): void {
     let x: number;
     let y: number;
     let cardW: number;
@@ -156,14 +164,14 @@ export class MainMenuScene extends Phaser.Scene {
 
     if (isPortrait) {
       cardW = Math.min(420, width - 40);
-      cardH = 340;
+      cardH = Math.min(340, height * 0.38);
       x = (width - cardW) / 2;
-      y = 175;
+      y = Math.min(175, height * 0.2);
     } else {
-      cardW = 412;
-      cardH = 370;
-      x = Math.max(480, width - cardW - 48);
-      y = 85;
+      cardW = Math.min(412, width * 0.44);
+      cardH = Math.min(370, height - 40);
+      x = Math.max(width * 0.5, width - cardW - 24);
+      y = Math.max(12, (height - cardH) / 2);
     }
     const graphics = this.add.graphics();
 
