@@ -16,6 +16,7 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.returning = false;
     createBackdrop(this, { accent: COLORS.cyan });
     this.cameras.main.fadeIn(220, 7, 10, 18);
     this.createHeader();
@@ -23,7 +24,10 @@ export class SettingsScene extends Phaser.Scene {
     this.createFullscreenRow();
     this.createControlsHelp();
     this.createBackButton();
-    this.input.keyboard?.once('keydown-ESC', () => this.returnToMenu());
+    this.input.keyboard?.on('keydown-ESC', this.returnToMenu, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off('keydown-ESC', this.returnToMenu, this);
+    });
   }
 
   private createHeader(): void {

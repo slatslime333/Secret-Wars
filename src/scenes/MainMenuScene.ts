@@ -219,11 +219,26 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   private bindKeyboard(): void {
-    this.input.keyboard?.on('keydown-UP', () => this.moveFocus(-1));
-    this.input.keyboard?.on('keydown-DOWN', () => this.moveFocus(1));
-    this.input.keyboard?.on('keydown-ENTER', () => {
-      this.buttons[this.focusIndex].emit(Phaser.Input.Events.GAMEOBJECT_POINTER_UP);
+    this.input.keyboard?.on('keydown-UP', this.onUp, this);
+    this.input.keyboard?.on('keydown-DOWN', this.onDown, this);
+    this.input.keyboard?.on('keydown-ENTER', this.onEnter, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off('keydown-UP', this.onUp, this);
+      this.input.keyboard?.off('keydown-DOWN', this.onDown, this);
+      this.input.keyboard?.off('keydown-ENTER', this.onEnter, this);
     });
+  }
+
+  private onUp(): void {
+    this.moveFocus(-1);
+  }
+
+  private onDown(): void {
+    this.moveFocus(1);
+  }
+
+  private onEnter(): void {
+    this.buttons[this.focusIndex]?.emit(Phaser.Input.Events.GAMEOBJECT_POINTER_UP);
   }
 
   private moveFocus(direction: number): void {

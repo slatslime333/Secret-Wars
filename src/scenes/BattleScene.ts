@@ -15,10 +15,14 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.returning = false;
     createArena(this);
     this.cameras.main.fadeIn(220, 7, 10, 18);
     this.createChrome();
-    this.input.keyboard?.once('keydown-ESC', () => this.returnToMenu());
+    this.input.keyboard?.on('keydown-ESC', this.returnToMenu, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off('keydown-ESC', this.returnToMenu, this);
+    });
   }
 
   private createChrome(): void {
