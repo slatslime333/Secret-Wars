@@ -108,8 +108,8 @@ const drawNinjaSword = (
   }
 
   const finalAngle = baseAngle + swordAngleOffset;
-  const bladeLength = attacking ? 28 : 22;
-  const bladeWidth = 3;
+  const bladeLength = attacking ? 32 : 26;
+  const bladeWidth = 4;
 
   const cos = Math.cos(finalAngle);
   const sin = Math.sin(finalAngle);
@@ -118,26 +118,26 @@ const drawNinjaSword = (
 
   // Hand fist wrap (front glove holding hilt)
   graphics.fillStyle(COLORS.cyan, 1);
-  graphics.fillCircle(handX, handY, 3.5);
+  graphics.fillCircle(handX, handY, 4);
   graphics.fillStyle(COLORS.ink, 1);
-  graphics.strokeCircle(handX, handY, 3.5);
+  graphics.strokeCircle(handX, handY, 4);
 
   // Hilt pommel & handle behind hand
-  const hiltEndX = handX - cos * 6;
-  const hiltEndY = handY - sin * 6;
-  graphics.lineStyle(3, 0x181008, 1);
+  const hiltEndX = handX - cos * 8;
+  const hiltEndY = handY - sin * 8;
+  graphics.lineStyle(4, 0x181008, 1);
   graphics.lineBetween(handX, handY, hiltEndX, hiltEndY);
   // Gold/brass pommel
   graphics.fillStyle(COLORS.yellow, 1);
-  graphics.fillCircle(hiltEndX, hiltEndY, 2);
+  graphics.fillCircle(hiltEndX, hiltEndY, 3);
 
   // Tsuba (sword guard)
-  graphics.lineStyle(3, COLORS.yellow, 1);
+  graphics.lineStyle(4, COLORS.yellow, 1);
   graphics.lineBetween(
-    handX + cos * 2 + perpX * 4,
-    handY + sin * 2 + perpY * 4,
-    handX + cos * 2 - perpX * 4,
-    handY + sin * 2 - perpY * 4,
+    handX + cos * 2 + perpX * 5,
+    handY + sin * 2 + perpY * 5,
+    handX + cos * 2 - perpX * 5,
+    handY + sin * 2 - perpY * 5,
   );
 
   // Katana steel blade
@@ -146,19 +146,19 @@ const drawNinjaSword = (
   const bladeTipX = handX + cos * (3 + bladeLength);
   const bladeTipY = handY + sin * (3 + bladeLength);
 
-  // Shadow / back edge
-  graphics.lineStyle(bladeWidth + 1, COLORS.ink, 1);
+  // Outer bold dark ink outline
+  graphics.lineStyle(bladeWidth + 2, COLORS.ink, 1);
   graphics.lineBetween(bladeStartX, bladeStartY, bladeTipX, bladeTipY);
 
-  // Steel body
-  graphics.lineStyle(bladeWidth, COLORS.paper, 1);
+  // Bright steel white blade body
+  graphics.lineStyle(bladeWidth, 0xffffff, 1);
   graphics.lineBetween(bladeStartX, bladeStartY, bladeTipX, bladeTipY);
 
-  // Polished cyan-white razor edge glint
-  graphics.lineStyle(1, attacking ? 0xffffff : COLORS.cyan, 1);
+  // Polished cyan razor edge glint along cutting edge
+  graphics.lineStyle(2, attacking ? 0xffffff : COLORS.cyan, 1);
   graphics.lineBetween(
-    bladeStartX + perpX * 1,
-    bladeStartY + perpY * 1,
+    bladeStartX + perpX * 1.5,
+    bladeStartY + perpY * 1.5,
     bladeTipX,
     bladeTipY,
   );

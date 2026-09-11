@@ -135,15 +135,15 @@ export class QuickAttack {
    * sweeping across the hit cone as Ninja swings his sword.
    */
   private spawnWhiteLineSlice(ninja: NinjaBody, finisher: boolean): void {
-    const graphics = this.scene.add.graphics().setDepth(15);
+    const graphics = this.scene.add.graphics().setDepth(20);
     const originX = ninja.x;
     const originY = ninja.y;
     const aimAngle = Math.atan2(ninja.aim.y, ninja.aim.x);
-    const half = finisher ? attackHalfArcRad * 1.2 : attackHalfArcRad;
+    const half = finisher ? attackHalfArcRad * 1.3 : attackHalfArcRad * 1.1;
     const startAngle = aimAngle - half;
     const totalArc = half * 2;
-    const radius = NINJA.attackRange * (finisher ? 0.95 : 0.85);
-    const duration = finisher ? 160 : 120;
+    const radius = NINJA.attackRange * (finisher ? 1.05 : 0.95);
+    const duration = finisher ? 220 : 180;
 
     const anim = { sweepProgress: 0, alpha: 1 };
     graphics.setPosition(originX, originY);
@@ -151,34 +151,40 @@ export class QuickAttack {
     this.scene.tweens.add({
       targets: anim,
       sweepProgress: 1,
-      duration: duration * 0.6,
+      duration: duration * 0.5,
       ease: 'Cubic.Out',
       onUpdate: () => {
         graphics.clear();
         const currentEndAngle = startAngle + totalArc * anim.sweepProgress;
-        const trailStartAngle = Math.max(startAngle, currentEndAngle - totalArc * 0.65);
+        const trailStartAngle = Math.max(startAngle, currentEndAngle - totalArc * 0.75);
 
-        // Outer white energy aura
-        graphics.lineStyle(finisher ? 8 : 5, 0xffffff, 0.45 * anim.alpha);
+        // Broad white glow arc
+        graphics.lineStyle(finisher ? 12 : 8, 0xffffff, 0.6 * anim.alpha);
         graphics.beginPath();
         graphics.arc(0, 0, radius, trailStartAngle, currentEndAngle);
         graphics.strokePath();
 
-        // Primary pure white blade razor line
-        graphics.lineStyle(finisher ? 4 : 2.5, 0xffffff, 1 * anim.alpha);
+        // Thick vivid pure white line slice
+        graphics.lineStyle(finisher ? 6 : 4, 0xffffff, 1 * anim.alpha);
         graphics.beginPath();
         graphics.arc(0, 0, radius, trailStartAngle, currentEndAngle);
+        graphics.strokePath();
+
+        // Second inner parallel white slash line for comic energy feel
+        graphics.lineStyle(2, 0xffffff, 0.85 * anim.alpha);
+        graphics.beginPath();
+        graphics.arc(0, 0, radius - 6, trailStartAngle, currentEndAngle);
         graphics.strokePath();
 
         // White slash spark tip at leading edge
         const tipX = Math.cos(currentEndAngle) * radius;
         const tipY = Math.sin(currentEndAngle) * radius;
         graphics.fillStyle(0xffffff, 1 * anim.alpha);
-        graphics.fillCircle(tipX, tipY, finisher ? 4 : 2.5);
+        graphics.fillCircle(tipX, tipY, finisher ? 5 : 3.5);
 
         // Core cyan/gold accent for finisher
         if (finisher) {
-          graphics.lineStyle(2, COLORS.cyan, 0.8 * anim.alpha);
+          graphics.lineStyle(3, COLORS.cyan, 0.9 * anim.alpha);
           graphics.beginPath();
           graphics.arc(0, 0, radius - 3, trailStartAngle, currentEndAngle);
           graphics.strokePath();
