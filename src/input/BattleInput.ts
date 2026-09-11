@@ -31,6 +31,7 @@ type KeyMap = {
  */
 export class BattleInput {
   private readonly scene: Phaser.Scene;
+  private readonly isRoundLocked: () => boolean;
   private readonly touch: boolean;
   private readonly leftStick?: VirtualThumbstick;
   private readonly rightStick?: VirtualThumbstick;
@@ -45,8 +46,9 @@ export class BattleInput {
   private dashLatched = false;
   private lastAttackPressAt = -999;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, isRoundLocked: () => boolean = () => false) {
     this.scene = scene;
+    this.isRoundLocked = isRoundLocked;
     this.touch = scene.sys.game.device.input.touch;
 
     if (this.touch) {
@@ -107,6 +109,9 @@ export class BattleInput {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
+    if (this.isRoundLocked()) {
+      return;
+    }
     if (pointer.leftButtonDown()) {
       this.attackLatched = true;
     }

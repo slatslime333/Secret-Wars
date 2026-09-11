@@ -7,7 +7,7 @@ import { COLORS } from '../ui/theme';
 
 const dashSpeed = (): number => COMBAT.dashDistance / (COMBAT.dashDurationMs / 1000);
 
-/** Short leap in move direction, or facing if standing still. 4s cooldown. */
+/** Short leap in move direction, or facing if standing still. 2s cooldown. */
 export class DashController {
   private activeUntil = 0;
   private readyAt = 0;
@@ -16,7 +16,7 @@ export class DashController {
   constructor(private readonly scene: Phaser.Scene) {}
 
   tryStart(now: number, move: Phaser.Math.Vector2, aim: Phaser.Math.Vector2, ninja: NinjaBody): boolean {
-    if (now < this.readyAt || this.isActive(now)) {
+    if (now < this.readyAt || this.isActive(now) || ninja.status.isBlockStunned(now)) {
       return false;
     }
     if (!ninja.trySpendStamina(COMBAT.dashStaminaCost, now)) {
@@ -53,7 +53,7 @@ export class DashController {
       return;
     }
     const speed = dashSpeed();
-    ninja.body.setVelocity(this.dir.x * speed, this.dir.y * speed);
+    ninja.body?.setVelocity(this.dir.x * speed, this.dir.y * speed);
   }
 
   private spawnStreaks(ninja: NinjaBody): void {

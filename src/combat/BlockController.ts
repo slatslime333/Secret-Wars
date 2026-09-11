@@ -5,10 +5,16 @@ import { spawnCombatCallout } from '../effects/combatCallout';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { COLORS } from '../ui/theme';
 
-/** Timed 0.35s shield, then 4s cooldown. Not a holdable block. */
+export type BlockAbsorbResult = {
+  absorbed: boolean;
+  perfect: boolean;
+};
+
+/** Timed 0.35s directional shield, then cooldown. Not a holdable block. */
 export class BlockController {
   private activeUntil = 0;
   private readyAt = 0;
+  private startedAt = 0;
   private readonly shield: Phaser.GameObjects.Graphics;
 
   constructor(scene: Phaser.Scene) {
@@ -16,12 +22,13 @@ export class BlockController {
   }
 
   tryStart(now: number, ninja: NinjaBody): boolean {
-    if (now < this.readyAt || this.isActive(now)) {
+    if (now < this.readyAt || this.isActive(now) || ninja.status.isBlockStunned(now)) {
       return false;
     }
     if (!ninja.trySpendStamina(COMBAT.blockStaminaCost, now)) {
       return false;
     }
+    this.startedAt = now;
     this.activeUntil = now + COMBAT.blockDurationMs;
     this.readyAt = now + COMBAT.blockCooldownMs;
     spawnCombatCallout(this.shield.scene, ninja.x, ninja.y, 'BLOCK', COLORS.cyan);
@@ -33,15 +40,16 @@ export class BlockController {
   }
 
   /** True when the timed shield is up and facing the attacker. */
-  tryAbsorb(now: number, ninja: NinjaBody, fromX: number, fromY: number): boolean {
+  tryAbsorb(now: number, ninja: NinjaBody, fromX: number, fromY: number): BlockAbsorbResult {
     if (!this.isActive(now)) {
-      return false;
+      return { absorbed: false, perfect: false };
     }
     const covered = isInAttackArc(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, fromX, fromY, 420, 0.95, 8);
     if (!covered) {
-      return false;
+      return { absorbed: false, perfect: false };
     }
-    return true;
+    const perfect = now - this.startedAt <= COMBAT.perfectBlockWindowMs;
+    return { absorbed: true, perfect };
   }
 
   cooldownRatio(now: number): number {
@@ -51,20 +59,25 @@ export class BlockController {
     return (this.readyAt - now) / COMBAT.blockCooldownMs;
   }
 
+  destroy(): void {
+    this.shield.destroy();
+  }
+
   sync(now: number, ninja: NinjaBody): void {
     this.shield.clear();
     if (!this.isActive(now)) {
       return;
     }
     const angle = Math.atan2(ninja.aim.y, ninja.aim.x);
+    const remaining = (this.activeUntil - now) / COMBAT.blockDurationMs;
     this.shield.setPosition(ninja.x, ninja.y);
-    this.shield.lineStyle(8, COLORS.paper, 0.95);
+    this.shield.lineStyle(10, COLORS.paper, 0.55 + remaining * 0.4);
     this.shield.beginPath();
-    this.shield.arc(0, 0, 28, angle - 0.9, angle + 0.9);
+    this.shield.arc(0, 0, 30, angle - 1.05, angle + 1.05);
     this.shield.strokePath();
-    this.shield.lineStyle(4, COLORS.cyan, 1);
+    this.shield.lineStyle(5, COLORS.cyan, 0.85 + remaining * 0.15);
     this.shield.beginPath();
-    this.shield.arc(0, 0, 24, angle - 0.85, angle + 0.85);
+    this.shield.arc(0, 0, 24, angle - 0.95, angle + 0.95);
     this.shield.strokePath();
   }
 }

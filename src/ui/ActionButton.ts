@@ -6,6 +6,8 @@ type ActionButtonOptions = {
   width?: number;
   height?: number;
   primary?: boolean;
+  /** When false, the caller adds this into a parent container. Default true. */
+  attachToScene?: boolean;
   onPress: () => void;
 };
 
@@ -52,7 +54,9 @@ export class ActionButton extends Phaser.GameObjects.Container {
       options.onPress();
     });
 
-    scene.add.existing(this);
+    if (options.attachToScene !== false) {
+      scene.add.existing(this);
+    }
   }
 
   setFocused(value: boolean): this {

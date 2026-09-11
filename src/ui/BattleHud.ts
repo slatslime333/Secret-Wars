@@ -1,19 +1,20 @@
 import Phaser from 'phaser';
-import { CHASER } from '../config/chaser';
 import { NINJA } from '../config/ninja';
+import { COMBAT } from '../config/combat';
 import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { NinjaBody } from '../heroes/NinjaBody';
-import { ChaserBody } from '../heroes/ChaserBody';
 import { COLORS, FONTS, GAME_WIDTH, hex } from './theme';
 
 export class BattleHud {
   private readonly ninjaFill: Phaser.GameObjects.Rectangle;
   private readonly staminaFill: Phaser.GameObjects.Rectangle;
   private readonly foeFill: Phaser.GameObjects.Rectangle;
+  private readonly foeStaminaFill: Phaser.GameObjects.Rectangle;
   private readonly foeBar: Phaser.GameObjects.Container;
   private readonly comboText: Phaser.GameObjects.Text;
   private readonly verbText: Phaser.GameObjects.Text;
+  private readonly foeCaption: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene) {
     scene.add.rectangle(148, 56, 224, 10, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
@@ -53,8 +54,11 @@ export class BattleHud {
     const track = scene.add.rectangle(0, 0, 72, 10, COLORS.ink, 1);
     track.setStrokeStyle(2, COLORS.redBright);
     this.foeFill = scene.add.rectangle(-36, 0, 72, 6, COLORS.paper).setOrigin(0, 0.5);
-    const caption = scene.add
-      .text(0, -14, 'CHASER', {
+    const staminaTrack = scene.add.rectangle(0, 9, 72, 6, COLORS.ink, 1);
+    staminaTrack.setStrokeStyle(1, COLORS.cyanDark);
+    this.foeStaminaFill = scene.add.rectangle(-36, 9, 72, 4, COLORS.cyan).setOrigin(0, 0.5);
+    this.foeCaption = scene.add
+      .text(0, -14, 'RIVAL', {
         fontFamily: FONTS.body,
         fontSize: '10px',
         fontStyle: 'bold',
@@ -63,12 +67,13 @@ export class BattleHud {
         strokeThickness: 3,
       })
       .setOrigin(0.5, 1);
-    this.foeBar.add([track, this.foeFill, caption]);
+    this.foeBar.add([track, this.foeFill, staminaTrack, this.foeStaminaFill, this.foeCaption]);
+    this.foeBar.setVisible(false);
   }
 
   sync(
     ninja: NinjaBody,
-    chaser: ChaserBody,
+    rival: NinjaBody | undefined,
     now: number,
     comboStep: number,
     block: BlockController,
@@ -77,15 +82,24 @@ export class BattleHud {
     this.ninjaFill.width = 224 * (ninja.health / NINJA.maxHealth);
     this.staminaFill.width = 224 * (ninja.stamina / NINJA.maxStamina);
     this.staminaFill.setFillStyle(ninja.staminaDeniedRecently(now) ? COLORS.orange : COLORS.cyan);
-    this.foeBar.setPosition(chaser.x, chaser.y - 40);
-    this.foeFill.width = Math.max(0, 72 * (chaser.health / CHASER.maxHealth));
+
+    if (!rival) {
+      this.foeBar.setVisible(false);
+    } else {
+      this.foeBar.setVisible(true);
+      this.foeBar.setPosition(rival.x, rival.y - 44);
+      this.foeFill.width = Math.max(0, 72 * (rival.health / NINJA.maxHealth));
+      this.foeStaminaFill.width = Math.max(0, 72 * (rival.stamina / NINJA.maxStamina));
+    }
 
     this.comboText.setText(comboLabel(comboStep));
     this.comboText.setColor(hex(comboStep === 3 ? COLORS.yellow : COLORS.orange));
     const blockCd = block.cooldownRatio(now);
     const dashCd = dash.cooldownRatio(now);
-    const blockBit = block.isActive(now) ? 'BLOCKING' : blockCd > 0 ? `K ${Math.ceil(blockCd * 4)}s` : 'K BLOCK';
-    const dashBit = dash.isActive(now) ? 'DASHING' : dashCd > 0 ? `L ${Math.ceil(dashCd * 4)}s` : 'L DASH';
+    const dashSeconds = Math.ceil(COMBAT.dashCooldownMs / 1000);
+    const blockSeconds = Math.ceil(COMBAT.blockCooldownMs / 1000);
+    const blockBit = block.isActive(now) ? 'BLOCKING' : blockCd > 0 ? `K ${Math.ceil(blockCd * blockSeconds)}s` : 'K BLOCK';
+    const dashBit = dash.isActive(now) ? 'DASHING' : dashCd > 0 ? `L ${Math.ceil(dashCd * dashSeconds)}s` : 'L DASH';
     this.verbText.setText(`${blockBit}   ${dashBit}`);
   }
 }
