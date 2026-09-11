@@ -1,4 +1,4 @@
-import { getViewportSize } from '../device';
+import { getViewportSize, isTouchPrimary, toLandscapeSize } from '../device';
 
 export const DEFAULT_WIDTH = 960;
 export const DEFAULT_HEIGHT = 540;
@@ -15,18 +15,23 @@ export type GameSizeInfo = {
 /**
  * Logical canvas size matching the visible viewport aspect ratio.
  *
- * Landscape keeps a 540-tall design and stretches width so phones, tablets,
- * and foldables (including ultra-wide cover screens) fill the display with
- * no letterboxing. Portrait is only used on desktop windows; mobile portrait
- * is blocked by the rotate overlay.
+ * Mobile is always landscape: height stays 540 and width stretches so the
+ * canvas matches the phone. Desktop may still use a portrait window.
  */
 export function getGameSize(
   winWidth?: number,
   winHeight?: number,
 ): GameSizeInfo {
   const viewport = getViewportSize();
-  const w = Math.max(winWidth ?? viewport.width, 320);
-  const h = Math.max(winHeight ?? viewport.height, 240);
+  let w = Math.max(winWidth ?? viewport.width, 320);
+  let h = Math.max(winHeight ?? viewport.height, 240);
+
+  if (isTouchPrimary()) {
+    const landscape = toLandscapeSize(w, h);
+    w = landscape.width;
+    h = landscape.height;
+  }
+
   const aspect = w / h;
   const isPortrait = aspect < 1;
 

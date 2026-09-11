@@ -19,16 +19,28 @@ const syncGameShell = (): void => {
   if (!gameRoot) {
     return;
   }
-  const { width, height, offsetLeft, offsetTop } = getViewportSize();
+  const { width, height } = getViewportSize();
   gameRoot.style.position = 'fixed';
-  gameRoot.style.left = `${Math.round(offsetLeft)}px`;
-  gameRoot.style.top = `${Math.round(offsetTop)}px`;
+  gameRoot.style.left = '0';
+  gameRoot.style.top = '0';
+  gameRoot.style.right = 'auto';
+  gameRoot.style.bottom = 'auto';
   gameRoot.style.width = `${Math.round(width)}px`;
   gameRoot.style.height = `${Math.round(height)}px`;
 };
 
 syncGameShell();
-const initialSize = getGameSize();
+
+const sizeFromShell = () => {
+  const width = gameRoot?.clientWidth;
+  const height = gameRoot?.clientHeight;
+  if (width && height) {
+    return getGameSize(width, height);
+  }
+  return getGameSize();
+};
+
+const initialSize = sizeFromShell();
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -59,7 +71,7 @@ const game = new Phaser.Game({
 
 const onWindowResize = () => {
   syncGameShell();
-  const newSize = getGameSize();
+  const newSize = sizeFromShell();
   if (game.scale.width !== newSize.width || game.scale.height !== newSize.height) {
     game.scale.resize(newSize.width, newSize.height);
   }
@@ -69,17 +81,17 @@ const onWindowResize = () => {
 window.addEventListener('resize', onWindowResize);
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', onWindowResize);
+  window.visualViewport.addEventListener('scroll', onWindowResize);
 }
 window.addEventListener('orientationchange', () => {
-  setTimeout(onWindowResize, 100);
-  setTimeout(onWindowResize, 300);
+  onWindowResize();
+  setTimeout(onWindowResize, 50);
+  setTimeout(onWindowResize, 150);
+  setTimeout(onWindowResize, 400);
 });
-
-window.addEventListener('resize', onWindowResize);
-if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', onWindowResize);
-}
-window.addEventListener('orientationchange', () => {
-  setTimeout(onWindowResize, 100);
-  setTimeout(onWindowResize, 300);
+const screenOrientation = (window.screen as Screen & { orientation?: { addEventListener?: typeof window.addEventListener } })
+  .orientation;
+screenOrientation?.addEventListener?.('change', () => {
+  onWindowResize();
+  setTimeout(onWindowResize, 150);
 });

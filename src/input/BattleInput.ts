@@ -55,8 +55,7 @@ export class BattleInput {
     if (this.touch) {
       const width = scene.scale.width;
       const height = scene.scale.height;
-      const isPortrait = width < height;
-      const bottomInset = isPortrait ? 130 : 108;
+      const bottomInset = 108;
       const sideInset = 108;
 
       this.leftStick = new VirtualThumbstick(scene, sideInset, height - bottomInset, {
@@ -70,10 +69,10 @@ export class BattleInput {
         radius: INPUT.stickRadius,
       });
 
-      const blockX = width - (isPortrait ? 170 : 186);
-      const blockY = height - (isPortrait ? bottomInset + 100 : 228);
-      const dashX = width - (isPortrait ? 80 : 86);
-      const dashY = height - (isPortrait ? bottomInset + 100 : 228);
+      const blockX = width - 186;
+      const blockY = height - 228;
+      const dashX = width - 86;
+      const dashY = height - 228;
 
       this.blockButton = new CombatButton(scene, blockX, blockY, {
         label: 'SHIELD',
@@ -137,17 +136,16 @@ export class BattleInput {
     if (!this.touch) {
       return;
     }
-    const isPortrait = width < height;
-    const bottomInset = isPortrait ? 130 : 108;
+    const bottomInset = 108;
     const sideInset = 108;
 
     this.leftStick?.setPosition(sideInset, height - bottomInset);
     this.rightStick?.setPosition(width - sideInset, height - bottomInset);
 
-    const blockX = width - (isPortrait ? 170 : 186);
-    const blockY = height - (isPortrait ? bottomInset + 100 : 228);
-    const dashX = width - (isPortrait ? 80 : 86);
-    const dashY = height - (isPortrait ? bottomInset + 100 : 228);
+    const blockX = width - 186;
+    const blockY = height - 228;
+    const dashX = width - 86;
+    const dashY = height - 228;
 
     this.blockButton?.setPosition(blockX, blockY);
     this.dashButton?.setPosition(dashX, dashY);

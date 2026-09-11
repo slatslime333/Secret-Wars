@@ -17,7 +17,7 @@
  * orientation), so the player may still need to rotate the device by hand.
  */
 
-import { getViewportSize, isTouchPrimary } from './device';
+import { getRawViewportSize, isTouchPrimary } from './device';
 
 const rotateOverlay = document.getElementById('rotate-device');
 const rotateButton = document.querySelector('.rotate-icon');
@@ -72,7 +72,7 @@ function getScreenOrientationType(): string | undefined {
 }
 
 function isViewportPortrait(): boolean {
-  const { width, height } = getViewportSize();
+  const { width, height } = getRawViewportSize();
   return height > width;
 }
 
