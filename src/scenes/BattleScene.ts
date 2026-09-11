@@ -53,7 +53,7 @@ export class BattleScene extends Phaser.Scene {
     this.attacks = new QuickAttack(this, this.marker);
     this.block = new BlockController(this);
     this.dash = new DashController(this);
-    this.inputReader = new BattleInput(this);
+    this.inputReader = new BattleInput(this, () => this.round.isLocked);
     this.hud = new BattleHud(this);
     this.round = new RoundOverlay(this, {
       onRestart: () => this.restartBattle(),
@@ -72,11 +72,27 @@ export class BattleScene extends Phaser.Scene {
     this.createChrome();
     this.game.canvas.setAttribute('tabindex', '0');
     this.game.canvas.focus();
+    this.input.keyboard?.addCapture(['ESC', 'R']);
     this.input.keyboard?.on('keydown-ESC', this.returnToMenu, this);
     this.input.keyboard?.on('keydown-R', this.onRestartKey, this);
+    const onDomKey = (event: KeyboardEvent) => {
+      if (event.repeat) {
+        return;
+      }
+      if (event.code === 'KeyR') {
+        event.preventDefault();
+        this.restartBattle();
+      }
+      if (event.code === 'Escape') {
+        event.preventDefault();
+        this.returnToMenu();
+      }
+    };
+    window.addEventListener('keydown', onDomKey);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off('keydown-ESC', this.returnToMenu, this);
       this.input.keyboard?.off('keydown-R', this.onRestartKey, this);
+      window.removeEventListener('keydown', onDomKey);
     });
   }
 
@@ -131,8 +147,10 @@ export class BattleScene extends Phaser.Scene {
     this.inputReader.syncButtons(now);
 
     if (this.ninja.down) {
+      this.devMenu?.close();
       this.round.lock('rival');
     } else if (this.rival?.down) {
+      this.devMenu?.close();
       this.round.lock('ninja');
     }
   }

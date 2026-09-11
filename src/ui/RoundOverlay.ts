@@ -29,11 +29,10 @@ export class RoundOverlay {
 
   private reveal(winner: 'ninja' | 'rival'): void {
     const win = winner === 'ninja';
-    const dim = this.scene.add
+    this.scene.add
       .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.ink, 0.62)
       .setScrollFactor(0)
       .setDepth(180);
-    dim.setInteractive();
 
     this.scene.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70, win ? 'KO' : 'DOWN', {

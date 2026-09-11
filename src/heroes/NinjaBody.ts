@@ -260,6 +260,8 @@ export class NinjaBody {
 
   destroy(): void {
     this.currentAttackTween?.stop();
+    this.scene.tweens.killTweensOf(this.view);
+    this.scene.tweens.killTweensOf(this.art);
     this.sprite.destroy();
     this.view.destroy();
   }

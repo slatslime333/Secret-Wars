@@ -38,8 +38,7 @@ export class DevMenu {
       .setScrollFactor(0)
       .setDepth(221)
       .setStrokeStyle(2, COLORS.yellow)
-      .setVisible(false)
-      .setInteractive();
+      .setVisible(false);
 
     this.title = scene.add
       .text(GAME_WIDTH - 24, GAME_HEIGHT - 118, 'PLAYLIST', {
@@ -80,6 +79,11 @@ export class DevMenu {
 
   sync(cpuPresent: boolean): void {
     this.action.setText(cpuLabel(cpuPresent));
+  }
+
+  close(): void {
+    this.open = false;
+    this.setOpen(false);
   }
 
   private setOpen(open: boolean): void {
