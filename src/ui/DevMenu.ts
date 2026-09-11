@@ -8,62 +8,87 @@ type DevMenuOptions = {
 
 /** Compact corner playlist tools for iterating on combat. */
 export class DevMenu {
-  private readonly panel: Phaser.GameObjects.Container;
-  private readonly button: Phaser.GameObjects.Text;
+  private readonly toggle: Phaser.GameObjects.Text;
+  private readonly panel: Phaser.GameObjects.Rectangle;
+  private readonly title: Phaser.GameObjects.Text;
+  private readonly action: Phaser.GameObjects.Text;
   private open = false;
+  private readonly options: DevMenuOptions;
 
   constructor(scene: Phaser.Scene, options: DevMenuOptions) {
-    const toggle = scene.add
-      .text(GAME_WIDTH - 10, GAME_HEIGHT - 10, 'DEV', {
+    this.options = options;
+
+    this.toggle = scene.add
+      .text(GAME_WIDTH - 12, GAME_HEIGHT - 12, 'DEV', {
         fontFamily: FONTS.body,
-        fontSize: '11px',
+        fontSize: '12px',
         fontStyle: 'bold',
         color: hex(COLORS.paper),
         backgroundColor: hex(COLORS.ink),
-        padding: { x: 8, y: 5 },
+        padding: { x: 10, y: 6 },
       })
       .setOrigin(1, 1)
       .setScrollFactor(0)
       .setDepth(220)
       .setInteractive({ useHandCursor: true });
 
-    this.button = scene.add
-      .text(0, 18, cpuLabel(options.cpuPresent()), {
-        fontFamily: FONTS.body,
-        fontSize: '12px',
-        fontStyle: 'bold',
-        color: hex(COLORS.ink),
-        backgroundColor: hex(COLORS.paper),
-        padding: { x: 10, y: 6 },
-      })
-      .setOrigin(1, 0)
-      .setInteractive({ useHandCursor: true });
+    this.panel = scene.add
+      .rectangle(GAME_WIDTH - 12, GAME_HEIGHT - 48, 168, 78, COLORS.ink, 0.92)
+      .setOrigin(1, 1)
+      .setScrollFactor(0)
+      .setDepth(221)
+      .setStrokeStyle(2, COLORS.yellow)
+      .setVisible(false)
+      .setInteractive();
 
-    const title = scene.add
-      .text(0, 0, 'PLAYLIST', {
+    this.title = scene.add
+      .text(GAME_WIDTH - 24, GAME_HEIGHT - 118, 'PLAYLIST', {
         fontFamily: FONTS.display,
-        fontSize: '10px',
+        fontSize: '11px',
         color: hex(COLORS.yellow),
         letterSpacing: 2,
       })
-      .setOrigin(1, 0);
+      .setOrigin(1, 0)
+      .setScrollFactor(0)
+      .setDepth(222)
+      .setVisible(false);
 
-    this.panel = scene.add.container(GAME_WIDTH - 10, GAME_HEIGHT - 42, [title, this.button]);
-    this.panel.setScrollFactor(0).setDepth(221).setVisible(false);
+    this.action = scene.add
+      .text(GAME_WIDTH - 24, GAME_HEIGHT - 96, cpuLabel(options.cpuPresent()), {
+        fontFamily: FONTS.body,
+        fontSize: '13px',
+        fontStyle: 'bold',
+        color: hex(COLORS.ink),
+        backgroundColor: hex(COLORS.paper),
+        padding: { x: 10, y: 8 },
+      })
+      .setOrigin(1, 0)
+      .setScrollFactor(0)
+      .setDepth(223)
+      .setVisible(false)
+      .setInteractive({ useHandCursor: true });
 
-    toggle.on(Phaser.Input.Events.POINTER_UP, () => {
+    this.toggle.on(Phaser.Input.Events.POINTER_UP, () => {
       this.open = !this.open;
-      this.panel.setVisible(this.open);
-      this.sync(options.cpuPresent());
+      this.setOpen(this.open);
     });
-    this.button.on(Phaser.Input.Events.POINTER_UP, () => {
-      options.onToggleCpu();
-      this.sync(options.cpuPresent());
+    this.action.on(Phaser.Input.Events.POINTER_UP, () => {
+      this.options.onToggleCpu();
+      this.sync(this.options.cpuPresent());
     });
   }
 
   sync(cpuPresent: boolean): void {
-    this.button.setText(cpuLabel(cpuPresent));
+    this.action.setText(cpuLabel(cpuPresent));
+  }
+
+  private setOpen(open: boolean): void {
+    this.panel.setVisible(open);
+    this.title.setVisible(open);
+    this.action.setVisible(open);
+    if (open) {
+      this.sync(this.options.cpuPresent());
+    }
   }
 }
 
