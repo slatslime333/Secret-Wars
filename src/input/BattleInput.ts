@@ -3,7 +3,7 @@ import { COMBAT } from '../config/combat';
 import { INPUT } from '../config/input';
 import { isTouchPrimary } from '../device';
 import { CombatButton } from '../ui/CombatButton';
-import { COLORS } from '../ui/theme';
+import { COLORS, getTouchControlLayout } from '../ui/theme';
 import { VirtualThumbstick } from './VirtualThumbstick';
 
 export type BattleFrame = {
@@ -53,28 +53,20 @@ export class BattleInput {
     this.touch = isTouchPrimary();
 
     if (this.touch) {
-      const width = scene.scale.width;
-      const height = scene.scale.height;
-      const bottomInset = 108;
-      const sideInset = 108;
+      const layout = getTouchControlLayout(scene.scale.width, scene.scale.height);
 
-      this.leftStick = new VirtualThumbstick(scene, sideInset, height - bottomInset, {
+      this.leftStick = new VirtualThumbstick(scene, layout.leftStick.x, layout.leftStick.y, {
         label: 'MOVE',
         accent: COLORS.cyan,
-        radius: INPUT.stickRadius,
+        radius: layout.radius,
       });
-      this.rightStick = new VirtualThumbstick(scene, width - sideInset, height - bottomInset, {
+      this.rightStick = new VirtualThumbstick(scene, layout.rightStick.x, layout.rightStick.y, {
         label: 'AIM',
         accent: COLORS.redBright,
-        radius: INPUT.stickRadius,
+        radius: layout.radius,
       });
 
-      const blockX = width - 186;
-      const blockY = height - 228;
-      const dashX = width - 86;
-      const dashY = height - 228;
-
-      this.blockButton = new CombatButton(scene, blockX, blockY, {
+      this.blockButton = new CombatButton(scene, layout.block.x, layout.block.y, {
         label: 'SHIELD',
         accent: COLORS.cyan,
         holdable: true,
@@ -85,7 +77,7 @@ export class BattleInput {
           this.blockHeldTouch = false;
         },
       });
-      this.dashButton = new CombatButton(scene, dashX, dashY, {
+      this.dashButton = new CombatButton(scene, layout.dash.x, layout.dash.y, {
         label: 'DASH',
         accent: COLORS.orange,
         onPress: () => {
@@ -136,19 +128,11 @@ export class BattleInput {
     if (!this.touch) {
       return;
     }
-    const bottomInset = 108;
-    const sideInset = 108;
-
-    this.leftStick?.setPosition(sideInset, height - bottomInset);
-    this.rightStick?.setPosition(width - sideInset, height - bottomInset);
-
-    const blockX = width - 186;
-    const blockY = height - 228;
-    const dashX = width - 86;
-    const dashY = height - 228;
-
-    this.blockButton?.setPosition(blockX, blockY);
-    this.dashButton?.setPosition(dashX, dashY);
+    const layout = getTouchControlLayout(width, height);
+    this.leftStick?.setPosition(layout.leftStick.x, layout.leftStick.y);
+    this.rightStick?.setPosition(layout.rightStick.x, layout.rightStick.y);
+    this.blockButton?.setPosition(layout.block.x, layout.block.y);
+    this.dashButton?.setPosition(layout.dash.x, layout.dash.y);
   }
 
   sample(originX: number, originY: number): BattleFrame {

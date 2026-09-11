@@ -26,9 +26,9 @@ export class SettingsScene extends Phaser.Scene {
     const isPortrait = width < height;
 
     this.createHeader();
-    this.createSliders(width, isPortrait);
-    this.createFullscreenRow(isPortrait);
-    this.createControlsHelp(width, isPortrait);
+    this.createSliders(width, height, isPortrait);
+    this.createFullscreenRow(height, isPortrait);
+    this.createControlsHelp(width, height, isPortrait);
     this.createBackButton(width, height, isPortrait);
     this.input.keyboard?.on('keydown-ESC', this.returnToMenu, this);
 
@@ -67,10 +67,10 @@ export class SettingsScene extends Phaser.Scene {
       .setOrigin(0, 0);
   }
 
-  private createSliders(width: number, isPortrait: boolean): void {
-    const sliderX = isPortrait ? width / 2 : 270;
-    const musicY = isPortrait ? 130 : 128;
-    const sfxY = isPortrait ? 198 : 198;
+  private createSliders(width: number, height: number, isPortrait: boolean): void {
+    const sliderX = isPortrait ? width / 2 : Math.min(270, width * 0.28);
+    const musicY = isPortrait ? Math.min(130, height * 0.16) : Math.min(128, height * 0.28);
+    const sfxY = musicY + Math.min(70, height * 0.14);
 
     new SettingSlider(this, sliderX, musicY, {
       label: 'MUSIC',
@@ -86,13 +86,13 @@ export class SettingsScene extends Phaser.Scene {
     });
   }
 
-  private createFullscreenRow(isPortrait: boolean): void {
+  private createFullscreenRow(height: number, isPortrait: boolean): void {
     if (isTouchPrimary() || isPortrait) {
       return;
     }
 
     this.add
-      .text(40, 258, 'DISPLAY', {
+      .text(40, Math.min(258, height * 0.48), 'DISPLAY', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
@@ -101,7 +101,7 @@ export class SettingsScene extends Phaser.Scene {
       })
       .setOrigin(0, 0);
 
-    this.fullscreenButton = new ActionButton(this, 168, 302, {
+    this.fullscreenButton = new ActionButton(this, 168, Math.min(302, height * 0.58), {
       label: this.fullscreenLabel(),
       width: 250,
       height: 48,
@@ -132,18 +132,19 @@ export class SettingsScene extends Phaser.Scene {
     }
   }
 
-  private createControlsHelp(width: number, isPortrait: boolean): void {
-    const cardW = isPortrait ? Math.min(360, width - 40) : 360;
-    const x = isPortrait ? (width - cardW) / 2 : Math.max(540, width - cardW - 40);
-    const y = isPortrait ? 260 : 108;
+  private createControlsHelp(width: number, height: number, isPortrait: boolean): void {
+    const cardW = isPortrait ? Math.min(360, width - 40) : Math.min(360, width * 0.4);
+    const cardH = Math.min(280, isPortrait ? height * 0.36 : height - 80);
+    const x = isPortrait ? (width - cardW) / 2 : Math.max(width * 0.52, width - cardW - 24);
+    const y = isPortrait ? Math.min(260, height * 0.3) : Math.max(16, (height - cardH - 60) / 2);
     const graphics = this.add.graphics();
     graphics.fillStyle(COLORS.ink, 0.72);
     graphics.fillPoints(
       [
         new Phaser.Geom.Point(x + 10, y + 10),
         new Phaser.Geom.Point(x + cardW + 12, y + 10),
-        new Phaser.Geom.Point(x + cardW - 8, y + 292),
-        new Phaser.Geom.Point(x - 12, y + 292),
+        new Phaser.Geom.Point(x + cardW - 8, y + cardH + 12),
+        new Phaser.Geom.Point(x - 12, y + cardH + 12),
       ],
       true,
     );
@@ -152,8 +153,8 @@ export class SettingsScene extends Phaser.Scene {
       [
         new Phaser.Geom.Point(x, y),
         new Phaser.Geom.Point(x + cardW, y),
-        new Phaser.Geom.Point(x + cardW - 22, y + 280),
-        new Phaser.Geom.Point(x - 22, y + 280),
+        new Phaser.Geom.Point(x + cardW - 22, y + cardH),
+        new Phaser.Geom.Point(x - 22, y + cardH),
       ],
       true,
     );
@@ -162,8 +163,8 @@ export class SettingsScene extends Phaser.Scene {
       [
         new Phaser.Geom.Point(x, y),
         new Phaser.Geom.Point(x + cardW, y),
-        new Phaser.Geom.Point(x + cardW - 22, y + 280),
-        new Phaser.Geom.Point(x - 22, y + 280),
+        new Phaser.Geom.Point(x + cardW - 22, y + cardH),
+        new Phaser.Geom.Point(x - 22, y + cardH),
       ],
       true,
     );
