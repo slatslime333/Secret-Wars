@@ -24,7 +24,7 @@ export class DevMenu {
       })
       .setOrigin(1, 1)
       .setScrollFactor(0)
-      .setDepth(160)
+      .setDepth(220)
       .setInteractive({ useHandCursor: true });
 
     this.button = scene.add
@@ -49,7 +49,7 @@ export class DevMenu {
       .setOrigin(1, 0);
 
     this.panel = scene.add.container(GAME_WIDTH - 10, GAME_HEIGHT - 42, [title, this.button]);
-    this.panel.setScrollFactor(0).setDepth(161).setVisible(false);
+    this.panel.setScrollFactor(0).setDepth(221).setVisible(false);
 
     toggle.on(Phaser.Input.Events.POINTER_UP, () => {
       this.open = !this.open;

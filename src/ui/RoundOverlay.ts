@@ -35,6 +35,7 @@ export class RoundOverlay {
   private reveal(winner: 'ninja' | 'rival'): void {
     const win = winner === 'ninja';
     const dim = this.scene.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.ink, 0.62);
+    dim.setInteractive();
     const title = this.scene.add
       .text(0, -70, win ? 'KO' : 'DOWN', {
         fontFamily: FONTS.display,
@@ -66,26 +67,24 @@ export class RoundOverlay {
       })
       .setOrigin(0.5);
 
-    const restart = new ActionButton(this.scene, 0, 36, {
+    this.root.add([dim, title, sub, hint]);
+    this.root.setVisible(true);
+
+    const restart = new ActionButton(this.scene, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 36, {
       label: 'RESTART',
       width: 240,
       height: 52,
       primary: true,
-      attachToScene: false,
       onPress: () => this.options.onRestart(),
     });
-    const menu = new ActionButton(this.scene, 0, 92, {
+    const menu = new ActionButton(this.scene, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 92, {
       label: 'MENU',
       width: 200,
       height: 44,
-      attachToScene: false,
       onPress: () => this.options.onMenu(),
     });
-
-    restart.setScrollFactor(0);
-    menu.setScrollFactor(0);
-    this.root.add([dim, title, sub, hint, restart, menu]);
-    this.root.setVisible(true);
+    restart.setScrollFactor(0).setDepth(200);
+    menu.setScrollFactor(0).setDepth(200);
     this.scene.cameras.main.flash(180, 246, 241, 222, false);
   }
 }
