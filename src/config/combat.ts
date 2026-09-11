@@ -20,7 +20,7 @@ export const COMBAT = {
   dashDurationMs: 120,
   dashStaminaCost: 12,
   blockStaminaCost: 8,
-  comboWindowMs: 520,
+  comboWindowMs: 720,
   comboFinisherDamageMultiplier: 2.15,
   comboFinisherStaminaMultiplier: 2.2,
   comboFinisherKnockbackMultiplier: 1.55,

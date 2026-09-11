@@ -1,6 +1,7 @@
 /**
  * Three-tap chain. Count only rises on distinct presses, not hold-repeats.
  * Window is from the previous tap, not the start of the string.
+ * Holding attack pauses expiry so a long key-down does not kill the chain.
  * `step` stays on screen after a finisher resets the chain.
  */
 export class ComboTracker {
@@ -21,7 +22,13 @@ export class ComboTracker {
     return this.count;
   }
 
-  expire(now: number, windowMs: number): void {
+  expire(now: number, windowMs: number, keepAlive = false): void {
+    if (keepAlive) {
+      if (this.shown > 0) {
+        this.shownUntil = Math.max(this.shownUntil, now + 160);
+      }
+      return;
+    }
     if (this.count > 0 && now - this.lastTapAt > windowMs) {
       this.count = 0;
       this.lastTapAt = 0;
@@ -29,6 +36,15 @@ export class ComboTracker {
     if (this.shown > 0 && now >= this.shownUntil) {
       this.shown = 0;
     }
+  }
+
+  /** After a hold ends, the next tap still has a full combo window. */
+  holdReleased(now: number, windowMs: number): void {
+    if (this.count === 0) {
+      return;
+    }
+    this.lastTapAt = now;
+    this.shownUntil = now + Math.max(windowMs, 900);
   }
 
   /** Clear the chain so the next tap is HIT 1. HUD still shows the last step. */

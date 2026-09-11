@@ -19,6 +19,7 @@ export class QuickAttack {
   private nextSwingAt = 0;
   private pendingTaps = 0;
   private lastPendingAt = 0;
+  private wasHeld = false;
   private slash?: Phaser.GameObjects.Graphics;
   private readonly combo = new ComboTracker();
 
@@ -38,7 +39,8 @@ export class QuickAttack {
     ninja: NinjaBody,
     dummy: DummyTarget,
   ): void {
-    this.combo.expire(now, COMBAT.comboWindowMs);
+    const tapQueued = this.pendingTaps > 0;
+    this.combo.expire(now, COMBAT.comboWindowMs, held || tapQueued || pressed);
     if (pressed) {
       this.pendingTaps = Math.min(3, this.pendingTaps + 1);
       this.lastPendingAt = now;
@@ -46,14 +48,17 @@ export class QuickAttack {
     if (this.pendingTaps > 0 && now - this.lastPendingAt > COMBAT.comboWindowMs) {
       this.pendingTaps = 0;
     }
+    if (this.wasHeld && !held) {
+      this.combo.holdReleased(now, COMBAT.comboWindowMs);
+    }
+    this.wasHeld = held;
 
-    const tapQueued = this.pendingTaps > 0;
-    this.marker.setAttacking((held || tapQueued) && ninja.stamina >= COMBAT.attackStaminaCost);
-    if ((!held && !tapQueued) || now < this.nextSwingAt) {
+    this.marker.setAttacking((held || this.pendingTaps > 0) && ninja.stamina >= COMBAT.attackStaminaCost);
+    if ((!held && this.pendingTaps === 0) || now < this.nextSwingAt) {
       return;
     }
 
-    const step = tapQueued ? this.combo.preview(now, COMBAT.comboWindowMs) : 1;
+    const step = this.pendingTaps > 0 ? this.combo.preview(now, COMBAT.comboWindowMs) : 1;
     const finisher = step === 3;
     const staminaCost = finisher
       ? Math.round(COMBAT.attackStaminaCost * COMBAT.comboFinisherStaminaMultiplier)
@@ -61,7 +66,7 @@ export class QuickAttack {
     if (!ninja.trySpendStamina(staminaCost, now)) {
       return;
     }
-    if (tapQueued) {
+    if (this.pendingTaps > 0) {
       this.combo.tap(now, COMBAT.comboWindowMs);
       this.pendingTaps -= 1;
       spawnCombatCallout(
