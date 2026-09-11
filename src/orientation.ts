@@ -26,14 +26,16 @@
 
 const rotateOverlay = document.getElementById('rotate-device');
 const rotateButton = document.querySelector('.rotate-icon');
+const continueButton = document.getElementById('rotate-continue');
 
 // Detect touch-first devices while leaving desktop PCs with a mouse/trackpad alone.
-// We use multiple media features because different mobile/foldable browsers report
-// them differently (some classify a stylus/keyboard case as the primary input).
+// Require both "no hover" and a coarse *primary* pointer. `any-pointer: coarse`
+// matches many desktop touchscreens and would block a portrait browser window.
 const hoverQuery = window.matchMedia('(hover: none)');
 const coarsePointerQuery = window.matchMedia('(pointer: coarse)');
-const anyCoarsePointerQuery = window.matchMedia('(any-pointer: coarse)');
 const portraitQuery = window.matchMedia('(orientation: portrait)');
+
+let overlayDismissed = false;
 
 interface MediaQueryListWithLegacy {
   matches: boolean;
@@ -59,10 +61,22 @@ interface OrientationLockable {
 }
 
 function isTouchDevice(): boolean {
-  // True when no hovering pointer exists or at least one coarse/touch pointer exists.
-  return (
-    hoverQuery.matches || coarsePointerQuery.matches || anyCoarsePointerQuery.matches
-  );
+  return hoverQuery.matches && coarsePointerQuery.matches;
+}
+
+function setOverlayVisible(visible: boolean): void {
+  if (!rotateOverlay) return;
+
+  if (visible) {
+    rotateOverlay.hidden = false;
+    rotateOverlay.style.removeProperty('display');
+    rotateOverlay.classList.add('is-visible');
+    return;
+  }
+
+  rotateOverlay.classList.remove('is-visible');
+  rotateOverlay.hidden = true;
+  rotateOverlay.style.display = 'none';
 }
 
 function getScreenOrientationType(): string | undefined {
@@ -121,13 +135,12 @@ function isPortraitOrientation(): boolean {
 }
 
 function updateOverlay(): void {
-  if (!rotateOverlay) return;
-
-  if (isPortraitOrientation() && isTouchDevice()) {
-    rotateOverlay.classList.add('is-visible');
-  } else {
-    rotateOverlay.classList.remove('is-visible');
+  if (overlayDismissed) {
+    setOverlayVisible(false);
+    return;
   }
+
+  setOverlayVisible(isPortraitOrientation() && isTouchDevice());
 }
 
 async function tryLockLandscape(): Promise<void> {
@@ -172,7 +185,10 @@ export function initOrientationHandling(): void {
   // Re-check if the primary input type changes (e.g. keyboard/mouse connected).
   addMediaChangeListener(hoverQuery, updateOverlay);
   addMediaChangeListener(coarsePointerQuery, updateOverlay);
-  addMediaChangeListener(anyCoarsePointerQuery, updateOverlay);
 
   rotateButton?.addEventListener('click', tryLockLandscape);
+  continueButton?.addEventListener('click', () => {
+    overlayDismissed = true;
+    updateOverlay();
+  });
 }
