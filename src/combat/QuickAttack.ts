@@ -76,7 +76,7 @@ export class QuickAttack {
     graphics.arc(0, 0, NINJA.attackRange * 0.7, angle - attackHalfArcRad, angle + attackHalfArcRad);
     graphics.strokePath();
     this.slash = graphics;
-    this.scene.time.delayedCall(90, () => {
+    this.scene.time.delayedCall(140, () => {
       graphics.destroy();
       if (this.slash === graphics) {
         this.slash = undefined;
