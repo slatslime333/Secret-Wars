@@ -40,6 +40,7 @@ export class BattleInput {
   private readonly cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private readonly lastAim = new Phaser.Math.Vector2(1, 0);
   private wasAttackHeld = false;
+  private attackLatched = false;
   private blockLatched = false;
   private dashLatched = false;
 
@@ -86,9 +87,28 @@ export class BattleInput {
         block: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
         dash: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L),
       };
+      this.keys.attack.on('down', () => {
+        this.attackLatched = true;
+      });
+      this.keys.block.on('down', () => {
+        this.blockLatched = true;
+      });
+      this.keys.dash.on('down', () => {
+        this.dashLatched = true;
+      });
+    }
+
+    if (!this.touch) {
+      scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
     }
 
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
+  }
+
+  private onPointerDown(pointer: Phaser.Input.Pointer): void {
+    if (pointer.leftButtonDown()) {
+      this.attackLatched = true;
+    }
   }
 
   sample(originX: number, originY: number): BattleFrame {
@@ -120,11 +140,12 @@ export class BattleInput {
       rightActive ||
       Boolean(this.keys?.attack.isDown) ||
       (!this.touch && this.scene.input.activePointer.leftButtonDown());
-    const attackPressed = attackHeld && !this.wasAttackHeld;
+    const attackPressed = this.attackLatched || (attackHeld && !this.wasAttackHeld);
     this.wasAttackHeld = attackHeld;
+    this.attackLatched = false;
 
-    const blockPressed = this.blockLatched || Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.block));
-    const dashPressed = this.dashLatched || Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.dash));
+    const blockPressed = this.blockLatched;
+    const dashPressed = this.dashLatched;
     this.blockLatched = false;
     this.dashLatched = false;
 
@@ -147,6 +168,7 @@ export class BattleInput {
   destroy(): void {
     this.leftStick?.destroy();
     this.rightStick?.destroy();
+    this.scene.input?.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
   }
 
   private readMove(): Phaser.Math.Vector2 {
