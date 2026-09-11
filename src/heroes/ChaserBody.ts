@@ -14,6 +14,8 @@ export class ChaserBody {
   private facing: CardinalFacing = 'west';
   private readonly art: Phaser.GameObjects.Graphics;
   private stunnedUntil = 0;
+  private attackingUntil = 0;
+  private currentAttackTween?: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     ensureBodyTexture(scene);
@@ -28,7 +30,7 @@ export class ChaserBody {
     this.view = scene.add.container(x, y).setDepth(9);
     this.art = scene.add.graphics();
     this.view.add(this.art);
-    drawChaser(this.art, this.facing, false);
+    drawChaser(this.art, this.facing, false, false, 0);
   }
 
   get x(): number {
@@ -63,7 +65,9 @@ export class ChaserBody {
     const next = facingFromAim(this.aim.x, this.aim.y);
     if (next !== this.facing) {
       this.facing = next;
-      drawChaser(this.art, this.facing, false);
+      if (this.view.scene.time.now >= this.attackingUntil && !this.down) {
+        drawChaser(this.art, this.facing, false, false, 0);
+      }
     }
   }
 
@@ -78,6 +82,47 @@ export class ChaserBody {
     this.body.setVelocity(0, 0);
   }
 
+  /**
+   * Slight physical attack strike animation for opponent model.
+   */
+  playAttackAnimation(now: number): void {
+    const duration = 140;
+    this.attackingUntil = now + duration;
+
+    const lungeDist = 12;
+    const lungeX = this.aim.x * lungeDist;
+    const lungeY = this.aim.y * lungeDist;
+
+    this.currentAttackTween?.stop();
+    const animState = { punch: 0, lungeFrac: 0 };
+
+    this.currentAttackTween = this.view.scene.tweens.add({
+      targets: animState,
+      punch: 8,
+      lungeFrac: 1,
+      duration: duration * 0.5,
+      ease: 'Quad.Out',
+      yoyo: true,
+      onUpdate: () => {
+        drawChaser(this.art, this.facing, false, true, animState.punch);
+        this.art.setPosition(
+          lungeX * animState.lungeFrac,
+          lungeY * animState.lungeFrac,
+        );
+      },
+      onComplete: () => {
+        this.art.setPosition(0, 0);
+        if (!this.down) {
+          drawChaser(this.art, this.facing, false, false, 0);
+        }
+      },
+    });
+
+    // Slight physical forward burst
+    this.body.velocity.x += this.aim.x * 80;
+    this.body.velocity.y += this.aim.y * 80;
+  }
+
   takeHit(damage: number, dirX: number, dirY: number, knockback: number): void {
     if (this.down) {
       return;
@@ -86,7 +131,7 @@ export class ChaserBody {
     const length = Math.hypot(dirX, dirY) || 1;
     this.body.setVelocity((dirX / length) * knockback, (dirY / length) * knockback);
     this.stunnedUntil = this.view.scene.time.now + COMBAT.hitStunMs;
-    drawChaser(this.art, this.facing, true);
+    drawChaser(this.art, this.facing, true, false, 0);
     this.view.setScale(1.18);
     this.view.scene.tweens.add({
       targets: this.view,
@@ -97,11 +142,11 @@ export class ChaserBody {
     });
     this.view.scene.time.delayedCall(COMBAT.hitStunMs, () => {
       if (!this.down) {
-        drawChaser(this.art, this.facing, false);
+        drawChaser(this.art, this.facing, false, false, 0);
       }
     });
     if (this.down) {
-      drawChaser(this.art, this.facing, true);
+      drawChaser(this.art, this.facing, true, false, 0);
       this.stop();
     }
   }

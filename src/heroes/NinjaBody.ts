@@ -17,6 +17,8 @@ export class NinjaBody {
   private staminaDeniedAt = 0;
   private stunnedUntil = 0;
   private invulnerableUntil = 0;
+  private attackingUntil = 0;
+  private currentAttackTween?: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     ensureBodyTexture(scene);
@@ -30,7 +32,7 @@ export class NinjaBody {
     this.view = scene.add.container(x, y).setDepth(10);
     this.art = scene.add.graphics();
     this.view.add(this.art);
-    drawNinja(this.art, this.facing);
+    drawNinja(this.art, this.facing, false, 0);
   }
 
   get x(): number {
@@ -106,8 +108,58 @@ export class NinjaBody {
     const next = facingFromAim(this.aim.x, this.aim.y);
     if (next !== this.facing) {
       this.facing = next;
-      drawNinja(this.art, this.facing);
+      if (this.view.scene.time.now >= this.attackingUntil) {
+        drawNinja(this.art, this.facing, false, 0);
+      }
     }
+  }
+
+  /**
+   * Triggers an animated attack swing with sword motion and physical body lunge.
+   */
+  playAttackAnimation(now: number, finisher: boolean): void {
+    const duration = finisher ? 180 : 130;
+    this.attackingUntil = now + duration;
+
+    // Physical swipe / lunge in the aimed direction
+    const lungeDist = finisher ? 26 : 16;
+    const lungeX = this.aim.x * lungeDist;
+    const lungeY = this.aim.y * lungeDist;
+
+    // Body swipe motion: container tilts and lunges forward, then snaps back
+    // Determine tilt offset based on horizontal component
+    const tiltDirection = this.aim.x >= 0 ? 0.18 : -0.18;
+
+    this.currentAttackTween?.stop();
+
+    // Animate sword sweep angle from -0.8 to +1.2 rad across swing
+    const swordAnimState = { angleOffset: -0.85, lungeFrac: 0 };
+    this.currentAttackTween = this.view.scene.tweens.add({
+      targets: swordAnimState,
+      angleOffset: 1.25,
+      lungeFrac: 1,
+      duration: duration * 0.65,
+      ease: 'Cubic.Out',
+      yoyo: true,
+      onUpdate: () => {
+        drawNinja(this.art, this.facing, true, swordAnimState.angleOffset);
+        this.art.setPosition(
+          lungeX * swordAnimState.lungeFrac,
+          lungeY * swordAnimState.lungeFrac,
+        );
+        this.art.setRotation(tiltDirection * swordAnimState.lungeFrac);
+      },
+      onComplete: () => {
+        this.art.setPosition(0, 0);
+        this.art.setRotation(0);
+        drawNinja(this.art, this.facing, false, 0);
+      },
+    });
+
+    // Slight physical impulse on arcade body so player physically steps into strike
+    const impulseSpeed = finisher ? 160 : 110;
+    this.body.velocity.x += this.aim.x * impulseSpeed;
+    this.body.velocity.y += this.aim.y * impulseSpeed;
   }
 
   trySpendStamina(cost: number, now: number): boolean {

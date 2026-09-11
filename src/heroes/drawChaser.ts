@@ -2,11 +2,13 @@ import Phaser from 'phaser';
 import { COLORS } from '../ui/theme';
 import { type CardinalFacing } from './drawNinja';
 
-/** Red practice fighter. Same silhouette language as Ninja, not a copy of a licensed character. */
+/** Red practice fighter. Same silhouette language as Ninja, equipped with spiked red brass knuckles. */
 export const drawChaser = (
   graphics: Phaser.GameObjects.Graphics,
   facing: CardinalFacing,
   hit: boolean,
+  attacking: boolean = false,
+  punchOffset: number = 0,
 ): void => {
   graphics.clear();
 
@@ -48,7 +50,31 @@ export const drawChaser = (
     graphics.fillRect(-3, -11, 6, 2);
   }
 
+  // Left arm
   graphics.fillStyle(0x3a1c22);
   graphics.fillRect(-14, 0, 6, 12);
-  graphics.fillRect(8, 0, 6, 12);
+
+  // Right arm / weapon hand
+  let rightArmX = 8;
+  let rightArmY = 0;
+  if (attacking) {
+    if (facing === 'east') {
+      rightArmX += 6 + punchOffset;
+    } else if (facing === 'west') {
+      rightArmX -= 6 + punchOffset;
+    } else if (facing === 'south') {
+      rightArmY += 6 + punchOffset;
+    } else {
+      rightArmY -= 6 + punchOffset;
+    }
+  }
+  graphics.fillRect(rightArmX, rightArmY, 6, 12);
+
+  // Spiked brass knuckle / cleaver claw on weapon fist
+  const fistX = rightArmX + 3;
+  const fistY = rightArmY + 12;
+  graphics.fillStyle(COLORS.redBright, 1);
+  graphics.fillCircle(fistX, fistY, 4.5);
+  graphics.fillStyle(COLORS.orange, 1);
+  graphics.fillTriangle(fistX - 3, fistY, fistX + 3, fistY, fistX, fistY + 5);
 };
