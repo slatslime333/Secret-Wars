@@ -20,7 +20,15 @@ body,
   overflow: hidden;
 }
 
+html,
+body {
+  position: fixed;
+  inset: 0;
+}
+
 #game {
+  position: fixed;
+  inset: 0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -82,12 +90,9 @@ canvas {
   font-family: inherit;
 }
 
-/* The game is authored at a fixed 16:9 (960x540) landscape resolution.
-   On touch-first phones/tablets held in portrait the play area would be
-   too small to use, so prompt the player to rotate the device.
-   Desktop PCs with a mouse/trackpad are exempted because they typically
-   have enough real estate even in a portrait window.
-   The .is-visible class is applied by the orientation helper in orientation.ts. */
+/* Touch-first phones and tablets must play in landscape. Desktop PCs with a
+   mouse or trackpad are exempt because they have enough screen real estate.
+   The .is-visible class is applied by the orientation helper. */
 #rotate-device.is-visible {
   display: flex !important;
 }
@@ -103,5 +108,3 @@ canvas {
   text-transform: uppercase;
   cursor: pointer;
 }
-
-

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { audioSettings } from '../audio/AudioSettings';
 import { INPUT } from '../config/input';
+import { isTouchPrimary } from '../device';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
 import { SettingSlider } from '../ui/SettingSlider';
@@ -86,7 +87,7 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   private createFullscreenRow(isPortrait: boolean): void {
-    if (this.sys.game.device.input.touch || isPortrait) {
+    if (isTouchPrimary() || isPortrait) {
       return;
     }
 
@@ -175,19 +176,20 @@ export class SettingsScene extends Phaser.Scene {
     });
 
     const { keyboard } = INPUT;
-    const lines = [
-      'MOBILE',
-      'Left stick  move',
-      'Right stick  aim / attack',
-      'Hold shield and dash near right stick',
-      '',
-      'PC',
-      `${keyboard.up}${keyboard.left}${keyboard.down}${keyboard.right} / arrows  move`,
-      'Mouse  aim',
-      `${keyboard.attack} / click  attack`,
-      `${keyboard.block}  hold shield    ${keyboard.dash}  dash`,
-      'ESC  back / menu',
-    ];
+    const lines = isTouchPrimary()
+      ? [
+          'Left stick  move',
+          'Right stick  aim / attack',
+          'Hold SHIELD to block',
+          'DASH next to SHIELD',
+        ]
+      : [
+          `${keyboard.up}${keyboard.left}${keyboard.down}${keyboard.right} / arrows  move`,
+          'Mouse  aim',
+          `${keyboard.attack} / click  attack`,
+          `${keyboard.block}  hold shield    ${keyboard.dash}  dash`,
+          'ESC  back / menu',
+        ];
 
     this.add.text(x + 22, y + 48, lines.join('\n'), {
       fontFamily: FONTS.body,

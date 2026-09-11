@@ -1,3 +1,5 @@
+import { getViewportSize } from '../device';
+
 export const DEFAULT_WIDTH = 960;
 export const DEFAULT_HEIGHT = 540;
 export const GAME_WIDTH = DEFAULT_WIDTH;
@@ -10,34 +12,33 @@ export type GameSizeInfo = {
   aspect: number;
 };
 
+/**
+ * Logical canvas size matching the visible viewport aspect ratio.
+ *
+ * Landscape keeps a 540-tall design and stretches width so phones, tablets,
+ * and foldables (including ultra-wide cover screens) fill the display with
+ * no letterboxing. Portrait is only used on desktop windows; mobile portrait
+ * is blocked by the rotate overlay.
+ */
 export function getGameSize(
   winWidth?: number,
   winHeight?: number,
 ): GameSizeInfo {
-  const w = Math.max(
-    winWidth ?? (typeof window !== 'undefined' ? window.innerWidth : DEFAULT_WIDTH),
-    320,
-  );
-  const h = Math.max(
-    winHeight ?? (typeof window !== 'undefined' ? window.innerHeight : DEFAULT_HEIGHT),
-    240,
-  );
+  const viewport = getViewportSize();
+  const w = Math.max(winWidth ?? viewport.width, 320);
+  const h = Math.max(winHeight ?? viewport.height, 240);
   const aspect = w / h;
   const isPortrait = aspect < 1;
 
   if (!isPortrait) {
-    // Landscape: maintain 540 base height, scale width to match device aspect ratio.
     const height = DEFAULT_HEIGHT;
-    const effectiveAspect = Math.min(aspect, 2.8);
-    const width = Math.round(height * effectiveAspect);
-    return { width, height, isPortrait, aspect };
-  } else {
-    // Portrait: maintain 540 base width, scale height to match device aspect ratio.
-    const width = DEFAULT_HEIGHT;
-    const effectiveAspect = Math.max(aspect, 1 / 2.8);
-    const height = Math.round(width / effectiveAspect);
+    const width = Math.round(height * aspect);
     return { width, height, isPortrait, aspect };
   }
+
+  const width = DEFAULT_HEIGHT;
+  const height = Math.round(width / aspect);
+  return { width, height, isPortrait, aspect };
 }
 
 export const COLORS = {

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { isTouchPrimary } from '../device';
 import { COLORS, FONTS, hex } from './theme';
 
 type RoundOverlayOptions = {
@@ -63,17 +64,19 @@ export class RoundOverlay {
       .setScrollFactor(0)
       .setDepth(181);
 
-    this.scene.add
-      .text(width / 2, height / 2 + 126, 'R RESTART    ESC MENU', {
-        fontFamily: FONTS.body,
-        fontSize: '12px',
-        fontStyle: 'bold',
-        color: hex(COLORS.muted),
-        letterSpacing: 3,
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(181);
+    if (!isTouchPrimary()) {
+      this.scene.add
+        .text(width / 2, height / 2 + 126, 'R RESTART    ESC MENU', {
+          fontFamily: FONTS.body,
+          fontSize: '12px',
+          fontStyle: 'bold',
+          color: hex(COLORS.muted),
+          letterSpacing: 3,
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(181);
+    }
 
     this.addTextButton(width / 2, height / 2 + 36, 'RESTART', COLORS.redBright, () =>
       this.options.onRestart(),

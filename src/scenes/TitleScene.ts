@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { isTouchPrimary } from '../device';
 import { createBackdrop } from '../ui/createBackdrop';
 import { createLogo } from '../ui/createLogo';
 import { COLORS, FONTS, hex } from '../ui/theme';
@@ -87,7 +88,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private getContinuePrompt(): string {
-    return this.sys.game.device.input.touch ? 'TAP TO CONTINUE' : 'CLICK OR PRESS ENTER';
+    return isTouchPrimary() ? 'TAP TO CONTINUE' : 'CLICK OR PRESS ENTER';
   }
 
   private continue(): void {
