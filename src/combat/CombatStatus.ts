@@ -1,8 +1,8 @@
-import { COMBAT } from '../config/combat';
+import { COMBAT, ComboStep } from '../config/combat';
 
 /**
  * Lightweight per-fighter combat timers.
- * Not a state machine — just the temporary modifiers the overhaul needs.
+ * Not a state machine — just the temporary modifiers combat needs.
  */
 export class CombatStatus {
   private hitReactionUntil = 0;
@@ -12,10 +12,11 @@ export class CombatStatus {
   private clashLockUntil = 0;
   private hitFlashUntil = 0;
   private hitStopUntil = 0;
+  private lungeUntil = 0;
   private lastSwingAt = -9999;
-  private lastSwingStep: 1 | 2 | 3 = 1;
+  private lastSwingStep: ComboStep = 1;
 
-  markSwing(now: number, step: 1 | 2 | 3): void {
+  markSwing(now: number, step: ComboStep): void {
     this.lastSwingAt = now;
     this.lastSwingStep = step;
   }
@@ -24,16 +25,14 @@ export class CombatStatus {
     return this.lastSwingAt;
   }
 
-  get lastAttackStep(): 1 | 2 | 3 {
+  get lastAttackStep(): ComboStep {
     return this.lastSwingStep;
   }
 
-  applyHitReaction(now: number): void {
-    this.hitReactionUntil = now + COMBAT.hitReactionMs;
-    this.attackSlowUntil = Math.min(
-      now + COMBAT.hitSlowMaxMs,
-      Math.max(this.attackSlowUntil, now) + COMBAT.hitReactionMs,
-    );
+  applyHitReaction(now: number, step: ComboStep = 1): void {
+    const reactionMs = COMBAT.combo[step].hitReactionMs;
+    this.hitReactionUntil = now + reactionMs;
+    this.attackSlowUntil = Math.min(now + COMBAT.hitSlowMaxMs, now + reactionMs + 80);
     this.hitFlashUntil = now + COMBAT.hitFlashMs;
   }
 
@@ -51,6 +50,10 @@ export class CombatStatus {
 
   applyHitStop(now: number, durationMs: number): void {
     this.hitStopUntil = Math.max(this.hitStopUntil, now + durationMs);
+  }
+
+  applyLunge(now: number, durationMs: number): void {
+    this.lungeUntil = now + durationMs;
   }
 
   isHitReacting(now: number): boolean {
@@ -73,6 +76,21 @@ export class CombatStatus {
     return now < this.hitStopUntil;
   }
 
+  isLunging(now: number): boolean {
+    return now < this.lungeUntil;
+  }
+
+  /** True when physics (knockback / lunge / stun) should own velocity. */
+  shouldLockMovement(now: number): boolean {
+    return (
+      this.isHitReacting(now) ||
+      this.isLunging(now) ||
+      this.isBlockStunned(now) ||
+      this.isHitStopping(now) ||
+      this.isClashLocked(now)
+    );
+  }
+
   /** True when the fighter should not start a new swing. */
   cannotAttack(now: number): boolean {
     return (
@@ -83,8 +101,8 @@ export class CombatStatus {
   }
 
   moveMultiplier(now: number): number {
-    if (this.isBlockStunned(now)) {
-      return 0.35;
+    if (this.isBlockStunned(now) || this.isHitStopping(now)) {
+      return 0.2;
     }
     if (this.isHitReacting(now)) {
       return COMBAT.hitMoveMultiplier;
@@ -92,13 +110,10 @@ export class CombatStatus {
     return 1;
   }
 
-  /** Extra milliseconds added to the next swing delay. */
   extraSwingDelay(now: number): number {
     let extra = 0;
     if (now < this.attackSlowUntil) {
-      extra += Math.round(
-        (COMBAT.hitAttackSlowMultiplier - 1) * 200,
-      );
+      extra += Math.round((COMBAT.hitAttackSlowMultiplier - 1) * 200);
     }
     if (now < this.attackRecoveryUntil) {
       extra += this.attackRecoveryUntil - now;

@@ -10,53 +10,64 @@ export type BlockAbsorbResult = {
   perfect: boolean;
 };
 
-/** Timed 0.35s directional shield, then cooldown. Not a holdable block. */
+/**
+ * Hold-to-block directional shield.
+ * Stamina drains while held; a Perfect Shield is only the brief raise window.
+ */
 export class BlockController {
-  private activeUntil = 0;
-  private readyAt = 0;
-  private startedAt = 0;
+  private holding = false;
+  private raisedAt = -9999;
   private readonly shield: Phaser.GameObjects.Graphics;
 
   constructor(scene: Phaser.Scene) {
     this.shield = scene.add.graphics().setDepth(11);
   }
 
-  tryStart(now: number, ninja: NinjaBody): boolean {
-    if (now < this.readyAt || this.isActive(now) || ninja.status.isBlockStunned(now)) {
-      return false;
+  setHeld(now: number, ninja: NinjaBody, held: boolean): void {
+    if (!held || ninja.down || ninja.status.isBlockStunned(now)) {
+      this.holding = false;
+      return;
     }
-    if (!ninja.trySpendStamina(COMBAT.blockStaminaCost, now)) {
-      return false;
+    if (ninja.stamina < COMBAT.blockMinStamina) {
+      this.holding = false;
+      return;
     }
-    this.startedAt = now;
-    this.activeUntil = now + COMBAT.blockDurationMs;
-    this.readyAt = now + COMBAT.blockCooldownMs;
-    spawnCombatCallout(this.shield.scene, ninja.x, ninja.y, 'BLOCK', COLORS.cyan);
-    return true;
+    if (!this.holding) {
+      this.holding = true;
+      this.raisedAt = now;
+      spawnCombatCallout(this.shield.scene, ninja.x, ninja.y, 'SHIELD', COLORS.cyan);
+    }
   }
 
-  isActive(now: number): boolean {
-    return now < this.activeUntil;
+  tick(deltaMs: number, now: number, ninja: NinjaBody): void {
+    if (!this.holding) {
+      return;
+    }
+    ninja.drainStamina((COMBAT.blockDrainPerSecond * deltaMs) / 1000, now);
+    if (ninja.stamina < COMBAT.blockMinStamina) {
+      this.holding = false;
+      spawnCombatCallout(this.shield.scene, ninja.x, ninja.y, 'SHIELD BREAK', COLORS.orange);
+    }
   }
 
-  /** True when the timed shield is up and facing the attacker. */
+  isActive(now?: number): boolean {
+    return this.holding && (now === undefined || now >= 0);
+  }
+
+  isPerfect(now: number): boolean {
+    return this.holding && now - this.raisedAt <= COMBAT.perfectShieldWindowMs;
+  }
+
+  /** True when the held shield is up and facing the attacker. */
   tryAbsorb(now: number, ninja: NinjaBody, fromX: number, fromY: number): BlockAbsorbResult {
-    if (!this.isActive(now)) {
+    if (!this.holding) {
       return { absorbed: false, perfect: false };
     }
     const covered = isInAttackArc(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, fromX, fromY, 420, 0.95, 8);
     if (!covered) {
       return { absorbed: false, perfect: false };
     }
-    const perfect = now - this.startedAt <= COMBAT.perfectBlockWindowMs;
-    return { absorbed: true, perfect };
-  }
-
-  cooldownRatio(now: number): number {
-    if (now >= this.readyAt) {
-      return 0;
-    }
-    return (this.readyAt - now) / COMBAT.blockCooldownMs;
+    return { absorbed: true, perfect: this.isPerfect(now) };
   }
 
   destroy(): void {
@@ -65,17 +76,17 @@ export class BlockController {
 
   sync(now: number, ninja: NinjaBody): void {
     this.shield.clear();
-    if (!this.isActive(now)) {
+    if (!this.holding) {
       return;
     }
     const angle = Math.atan2(ninja.aim.y, ninja.aim.x);
-    const remaining = (this.activeUntil - now) / COMBAT.blockDurationMs;
+    const perfect = this.isPerfect(now);
     this.shield.setPosition(ninja.x, ninja.y);
-    this.shield.lineStyle(10, COLORS.paper, 0.55 + remaining * 0.4);
+    this.shield.lineStyle(10, COLORS.paper, perfect ? 0.95 : 0.62);
     this.shield.beginPath();
     this.shield.arc(0, 0, 30, angle - 1.05, angle + 1.05);
     this.shield.strokePath();
-    this.shield.lineStyle(5, COLORS.cyan, 0.85 + remaining * 0.15);
+    this.shield.lineStyle(5, perfect ? COLORS.yellow : COLORS.cyan, perfect ? 1 : 0.9);
     this.shield.beginPath();
     this.shield.arc(0, 0, 24, angle - 0.95, angle + 0.95);
     this.shield.strokePath();

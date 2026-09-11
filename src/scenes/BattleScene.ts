@@ -13,6 +13,7 @@ import { createGrassyArena } from '../ui/createGrassyArena';
 import { DevMenu } from '../ui/DevMenu';
 import { RoundOverlay } from '../ui/RoundOverlay';
 import { COLORS, FONTS, hex } from '../ui/theme';
+import { NINJA } from '../config/ninja';
 import { fadeToScene } from './fadeToScene';
 
 /** Ninja vs rival Ninja. Dev menu can spawn or remove the CPU. */
@@ -115,26 +116,41 @@ export class BattleScene extends Phaser.Scene {
 
     const frame = this.inputReader.sample(this.ninja.x, this.ninja.y);
 
-    if (frame.blockPressed && !this.dash.isActive(now) && this.block.tryStart(now, this.ninja)) {
-      this.inputReader.notifyBlockCooldown(now);
+    if (!this.dash.isActive(now)) {
+      this.block.setHeld(now, this.ninja, frame.blockHeld);
+    } else {
+      this.block.setHeld(now, this.ninja, false);
     }
+    this.block.tick(delta, now, this.ninja);
+
     if (frame.dashPressed && !this.block.isActive(now) && this.dash.tryStart(now, frame.move, this.ninja.aim, this.ninja)) {
-      this.inputReader.notifyDashCooldown(now);
+      this.attacks.interrupt(now);
     }
 
     this.dash.apply(now, this.ninja);
-    if (!this.dash.isActive(now) && !this.ninja.status.isBlockStunned(now) && !this.ninja.down) {
+    if (
+      !this.dash.isActive(now) &&
+      !this.ninja.status.shouldLockMovement(now) &&
+      !this.block.isActive(now) &&
+      !this.ninja.down
+    ) {
       this.ninja.applyMove(frame.move);
     }
 
     this.ninja.setAim(frame.aim);
-    this.ninja.regenStamina(delta, now);
-    this.rival?.regenStamina(delta, now);
+    this.ninja.tickAmmo(now);
+    if (!this.block.isActive(now)) {
+      this.ninja.regenStamina(delta, now);
+    }
     this.marker.sync(this.ninja.x, this.ninja.y, this.ninja.aim.x, this.ninja.aim.y);
     this.block.sync(now, this.ninja);
 
     if (this.rival && this.brain) {
-      this.brain.update(now, this.rival, this.ninja);
+      this.brain.update(now, delta, this.rival, this.ninja);
+    }
+    this.rival?.tickAmmo(now);
+    if (this.rival && !this.rivalBlock?.isActive(now)) {
+      this.rival.regenStamina(delta, now);
     }
 
     if (
@@ -143,10 +159,18 @@ export class BattleScene extends Phaser.Scene {
       !this.dash.isActive(now)
     ) {
       this.attacks.update(now, frame.attackHeld, frame.attackPressed, this.ninja, this.rival, this.rivalBlock);
+    } else {
+      this.attacks.update(now, false, false, this.ninja, this.rival, this.rivalBlock);
     }
 
     this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
-    this.inputReader.syncButtons(now);
+    this.inputReader.syncButtons({
+      dashCharges: this.dash.chargeCount,
+      dashMax: this.dash.maxCharges,
+      dashRecharge: this.dash.rechargeRatio(now),
+      blocking: this.block.isActive(now),
+      staminaRatio: this.ninja.stamina / NINJA.maxStamina,
+    });
 
     if (this.ninja.down) {
       this.devMenu?.close();

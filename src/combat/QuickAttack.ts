@@ -9,17 +9,23 @@ import { spawnCombatCallout } from '../effects/combatCallout';
 import { resolveMelee } from './resolveMelee';
 import { BlockController } from './BlockController';
 
+type PendingImpact = {
+  at: number;
+  step: ComboStep;
+};
+
 /**
  * Hold = repeating light swings. Distinct taps within the combo window
  * step 1 → 2 → finisher. The third hit is the only heavier attack.
  *
- * Each swing lunges the fighter, even on a miss. Whiffs and blocks break the chain.
+ * Ammo is spent when the swing starts. Physical lunge + hit resolve at impact.
  */
 export class QuickAttack {
   private nextSwingAt = 0;
   private pendingTaps = 0;
   private lastPendingAt = 0;
   private wasHeld = false;
+  private pendingImpact?: PendingImpact;
   private readonly combo = new ComboTracker();
   lastSwingAt = -9999;
   lastSwingStep: ComboStep = 1;
@@ -36,6 +42,7 @@ export class QuickAttack {
   interrupt(now: number): void {
     this.combo.interrupt(now);
     this.pendingTaps = 0;
+    this.pendingImpact = undefined;
   }
 
   update(
@@ -46,6 +53,9 @@ export class QuickAttack {
     defender: NinjaBody | undefined,
     defenderBlock?: BlockController,
   ): void {
+    attacker.tickAmmo(now);
+    this.resolveImpactIfReady(now, attacker, defender, defenderBlock);
+
     const tapQueued = this.pendingTaps > 0;
     this.combo.expire(now, COMBAT.comboWindowMs, held || tapQueued || pressed);
     if (pressed) {
@@ -60,21 +70,23 @@ export class QuickAttack {
     }
     this.wasHeld = held;
 
-    this.marker?.setAttacking((held || this.pendingTaps > 0) && attacker.stamina >= COMBAT.attackStaminaCost);
+    this.marker?.setAttacking((held || this.pendingTaps > 0) && attacker.canAttack(now));
 
-    if (attacker.status.cannotAttack(now)) {
+    if (this.pendingImpact) {
+      return;
+    }
+    if (attacker.status.cannotAttack(now) || attacker.status.isHitReacting(now)) {
       return;
     }
     if ((!held && this.pendingTaps === 0) || now < this.nextSwingAt) {
       return;
     }
+    if (!attacker.trySpendAmmo(now)) {
+      return;
+    }
 
     const step = comboStepOf(this.pendingTaps > 0 ? this.combo.preview(now, COMBAT.comboWindowMs) : 1);
     const profile = COMBAT.combo[step];
-    const staminaCost = Math.round(COMBAT.attackStaminaCost * profile.staminaCostMultiplier);
-    if (!attacker.trySpendStamina(staminaCost, now)) {
-      return;
-    }
     if (this.pendingTaps > 0) {
       this.combo.tap(now, COMBAT.comboWindowMs);
       this.pendingTaps -= 1;
@@ -89,13 +101,37 @@ export class QuickAttack {
       this.combo.reset();
     }
 
-    const delay = Math.round(NINJA.attackCooldownMs * attacker.status.attackSlowMultiplier(now));
+    const delay = Math.round(
+      NINJA.attackCooldownMs * COMBAT.attackCooldownMultiplier * attacker.status.attackSlowMultiplier(now),
+    );
     this.nextSwingAt = now + delay;
     this.lastSwingAt = now;
     this.lastSwingStep = step;
 
     attacker.playAttackAnimation(now, step);
     this.spawnWhiteLineSlice(attacker, step);
+    this.pendingImpact = { at: now + profile.impactDelayMs, step };
+  }
+
+  private resolveImpactIfReady(
+    now: number,
+    attacker: NinjaBody,
+    defender: NinjaBody | undefined,
+    defenderBlock?: BlockController,
+  ): void {
+    const pending = this.pendingImpact;
+    if (!pending || now < pending.at) {
+      return;
+    }
+    this.pendingImpact = undefined;
+    const profile = COMBAT.combo[pending.step];
+
+    if (attacker.down || attacker.status.isHitReacting(now) || attacker.status.isBlockStunned(now) || attacker.status.isClashLocked(now)) {
+      this.combo.reset();
+      return;
+    }
+
+    attacker.applyLungeImpulse(now, pending.step);
 
     if (!defender || defender.down) {
       attacker.status.applyAttackRecovery(now, profile.recoveryMs);
@@ -103,14 +139,14 @@ export class QuickAttack {
       return;
     }
 
-    const result = resolveMelee(this.scene, now, attacker, defender, step, defenderBlock);
+    const result = resolveMelee(this.scene, now, attacker, defender, pending.step, defenderBlock);
     if (result === 'whiff' || result === 'blocked' || result === 'perfect-block' || result === 'clash') {
       this.combo.reset();
     }
     if (result === 'whiff') {
       attacker.status.applyAttackRecovery(now, profile.recoveryMs);
     }
-    if (step === 3) {
+    if (pending.step === 3) {
       this.combo.reset();
     }
   }
@@ -127,7 +163,7 @@ export class QuickAttack {
     const startAngle = aimAngle - half;
     const totalArc = half * 2;
     const radius = NINJA.attackRange * (0.82 + step * 0.08);
-    const duration = 140 + step * 40;
+    const duration = 160 + step * 44;
     const rivalTint = ninja.rival;
 
     const anim = { sweepProgress: 0, alpha: 1 };

@@ -5,6 +5,8 @@ import { applyDefense } from './damage';
 import { isInAttackArc } from './hitDetection';
 import { playHitJuice } from '../effects/hitJuice';
 import { spawnHitSpark } from '../effects/hitSpark';
+import { spawnCombatCallout } from '../effects/combatCallout';
+import { COLORS } from '../ui/theme';
 import { BlockController } from './BlockController';
 import { HitKind } from './Hurtbox';
 import { NinjaBody } from '../heroes/NinjaBody';
@@ -26,21 +28,27 @@ const flashBlockShield = (scene: Phaser.Scene, defender: NinjaBody, heavy: boole
   const graphics = scene.add.graphics().setDepth(21);
   const angle = Math.atan2(defender.aim.y, defender.aim.x);
   graphics.setPosition(defender.x, defender.y);
-  graphics.lineStyle(perfect ? 10 : heavy ? 8 : 6, perfect ? 0xffffff : 0x49dce1, 1);
+  graphics.lineStyle(perfect ? 12 : heavy ? 8 : 6, perfect ? 0xffc928 : 0x49dce1, 1);
   graphics.beginPath();
   graphics.arc(0, 0, 32, angle - 1.1, angle + 1.1);
   graphics.strokePath();
+  if (perfect) {
+    graphics.lineStyle(4, 0xffffff, 0.95);
+    graphics.beginPath();
+    graphics.arc(0, 0, 38, angle - 1.2, angle + 1.2);
+    graphics.strokePath();
+  }
   scene.tweens.add({
     targets: graphics,
     alpha: 0,
-    duration: heavy || perfect ? 180 : 120,
+    duration: heavy || perfect ? 200 : 120,
     onComplete: () => graphics.destroy(),
   });
 };
 
 /**
  * Shared melee resolution for player and CPU Ninja.
- * Handles connect, directional block, perfect block, and near-simultaneous clash.
+ * Handles connect, directional hold-shield, perfect shield, and clash.
  */
 export const resolveMelee = (
   scene: Phaser.Scene,
@@ -74,24 +82,38 @@ export const resolveMelee = (
   const block = defenderBlock?.tryAbsorb(now, defender, attacker.x, attacker.y);
   if (block?.absorbed) {
     const heavy = step === 3;
-    const stun = (heavy ? COMBAT.blockStunHeavyMs : COMBAT.blockStunLightMs)
-      + (block.perfect ? COMBAT.perfectBlockStunBonusMs : 0);
-    attacker.playBlockRecoil(now, heavy || block.perfect);
-    attacker.status.applyBlockStun(now, stun);
-    attacker.status.applyHitStop(now, COMBAT.hitStopBlockMs);
-    defender.applyRecoil(-defender.aim.x, -defender.aim.y, heavy ? COMBAT.blockPushHeavy : COMBAT.blockPushLight);
+    const profile = COMBAT.combo[step];
     flashBlockShield(scene, defender, heavy, block.perfect);
     spawnHitSpark(scene, defender.x + defender.aim.x * 16, defender.y + defender.aim.y * 16, {
       blocked: true,
-      heavy,
+      heavy: heavy || block.perfect,
     });
+
+    if (block.perfect) {
+      attacker.playBlockRecoil(now, true);
+      attacker.status.applyBlockStun(now, COMBAT.perfectShieldStunMs);
+      attacker.status.applyHitStop(now, COMBAT.hitStopBlockMs);
+      defender.applyRecoil(-defender.aim.x, -defender.aim.y, 10);
+      spawnCombatCallout(scene, defender.x, defender.y, 'PERFECT', COLORS.yellow);
+      playHitJuice(scene, defender.x, defender.y, {
+        damage: 0,
+        blocked: true,
+        finisher: heavy,
+        perfect: true,
+      });
+      return 'perfect-block';
+    }
+
+    defender.drainStamina(profile.shieldStaminaDamage, now);
+    attacker.applyRecoil(-attacker.aim.x, -attacker.aim.y, heavy ? COMBAT.shieldHitRecoilHeavy : COMBAT.shieldHitRecoilLight);
+    defender.applyRecoil(-defender.aim.x, -defender.aim.y, heavy ? COMBAT.blockPushHeavy : COMBAT.blockPushLight);
     playHitJuice(scene, defender.x, defender.y, {
       damage: 0,
       blocked: true,
       finisher: heavy,
-      perfect: block.perfect,
+      perfect: false,
     });
-    return block.perfect ? 'perfect-block' : 'blocked';
+    return 'blocked';
   }
 
   const profile = COMBAT.combo[step];

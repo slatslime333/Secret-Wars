@@ -179,13 +179,13 @@ export class SettingsScene extends Phaser.Scene {
       'MOBILE',
       'Left stick  move',
       'Right stick  aim / attack',
-      'Block and dash near right stick',
+      'Hold shield and dash near right stick',
       '',
       'PC',
       `${keyboard.up}${keyboard.left}${keyboard.down}${keyboard.right} / arrows  move`,
       'Mouse  aim',
       `${keyboard.attack} / click  attack`,
-      `${keyboard.block}  block    ${keyboard.dash}  dash`,
+      `${keyboard.block}  hold shield    ${keyboard.dash}  dash`,
       'ESC  back / menu',
     ];
 
