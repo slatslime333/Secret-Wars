@@ -34,7 +34,7 @@ export class DummyTarget {
     this.body.setCircle(COMBAT.dummyRadius, 0, 0);
     this.body.setOffset(-COMBAT.dummyRadius, -COMBAT.dummyRadius);
     this.body.setCollideWorldBounds(true);
-    this.body.setDrag(900, 900);
+    this.body.setDrag(320, 320);
     this.body.setImmovable(false);
   }
 
@@ -61,6 +61,14 @@ export class DummyTarget {
       (dirY / length) * NINJA.knockbackPower,
     );
     this.draw(true);
+    this.view.setScale(1.2);
+    this.view.scene.tweens.add({
+      targets: this.view,
+      scale: 1,
+      duration: 120,
+      ease: 'Stepped',
+      easeParams: [3],
+    });
     this.view.scene.time.delayedCall(COMBAT.hitStunMs, () => {
       if (!this.down) {
         this.draw(false);

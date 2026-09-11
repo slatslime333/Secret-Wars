@@ -59,7 +59,7 @@ export class QuickAttack {
       dummy.x + ninja.aim.x * 12,
       dummy.y + ninja.aim.y * 12,
     );
-    this.scene.cameras.main.shake(70, 0.005);
+    this.scene.cameras.main.shake(90, 0.008);
   }
 
   private flashSlash(ninja: NinjaBody): void {

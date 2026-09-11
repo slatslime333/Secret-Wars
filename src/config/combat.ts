@@ -6,7 +6,7 @@ export const COMBAT = {
   attackArcDegrees: 64,
   attackStaminaCost: 6,
   staminaRegenDelayMs: 650,
-  hitStunMs: 80,
+  hitStunMs: 160,
   knockbackDurationMs: 150,
   dummyRadius: 18,
   dummyResetMs: 1800,
