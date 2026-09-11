@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { NINJA } from '../config/ninja';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { DummyTarget } from '../heroes/DummyTarget';
-import { COLORS } from '../ui/theme';
+import { COLORS, FONTS, hex } from '../ui/theme';
 
 export class BattleHud {
   private readonly ninjaFill: Phaser.GameObjects.Rectangle;
@@ -20,15 +20,26 @@ export class BattleHud {
     this.staminaFill.setScrollFactor(0).setDepth(102);
 
     this.dummyBar = scene.add.container(0, 0).setDepth(20);
-    const track = scene.add.rectangle(0, 0, 64, 8, COLORS.ink, 0.9).setStrokeStyle(2, COLORS.paper);
-    this.dummyFill = scene.add.rectangle(-32, 0, 64, 6, COLORS.red).setOrigin(0, 0.5);
-    this.dummyBar.add([track, this.dummyFill]);
+    const track = scene.add.rectangle(0, 0, 72, 10, COLORS.ink, 1);
+    track.setStrokeStyle(2, COLORS.redBright);
+    this.dummyFill = scene.add.rectangle(-36, 0, 72, 6, COLORS.paper).setOrigin(0, 0.5);
+    const caption = scene.add
+      .text(0, -14, 'HP', {
+        fontFamily: FONTS.body,
+        fontSize: '10px',
+        fontStyle: 'bold',
+        color: hex(COLORS.paper),
+        stroke: hex(COLORS.ink),
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5, 1);
+    this.dummyBar.add([track, this.dummyFill, caption]);
   }
 
   sync(ninja: NinjaBody, dummy: DummyTarget): void {
     this.ninjaFill.width = 224 * (ninja.health / NINJA.maxHealth);
     this.staminaFill.width = 224 * (ninja.stamina / NINJA.maxStamina);
-    this.dummyBar.setPosition(dummy.x, dummy.y - 36);
-    this.dummyFill.width = Math.max(0, 64 * (dummy.health / NINJA.maxHealth));
+    this.dummyBar.setPosition(dummy.x, dummy.y - 40);
+    this.dummyFill.width = Math.max(0, 72 * (dummy.health / NINJA.maxHealth));
   }
 }
