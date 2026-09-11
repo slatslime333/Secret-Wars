@@ -43,6 +43,7 @@ export class BattleInput {
   private attackLatched = false;
   private blockLatched = false;
   private dashLatched = false;
+  private lastAttackPressAt = -999;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -146,6 +147,12 @@ export class BattleInput {
       (attackHeld && !this.wasAttackHeld);
     this.wasAttackHeld = attackHeld;
 
+    const now = this.scene.time.now;
+    const attackEdge = attackPressed && now - this.lastAttackPressAt >= 90;
+    if (attackEdge) {
+      this.lastAttackPressAt = now;
+    }
+
     const blockPressed =
       this.consumeLatch('blockLatched') ||
       Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.block));
@@ -153,7 +160,7 @@ export class BattleInput {
       this.consumeLatch('dashLatched') ||
       Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.dash));
 
-    return { move, aim, aimActive, attackHeld, attackPressed, blockPressed, dashPressed };
+    return { move, aim, aimActive, attackHeld, attackPressed: attackEdge, blockPressed, dashPressed };
   }
 
   private consumeLatch(key: 'attackLatched' | 'blockLatched' | 'dashLatched'): boolean {
