@@ -228,6 +228,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     this.returning = true;
+    this.removeCpu();
     this.scene.restart();
   }
 
