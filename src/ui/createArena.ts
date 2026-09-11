@@ -40,8 +40,8 @@ export const createArena = (scene: Phaser.Scene): void => {
   graphics.lineBetween(width / 2 + 6, wallThickness + 8, width / 2 + 6, height - wallThickness - 8);
 
   drawWalls(graphics, width, height, wallThickness);
-  drawSpawnPad(scene, ARENA.playerSpawn.x, ARENA.playerSpawn.y, COLORS.cyan, 'NINJA');
-  drawSpawnPad(scene, ARENA.enemySpawn.x, ARENA.enemySpawn.y, COLORS.redBright, 'DUMMY');
+  drawSpawnPad(scene, ARENA.playerSpawn.x, ARENA.playerSpawn.y, COLORS.cyan, '');
+  drawSpawnPad(scene, ARENA.enemySpawn.x, ARENA.enemySpawn.y, COLORS.redBright, '');
 };
 
 const drawWalls = (
@@ -82,6 +82,10 @@ const drawSpawnPad = (
   graphics.strokeCircle(x, y, 28);
   graphics.fillStyle(accent, 0.18);
   graphics.fillCircle(x, y, 22);
+
+  if (!label) {
+    return;
+  }
 
   scene.add
     .text(x, y + 58, label, {
