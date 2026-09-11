@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
+import { COMBAT } from '../config/combat';
 import { INPUT } from '../config/input';
+import { CombatButton } from '../ui/CombatButton';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../ui/theme';
 import { VirtualThumbstick } from './VirtualThumbstick';
 
@@ -8,6 +10,9 @@ export type BattleFrame = {
   aim: Phaser.Math.Vector2;
   aimActive: boolean;
   attackHeld: boolean;
+  attackPressed: boolean;
+  blockPressed: boolean;
+  dashPressed: boolean;
 };
 
 type KeyMap = {
@@ -16,6 +21,8 @@ type KeyMap = {
   left: Phaser.Input.Keyboard.Key;
   right: Phaser.Input.Keyboard.Key;
   attack: Phaser.Input.Keyboard.Key;
+  block: Phaser.Input.Keyboard.Key;
+  dash: Phaser.Input.Keyboard.Key;
 };
 
 /**
@@ -27,9 +34,14 @@ export class BattleInput {
   private readonly touch: boolean;
   private readonly leftStick?: VirtualThumbstick;
   private readonly rightStick?: VirtualThumbstick;
+  private readonly blockButton?: CombatButton;
+  private readonly dashButton?: CombatButton;
   private readonly keys?: KeyMap;
   private readonly cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private readonly lastAim = new Phaser.Math.Vector2(1, 0);
+  private wasAttackHeld = false;
+  private blockLatched = false;
+  private dashLatched = false;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -46,6 +58,20 @@ export class BattleInput {
         accent: COLORS.redBright,
         radius: INPUT.stickRadius,
       });
+      this.blockButton = new CombatButton(scene, GAME_WIDTH - 186, GAME_HEIGHT - 228, {
+        label: 'BLOCK',
+        accent: COLORS.cyan,
+        onPress: () => {
+          this.blockLatched = true;
+        },
+      });
+      this.dashButton = new CombatButton(scene, GAME_WIDTH - 86, GAME_HEIGHT - 228, {
+        label: 'DASH',
+        accent: COLORS.orange,
+        onPress: () => {
+          this.dashLatched = true;
+        },
+      });
     }
 
     const keyboard = scene.input.keyboard;
@@ -57,6 +83,8 @@ export class BattleInput {
         left: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
         right: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
         attack: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.J),
+        block: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
+        dash: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L),
       };
     }
 
@@ -92,8 +120,28 @@ export class BattleInput {
       rightActive ||
       Boolean(this.keys?.attack.isDown) ||
       (!this.touch && this.scene.input.activePointer.leftButtonDown());
+    const attackPressed = attackHeld && !this.wasAttackHeld;
+    this.wasAttackHeld = attackHeld;
 
-    return { move, aim, aimActive, attackHeld };
+    const blockPressed = this.blockLatched || Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.block));
+    const dashPressed = this.dashLatched || Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.dash));
+    this.blockLatched = false;
+    this.dashLatched = false;
+
+    return { move, aim, aimActive, attackHeld, attackPressed, blockPressed, dashPressed };
+  }
+
+  syncButtons(now: number): void {
+    this.blockButton?.sync(now);
+    this.dashButton?.sync(now);
+  }
+
+  notifyBlockCooldown(now: number): void {
+    this.blockButton?.startCooldown(COMBAT.blockCooldownMs, now);
+  }
+
+  notifyDashCooldown(now: number): void {
+    this.dashButton?.startCooldown(COMBAT.dashCooldownMs, now);
   }
 
   destroy(): void {

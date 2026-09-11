@@ -29,7 +29,7 @@ new Phaser.Game({
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   input: {
-    activePointers: 4,
+    activePointers: 5,
   },
   physics: {
     default: 'arcade',

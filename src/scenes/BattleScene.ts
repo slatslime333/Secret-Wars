@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { ARENA } from '../config/arena';
+import { BlockController } from '../combat/BlockController';
+import { DashController } from '../combat/DashController';
 import { HitMarker } from '../combat/HitMarker';
 import { QuickAttack } from '../combat/QuickAttack';
 import { DummyTarget } from '../heroes/DummyTarget';
@@ -12,7 +14,7 @@ import { COLORS, FONTS, GAME_WIDTH, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
 
 /**
- * Phase 2 battle: Ninja, dual-stick/mouse aim, aura/hitmarker, dummy hits.
+ * Phase 3 battle: combo finisher, timed block, dash. Dummy still does not fight.
  */
 export class BattleScene extends Phaser.Scene {
   private returning = false;
@@ -21,6 +23,8 @@ export class BattleScene extends Phaser.Scene {
   private inputReader!: BattleInput;
   private marker!: HitMarker;
   private attacks!: QuickAttack;
+  private block!: BlockController;
+  private dash!: DashController;
   private hud!: BattleHud;
 
   constructor() {
@@ -43,6 +47,8 @@ export class BattleScene extends Phaser.Scene {
 
     this.marker = new HitMarker(this);
     this.attacks = new QuickAttack(this, this.marker);
+    this.block = new BlockController(this);
+    this.dash = new DashController(this);
     this.inputReader = new BattleInput(this);
     this.hud = new BattleHud(this);
 
@@ -61,15 +67,33 @@ export class BattleScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     const now = this.time.now;
     const frame = this.inputReader.sample(this.ninja.x, this.ninja.y);
-    this.ninja.applyMove(frame.move);
+
+    if (frame.blockPressed && !this.dash.isActive(now) && this.block.tryStart(now, this.ninja)) {
+      this.inputReader.notifyBlockCooldown(now);
+    }
+    if (frame.dashPressed && !this.block.isActive(now) && this.dash.tryStart(now, frame.move, this.ninja.aim, this.ninja)) {
+      this.inputReader.notifyDashCooldown(now);
+    }
+
+    this.dash.apply(now, this.ninja);
+    if (!this.dash.isActive(now)) {
+      this.ninja.applyMove(frame.move);
+    }
+
     this.ninja.syncView();
     this.dummy.syncView();
     this.ninja.setAim(frame.aim);
     this.ninja.regenStamina(delta, now);
     this.marker.sync(this.ninja.x, this.ninja.y, this.ninja.aim.x, this.ninja.aim.y);
-    this.attacks.update(now, frame.attackHeld, this.ninja, this.dummy);
+    this.block.sync(now, this.ninja);
+
+    if (!this.block.isActive(now) && !this.dash.isActive(now)) {
+      this.attacks.update(now, frame.attackHeld, frame.attackPressed, this.ninja, this.dummy);
+    }
+
     this.dummy.update(now);
-    this.hud.sync(this.ninja, this.dummy);
+    this.hud.sync(this.ninja, this.dummy, now, this.attacks.comboStep, this.block, this.dash);
+    this.inputReader.syncButtons(now);
   }
 
   private createChrome(): void {

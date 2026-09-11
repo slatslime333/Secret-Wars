@@ -24,5 +24,5 @@ npm run build
 
 ## Current status
 
-**Phase 2 — Body.** PLAY spawns Ninja in the arena. Move, aim with the
-aura/hitmarker, and hit the dummy. Combo, block, and dash are Phase 3.
+**Phase 3 — Fight feel.** Combo finisher, timed block, and dash are in.
+A chasing enemy is Phase 4.

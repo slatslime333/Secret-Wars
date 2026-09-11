@@ -13,6 +13,7 @@ export class NinjaBody {
   private facing: CardinalFacing = 'east';
   private readonly art: Phaser.GameObjects.Graphics;
   private staminaLockUntil = 0;
+  private staminaDeniedAt = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     ensureBodyTexture(scene);
@@ -49,6 +50,10 @@ export class NinjaBody {
     this.body.setVelocity(move.x * NINJA.moveSpeed, move.y * NINJA.moveSpeed);
   }
 
+  setSpeedCap(speed: number): void {
+    this.body.setMaxVelocity(speed, speed);
+  }
+
   setAim(aim: Phaser.Math.Vector2): void {
     if (aim.lengthSq() < 0.01) {
       return;
@@ -63,11 +68,16 @@ export class NinjaBody {
 
   trySpendStamina(cost: number, now: number): boolean {
     if (this.stamina < cost) {
+      this.staminaDeniedAt = now;
       return false;
     }
     this.stamina -= cost;
     this.staminaLockUntil = now + COMBAT.staminaRegenDelayMs;
     return true;
+  }
+
+  staminaDeniedRecently(now: number): boolean {
+    return now - this.staminaDeniedAt < 140;
   }
 
   regenStamina(deltaMs: number, now: number): void {

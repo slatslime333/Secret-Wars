@@ -208,7 +208,7 @@ export class MainMenuScene extends Phaser.Scene {
       .setOrigin(0, 1);
 
     this.add
-      .text(GAME_WIDTH - 28, GAME_HEIGHT - 17, 'BUILD 00.03 // DEMO 1 NINJA', {
+      .text(GAME_WIDTH - 28, GAME_HEIGHT - 17, 'BUILD 00.04 // DEMO 1 COMBAT', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',

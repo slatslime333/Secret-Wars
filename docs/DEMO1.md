@@ -48,7 +48,8 @@ PLAY must enter a real battle. Spawn as Ninja. Control immediately.
 | **4 Opponent** | Chaser enemy, restart, juice | `ai/`, HUD polish | The 17-point list below |
 
 Phase 2 includes light damage, knockback, stamina drain, and hit feedback so a
-hit can be evaluated. Combo / block / dash remain Phase 3.
+hit can be evaluated. Phase 3 adds combo, block, and dash. Dummy still does
+not fight back.
 
 ## Config map
 
@@ -64,7 +65,9 @@ hit can be evaluated. Combo / block / dash remain Phase 3.
 - Mobile: left stick move, right stick aim + hold-to-quick-attack
 - Right stick **wins** the hit marker while held
 - PC: WASD/arrows move, mouse aim, hold click or J to attack
-- Block K / dash L exist in config only until Phase 3
+- Tap-tap-tap J/click for the three-hit combo (third hit is the finisher)
+- K / mobile BLOCK: 0.35s shield, 4s cooldown
+- L / mobile DASH: short leap in move direction, 4s cooldown
 
 ## Architecture rules
 
@@ -110,5 +113,4 @@ Remembered for later:
 16. Fight a basic enemy
 17. Restart or return to the menu
 
-Phase 2 needs items 1–12 except full stamina-empty feel can be proven by holding
-attack, plus return to menu. Items 13–16 are Phases 3–4.
+Phase 3 needs items 13–15 (combo, block, dash). Item 16 is Phase 4.

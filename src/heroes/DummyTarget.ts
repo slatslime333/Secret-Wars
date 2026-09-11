@@ -58,16 +58,14 @@ export class DummyTarget {
     this.view.setPosition(this.sprite.x, this.sprite.y);
   }
 
-  takeHit(damage: number, dirX: number, dirY: number): void {
+  takeHit(damage: number, dirX: number, dirY: number, knockbackScale = 1): void {
     if (this.down) {
       return;
     }
     this.health = Math.max(0, this.health - damage);
     const length = Math.hypot(dirX, dirY) || 1;
-    this.body.setVelocity(
-      (dirX / length) * NINJA.knockbackPower,
-      (dirY / length) * NINJA.knockbackPower,
-    );
+    const force = NINJA.knockbackPower * knockbackScale;
+    this.body.setVelocity((dirX / length) * force, (dirY / length) * force);
     this.draw(true);
     this.view.setScale(1.2);
     this.view.scene.tweens.add({
