@@ -30,7 +30,7 @@ export const NINJA = {
   /** Higher rating = faster swings. Range is slow → fast milliseconds. */
   attackCooldownMs: Math.round(fromRating(r, 300, 160)),
   /** Low-to-medium melee. Not a long-range poke. */
-  attackRange: Math.round(fromRating(r, 54, 90)),
+  attackRange: Math.round(fromRating(r, 64, 100)),
   bodyRadius: 14,
   staminaRegenPerSecond: fromRating(r, 14, 26),
 } as const;

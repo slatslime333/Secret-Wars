@@ -44,7 +44,7 @@ export class QuickAttack {
       ninja.aim.y,
       dummy.x,
       dummy.y,
-      NINJA.attackRange,
+      NINJA.attackRange + COMBAT.hitForgiveness,
       attackHalfArcRad,
       COMBAT.dummyRadius,
     );
