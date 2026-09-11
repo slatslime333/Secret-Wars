@@ -1,13 +1,11 @@
-import { GAME_HEIGHT, GAME_WIDTH } from '../ui/theme';
-
 /**
- * Demo 1 arena. Phase 1 paints this 1:1 with the camera so PLAY already
- * drops into a combat pit. Phase 2 may enlarge the world and follow the player.
+ * Medium battlefield: frequent contact, room to disengage.
+ * Camera follows Ninja; HUD and sticks stay viewport-fixed.
  */
 export const ARENA = {
-  width: GAME_WIDTH,
-  height: GAME_HEIGHT,
-  wallThickness: 36,
-  playerSpawn: { x: 210, y: GAME_HEIGHT / 2 },
-  enemySpawn: { x: GAME_WIDTH - 210, y: GAME_HEIGHT / 2 },
+  width: 1400,
+  height: 860,
+  wallThickness: 40,
+  playerSpawn: { x: 260, y: 430 },
+  enemySpawn: { x: 1140, y: 430 },
 } as const;

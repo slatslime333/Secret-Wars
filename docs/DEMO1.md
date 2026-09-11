@@ -16,81 +16,91 @@ The question Demo 1 has to answer:
 
 > Is the core combat fun and responsive?
 
+## Ninja is the only hero
+
+Ninja is the first and only playable character. Average generalist. Every
+primary rating is **70/99**. That 70 is a design rating — convert it through
+`src/config/ratings.ts` / `src/config/ninja.ts`. Do not hardcode 70 in combat
+code. Do not add a roster or character select.
+
+Ninja's melee range is **low-to-medium**. He is not a zoner.
+
+The aura / hit marker around Ninja **is** the attack-direction system. Do not
+replace it with a generic "swing toward cursor" with no readable hit area.
+
 ## Player-facing loop
 
 ```
 Boot → Title → Main Menu ⇄ Settings
                  ↓ PLAY
-               Battle → MENU / ESC → Main Menu
+               Battle (Ninja vs dummy) → MENU / ESC → Main Menu
 ```
 
-PLAY must enter a real battle scene, never a placeholder card.
-
-Demo 1 battle contents (by the end of Phase 4):
-
-- One player hero, one simple enemy, one medium arena
-- Move, independent aim, basic attack, 3-hit combo, block, dash
-- Health, stamina, knockback, hit feedback
-- Restart or return to menu
+PLAY must enter a real battle. Spawn as Ninja. Control immediately.
 
 ## Four phases
 
-Work one phase at a time. Do not start the next phase until the gate passes.
-
 | Phase | Goal | Touch | Gate |
 | --- | --- | --- | --- |
-| **1 Shell** | Menus and PLAY open an empty arena | `scenes/`, `ui/`, `config/`, `audio/` | Title → Menu → Settings → Battle → back |
-| **2 Body** | Walk, aim, hit a stationary dummy | `input/`, `heroes/`, Battle, hit detection | Independent aim; dummy takes a hit |
-| **3 Fight feel** | HP, knockback, stamina, combo, block, dash | `combat/`, `config/` | All verbs work vs dummy. Checkpoints: numbers → combo → block → dash |
-| **4 Opponent** | Chaser enemy, HUD, restart, light juice | `ai/`, battle HUD | The 17-point list below |
+| **1 Shell** | Menus and PLAY open an arena | `scenes/`, `ui/`, `config/` | Title → Menu → Settings → Battle → back |
+| **2 Body** | Ninja walks, aims, hits a dummy | `input/`, `heroes/`, `combat/` | Independent aim; dummy takes a hit |
+| **3 Fight feel** | Combo finisher, block, dash, stamina empty | `combat/`, `config/` | Checkpoints: combo → block → dash |
+| **4 Opponent** | Chaser enemy, restart, juice | `ai/`, HUD polish | The 17-point list below |
 
-Freeze finished phases. After Phase 2, do not rewrite movement unless a later
-phase proves it is broken.
+Phase 2 includes light damage, knockback, stamina drain, and hit feedback so a
+hit can be evaluated. Combo / block / dash remain Phase 3.
 
 ## Config map
 
-Change gameplay numbers here, not inside scenes:
+- `src/config/ninja.ts` — 70/99 ratings and converted gameplay values
+- `src/config/ratings.ts` — `fromRating()`
+- `src/config/combat.ts` — arc, stamina cost, block/dash timings
+- `src/config/input.ts` — sticks, keyboard, right-stick priority
+- `src/config/arena.ts` — medium battlefield size and spawns
+- `src/ui/theme.ts` — colors, canvas size
 
-- `src/config/combat.ts` — damage, stamina costs, block/dash timings, knockback
-- `src/config/hero.ts` — demo hero health, stamina, move speed
-- `src/config/input.ts` — stick deadzones, keyboard bindings
-- `src/config/arena.ts` — arena size, wall thickness, spawn points
-- `src/config/audio.ts` — default volumes, storage key
-- `src/ui/theme.ts` — colors, fonts, canvas size
+## Input
 
-Volume lives in `src/audio/AudioSettings.ts` and persists in localStorage.
+- Mobile: left stick move, right stick aim + hold-to-quick-attack
+- Right stick **wins** the hit marker while held
+- PC: WASD/arrows move, mouse aim, hold click or J to attack
+- Block K / dash L exist in config only until Phase 3
 
 ## Architecture rules
 
 - One concern per file. Keep files roughly 150–250 lines.
-- `Battle` orchestrates. Combat math does not live in the scene forever.
-- Player and enemy share one hero body later. AI is a driver, not a second combat system.
-- Names should be obvious: `CombatSystem`, `DashController`, `PlayerController`.
-- Comments explain why and important rules, not every line.
-- Do not build empty 3v3 / minion / XP frameworks. Folders are created when the phase needs them.
+- `Battle` orchestrates. Hit math lives in `combat/`.
+- Future heroes can copy `NinjaBody`; do not build a roster now.
+- Names should be obvious. Comments explain why.
 
 ## Intentionally not in Demo 1
 
-Hero roster, unique abilities, 3v3, 3-minute match clock, minion waves, XP,
-minion heal, hero score, respawn, advanced AI, campaign, shops, equipment,
-online multiplayer, saves.
+Hero roster, unique abilities, 3v3, match clock, minion waves, XP, scoring,
+respawn, advanced AI, campaign, shops, online, saves.
 
-Remembered for later, not implemented now:
+Remembered for later:
 
 - Minion kills grant XP and a small heal. Hero kills grant team score, not XP.
 - Dead heroes grant the enemy 1 point and wait 15 seconds to respawn.
+
+## Conflicts resolved in Phase 2
+
+- Phase 1 used a temporary name "Warden". **Ninja** is the source of truth.
+- Phase 1 arena was viewport-sized. Phase 2 uses a larger world + camera follow.
+- An older unmerged prototype used 75/99. Spec is **70/99**.
+- Combo, block, and dash are specified for the finished demo, not this phase.
 
 ## Demo 1 complete when
 
 1. Launch Secret Wars
 2. See the original visual identity
 3. Navigate title and menu
-4. Open settings (music, SFX, PC fullscreen, controls help)
+4. Open settings
 5. Press PLAY
-6. Enter an actual battle (not a placeholder)
-7. Control a hero
-8. Aim attacks independently of movement
-9. Attack something
+6. Enter an actual battle
+7. Control Ninja
+8. Aim with the aura/hitmarker independently of movement
+9. Attack the dummy
 10. See health and damage
 11. Experience knockback
 12. Use stamina
@@ -100,4 +110,5 @@ Remembered for later, not implemented now:
 16. Fight a basic enemy
 17. Restart or return to the menu
 
-Phase 1 only needs items 1–6, with battle as an empty arena you can leave.
+Phase 2 needs items 1–12 except full stamina-empty feel can be proven by holding
+attack, plus return to menu. Items 13–16 are Phases 3–4.

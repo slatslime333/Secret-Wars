@@ -1,22 +1,16 @@
 /**
- * Demo 1 combat tunables.
- *
- * Phase 1 does not apply these yet. Phase 3+ should import from here instead of
- * scattering magic numbers through scenes. Hero kills will later grant score,
- * not XP — that rule is not implemented in Demo 1.
+ * Shared combat rules. Hero-specific power comes from `NINJA` (70/99).
+ * Combo finisher, block, and dash timings are listed for Phase 3 — unused in Phase 2.
  */
 export const COMBAT = {
-  attackDamage: 8,
+  attackArcDegrees: 64,
   attackStaminaCost: 6,
-  attackCooldownMs: 220,
-  comboWindowMs: 420,
-  comboFinisherDamage: 18,
-  comboFinisherStaminaCost: 14,
-  comboFinisherKnockback: 280,
-  lightKnockback: 160,
-  knockbackDurationMs: 140,
-  hitStunMs: 70,
-  /** Timed tool, not a holdable shield. */
+  staminaRegenDelayMs: 650,
+  hitStunMs: 80,
+  knockbackDurationMs: 150,
+  dummyRadius: 18,
+  dummyResetMs: 1800,
+  /** Timed tool, not a holdable shield. Phase 3. */
   blockDurationMs: 350,
   blockCooldownMs: 4000,
   dashCooldownMs: 4000,
@@ -24,4 +18,10 @@ export const COMBAT = {
   dashDurationMs: 120,
   dashStaminaCost: 12,
   blockStaminaCost: 8,
+  comboWindowMs: 420,
+  comboFinisherDamageMultiplier: 2.15,
+  comboFinisherStaminaMultiplier: 2.2,
+  comboFinisherKnockbackMultiplier: 1.55,
 } as const;
+
+export const attackHalfArcRad = (COMBAT.attackArcDegrees * Math.PI) / 360;

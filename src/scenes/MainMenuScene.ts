@@ -141,7 +141,7 @@ export class MainMenuScene extends Phaser.Scene {
       color: hex(COLORS.paper),
       letterSpacing: 1,
     });
-    this.add.text(x + 28, y + 128, '1 VS 1  //  COMBAT TEST', {
+    this.add.text(x + 28, y + 128, 'NINJA  //  COMBAT TEST', {
       fontFamily: FONTS.body,
       fontSize: '17px',
       fontStyle: 'bold',
@@ -164,7 +164,7 @@ export class MainMenuScene extends Phaser.Scene {
       fontStyle: 'bold',
       color: hex(COLORS.paper),
     });
-    this.add.text(x + 28, y + 335, 'One hero. One foe. Core combat.', {
+    this.add.text(x + 28, y + 335, 'Ninja. Dummy. Core combat.', {
       fontFamily: FONTS.body,
       fontSize: '13px',
       color: hex(COLORS.muted),
@@ -208,7 +208,7 @@ export class MainMenuScene extends Phaser.Scene {
       .setOrigin(0, 1);
 
     this.add
-      .text(GAME_WIDTH - 28, GAME_HEIGHT - 17, 'BUILD 00.02 // DEMO 1 SHELL', {
+      .text(GAME_WIDTH - 28, GAME_HEIGHT - 17, 'BUILD 00.03 // DEMO 1 NINJA', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',

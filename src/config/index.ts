@@ -1,5 +1,6 @@
 export { ARENA } from './arena';
 export { AUDIO } from './audio';
-export { COMBAT } from './combat';
-export { DEMO_HERO } from './hero';
+export { COMBAT, attackHalfArcRad } from './combat';
+export { NINJA } from './ninja';
 export { INPUT } from './input';
+export { NINJA_RATING, RATING_CAP, fromRating } from './ratings';

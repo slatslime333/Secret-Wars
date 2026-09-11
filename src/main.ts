@@ -29,7 +29,14 @@ new Phaser.Game({
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   input: {
-    activePointers: 3,
+    activePointers: 4,
+  },
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { x: 0, y: 0 },
+      debug: false,
+    },
   },
   scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, BattleScene],
 });
