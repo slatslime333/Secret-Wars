@@ -1,24 +1,19 @@
 import Phaser from 'phaser';
-import { attackHalfArcRad, COMBAT } from '../config/combat';
-import { CHASER } from '../config/chaser';
+import { COMBAT, ComboStep, comboStepOf } from '../config/combat';
 import { NINJA } from '../config/ninja';
-import { applyDefense } from './damage';
 import { ComboTracker } from './ComboTracker';
 import { HitMarker } from './HitMarker';
-import { isInAttackArc } from './hitDetection';
-import { spawnCombatCallout } from '../effects/combatCallout';
-import { playHitJuice } from '../effects/hitJuice';
-import { spawnHitSpark } from '../effects/hitSpark';
-import { Hurtbox } from './Hurtbox';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { COLORS } from '../ui/theme';
+import { spawnCombatCallout } from '../effects/combatCallout';
+import { resolveMelee } from './resolveMelee';
+import { BlockController } from './BlockController';
 
 /**
  * Hold = repeating light swings. Distinct taps within the combo window
  * step 1 → 2 → finisher. The third hit is the only heavier attack.
  *
- * Ninja performs a physical forward lunge/swipe in the attack direction with his
- * sword, accompanied by a clean razor-sharp white line slice animation tracing the arc.
+ * Each swing lunges the fighter, even on a miss. Whiffs and blocks break the chain.
  */
 export class QuickAttack {
   private nextSwingAt = 0;
@@ -26,22 +21,30 @@ export class QuickAttack {
   private lastPendingAt = 0;
   private wasHeld = false;
   private readonly combo = new ComboTracker();
+  lastSwingAt = -9999;
+  lastSwingStep: ComboStep = 1;
 
   constructor(
     private readonly scene: Phaser.Scene,
-    private readonly marker: HitMarker,
+    private readonly marker?: HitMarker,
   ) {}
 
   get comboStep(): number {
     return this.combo.step;
   }
 
+  interrupt(now: number): void {
+    this.combo.interrupt(now);
+    this.pendingTaps = 0;
+  }
+
   update(
     now: number,
     held: boolean,
     pressed: boolean,
-    ninja: NinjaBody,
-    dummy: Hurtbox,
+    attacker: NinjaBody,
+    defender: NinjaBody | undefined,
+    defenderBlock?: BlockController,
   ): void {
     const tapQueued = this.pendingTaps > 0;
     this.combo.expire(now, COMBAT.comboWindowMs, held || tapQueued || pressed);
@@ -57,17 +60,19 @@ export class QuickAttack {
     }
     this.wasHeld = held;
 
-    this.marker.setAttacking((held || this.pendingTaps > 0) && ninja.stamina >= COMBAT.attackStaminaCost);
+    this.marker?.setAttacking((held || this.pendingTaps > 0) && attacker.stamina >= COMBAT.attackStaminaCost);
+
+    if (attacker.status.cannotAttack(now)) {
+      return;
+    }
     if ((!held && this.pendingTaps === 0) || now < this.nextSwingAt) {
       return;
     }
 
-    const step = this.pendingTaps > 0 ? this.combo.preview(now, COMBAT.comboWindowMs) : 1;
-    const finisher = step === 3;
-    const staminaCost = finisher
-      ? Math.round(COMBAT.attackStaminaCost * COMBAT.comboFinisherStaminaMultiplier)
-      : COMBAT.attackStaminaCost;
-    if (!ninja.trySpendStamina(staminaCost, now)) {
+    const step = comboStepOf(this.pendingTaps > 0 ? this.combo.preview(now, COMBAT.comboWindowMs) : 1);
+    const profile = COMBAT.combo[step];
+    const staminaCost = Math.round(COMBAT.attackStaminaCost * profile.staminaCostMultiplier);
+    if (!attacker.trySpendStamina(staminaCost, now)) {
       return;
     }
     if (this.pendingTaps > 0) {
@@ -75,75 +80,55 @@ export class QuickAttack {
       this.pendingTaps -= 1;
       spawnCombatCallout(
         this.scene,
-        ninja.x,
-        ninja.y,
-        finisher ? 'FINISHER' : `HIT ${this.combo.step}`,
-        finisher ? COLORS.yellow : COLORS.orange,
+        attacker.x,
+        attacker.y,
+        step === 3 ? 'FINISHER' : `HIT ${step}`,
+        step === 3 ? COLORS.yellow : COLORS.orange,
       );
+    } else {
+      this.combo.reset();
     }
 
-    this.nextSwingAt = now + NINJA.attackCooldownMs;
+    const delay = Math.round(NINJA.attackCooldownMs * attacker.status.attackSlowMultiplier(now));
+    this.nextSwingAt = now + delay;
+    this.lastSwingAt = now;
+    this.lastSwingStep = step;
 
-    // Physical player model lunge and sword swing animation
-    ninja.playAttackAnimation(now, finisher);
+    attacker.playAttackAnimation(now, step);
+    this.spawnWhiteLineSlice(attacker, step);
 
-    // White line slice animation tracing the blade arc in attack direction
-    this.spawnWhiteLineSlice(ninja, finisher);
+    if (!defender || defender.down) {
+      attacker.status.applyAttackRecovery(now, profile.recoveryMs);
+      this.combo.reset();
+      return;
+    }
 
-    this.tryHit(ninja, dummy, finisher);
-    if (finisher) {
+    const result = resolveMelee(this.scene, now, attacker, defender, step, defenderBlock);
+    if (result === 'whiff' || result === 'blocked' || result === 'perfect-block' || result === 'clash') {
+      this.combo.reset();
+    }
+    if (result === 'whiff') {
+      attacker.status.applyAttackRecovery(now, profile.recoveryMs);
+    }
+    if (step === 3) {
       this.combo.reset();
     }
   }
 
-  private tryHit(ninja: NinjaBody, dummy: Hurtbox, finisher: boolean): void {
-    if (dummy.down) {
-      return;
-    }
-    const connected = isInAttackArc(
-      ninja.x,
-      ninja.y,
-      ninja.aim.x,
-      ninja.aim.y,
-      dummy.x,
-      dummy.y,
-      NINJA.attackRange + COMBAT.hitForgiveness,
-      attackHalfArcRad,
-      CHASER.bodyRadius,
-    );
-    if (!connected) {
-      return;
-    }
-
-    const raw = finisher
-      ? NINJA.attackDamage * COMBAT.comboFinisherDamageMultiplier
-      : NINJA.attackDamage;
-    const damage = applyDefense(raw, CHASER.defense);
-    const knockback =
-      NINJA.knockbackPower * (finisher ? COMBAT.comboFinisherKnockbackMultiplier : 1);
-    dummy.takeHit(damage, ninja.aim.x, ninja.aim.y, knockback);
-    spawnHitSpark(
-      this.scene,
-      dummy.x + ninja.aim.x * 12,
-      dummy.y + ninja.aim.y * 12,
-    );
-    playHitJuice(this.scene, dummy.x, dummy.y, { damage, finisher });
-  }
-
   /**
-   * Spawns a crisp, high-impact white line slice arc in the aimed direction,
-   * sweeping across the hit cone as Ninja swings his sword.
+   * White line slice grows with combo step so the finisher reads as a bigger cut.
    */
-  private spawnWhiteLineSlice(ninja: NinjaBody, finisher: boolean): void {
+  private spawnWhiteLineSlice(ninja: NinjaBody, step: ComboStep): void {
     const graphics = this.scene.add.graphics().setDepth(20);
     const originX = ninja.x;
     const originY = ninja.y;
     const aimAngle = Math.atan2(ninja.aim.y, ninja.aim.x);
-    const half = finisher ? attackHalfArcRad * 1.3 : attackHalfArcRad * 1.1;
+    const half = attackHalfFor(step);
     const startAngle = aimAngle - half;
     const totalArc = half * 2;
-    const radius = NINJA.attackRange * (finisher ? 1.05 : 0.95);
-    const duration = finisher ? 220 : 180;
+    const radius = NINJA.attackRange * (0.82 + step * 0.08);
+    const duration = 140 + step * 40;
+    const rivalTint = ninja.rival;
 
     const anim = { sweepProgress: 0, alpha: 1 };
     graphics.setPosition(originX, originY);
@@ -157,42 +142,40 @@ export class QuickAttack {
         graphics.clear();
         const currentEndAngle = startAngle + totalArc * anim.sweepProgress;
         const trailStartAngle = Math.max(startAngle, currentEndAngle - totalArc * 0.75);
+        const glow = step === 1 ? 6 : step === 2 ? 9 : 13;
+        const core = step === 1 ? 3 : step === 2 ? 4 : 6;
+        const color = rivalTint ? 0xffe0c8 : 0xffffff;
 
-        // Broad white glow arc
-        graphics.lineStyle(finisher ? 12 : 8, 0xffffff, 0.55 * anim.alpha);
+        graphics.lineStyle(glow, color, 0.45 * anim.alpha);
         graphics.beginPath();
         graphics.arc(0, 0, radius, trailStartAngle, currentEndAngle);
         graphics.strokePath();
 
-        // Thick vivid pure white line slice
-        graphics.lineStyle(finisher ? 6 : 4, 0xffffff, 1 * anim.alpha);
+        graphics.lineStyle(core, color, 1 * anim.alpha);
         graphics.beginPath();
         graphics.arc(0, 0, radius, trailStartAngle, currentEndAngle);
         graphics.strokePath();
 
-        // Second inner parallel white slash line for comic energy feel
-        graphics.lineStyle(finisher ? 3 : 2, 0xffffff, 0.9 * anim.alpha);
-        graphics.beginPath();
-        graphics.arc(0, 0, radius - 6, trailStartAngle, currentEndAngle);
-        graphics.strokePath();
-
-        // Third inner white slash line for finisher
-        if (finisher) {
-          graphics.lineStyle(2, 0xffffff, 0.85 * anim.alpha);
+        if (step >= 2) {
+          graphics.lineStyle(step === 3 ? 3 : 2, color, 0.9 * anim.alpha);
+          graphics.beginPath();
+          graphics.arc(0, 0, radius - 6, trailStartAngle, currentEndAngle);
+          graphics.strokePath();
+        }
+        if (step === 3) {
+          graphics.lineStyle(2, color, 0.85 * anim.alpha);
           graphics.beginPath();
           graphics.arc(0, 0, radius - 12, trailStartAngle, currentEndAngle);
           graphics.strokePath();
         }
 
-        // White slash spark tip at leading edge
         const tipX = Math.cos(currentEndAngle) * radius;
         const tipY = Math.sin(currentEndAngle) * radius;
-        graphics.fillStyle(0xffffff, 1 * anim.alpha);
-        graphics.fillCircle(tipX, tipY, finisher ? 5 : 3.5);
+        graphics.fillStyle(color, 1 * anim.alpha);
+        graphics.fillCircle(tipX, tipY, 2 + step);
       },
     });
 
-    // Fade out and clean up
     this.scene.tweens.add({
       targets: anim,
       alpha: 0,
@@ -205,3 +188,14 @@ export class QuickAttack {
     });
   }
 }
+
+const attackHalfFor = (step: ComboStep): number => {
+  const base = (COMBAT.attackArcDegrees * Math.PI) / 360;
+  if (step === 3) {
+    return base * 1.3;
+  }
+  if (step === 2) {
+    return base * 1.15;
+  }
+  return base;
+};

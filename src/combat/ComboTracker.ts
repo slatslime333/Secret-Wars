@@ -53,6 +53,11 @@ export class ComboTracker {
     this.lastTapAt = 0;
   }
 
+  interrupt(now: number): void {
+    this.reset();
+    this.shownUntil = now + 400;
+  }
+
   get step(): number {
     return this.shown;
   }

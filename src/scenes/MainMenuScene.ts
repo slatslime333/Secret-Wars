@@ -141,7 +141,7 @@ export class MainMenuScene extends Phaser.Scene {
       color: hex(COLORS.paper),
       letterSpacing: 1,
     });
-    this.add.text(x + 28, y + 128, 'NINJA  //  CHASER', {
+    this.add.text(x + 28, y + 128, 'NINJA  //  RIVAL NINJA', {
       fontFamily: FONTS.body,
       fontSize: '17px',
       fontStyle: 'bold',
@@ -158,7 +158,7 @@ export class MainMenuScene extends Phaser.Scene {
       color: hex(COLORS.orange),
       letterSpacing: 3,
     });
-    this.add.text(x + 28, y + 308, 'Enter the pit. Fight the chaser.', {
+    this.add.text(x + 28, y + 308, 'Enter the pit. Fight a rival Ninja.', {
       fontFamily: FONTS.body,
       fontSize: '17px',
       fontStyle: 'bold',

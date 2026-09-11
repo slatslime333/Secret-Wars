@@ -24,7 +24,7 @@ export class RoundOverlay {
     return this.locked;
   }
 
-  lock(winner: 'ninja' | 'chaser'): void {
+  lock(winner: 'ninja' | 'rival'): void {
     if (this.locked) {
       return;
     }
@@ -32,7 +32,7 @@ export class RoundOverlay {
     this.scene.time.delayedCall(320, () => this.reveal(winner));
   }
 
-  private reveal(winner: 'ninja' | 'chaser'): void {
+  private reveal(winner: 'ninja' | 'rival'): void {
     const win = winner === 'ninja';
     const dim = this.scene.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.ink, 0.62);
     const title = this.scene.add
@@ -46,7 +46,7 @@ export class RoundOverlay {
       })
       .setOrigin(0.5);
     const sub = this.scene.add
-      .text(0, -18, win ? 'NINJA WINS' : 'CHASER WINS', {
+      .text(0, -18, win ? 'NINJA WINS' : 'RIVAL WINS', {
         fontFamily: FONTS.body,
         fontSize: '16px',
         fontStyle: 'bold',

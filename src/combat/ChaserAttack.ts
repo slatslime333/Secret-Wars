@@ -79,12 +79,19 @@ export class ChaserAttack {
     if (ninja.isInvulnerable(now)) {
       return;
     }
-    if (block.tryAbsorb(now, ninja, chaser.x, chaser.y)) {
+    if (block.tryAbsorb(now, ninja, chaser.x, chaser.y).absorbed) {
       playHitJuice(this.scene, ninja.x, ninja.y, { damage: 0, blocked: true });
       return;
     }
     const damage = applyDefense(CHASER.attackDamage, ninja.defense);
-    ninja.takeHit(damage, chaser.aim.x, chaser.aim.y, CHASER.knockbackPower);
+    ninja.takeHit({
+      damage,
+      dirX: chaser.aim.x,
+      dirY: chaser.aim.y,
+      knockback: CHASER.knockbackPower,
+      staminaDamage: COMBAT.combo[1].staminaDamage,
+      step: 1,
+    });
     spawnHitSpark(this.scene, ninja.x + chaser.aim.x * 10, ninja.y + chaser.aim.y * 10);
     playHitJuice(this.scene, ninja.x, ninja.y, { damage });
   }
