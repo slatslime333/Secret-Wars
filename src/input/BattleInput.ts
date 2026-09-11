@@ -11,7 +11,7 @@ export type BattleFrame = {
   aimActive: boolean;
   attackHeld: boolean;
   attackPressed: boolean;
-  blockPressed: boolean;
+  blockHeld: boolean;
   dashPressed: boolean;
 };
 
@@ -42,7 +42,7 @@ export class BattleInput {
   private readonly lastAim = new Phaser.Math.Vector2(1, 0);
   private wasAttackHeld = false;
   private attackLatched = false;
-  private blockLatched = false;
+  private blockHeldTouch = false;
   private dashLatched = false;
   private lastAttackPressAt = -999;
 
@@ -75,10 +75,14 @@ export class BattleInput {
       const dashY = height - (isPortrait ? bottomInset + 100 : 228);
 
       this.blockButton = new CombatButton(scene, blockX, blockY, {
-        label: 'BLOCK',
+        label: 'SHIELD',
         accent: COLORS.cyan,
+        holdable: true,
         onPress: () => {
-          this.blockLatched = true;
+          this.blockHeldTouch = true;
+        },
+        onRelease: () => {
+          this.blockHeldTouch = false;
         },
       });
       this.dashButton = new CombatButton(scene, dashX, dashY, {
@@ -88,6 +92,8 @@ export class BattleInput {
           this.dashLatched = true;
         },
       });
+      this.dashButton.setCharges(COMBAT.dashMaxCharges, COMBAT.dashMaxCharges);
+      this.dashButton.setRecovered(1);
     }
 
     const keyboard = scene.input.keyboard;
@@ -104,9 +110,6 @@ export class BattleInput {
       };
       this.keys.attack.on('down', () => {
         this.attackLatched = true;
-      });
-      this.keys.block.on('down', () => {
-        this.blockLatched = true;
       });
       this.keys.dash.on('down', () => {
         this.dashLatched = true;
@@ -190,17 +193,17 @@ export class BattleInput {
       this.lastAttackPressAt = now;
     }
 
-    const blockPressed =
-      this.consumeLatch('blockLatched') ||
-      Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.block));
+    const blockHeld =
+      this.blockHeldTouch ||
+      Boolean(this.keys?.block.isDown);
     const dashPressed =
       this.consumeLatch('dashLatched') ||
       Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.dash));
 
-    return { move, aim, aimActive, attackHeld, attackPressed: attackEdge, blockPressed, dashPressed };
+    return { move, aim, aimActive, attackHeld, attackPressed: attackEdge, blockHeld, dashPressed };
   }
 
-  private consumeLatch(key: 'attackLatched' | 'blockLatched' | 'dashLatched'): boolean {
+  private consumeLatch(key: 'attackLatched' | 'dashLatched'): boolean {
     if (!this[key]) {
       return false;
     }
@@ -208,22 +211,26 @@ export class BattleInput {
     return true;
   }
 
-  syncButtons(now: number): void {
-    this.blockButton?.sync(now);
-    this.dashButton?.sync(now);
-  }
-
-  notifyBlockCooldown(now: number): void {
-    this.blockButton?.startCooldown(COMBAT.blockCooldownMs, now);
-  }
-
-  notifyDashCooldown(now: number): void {
-    this.dashButton?.startCooldown(COMBAT.dashCooldownMs, now);
+  syncButtons(state: {
+    dashCharges: number;
+    dashMax: number;
+    dashRecharge: number;
+    blocking: boolean;
+    staminaRatio: number;
+  }): void {
+    this.dashButton?.setCharges(state.dashCharges, state.dashMax);
+    this.dashButton?.setRecovered(state.dashCharges <= 0 ? 1 - state.dashRecharge : 1);
+    this.dashButton?.setDimmed(state.dashCharges <= 0);
+    this.blockButton?.setHeldVisual(state.blocking);
+    this.blockButton?.setRecovered(state.staminaRatio);
+    this.blockButton?.setDimmed(state.staminaRatio <= 0.02);
   }
 
   destroy(): void {
     this.leftStick?.destroy();
     this.rightStick?.destroy();
+    this.blockButton?.destroy();
+    this.dashButton?.destroy();
     this.scene.input?.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
   }
 

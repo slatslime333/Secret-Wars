@@ -1,25 +1,34 @@
 import Phaser from 'phaser';
 import { COMBAT } from '../config/combat';
-import { NINJA } from '../config/ninja';
 import { spawnCombatCallout } from '../effects/combatCallout';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { COLORS } from '../ui/theme';
 
 const dashSpeed = (): number => COMBAT.dashDistance / (COMBAT.dashDurationMs / 1000);
 
-/** Short leap in move direction, or facing if standing still. 2s cooldown. */
+/**
+ * Short leap in move direction, or facing if standing still.
+ * Three charges; each spends one charge and recharges on a 2.5s timer.
+ */
 export class DashController {
   private activeUntil = 0;
-  private readyAt = 0;
+  private charges = COMBAT.dashMaxCharges;
+  private rechargeAt = 0;
   private readonly dir = new Phaser.Math.Vector2(1, 0);
 
   constructor(private readonly scene: Phaser.Scene) {}
 
+  get chargeCount(): number {
+    return this.charges;
+  }
+
+  get maxCharges(): number {
+    return COMBAT.dashMaxCharges;
+  }
+
   tryStart(now: number, move: Phaser.Math.Vector2, aim: Phaser.Math.Vector2, ninja: NinjaBody): boolean {
-    if (now < this.readyAt || this.isActive(now) || ninja.status.isBlockStunned(now)) {
-      return false;
-    }
-    if (!ninja.trySpendStamina(COMBAT.dashStaminaCost, now)) {
+    this.tickRecharge(now);
+    if (this.charges <= 0 || this.isActive(now) || ninja.status.isBlockStunned(now)) {
       return false;
     }
     if (move.lengthSq() > 0.04) {
@@ -27,8 +36,11 @@ export class DashController {
     } else {
       this.dir.copy(aim).normalize();
     }
+    this.charges -= 1;
+    if (this.rechargeAt <= now) {
+      this.rechargeAt = now + COMBAT.dashRechargeMs;
+    }
     this.activeUntil = now + COMBAT.dashDurationMs;
-    this.readyAt = now + COMBAT.dashCooldownMs;
     ninja.setSpeedCap(dashSpeed());
     ninja.grantInvulnerable(now + COMBAT.dashDurationMs);
     this.spawnStreaks(ninja);
@@ -40,19 +52,35 @@ export class DashController {
     return now < this.activeUntil;
   }
 
-  cooldownRatio(now: number): number {
-    if (now >= this.readyAt) {
+  tickRecharge(now: number): void {
+    while (this.charges < COMBAT.dashMaxCharges && this.rechargeAt > 0 && now >= this.rechargeAt) {
+      this.charges += 1;
+      if (this.charges < COMBAT.dashMaxCharges) {
+        this.rechargeAt += COMBAT.dashRechargeMs;
+      } else {
+        this.rechargeAt = 0;
+      }
+    }
+  }
+
+  /** 1 = just spent / empty fill, 0 = next charge ready or full. */
+  rechargeRatio(now: number): number {
+    this.tickRecharge(now);
+    if (this.charges >= COMBAT.dashMaxCharges || this.rechargeAt <= 0) {
       return 0;
     }
-    return (this.readyAt - now) / COMBAT.dashCooldownMs;
+    const remaining = this.rechargeAt - now;
+    return Phaser.Math.Clamp(remaining / COMBAT.dashRechargeMs, 0, 1);
   }
 
   apply(now: number, ninja: NinjaBody): void {
+    this.tickRecharge(now);
     if (!this.isActive(now)) {
-      ninja.setSpeedCap(NINJA.moveSpeed);
+      ninja.setSpeedCap(COMBAT.physicsMaxSpeed);
       return;
     }
     const speed = dashSpeed();
+    ninja.body?.setDrag(0, 0);
     ninja.body?.setVelocity(this.dir.x * speed, this.dir.y * speed);
   }
 

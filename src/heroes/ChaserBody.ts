@@ -130,7 +130,7 @@ export class ChaserBody {
     this.health = Math.max(0, this.health - damage);
     const length = Math.hypot(dirX, dirY) || 1;
     this.body.setVelocity((dirX / length) * knockback, (dirY / length) * knockback);
-    this.stunnedUntil = this.view.scene.time.now + COMBAT.hitReactionMs;
+    this.stunnedUntil = this.view.scene.time.now + COMBAT.combo[1].hitReactionMs;
     drawChaser(this.art, this.facing, true, false, 0);
     this.view.setScale(1.18);
     this.view.scene.tweens.add({
@@ -140,7 +140,7 @@ export class ChaserBody {
       ease: 'Stepped',
       easeParams: [3],
     });
-    this.view.scene.time.delayedCall(COMBAT.hitReactionMs, () => {
+    this.view.scene.time.delayedCall(COMBAT.combo[1].hitReactionMs, () => {
       if (!this.down) {
         drawChaser(this.art, this.facing, false, false, 0);
       }

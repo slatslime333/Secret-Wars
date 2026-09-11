@@ -17,6 +17,7 @@ export class NinjaBody {
   readonly rival: boolean;
   health = NINJA.maxHealth;
   stamina = NINJA.maxStamina;
+  ammo = COMBAT.attackAmmoMax;
   readonly defense = NINJA.defense;
   readonly aim = new Phaser.Math.Vector2(1, 0);
   private facing: CardinalFacing = 'east';
@@ -26,6 +27,7 @@ export class NinjaBody {
   private staminaDeniedAt = 0;
   private invulnerableUntil = 0;
   private attackingUntil = 0;
+  private reloadEndsAt = 0;
   private currentAttackTween?: Phaser.Tweens.Tween;
   private lastDrawnFlash = false;
 
@@ -37,7 +39,8 @@ export class NinjaBody {
     this.sprite.setAlpha(0);
     this.sprite.setCircle(NINJA.bodyRadius);
     this.sprite.setCollideWorldBounds(true);
-    this.sprite.setMaxVelocity(NINJA.moveSpeed, NINJA.moveSpeed);
+    this.sprite.setMaxVelocity(COMBAT.physicsMaxSpeed, COMBAT.physicsMaxSpeed);
+    this.sprite.setDrag(0, 0);
     this.sprite.setDepth(this.rival ? 9 : 10);
     if (this.rival) {
       this.aim.set(-1, 0);
@@ -60,6 +63,10 @@ export class NinjaBody {
 
   get down(): boolean {
     return this.health <= 0;
+  }
+
+  get maxAmmo(): number {
+    return COMBAT.attackAmmoMax;
   }
 
   get body(): Phaser.Physics.Arcade.Body | undefined {
@@ -96,6 +103,7 @@ export class NinjaBody {
     }
     const now = this.now();
     const speed = NINJA.moveSpeed * this.status.moveMultiplier(now);
+    body.setDrag(0, 0);
     body.setVelocity(move.x * speed, move.y * speed);
   }
 
@@ -123,8 +131,10 @@ export class NinjaBody {
     this.health = Math.max(0, this.health - options.damage);
     this.drainStamina(options.staminaDamage, now);
     const length = Math.hypot(options.dirX, options.dirY) || 1;
-    body.setVelocity((options.dirX / length) * options.knockback, (options.dirY / length) * options.knockback);
-    this.status.applyHitReaction(now);
+    const power = options.knockback;
+    body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
+    body.setVelocity((options.dirX / length) * power, (options.dirY / length) * power);
+    this.status.applyHitReaction(now, options.step);
     this.status.applyHitStop(
       now,
       options.clash || options.step === 3 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs,
@@ -145,8 +155,27 @@ export class NinjaBody {
   }
 
   applyRecoil(dirX: number, dirY: number, power: number): void {
+    const body = this.physics();
+    if (!body) {
+      return;
+    }
     const length = Math.hypot(dirX, dirY) || 1;
-    this.physics()?.setVelocity((dirX / length) * power, (dirY / length) * power);
+    body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
+    body.setVelocity((dirX / length) * power, (dirY / length) * power);
+  }
+
+  applyLungeImpulse(now: number, step: ComboStep): void {
+    const body = this.physics();
+    if (!body) {
+      return;
+    }
+    const profile = COMBAT.combo[step];
+    body.setDrag(COMBAT.bodyDrag * 0.55, COMBAT.bodyDrag * 0.55);
+    body.setVelocity(
+      body.velocity.x + this.aim.x * profile.lungeImpulse,
+      body.velocity.y + this.aim.y * profile.lungeImpulse,
+    );
+    this.status.applyLunge(now, profile.lungeLockMs);
   }
 
   setSpeedCap(speed: number): void {
@@ -177,12 +206,12 @@ export class NinjaBody {
   }
 
   /**
-   * Per-step physical lunge + sword sweep. Light stays snappy; heavier hits grow.
+   * Sword sweep + visual lunge. Physical body lunge is applied at impact.
    */
   playAttackAnimation(now: number, step: ComboStep | boolean): void {
     const comboStep = typeof step === 'boolean' ? comboStepOf(step ? 3 : 1) : step;
     const profile = COMBAT.combo[comboStep];
-    const duration = 90 + comboStep * 40;
+    const duration = 110 + comboStep * 48;
     this.attackingUntil = now + duration;
     this.status.markSwing(now, comboStep);
 
@@ -224,27 +253,71 @@ export class NinjaBody {
         this.redrawIdle();
       },
     });
-
-    const body = this.physics();
-    if (body) {
-      body.velocity.x += this.aim.x * profile.lungeImpulse;
-      body.velocity.y += this.aim.y * profile.lungeImpulse;
-    }
   }
 
   playBlockRecoil(now: number, heavy: boolean): void {
-    this.status.applyBlockStun(now, heavy ? COMBAT.blockStunHeavyMs : COMBAT.blockStunLightMs);
-    this.applyRecoil(-this.aim.x, -this.aim.y, heavy ? 110 : 55);
+    this.status.applyBlockStun(now, heavy ? COMBAT.perfectShieldStunMs : COMBAT.perfectShieldStunMs * 0.75);
+    this.applyRecoil(-this.aim.x, -this.aim.y, heavy ? 120 : 70);
     this.view.setRotation(this.aim.x >= 0 ? -0.18 : 0.18);
     this.scene.tweens.add({
       targets: this.view,
       rotation: 0,
-      duration: heavy ? 220 : 140,
+      duration: heavy ? 240 : 160,
       ease: 'Quad.Out',
     });
   }
 
+  isReloading(now: number): boolean {
+    return this.ammo <= 0 && now < this.reloadEndsAt;
+  }
+
+  canAttack(now: number): boolean {
+    return this.ammo > 0 && !this.isReloading(now) && !this.status.cannotAttack(now);
+  }
+
+  trySpendAmmo(now: number): boolean {
+    this.tickAmmo(now);
+    if (this.ammo <= 0 || now < this.reloadEndsAt) {
+      return false;
+    }
+    this.ammo -= 1;
+    if (this.ammo <= 0) {
+      this.reloadEndsAt = now + COMBAT.attackReloadMs;
+    }
+    return true;
+  }
+
+  tickAmmo(now: number): void {
+    if (this.ammo <= 0 && this.reloadEndsAt > 0 && now >= this.reloadEndsAt) {
+      this.ammo = COMBAT.attackAmmoMax;
+      this.reloadEndsAt = 0;
+    }
+  }
+
+  ammoDisplay(now: number): { current: number; max: number; reloading: boolean; reloadRatio: number } {
+    this.tickAmmo(now);
+    if (this.isReloading(now)) {
+      const remaining = this.reloadEndsAt - now;
+      const recovered = 1 - remaining / COMBAT.attackReloadMs;
+      return {
+        current: Math.min(COMBAT.attackAmmoMax, Math.floor(recovered * COMBAT.attackAmmoMax)),
+        max: COMBAT.attackAmmoMax,
+        reloading: true,
+        reloadRatio: Phaser.Math.Clamp(recovered, 0, 1),
+      };
+    }
+    return {
+      current: this.ammo,
+      max: COMBAT.attackAmmoMax,
+      reloading: false,
+      reloadRatio: 1,
+    };
+  }
+
   trySpendStamina(cost: number, now: number): boolean {
+    if (cost <= 0) {
+      return true;
+    }
     if (this.stamina < cost) {
       this.staminaDeniedAt = now;
       return false;

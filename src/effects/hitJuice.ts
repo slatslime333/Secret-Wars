@@ -37,8 +37,8 @@ export const playHitJuice = (
         : String(options.damage);
   spawnDamagePop(scene, x, y - 18, label, color);
   scene.cameras.main.shake(
-    clash ? 140 : finisher ? 160 : blocked ? 80 : 100,
-    clash ? 0.012 : finisher ? 0.014 : 0.008,
+    clash ? 140 : perfect ? 200 : finisher ? 160 : blocked ? 80 : 110,
+    clash ? 0.012 : perfect ? 0.016 : finisher ? 0.014 : 0.009,
   );
 };
 

@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { NINJA } from '../config/ninja';
-import { COMBAT } from '../config/combat';
 import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { NinjaBody } from '../heroes/NinjaBody';
@@ -9,6 +8,8 @@ import { COLORS, FONTS, hex } from './theme';
 export class BattleHud {
   private readonly ninjaFill: Phaser.GameObjects.Rectangle;
   private readonly staminaFill: Phaser.GameObjects.Rectangle;
+  private readonly ammoFill: Phaser.GameObjects.Rectangle;
+  private readonly ammoText: Phaser.GameObjects.Text;
   private readonly foeFill: Phaser.GameObjects.Rectangle;
   private readonly foeStaminaFill: Phaser.GameObjects.Rectangle;
   private readonly foeBar: Phaser.GameObjects.Container;
@@ -26,6 +27,24 @@ export class BattleHud {
     this.staminaFill = scene.add.rectangle(36, 70, 224, 8, COLORS.cyan).setOrigin(0, 0.5);
     this.staminaFill.setScrollFactor(0).setDepth(102);
 
+    scene.add.rectangle(148, 84, 224, 6, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
+    this.ammoFill = scene.add.rectangle(36, 84, 224, 6, COLORS.orange).setOrigin(0, 0.5);
+    this.ammoFill.setScrollFactor(0).setDepth(102);
+
+    this.ammoText = scene.add
+      .text(36, 94, 'ATTACK 10/10', {
+        fontFamily: FONTS.body,
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: hex(COLORS.paper),
+        letterSpacing: 2,
+        stroke: hex(COLORS.ink),
+        strokeThickness: 4,
+      })
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(102);
+
     this.comboText = scene.add
       .text(width / 2, 22, '', {
         fontFamily: FONTS.display,
@@ -40,7 +59,7 @@ export class BattleHud {
       .setDepth(102);
 
     this.verbText = scene.add
-      .text(width - 30, 82, 'K BLOCK   L DASH', {
+      .text(width - 30, 82, 'HOLD K SHIELD   L DASH 3/3', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -89,6 +108,12 @@ export class BattleHud {
     this.staminaFill.width = 224 * (ninja.stamina / NINJA.maxStamina);
     this.staminaFill.setFillStyle(ninja.staminaDeniedRecently(now) ? COLORS.orange : COLORS.cyan);
 
+    const ammo = ninja.ammoDisplay(now);
+    this.ammoFill.width = 224 * (ammo.reloading ? ammo.reloadRatio : ammo.current / ammo.max);
+    this.ammoFill.setFillStyle(ammo.reloading ? COLORS.yellow : COLORS.orange);
+    this.ammoText.setText(`ATTACK ${ammo.reloading ? 0 : ammo.current}/${ammo.max}`);
+    this.ammoText.setColor(hex(ammo.reloading ? COLORS.yellow : COLORS.paper));
+
     if (!rival) {
       this.foeBar.setVisible(false);
     } else {
@@ -100,13 +125,11 @@ export class BattleHud {
 
     this.comboText.setText(comboLabel(comboStep));
     this.comboText.setColor(hex(comboStep === 3 ? COLORS.yellow : COLORS.orange));
-    const blockCd = block.cooldownRatio(now);
-    const dashCd = dash.cooldownRatio(now);
-    const dashSeconds = Math.ceil(COMBAT.dashCooldownMs / 1000);
-    const blockSeconds = Math.ceil(COMBAT.blockCooldownMs / 1000);
-    const blockBit = block.isActive(now) ? 'BLOCKING' : blockCd > 0 ? `K ${Math.ceil(blockCd * blockSeconds)}s` : 'K BLOCK';
-    const dashBit = dash.isActive(now) ? 'DASHING' : dashCd > 0 ? `L ${Math.ceil(dashCd * dashSeconds)}s` : 'L DASH';
-    this.verbText.setText(`${blockBit}   ${dashBit}`);
+    const shieldBit = block.isActive(now) ? (block.isPerfect(now) ? 'PERFECT' : 'SHIELD') : 'HOLD K SHIELD';
+    const dashBit = dash.isActive(now)
+      ? 'DASHING'
+      : `L DASH ${dash.chargeCount}/${dash.maxCharges}`;
+    this.verbText.setText(`${shieldBit}   ${dashBit}`);
   }
 }
 
