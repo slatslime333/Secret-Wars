@@ -11,7 +11,9 @@ import { NinjaBody } from '../heroes/NinjaBody';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
 import { BattleHud } from '../ui/BattleHud';
-import { createArena } from '../ui/createArena';
+import { createGrassyArena } from '../ui/createGrassyArena';
+// Saved for later map selection:
+// import { createArena } from '../ui/createArena';
 import { RoundOverlay } from '../ui/RoundOverlay';
 import { COLORS, FONTS, GAME_WIDTH, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
@@ -36,7 +38,8 @@ export class BattleScene extends Phaser.Scene {
 
   create(): void {
     this.returning = false;
-    createArena(this);
+    // Current primary map is the pixelated grassy field (saving tech arena in createArena.ts for later map selection).
+    createGrassyArena(this);
     this.physics.world.setBounds(
       ARENA.wallThickness,
       ARENA.wallThickness,

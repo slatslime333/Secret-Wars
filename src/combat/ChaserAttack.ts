@@ -47,6 +47,7 @@ export class ChaserAttack {
     }
     this.pending = false;
     this.readyAt = now + CHASER.attackCooldownMs;
+    chaser.playAttackAnimation(now);
     this.flashSlash(chaser);
     this.tryHit(chaser, ninja, block, now);
   }

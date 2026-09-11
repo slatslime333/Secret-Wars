@@ -16,13 +16,15 @@ import { COLORS } from '../ui/theme';
 /**
  * Hold = repeating light swings. Distinct taps within the combo window
  * step 1 → 2 → finisher. The third hit is the only heavier attack.
+ *
+ * Ninja performs a physical forward lunge/swipe in the attack direction with his
+ * sword, accompanied by a clean razor-sharp white line slice animation tracing the arc.
  */
 export class QuickAttack {
   private nextSwingAt = 0;
   private pendingTaps = 0;
   private lastPendingAt = 0;
   private wasHeld = false;
-  private slash?: Phaser.GameObjects.Graphics;
   private readonly combo = new ComboTracker();
 
   constructor(
@@ -81,7 +83,13 @@ export class QuickAttack {
     }
 
     this.nextSwingAt = now + NINJA.attackCooldownMs;
-    this.flashSlash(ninja, finisher);
+
+    // Physical player model lunge and sword swing animation
+    ninja.playAttackAnimation(now, finisher);
+
+    // White line slice animation tracing the blade arc in attack direction
+    this.spawnWhiteLineSlice(ninja, finisher);
+
     this.tryHit(ninja, dummy, finisher);
     if (finisher) {
       this.combo.reset();
@@ -122,26 +130,78 @@ export class QuickAttack {
     playHitJuice(this.scene, dummy.x, dummy.y, { damage, finisher });
   }
 
-  private flashSlash(ninja: NinjaBody, finisher: boolean): void {
-    this.slash?.destroy();
-    const graphics = this.scene.add.graphics().setDepth(13);
-    const angle = Math.atan2(ninja.aim.y, ninja.aim.x);
-    const half = finisher ? attackHalfArcRad * 1.25 : attackHalfArcRad;
-    graphics.setPosition(ninja.x, ninja.y);
-    graphics.lineStyle(finisher ? 10 : 6, finisher ? COLORS.yellow : COLORS.paper, 0.95);
-    graphics.beginPath();
-    graphics.arc(0, 0, NINJA.attackRange * (finisher ? 0.95 : 0.82), angle - half, angle + half);
-    graphics.strokePath();
-    graphics.lineStyle(finisher ? 5 : 3, COLORS.orange, 1);
-    graphics.beginPath();
-    graphics.arc(0, 0, NINJA.attackRange * (finisher ? 0.8 : 0.7), angle - half, angle + half);
-    graphics.strokePath();
-    this.slash = graphics;
-    this.scene.time.delayedCall(finisher ? 180 : 140, () => {
-      graphics.destroy();
-      if (this.slash === graphics) {
-        this.slash = undefined;
-      }
+  /**
+   * Spawns a crisp, high-impact white line slice arc in the aimed direction,
+   * sweeping across the hit cone as Ninja swings his sword.
+   */
+  private spawnWhiteLineSlice(ninja: NinjaBody, finisher: boolean): void {
+    const graphics = this.scene.add.graphics().setDepth(20);
+    const originX = ninja.x;
+    const originY = ninja.y;
+    const aimAngle = Math.atan2(ninja.aim.y, ninja.aim.x);
+    const half = finisher ? attackHalfArcRad * 1.3 : attackHalfArcRad * 1.1;
+    const startAngle = aimAngle - half;
+    const totalArc = half * 2;
+    const radius = NINJA.attackRange * (finisher ? 1.05 : 0.95);
+    const duration = finisher ? 220 : 180;
+
+    const anim = { sweepProgress: 0, alpha: 1 };
+    graphics.setPosition(originX, originY);
+
+    this.scene.tweens.add({
+      targets: anim,
+      sweepProgress: 1,
+      duration: duration * 0.5,
+      ease: 'Cubic.Out',
+      onUpdate: () => {
+        graphics.clear();
+        const currentEndAngle = startAngle + totalArc * anim.sweepProgress;
+        const trailStartAngle = Math.max(startAngle, currentEndAngle - totalArc * 0.75);
+
+        // Broad white glow arc
+        graphics.lineStyle(finisher ? 12 : 8, 0xffffff, 0.55 * anim.alpha);
+        graphics.beginPath();
+        graphics.arc(0, 0, radius, trailStartAngle, currentEndAngle);
+        graphics.strokePath();
+
+        // Thick vivid pure white line slice
+        graphics.lineStyle(finisher ? 6 : 4, 0xffffff, 1 * anim.alpha);
+        graphics.beginPath();
+        graphics.arc(0, 0, radius, trailStartAngle, currentEndAngle);
+        graphics.strokePath();
+
+        // Second inner parallel white slash line for comic energy feel
+        graphics.lineStyle(finisher ? 3 : 2, 0xffffff, 0.9 * anim.alpha);
+        graphics.beginPath();
+        graphics.arc(0, 0, radius - 6, trailStartAngle, currentEndAngle);
+        graphics.strokePath();
+
+        // Third inner white slash line for finisher
+        if (finisher) {
+          graphics.lineStyle(2, 0xffffff, 0.85 * anim.alpha);
+          graphics.beginPath();
+          graphics.arc(0, 0, radius - 12, trailStartAngle, currentEndAngle);
+          graphics.strokePath();
+        }
+
+        // White slash spark tip at leading edge
+        const tipX = Math.cos(currentEndAngle) * radius;
+        const tipY = Math.sin(currentEndAngle) * radius;
+        graphics.fillStyle(0xffffff, 1 * anim.alpha);
+        graphics.fillCircle(tipX, tipY, finisher ? 5 : 3.5);
+      },
+    });
+
+    // Fade out and clean up
+    this.scene.tweens.add({
+      targets: anim,
+      alpha: 0,
+      delay: duration * 0.45,
+      duration: duration * 0.55,
+      ease: 'Quad.In',
+      onComplete: () => {
+        graphics.destroy();
+      },
     });
   }
 }

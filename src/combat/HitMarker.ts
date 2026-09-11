@@ -23,7 +23,7 @@ export class HitMarker {
     const range = NINJA.attackRange;
     const angle = Math.atan2(aimY, aimX);
     const half = attackHalfArcRad;
-    const accent = this.attacking ? COLORS.orange : COLORS.cyan;
+    const accent = COLORS.cyan;
     const g = this.graphics;
     g.clear();
     g.setPosition(x, y);
@@ -37,13 +37,14 @@ export class HitMarker {
       g.strokePath();
     }
 
-    g.fillStyle(accent, this.attacking ? 0.28 : 0.12);
+    g.fillStyle(accent, this.attacking ? 0.14 : 0.1);
     g.beginPath();
     g.moveTo(0, 0);
     g.arc(0, 0, range, angle - half, angle + half);
     g.closePath();
     g.fillPath();
-    g.lineStyle(3, accent, 0.9);
+    // Subdued reticle stroke during attack so the dynamic white line slice takes center stage
+    g.lineStyle(1.5, accent, this.attacking ? 0.25 : 0.65);
     g.beginPath();
     g.arc(0, 0, range, angle - half, angle + half);
     g.strokePath();
