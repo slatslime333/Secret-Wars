@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COMBAT } from '../config/combat';
 import { INPUT } from '../config/input';
+import { isTouchPrimary } from '../device';
 import { CombatButton } from '../ui/CombatButton';
 import { COLORS } from '../ui/theme';
 import { VirtualThumbstick } from './VirtualThumbstick';
@@ -49,7 +50,7 @@ export class BattleInput {
   constructor(scene: Phaser.Scene, isRoundLocked: () => boolean = () => false) {
     this.scene = scene;
     this.isRoundLocked = isRoundLocked;
-    this.touch = scene.sys.game.device.input.touch;
+    this.touch = isTouchPrimary();
 
     if (this.touch) {
       const width = scene.scale.width;

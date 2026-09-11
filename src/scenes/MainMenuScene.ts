@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { isTouchPrimary } from '../device';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
 import { createLogo } from '../ui/createLogo';
@@ -103,7 +104,7 @@ export class MainMenuScene extends Phaser.Scene {
         }),
       ];
 
-      if (!this.sys.game.device.input.touch) {
+      if (!isTouchPrimary()) {
         this.buttons.push(
           new ActionButton(this, width / 2, startY + 154, {
             label: 'EXIT',
@@ -131,7 +132,7 @@ export class MainMenuScene extends Phaser.Scene {
         }),
       ];
 
-      if (!this.sys.game.device.input.touch) {
+      if (!isTouchPrimary()) {
         this.buttons.push(
           new ActionButton(this, leftCenterX + 9, 454, {
             label: 'EXIT',
@@ -280,7 +281,7 @@ export class MainMenuScene extends Phaser.Scene {
 
   private createFooter(width: number, height: number): void {
     this.add
-      .text(28, height - 17, '↑↓ SELECT   ENTER CONFIRM', {
+      .text(28, height - 17, isTouchPrimary() ? 'TAP TO SELECT' : '↑↓ SELECT   ENTER CONFIRM', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',

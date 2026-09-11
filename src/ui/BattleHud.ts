@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { NINJA } from '../config/ninja';
 import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
+import { isTouchPrimary } from '../device';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { COLORS, FONTS, hex } from './theme';
 
@@ -16,8 +17,10 @@ export class BattleHud {
   private readonly comboText: Phaser.GameObjects.Text;
   private readonly verbText: Phaser.GameObjects.Text;
   private readonly foeCaption: Phaser.GameObjects.Text;
+  private readonly touch: boolean;
 
   constructor(scene: Phaser.Scene) {
+    this.touch = isTouchPrimary();
     const width = scene.scale.width;
     scene.add.rectangle(148, 56, 224, 10, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
     this.ninjaFill = scene.add.rectangle(36, 56, 224, 10, COLORS.redBright).setOrigin(0, 0.5);
@@ -59,7 +62,7 @@ export class BattleHud {
       .setDepth(102);
 
     this.verbText = scene.add
-      .text(width - 30, 82, 'HOLD K SHIELD   L DASH 3/3', {
+      .text(width - 30, 82, this.touch ? 'HOLD SHIELD   DASH 3/3' : 'HOLD K SHIELD   L DASH 3/3', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -125,10 +128,13 @@ export class BattleHud {
 
     this.comboText.setText(comboLabel(comboStep));
     this.comboText.setColor(hex(comboStep === 3 ? COLORS.yellow : COLORS.orange));
-    const shieldBit = block.isActive(now) ? (block.isPerfect(now) ? 'PERFECT' : 'SHIELD') : 'HOLD K SHIELD';
+    const idleShield = this.touch ? 'HOLD SHIELD' : 'HOLD K SHIELD';
+    const shieldBit = block.isActive(now) ? (block.isPerfect(now) ? 'PERFECT' : 'SHIELD') : idleShield;
     const dashBit = dash.isActive(now)
       ? 'DASHING'
-      : `L DASH ${dash.chargeCount}/${dash.maxCharges}`;
+      : this.touch
+        ? `DASH ${dash.chargeCount}/${dash.maxCharges}`
+        : `L DASH ${dash.chargeCount}/${dash.maxCharges}`;
     this.verbText.setText(`${shieldBit}   ${dashBit}`);
   }
 }
