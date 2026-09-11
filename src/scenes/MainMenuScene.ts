@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
 import { createLogo } from '../ui/createLogo';
-import { COLORS, FONTS, GAME_HEIGHT, GAME_WIDTH, hex } from '../ui/theme';
+import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
 
 export class MainMenuScene extends Phaser.Scene {
@@ -18,24 +18,62 @@ export class MainMenuScene extends Phaser.Scene {
     this.leaving = false;
     createBackdrop(this, { accent: COLORS.cyan, embers: true });
     this.cameras.main.fadeIn(260, 7, 10, 18);
-    this.createHeader();
-    this.createMissionCard();
-    this.createNavigation();
-    this.createFooter();
+
+    const width = this.scale.width;
+    const height = this.scale.height;
+    const isPortrait = width < height;
+
+    this.createHeader(width, isPortrait);
+    this.createMissionCard(width, isPortrait);
+    this.createNavigation(width, isPortrait);
+    this.createFooter(width, height);
     this.bindKeyboard();
+
+    const onResize = () => {
+      if (!this.leaving) {
+        this.scene.restart();
+      }
+    };
+    this.scale.on(Phaser.Scale.Events.RESIZE, onResize);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, onResize);
+    });
   }
 
-  private createHeader(): void {
-    createLogo(this, 185, 107, 0.43);
+  private createHeader(width: number, isPortrait: boolean): void {
+    if (isPortrait) {
+      createLogo(this, width / 2, 75, 0.40);
+      const barW = Math.min(360, width - 60);
+      const startX = (width - barW) / 2;
+      const graphics = this.add.graphics();
+      graphics.fillStyle(COLORS.cyan);
+      graphics.fillRect(startX, 135, barW * 0.8, 4);
+      graphics.fillStyle(COLORS.redBright);
+      graphics.fillRect(startX + barW * 0.8, 135, barW * 0.2, 4);
+
+      this.add
+        .text(width / 2, 146, 'COMMAND SCREEN', {
+          fontFamily: FONTS.body,
+          fontSize: '12px',
+          fontStyle: 'bold',
+          color: hex(COLORS.muted),
+          letterSpacing: 4,
+        })
+        .setOrigin(0.5, 0);
+      return;
+    }
+
+    const leftCenterX = Math.max(185, Math.min(220, width * 0.22));
+    createLogo(this, leftCenterX, 107, 0.43);
 
     const graphics = this.add.graphics();
     graphics.fillStyle(COLORS.cyan);
-    graphics.fillRect(30, 177, 318, 4);
+    graphics.fillRect(leftCenterX - 155, 177, 318, 4);
     graphics.fillStyle(COLORS.redBright);
-    graphics.fillRect(348, 177, 68, 4);
+    graphics.fillRect(leftCenterX + 163, 177, 68, 4);
 
     this.add
-      .text(34, 190, 'COMMAND SCREEN', {
+      .text(leftCenterX - 151, 190, 'COMMAND SCREEN', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
@@ -45,52 +83,96 @@ export class MainMenuScene extends Phaser.Scene {
       .setOrigin(0, 0);
   }
 
-  private createNavigation(): void {
-    this.buttons = [
-      new ActionButton(this, 210, 286, {
-        label: 'PLAY',
-        width: 330,
-        height: 78,
-        primary: true,
-        onPress: () => this.openBattle(),
-      }),
-      new ActionButton(this, 202, 378, {
-        label: 'SETTINGS',
-        width: 290,
-        height: 58,
-        onPress: () => this.openSettings(),
-      }),
-    ];
-
-    if (!this.sys.game.device.input.touch) {
-      this.buttons.push(
-        new ActionButton(this, 194, 454, {
-          label: 'EXIT',
-          width: 250,
-          height: 48,
-          onPress: () => this.exitGame(),
+  private createNavigation(width: number, isPortrait: boolean): void {
+    if (isPortrait) {
+      const startY = 535;
+      const btnW = Math.min(340, width - 60);
+      this.buttons = [
+        new ActionButton(this, width / 2, startY, {
+          label: 'PLAY',
+          width: btnW,
+          height: 72,
+          primary: true,
+          onPress: () => this.openBattle(),
         }),
-      );
+        new ActionButton(this, width / 2, startY + 84, {
+          label: 'SETTINGS',
+          width: btnW - 30,
+          height: 56,
+          onPress: () => this.openSettings(),
+        }),
+      ];
+
+      if (!this.sys.game.device.input.touch) {
+        this.buttons.push(
+          new ActionButton(this, width / 2, startY + 154, {
+            label: 'EXIT',
+            width: btnW - 60,
+            height: 46,
+            onPress: () => this.exitGame(),
+          }),
+        );
+      }
+    } else {
+      const leftCenterX = Math.max(185, Math.min(220, width * 0.22));
+      this.buttons = [
+        new ActionButton(this, leftCenterX + 25, 286, {
+          label: 'PLAY',
+          width: 330,
+          height: 78,
+          primary: true,
+          onPress: () => this.openBattle(),
+        }),
+        new ActionButton(this, leftCenterX + 17, 378, {
+          label: 'SETTINGS',
+          width: 290,
+          height: 58,
+          onPress: () => this.openSettings(),
+        }),
+      ];
+
+      if (!this.sys.game.device.input.touch) {
+        this.buttons.push(
+          new ActionButton(this, leftCenterX + 9, 454, {
+            label: 'EXIT',
+            width: 250,
+            height: 48,
+            onPress: () => this.exitGame(),
+          }),
+        );
+      }
     }
 
     this.focusIndex = 0;
     this.updateFocus();
   }
 
-  private createMissionCard(): void {
-    const x = 500;
-    const y = 85;
-    const width = 412;
-    const height = 370;
+  private createMissionCard(width: number, isPortrait: boolean): void {
+    let x: number;
+    let y: number;
+    let cardW: number;
+    let cardH: number;
+
+    if (isPortrait) {
+      cardW = Math.min(420, width - 40);
+      cardH = 340;
+      x = (width - cardW) / 2;
+      y = 175;
+    } else {
+      cardW = 412;
+      cardH = 370;
+      x = Math.max(480, width - cardW - 48);
+      y = 85;
+    }
     const graphics = this.add.graphics();
 
     graphics.fillStyle(COLORS.ink, 0.8);
     graphics.fillPoints(
       [
         new Phaser.Geom.Point(x + 12, y + 12),
-        new Phaser.Geom.Point(x + width + 12, y + 12),
-        new Phaser.Geom.Point(x + width - 30, y + height + 12),
-        new Phaser.Geom.Point(x - 24, y + height + 12),
+        new Phaser.Geom.Point(x + cardW + 12, y + 12),
+        new Phaser.Geom.Point(x + cardW - 30, y + cardH + 12),
+        new Phaser.Geom.Point(x - 24, y + cardH + 12),
       ],
       true,
     );
@@ -98,9 +180,9 @@ export class MainMenuScene extends Phaser.Scene {
     graphics.fillPoints(
       [
         new Phaser.Geom.Point(x, y),
-        new Phaser.Geom.Point(x + width, y),
-        new Phaser.Geom.Point(x + width - 42, y + height),
-        new Phaser.Geom.Point(x - 36, y + height),
+        new Phaser.Geom.Point(x + cardW, y),
+        new Phaser.Geom.Point(x + cardW - 42, y + cardH),
+        new Phaser.Geom.Point(x - 36, y + cardH),
       ],
       true,
     );
@@ -108,9 +190,9 @@ export class MainMenuScene extends Phaser.Scene {
     graphics.strokePoints(
       [
         new Phaser.Geom.Point(x, y),
-        new Phaser.Geom.Point(x + width, y),
-        new Phaser.Geom.Point(x + width - 42, y + height),
-        new Phaser.Geom.Point(x - 36, y + height),
+        new Phaser.Geom.Point(x + cardW, y),
+        new Phaser.Geom.Point(x + cardW - 42, y + cardH),
+        new Phaser.Geom.Point(x - 36, y + cardH),
       ],
       true,
     );
@@ -119,8 +201,8 @@ export class MainMenuScene extends Phaser.Scene {
     graphics.fillPoints(
       [
         new Phaser.Geom.Point(x, y),
-        new Phaser.Geom.Point(x + width, y),
-        new Phaser.Geom.Point(x + width - 10, y + 58),
+        new Phaser.Geom.Point(x + cardW, y),
+        new Phaser.Geom.Point(x + cardW - 10, y + 58),
         new Phaser.Geom.Point(x - 10, y + 58),
       ],
       true,
@@ -149,22 +231,22 @@ export class MainMenuScene extends Phaser.Scene {
       letterSpacing: 3,
     });
 
-    this.createTeamMarks(x + 28, y + 191);
+    this.createTeamMarks(x + 28, y + 185);
 
-    this.add.text(x + 28, y + 285, 'DEMO 1 DIRECTIVE', {
+    this.add.text(x + 28, y + 265, 'DEMO 1 DIRECTIVE', {
       fontFamily: FONTS.body,
       fontSize: '11px',
       fontStyle: 'bold',
       color: hex(COLORS.orange),
       letterSpacing: 3,
     });
-    this.add.text(x + 28, y + 308, 'Enter the pit. Fight a rival Ninja.', {
+    this.add.text(x + 28, y + 288, 'Enter the pit. Fight a rival Ninja.', {
       fontFamily: FONTS.body,
-      fontSize: '17px',
+      fontSize: '16px',
       fontStyle: 'bold',
       color: hex(COLORS.paper),
     });
-    this.add.text(x + 28, y + 335, 'Combo. Block. Dash. Restart.', {
+    this.add.text(x + 28, y + 312, 'Combo. Block. Dash. Restart.', {
       fontFamily: FONTS.body,
       fontSize: '13px',
       color: hex(COLORS.muted),
@@ -196,9 +278,9 @@ export class MainMenuScene extends Phaser.Scene {
     graphics.strokeTriangle(x + 242, y, x + 259, y + 34, x + 276, y);
   }
 
-  private createFooter(): void {
+  private createFooter(width: number, height: number): void {
     this.add
-      .text(28, GAME_HEIGHT - 17, '↑↓ SELECT   ENTER CONFIRM', {
+      .text(28, height - 17, '↑↓ SELECT   ENTER CONFIRM', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -208,7 +290,7 @@ export class MainMenuScene extends Phaser.Scene {
       .setOrigin(0, 1);
 
     this.add
-      .text(GAME_WIDTH - 28, GAME_HEIGHT - 17, 'BUILD 00.05 // DEMO 1 FIGHT', {
+      .text(width - 28, height - 17, 'BUILD 00.05 // DEMO 1 FIGHT', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -268,8 +350,10 @@ export class MainMenuScene extends Phaser.Scene {
 
   private exitGame(): void {
     window.close();
+    const width = this.scale.width;
+    const height = this.scale.height;
     this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'CLOSE THIS TAB TO EXIT', {
+      .text(width / 2, height / 2, 'CLOSE THIS TAB TO EXIT', {
         fontFamily: FONTS.display,
         fontSize: '22px',
         color: hex(COLORS.paper),

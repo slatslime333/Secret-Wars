@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, FONTS, GAME_HEIGHT, GAME_WIDTH, hex } from './theme';
+import { COLORS, FONTS, hex } from './theme';
 
 type RoundOverlayOptions = {
   onRestart: () => void;
@@ -29,13 +29,15 @@ export class RoundOverlay {
 
   private reveal(winner: 'ninja' | 'rival'): void {
     const win = winner === 'ninja';
+    const width = this.scene.scale.width;
+    const height = this.scene.scale.height;
     this.scene.add
-      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.ink, 0.62)
+      .rectangle(width / 2, height / 2, width, height, COLORS.ink, 0.62)
       .setScrollFactor(0)
       .setDepth(180);
 
     this.scene.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70, win ? 'KO' : 'DOWN', {
+      .text(width / 2, height / 2 - 70, win ? 'KO' : 'DOWN', {
         fontFamily: FONTS.display,
         fontSize: '54px',
         color: hex(win ? COLORS.yellow : COLORS.redBright),
@@ -48,7 +50,7 @@ export class RoundOverlay {
       .setDepth(181);
 
     this.scene.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 18, win ? 'NINJA WINS' : 'RIVAL WINS', {
+      .text(width / 2, height / 2 - 18, win ? 'NINJA WINS' : 'RIVAL WINS', {
         fontFamily: FONTS.body,
         fontSize: '16px',
         fontStyle: 'bold',
@@ -62,7 +64,7 @@ export class RoundOverlay {
       .setDepth(181);
 
     this.scene.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 126, 'R RESTART    ESC MENU', {
+      .text(width / 2, height / 2 + 126, 'R RESTART    ESC MENU', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
@@ -73,10 +75,10 @@ export class RoundOverlay {
       .setScrollFactor(0)
       .setDepth(181);
 
-    this.addTextButton(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 36, 'RESTART', COLORS.redBright, () =>
+    this.addTextButton(width / 2, height / 2 + 36, 'RESTART', COLORS.redBright, () =>
       this.options.onRestart(),
     );
-    this.addTextButton(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 88, 'MENU', COLORS.cyan, () => this.options.onMenu());
+    this.addTextButton(width / 2, height / 2 + 88, 'MENU', COLORS.cyan, () => this.options.onMenu());
     this.scene.cameras.main.flash(180, 246, 241, 222, false);
   }
 

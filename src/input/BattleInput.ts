@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { COMBAT } from '../config/combat';
 import { INPUT } from '../config/input';
 import { CombatButton } from '../ui/CombatButton';
-import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../ui/theme';
+import { COLORS } from '../ui/theme';
 import { VirtualThumbstick } from './VirtualThumbstick';
 
 export type BattleFrame = {
@@ -52,24 +52,36 @@ export class BattleInput {
     this.touch = scene.sys.game.device.input.touch;
 
     if (this.touch) {
-      this.leftStick = new VirtualThumbstick(scene, 108, GAME_HEIGHT - 108, {
+      const width = scene.scale.width;
+      const height = scene.scale.height;
+      const isPortrait = width < height;
+      const bottomInset = isPortrait ? 130 : 108;
+      const sideInset = 108;
+
+      this.leftStick = new VirtualThumbstick(scene, sideInset, height - bottomInset, {
         label: 'MOVE',
         accent: COLORS.cyan,
         radius: INPUT.stickRadius,
       });
-      this.rightStick = new VirtualThumbstick(scene, GAME_WIDTH - 108, GAME_HEIGHT - 108, {
+      this.rightStick = new VirtualThumbstick(scene, width - sideInset, height - bottomInset, {
         label: 'AIM',
         accent: COLORS.redBright,
         radius: INPUT.stickRadius,
       });
-      this.blockButton = new CombatButton(scene, GAME_WIDTH - 186, GAME_HEIGHT - 228, {
+
+      const blockX = width - (isPortrait ? 170 : 186);
+      const blockY = height - (isPortrait ? bottomInset + 100 : 228);
+      const dashX = width - (isPortrait ? 80 : 86);
+      const dashY = height - (isPortrait ? bottomInset + 100 : 228);
+
+      this.blockButton = new CombatButton(scene, blockX, blockY, {
         label: 'BLOCK',
         accent: COLORS.cyan,
         onPress: () => {
           this.blockLatched = true;
         },
       });
-      this.dashButton = new CombatButton(scene, GAME_WIDTH - 86, GAME_HEIGHT - 228, {
+      this.dashButton = new CombatButton(scene, dashX, dashY, {
         label: 'DASH',
         accent: COLORS.orange,
         onPress: () => {
@@ -115,6 +127,26 @@ export class BattleInput {
     if (pointer.leftButtonDown()) {
       this.attackLatched = true;
     }
+  }
+
+  layout(width: number, height: number): void {
+    if (!this.touch) {
+      return;
+    }
+    const isPortrait = width < height;
+    const bottomInset = isPortrait ? 130 : 108;
+    const sideInset = 108;
+
+    this.leftStick?.setPosition(sideInset, height - bottomInset);
+    this.rightStick?.setPosition(width - sideInset, height - bottomInset);
+
+    const blockX = width - (isPortrait ? 170 : 186);
+    const blockY = height - (isPortrait ? bottomInset + 100 : 228);
+    const dashX = width - (isPortrait ? 80 : 86);
+    const dashY = height - (isPortrait ? bottomInset + 100 : 228);
+
+    this.blockButton?.setPosition(blockX, blockY);
+    this.dashButton?.setPosition(dashX, dashY);
   }
 
   sample(originX: number, originY: number): BattleFrame {

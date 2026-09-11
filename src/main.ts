@@ -7,20 +7,19 @@ import { BootScene } from './scenes/BootScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { SettingsScene } from './scenes/SettingsScene';
 import { TitleScene } from './scenes/TitleScene';
-import { GAME_HEIGHT, GAME_WIDTH } from './ui/theme';
+import { getGameSize } from './ui/theme';
 
-// The game is built for a fixed 16:9 landscape canvas (960x540).
-// Phaser FIT scaling letterboxes it on other aspect ratios, and a mobile
-// overlay prompts touch-first users to rotate to landscape.
 initOrientationHandling();
 audioSettings.load();
 
-new Phaser.Game({
+const initialSize = getGameSize();
+
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   backgroundColor: '#070a12',
-  width: GAME_WIDTH,
-  height: GAME_HEIGHT,
+  width: initialSize.width,
+  height: initialSize.height,
   pixelArt: true,
   antialias: false,
   roundPixels: true,
@@ -39,4 +38,20 @@ new Phaser.Game({
     },
   },
   scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, BattleScene],
+});
+
+const onWindowResize = () => {
+  const newSize = getGameSize();
+  if (game.scale.width !== newSize.width || game.scale.height !== newSize.height) {
+    game.scale.resize(newSize.width, newSize.height);
+  }
+};
+
+window.addEventListener('resize', onWindowResize);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', onWindowResize);
+}
+window.addEventListener('orientationchange', () => {
+  setTimeout(onWindowResize, 100);
+  setTimeout(onWindowResize, 300);
 });
