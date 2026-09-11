@@ -58,6 +58,8 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.fadeIn(220, 7, 10, 18);
 
     this.createChrome();
+    this.game.canvas.setAttribute('tabindex', '0');
+    this.game.canvas.focus();
     this.input.keyboard?.on('keydown-ESC', this.returnToMenu, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off('keydown-ESC', this.returnToMenu, this);

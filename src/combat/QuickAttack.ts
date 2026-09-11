@@ -16,6 +16,8 @@ import { COLORS } from '../ui/theme';
  */
 export class QuickAttack {
   private nextSwingAt = 0;
+  private pendingTaps = 0;
+  private lastPendingAt = 0;
   private slash?: Phaser.GameObjects.Graphics;
   private readonly combo = new ComboTracker();
 
@@ -36,12 +38,21 @@ export class QuickAttack {
     dummy: DummyTarget,
   ): void {
     this.combo.expire(now, COMBAT.comboWindowMs);
-    this.marker.setAttacking(held && ninja.stamina >= COMBAT.attackStaminaCost);
-    if (!held || now < this.nextSwingAt) {
+    if (pressed) {
+      this.pendingTaps = Math.min(3, this.pendingTaps + 1);
+      this.lastPendingAt = now;
+    }
+    if (this.pendingTaps > 0 && now - this.lastPendingAt > COMBAT.comboWindowMs) {
+      this.pendingTaps = 0;
+    }
+
+    const tapQueued = this.pendingTaps > 0;
+    this.marker.setAttacking((held || tapQueued) && ninja.stamina >= COMBAT.attackStaminaCost);
+    if ((!held && !tapQueued) || now < this.nextSwingAt) {
       return;
     }
 
-    const step = pressed ? this.combo.preview(now, COMBAT.comboWindowMs) : 1;
+    const step = tapQueued ? this.combo.preview(now, COMBAT.comboWindowMs) : 1;
     const finisher = step === 3;
     const staminaCost = finisher
       ? Math.round(COMBAT.attackStaminaCost * COMBAT.comboFinisherStaminaMultiplier)
@@ -49,8 +60,9 @@ export class QuickAttack {
     if (!ninja.trySpendStamina(staminaCost, now)) {
       return;
     }
-    if (pressed) {
+    if (tapQueued) {
       this.combo.tap(now, COMBAT.comboWindowMs);
+      this.pendingTaps -= 1;
     }
 
     this.nextSwingAt = now + NINJA.attackCooldownMs;

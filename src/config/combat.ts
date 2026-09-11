@@ -1,6 +1,6 @@
 /**
  * Shared combat rules. Hero-specific power comes from `NINJA` (70/99).
- * Combo finisher, block, and dash timings are listed for Phase 3 — unused in Phase 2.
+ * Combo finisher, block, and dash timings are used in Phase 3.
  */
 export const COMBAT = {
   attackArcDegrees: 78,
