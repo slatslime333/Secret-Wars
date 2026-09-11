@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { ActionButton } from '../ui/ActionButton';
 import { createArena } from '../ui/createArena';
 import { COLORS, FONTS, GAME_WIDTH, hex } from '../ui/theme';
+import { fadeToScene } from './fadeToScene';
 
 /**
  * Phase 1 battle shell. PLAY lands here. Combat systems arrive in later phases.
@@ -72,7 +73,6 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     this.returning = true;
-    this.cameras.main.fadeOut(180, 7, 10, 18);
-    this.time.delayedCall(190, () => this.scene.start('MainMenu'));
+    fadeToScene(this, 'MainMenu');
   }
 }

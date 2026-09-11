@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { createBackdrop } from '../ui/createBackdrop';
 import { createLogo } from '../ui/createLogo';
 import { COLORS, FONTS, GAME_HEIGHT, GAME_WIDTH, hex } from '../ui/theme';
+import { fadeToScene } from './fadeToScene';
 
 export class TitleScene extends Phaser.Scene {
   private continuing = false;
@@ -79,8 +80,7 @@ export class TitleScene extends Phaser.Scene {
 
     this.continuing = true;
     this.cameras.main.flash(90, 246, 241, 222);
-    this.cameras.main.fadeOut(260, 7, 10, 18);
-    this.time.delayedCall(270, () => this.scene.start('MainMenu'));
+    fadeToScene(this, 'MainMenu', 260);
   }
 
   private createSlashAccents(): void {

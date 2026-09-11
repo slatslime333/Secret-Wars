@@ -3,6 +3,7 @@ import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
 import { createLogo } from '../ui/createLogo';
 import { COLORS, FONTS, GAME_HEIGHT, GAME_WIDTH, hex } from '../ui/theme';
+import { fadeToScene } from './fadeToScene';
 
 export class MainMenuScene extends Phaser.Scene {
   private buttons: ActionButton[] = [];
@@ -247,8 +248,7 @@ export class MainMenuScene extends Phaser.Scene {
       return;
     }
     this.leaving = true;
-    this.cameras.main.fadeOut(220, 7, 10, 18);
-    this.time.delayedCall(230, () => this.scene.start(sceneName));
+    fadeToScene(this, sceneName, 220);
   }
 
   private exitGame(): void {

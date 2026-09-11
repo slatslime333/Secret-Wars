@@ -10,6 +10,9 @@ type SettingSliderOptions = {
 
 /**
  * Chunk pixel slider for Settings. Value is 0–1.
+ *
+ * Pointer move/up are bound only while dragging so we never touch
+ * scene.input during scene shutdown (that crashed Settings → menu).
  */
 export class SettingSlider extends Phaser.GameObjects.Container {
   private readonly trackWidth = 360;
@@ -63,19 +66,19 @@ export class SettingSlider extends Phaser.GameObjects.Container {
     this.draw();
 
     this.on(Phaser.Input.Events.POINTER_DOWN, this.beginDrag, this);
-    scene.input.on(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
-    scene.input.on(Phaser.Input.Events.POINTER_UP, this.endDrag, this);
-    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.unbind, this);
+    this.once(Phaser.GameObjects.Events.DESTROY, this.stopListening, this);
 
     scene.add.existing(this);
   }
 
-  private unbind(): void {
-    this.scene.input.off(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
-    this.scene.input.off(Phaser.Input.Events.POINTER_UP, this.endDrag, this);
-  }
-
   private beginDrag(pointer: Phaser.Input.Pointer): void {
+    if (!this.scene?.input) {
+      return;
+    }
+    if (!this.dragging) {
+      this.scene.input.on(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
+      this.scene.input.on(Phaser.Input.Events.POINTER_UP, this.endDrag, this);
+    }
     this.dragging = true;
     this.applyPointer(pointer);
   }
@@ -91,7 +94,14 @@ export class SettingSlider extends Phaser.GameObjects.Container {
       return;
     }
     this.dragging = false;
+    this.stopListening();
     this.onRelease?.(this.value);
+  }
+
+  private stopListening(): void {
+    this.dragging = false;
+    this.scene?.input?.off(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
+    this.scene?.input?.off(Phaser.Input.Events.POINTER_UP, this.endDrag, this);
   }
 
   private applyPointer(pointer: Phaser.Input.Pointer): void {

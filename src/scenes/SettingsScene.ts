@@ -5,6 +5,7 @@ import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
 import { SettingSlider } from '../ui/SettingSlider';
 import { COLORS, FONTS, GAME_HEIGHT, hex } from '../ui/theme';
+import { fadeToScene } from './fadeToScene';
 
 export class SettingsScene extends Phaser.Scene {
   private returning = false;
@@ -190,7 +191,6 @@ export class SettingsScene extends Phaser.Scene {
       return;
     }
     this.returning = true;
-    this.cameras.main.fadeOut(180, 7, 10, 18);
-    this.time.delayedCall(190, () => this.scene.start('MainMenu'));
+    fadeToScene(this, 'MainMenu');
   }
 }
