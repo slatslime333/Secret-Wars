@@ -21,6 +21,7 @@ export class NinjaBody {
   readonly aim = new Phaser.Math.Vector2(1, 0);
   private facing: CardinalFacing = 'east';
   private readonly art: Phaser.GameObjects.Graphics;
+  private readonly scene: Phaser.Scene;
   private staminaLockUntil = 0;
   private staminaDeniedAt = 0;
   private invulnerableUntil = 0;
@@ -29,6 +30,7 @@ export class NinjaBody {
   private lastDrawnFlash = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: NinjaBodyOptions = {}) {
+    this.scene = scene;
     this.rival = Boolean(options.rival);
     ensureBodyTexture(scene);
     this.sprite = scene.physics.add.image(x, y, BODY_TEXTURE);
@@ -64,17 +66,24 @@ export class NinjaBody {
     return this.health <= 0;
   }
 
+  private now(): number {
+    return this.scene.time.now;
+  }
+
   syncView(): void {
+    if (!this.view.active || !this.sprite.active) {
+      return;
+    }
     this.view.setPosition(this.sprite.x, this.sprite.y);
-    const flashing = this.status.isFlashingHit(this.view.scene.time.now);
-    if (flashing !== this.lastDrawnFlash && this.view.scene.time.now >= this.attackingUntil) {
+    const flashing = this.status.isFlashingHit(this.now());
+    if (flashing !== this.lastDrawnFlash && this.now() >= this.attackingUntil) {
       this.lastDrawnFlash = flashing;
       this.redrawIdle();
     }
   }
 
   applyMove(move: Phaser.Math.Vector2): void {
-    const now = this.view.scene.time.now;
+    const now = this.now();
     const speed = NINJA.moveSpeed * this.status.moveMultiplier(now);
     this.body.setVelocity(move.x * speed, move.y * speed);
   }
@@ -95,7 +104,7 @@ export class NinjaBody {
     if (this.down) {
       return;
     }
-    const now = this.view.scene.time.now;
+    const now = this.now();
     this.health = Math.max(0, this.health - options.damage);
     this.drainStamina(options.staminaDamage, now);
     const length = Math.hypot(options.dirX, options.dirY) || 1;
@@ -108,7 +117,7 @@ export class NinjaBody {
     this.lastDrawnFlash = true;
     this.redrawIdle();
     this.view.setScale(options.step === 3 ? 1.22 : 1.12);
-    this.view.scene.tweens.add({
+    this.scene.tweens.add({
       targets: this.view,
       scale: 1,
       duration: options.step === 3 ? 150 : 110,
@@ -146,7 +155,7 @@ export class NinjaBody {
     const next = facingFromAim(this.aim.x, this.aim.y);
     if (next !== this.facing) {
       this.facing = next;
-      if (this.view.scene.time.now >= this.attackingUntil) {
+      if (this.now() >= this.attackingUntil) {
         this.redrawIdle();
       }
     }
@@ -170,7 +179,7 @@ export class NinjaBody {
 
     this.currentAttackTween?.stop();
     const swordAnimState = { angleOffset: startAngle, lungeFrac: 0 };
-    this.currentAttackTween = this.view.scene.tweens.add({
+    this.currentAttackTween = this.scene.tweens.add({
       targets: swordAnimState,
       angleOffset: endAngle,
       lungeFrac: 1,
@@ -183,7 +192,7 @@ export class NinjaBody {
           attacking: true,
           swordAngleOffset: swordAnimState.angleOffset,
           comboStep,
-          hitFlash: this.status.isFlashingHit(this.view.scene.time.now),
+          hitFlash: this.status.isFlashingHit(this.now()),
           rival: this.rival,
         });
         this.art.setPosition(
@@ -209,7 +218,7 @@ export class NinjaBody {
     this.status.applyBlockStun(now, heavy ? COMBAT.blockStunHeavyMs : COMBAT.blockStunLightMs);
     this.applyRecoil(-this.aim.x, -this.aim.y, heavy ? 110 : 55);
     this.view.setRotation(this.aim.x >= 0 ? -0.18 : 0.18);
-    this.view.scene.tweens.add({
+    this.scene.tweens.add({
       targets: this.view,
       rotation: 0,
       duration: heavy ? 220 : 140,
@@ -261,7 +270,7 @@ export class NinjaBody {
       attacking: false,
       swordAngleOffset: 0,
       comboStep: 1,
-      hitFlash: this.status.isFlashingHit(this.view.scene.time.now),
+      hitFlash: this.status.isFlashingHit(this.now()),
       rival: this.rival,
     });
   }

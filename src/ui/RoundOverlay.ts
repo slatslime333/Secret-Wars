@@ -71,12 +71,14 @@ export class RoundOverlay {
       width: 240,
       height: 52,
       primary: true,
+      attachToScene: false,
       onPress: () => this.options.onRestart(),
     });
     const menu = new ActionButton(this.scene, 0, 92, {
       label: 'MENU',
       width: 200,
       height: 44,
+      attachToScene: false,
       onPress: () => this.options.onMenu(),
     });
 

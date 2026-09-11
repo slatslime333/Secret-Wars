@@ -77,7 +77,7 @@ export class RivalBrain {
     distance: number,
     inRange: boolean,
   ): void {
-    this.nextDecisionAt = now + 160 + Math.random() * 220;
+    this.nextDecisionAt = now + 280 + Math.random() * 320;
     const playerSwinging = now - player.status.lastAttackAt < 180;
     const recentlyHit = cpu.status.isHitReacting(now);
     const roll = Math.random();
@@ -103,10 +103,10 @@ export class RivalBrain {
     }
 
     if (inRange) {
-      if (roll < 0.12) {
+      if (roll < 0.38) {
         return;
       }
-      this.queueAttack(now, roll > 0.55);
+      this.queueAttack(now, roll > 0.72);
       return;
     }
 
@@ -120,7 +120,7 @@ export class RivalBrain {
       this.tapQueued = true;
       this.holdUntil = now + 90;
     } else {
-      this.holdUntil = now + 240 + Math.random() * 180;
+      this.holdUntil = now + 140 + Math.random() * 120;
     }
   }
 

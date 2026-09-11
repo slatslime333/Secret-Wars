@@ -64,7 +64,11 @@ export class BattleScene extends Phaser.Scene {
       cpuPresent: () => Boolean(this.rival),
     });
 
-    this.spawnCpu();
+    this.time.delayedCall(1200, () => {
+      if (!this.returning) {
+        this.spawnCpu();
+      }
+    });
 
     this.cameras.main.setBounds(0, 0, ARENA.width, ARENA.height);
     this.cameras.main.startFollow(this.ninja.sprite, true, 0.16, 0.16);
