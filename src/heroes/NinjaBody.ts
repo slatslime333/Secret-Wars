@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { NINJA } from '../config/ninja';
 import { COMBAT } from '../config/combat';
+import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
 
 export class NinjaBody {
+  readonly sprite: Phaser.Physics.Arcade.Image;
   readonly view: Phaser.GameObjects.Container;
-  readonly body: Phaser.Physics.Arcade.Body;
   health = NINJA.maxHealth;
   stamina = NINJA.maxStamina;
   readonly aim = new Phaser.Math.Vector2(1, 0);
@@ -14,27 +15,34 @@ export class NinjaBody {
   private staminaLockUntil = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    this.view = scene.add.container(x, y);
-    this.view.setSize(NINJA.bodyRadius * 2, NINJA.bodyRadius * 2);
-    this.view.setDepth(10);
+    ensureBodyTexture(scene);
+    this.sprite = scene.physics.add.image(x, y, BODY_TEXTURE);
+    this.sprite.setAlpha(0);
+    this.sprite.setCircle(NINJA.bodyRadius);
+    this.sprite.setCollideWorldBounds(true);
+    this.sprite.setMaxVelocity(NINJA.moveSpeed, NINJA.moveSpeed);
+    this.sprite.setDepth(10);
+
+    this.view = scene.add.container(x, y).setDepth(10);
     this.art = scene.add.graphics();
     this.view.add(this.art);
     drawNinja(this.art, this.facing);
-
-    scene.physics.add.existing(this.view);
-    this.body = this.view.body as Phaser.Physics.Arcade.Body;
-    this.body.setCircle(NINJA.bodyRadius, 0, 0);
-    this.body.setOffset(-NINJA.bodyRadius, -NINJA.bodyRadius);
-    this.body.setCollideWorldBounds(true);
-    this.body.setMaxVelocity(NINJA.moveSpeed, NINJA.moveSpeed);
   }
 
   get x(): number {
-    return this.view.x;
+    return this.sprite.x;
   }
 
   get y(): number {
-    return this.view.y;
+    return this.sprite.y;
+  }
+
+  get body(): Phaser.Physics.Arcade.Body {
+    return this.sprite.body as Phaser.Physics.Arcade.Body;
+  }
+
+  syncView(): void {
+    this.view.setPosition(this.sprite.x, this.sprite.y);
   }
 
   applyMove(move: Phaser.Math.Vector2): void {

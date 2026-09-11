@@ -130,7 +130,8 @@ export class BattleInput {
 
   private readMouseAim(originX: number, originY: number): Phaser.Math.Vector2 | null {
     const pointer = this.scene.input.activePointer;
-    const aim = new Phaser.Math.Vector2(pointer.worldX - originX, pointer.worldY - originY);
+    const world = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    const aim = new Phaser.Math.Vector2(world.x - originX, world.y - originY);
     if (aim.length() < INPUT.mouseAimDeadzone) {
       return null;
     }

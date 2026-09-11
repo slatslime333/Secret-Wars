@@ -1,19 +1,27 @@
 import Phaser from 'phaser';
 import { COMBAT } from '../config/combat';
 import { NINJA } from '../config/ninja';
+import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { COLORS, FONTS, hex } from '../ui/theme';
 
 export class DummyTarget {
+  readonly sprite: Phaser.Physics.Arcade.Image;
   readonly view: Phaser.GameObjects.Container;
-  readonly body: Phaser.Physics.Arcade.Body;
   health = NINJA.maxHealth;
   private readonly art: Phaser.GameObjects.Graphics;
   private resetAt = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    this.view = scene.add.container(x, y);
-    this.view.setSize(COMBAT.dummyRadius * 2, COMBAT.dummyRadius * 2);
-    this.view.setDepth(8);
+    ensureBodyTexture(scene);
+    this.sprite = scene.physics.add.image(x, y, BODY_TEXTURE);
+    this.sprite.setAlpha(0);
+    this.sprite.setCircle(COMBAT.dummyRadius);
+    this.sprite.setCollideWorldBounds(true);
+    this.sprite.setDrag(320, 320);
+    this.sprite.setImmovable(false);
+    this.sprite.setDepth(8);
+
+    this.view = scene.add.container(x, y).setDepth(8);
     this.art = scene.add.graphics();
     const label = scene.add
       .text(0, 28, 'DUMMY', {
@@ -28,26 +36,26 @@ export class DummyTarget {
       .setOrigin(0.5, 0);
     this.view.add([this.art, label]);
     this.draw(false);
-
-    scene.physics.add.existing(this.view);
-    this.body = this.view.body as Phaser.Physics.Arcade.Body;
-    this.body.setCircle(COMBAT.dummyRadius, 0, 0);
-    this.body.setOffset(-COMBAT.dummyRadius, -COMBAT.dummyRadius);
-    this.body.setCollideWorldBounds(true);
-    this.body.setDrag(320, 320);
-    this.body.setImmovable(false);
   }
 
   get x(): number {
-    return this.view.x;
+    return this.sprite.x;
   }
 
   get y(): number {
-    return this.view.y;
+    return this.sprite.y;
+  }
+
+  get body(): Phaser.Physics.Arcade.Body {
+    return this.sprite.body as Phaser.Physics.Arcade.Body;
   }
 
   get down(): boolean {
     return this.health <= 0;
+  }
+
+  syncView(): void {
+    this.view.setPosition(this.sprite.x, this.sprite.y);
   }
 
   takeHit(damage: number, dirX: number, dirY: number): void {

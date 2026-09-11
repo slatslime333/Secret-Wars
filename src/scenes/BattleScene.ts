@@ -39,7 +39,7 @@ export class BattleScene extends Phaser.Scene {
 
     this.ninja = new NinjaBody(this, ARENA.playerSpawn.x, ARENA.playerSpawn.y);
     this.dummy = new DummyTarget(this, ARENA.enemySpawn.x, ARENA.enemySpawn.y);
-    this.physics.add.collider(this.ninja.view, this.dummy.view);
+    this.physics.add.collider(this.ninja.sprite, this.dummy.sprite);
 
     this.marker = new HitMarker(this);
     this.attacks = new QuickAttack(this, this.marker);
@@ -47,7 +47,7 @@ export class BattleScene extends Phaser.Scene {
     this.hud = new BattleHud(this);
 
     this.cameras.main.setBounds(0, 0, ARENA.width, ARENA.height);
-    this.cameras.main.startFollow(this.ninja.view, true, 0.16, 0.16);
+    this.cameras.main.startFollow(this.ninja.sprite, true, 0.16, 0.16);
     this.cameras.main.setRoundPixels(true);
     this.cameras.main.fadeIn(220, 7, 10, 18);
 
@@ -62,6 +62,8 @@ export class BattleScene extends Phaser.Scene {
     const now = this.time.now;
     const frame = this.inputReader.sample(this.ninja.x, this.ninja.y);
     this.ninja.applyMove(frame.move);
+    this.ninja.syncView();
+    this.dummy.syncView();
     this.ninja.setAim(frame.aim);
     this.ninja.regenStamina(delta, now);
     this.marker.sync(this.ninja.x, this.ninja.y, this.ninja.aim.x, this.ninja.aim.y);
