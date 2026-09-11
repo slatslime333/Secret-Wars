@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
+import { audioSettings } from './audio/AudioSettings';
 import './style.css';
 import { initOrientationHandling } from './orientation';
+import { BattleScene } from './scenes/BattleScene';
 import { BootScene } from './scenes/BootScene';
-import { HomeScene } from './scenes/HomeScene';
-import { PlaceholderScene } from './scenes/PlaceholderScene';
+import { MainMenuScene } from './scenes/MainMenuScene';
+import { SettingsScene } from './scenes/SettingsScene';
 import { TitleScene } from './scenes/TitleScene';
 import { GAME_HEIGHT, GAME_WIDTH } from './ui/theme';
 
@@ -11,6 +13,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from './ui/theme';
 // Phaser FIT scaling letterboxes it on other aspect ratios, and a mobile
 // overlay prompts touch-first users to rotate to landscape.
 initOrientationHandling();
+audioSettings.load();
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -28,5 +31,5 @@ new Phaser.Game({
   input: {
     activePointers: 3,
   },
-  scene: [BootScene, TitleScene, HomeScene, PlaceholderScene],
+  scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, BattleScene],
 });

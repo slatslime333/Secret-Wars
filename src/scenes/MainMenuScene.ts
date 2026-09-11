@@ -4,16 +4,17 @@ import { createBackdrop } from '../ui/createBackdrop';
 import { createLogo } from '../ui/createLogo';
 import { COLORS, FONTS, GAME_HEIGHT, GAME_WIDTH, hex } from '../ui/theme';
 
-export class HomeScene extends Phaser.Scene {
+export class MainMenuScene extends Phaser.Scene {
   private buttons: ActionButton[] = [];
   private focusIndex = 0;
-  private modal?: Phaser.GameObjects.Container;
+  private leaving = false;
 
   constructor() {
-    super('Home');
+    super('MainMenu');
   }
 
   create(): void {
+    this.leaving = false;
     createBackdrop(this, { accent: COLORS.cyan, embers: true });
     this.cameras.main.fadeIn(260, 7, 10, 18);
     this.createHeader();
@@ -45,34 +46,33 @@ export class HomeScene extends Phaser.Scene {
 
   private createNavigation(): void {
     this.buttons = [
-      new ActionButton(this, 210, 277, {
+      new ActionButton(this, 210, 286, {
         label: 'PLAY',
         width: 330,
         height: 78,
         primary: true,
         onPress: () => this.openBattle(),
       }),
-      new ActionButton(this, 202, 374, {
+      new ActionButton(this, 202, 378, {
         label: 'SETTINGS',
         width: 290,
         height: 58,
-        onPress: () =>
-          this.openModal(
-            'SETTINGS',
-            'Music, sound, display, and controls\\nwill arrive with the full menu pass.',
-          ),
-      }),
-      new ActionButton(this, 194, 446, {
-        label: 'CREDITS',
-        width: 250,
-        height: 52,
-        onPress: () =>
-          this.openModal(
-            'CREDITS',
-            'SECRET WARS\\nOriginal prototype by the Secret Wars team.',
-          ),
+        onPress: () => this.openSettings(),
       }),
     ];
+
+    if (!this.sys.game.device.input.touch) {
+      this.buttons.push(
+        new ActionButton(this, 194, 454, {
+          label: 'EXIT',
+          width: 250,
+          height: 48,
+          onPress: () => this.exitGame(),
+        }),
+      );
+    }
+
+    this.focusIndex = 0;
     this.updateFocus();
   }
 
@@ -134,13 +134,13 @@ export class HomeScene extends Phaser.Scene {
       strokeThickness: 4,
     });
 
-    this.add.text(x + 27, y + 91, 'STANDARD CLASH', {
+    this.add.text(x + 27, y + 91, 'ARENA TRIAL', {
       fontFamily: FONTS.display,
       fontSize: '28px',
       color: hex(COLORS.paper),
       letterSpacing: 1,
     });
-    this.add.text(x + 28, y + 128, '3 VS 3  //  03:00', {
+    this.add.text(x + 28, y + 128, '1 VS 1  //  COMBAT TEST', {
       fontFamily: FONTS.body,
       fontSize: '17px',
       fontStyle: 'bold',
@@ -150,20 +150,20 @@ export class HomeScene extends Phaser.Scene {
 
     this.createTeamMarks(x + 28, y + 191);
 
-    this.add.text(x + 28, y + 285, 'PROTOTYPE DIRECTIVE', {
+    this.add.text(x + 28, y + 285, 'DEMO 1 DIRECTIVE', {
       fontFamily: FONTS.body,
       fontSize: '11px',
       fontStyle: 'bold',
       color: hex(COLORS.orange),
       letterSpacing: 3,
     });
-    this.add.text(x + 28, y + 308, 'Enter the arena. Start the war.', {
+    this.add.text(x + 28, y + 308, 'Enter the pit. Test the war.', {
       fontFamily: FONTS.body,
       fontSize: '17px',
       fontStyle: 'bold',
       color: hex(COLORS.paper),
     });
-    this.add.text(x + 28, y + 335, 'Character deployment begins next.', {
+    this.add.text(x + 28, y + 335, 'One hero. One foe. Core combat.', {
       fontFamily: FONTS.body,
       fontSize: '13px',
       color: hex(COLORS.muted),
@@ -173,13 +173,10 @@ export class HomeScene extends Phaser.Scene {
   private createTeamMarks(x: number, y: number): void {
     const graphics = this.add.graphics();
 
-    for (let index = 0; index < 3; index += 1) {
-      const offset = index * 45;
-      graphics.fillStyle(COLORS.cyanDark);
-      graphics.fillTriangle(x + offset, y + 34, x + offset + 17, y, x + offset + 34, y + 34);
-      graphics.lineStyle(2, COLORS.cyan);
-      graphics.strokeTriangle(x + offset, y + 34, x + offset + 17, y, x + offset + 34, y + 34);
-    }
+    graphics.fillStyle(COLORS.cyanDark);
+    graphics.fillTriangle(x + 40, y + 34, x + 57, y, x + 74, y + 34);
+    graphics.lineStyle(2, COLORS.cyan);
+    graphics.strokeTriangle(x + 40, y + 34, x + 57, y, x + 74, y + 34);
 
     this.add
       .text(x + 168, y + 17, 'VS', {
@@ -192,27 +189,10 @@ export class HomeScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    for (let index = 0; index < 3; index += 1) {
-      const offset = index * 45;
-      graphics.fillStyle(COLORS.red);
-      graphics.fillTriangle(
-        x + 202 + offset,
-        y,
-        x + 219 + offset,
-        y + 34,
-        x + 236 + offset,
-        y,
-      );
-      graphics.lineStyle(2, COLORS.redBright);
-      graphics.strokeTriangle(
-        x + 202 + offset,
-        y,
-        x + 219 + offset,
-        y + 34,
-        x + 236 + offset,
-        y,
-      );
-    }
+    graphics.fillStyle(COLORS.red);
+    graphics.fillTriangle(x + 242, y, x + 259, y + 34, x + 276, y);
+    graphics.lineStyle(2, COLORS.redBright);
+    graphics.strokeTriangle(x + 242, y, x + 259, y + 34, x + 276, y);
   }
 
   private createFooter(): void {
@@ -227,7 +207,7 @@ export class HomeScene extends Phaser.Scene {
       .setOrigin(0, 1);
 
     this.add
-      .text(GAME_WIDTH - 28, GAME_HEIGHT - 17, 'BUILD 00.01 // ONLINE: OFF', {
+      .text(GAME_WIDTH - 28, GAME_HEIGHT - 17, 'BUILD 00.02 // DEMO 1 SHELL', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -241,19 +221,11 @@ export class HomeScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-UP', () => this.moveFocus(-1));
     this.input.keyboard?.on('keydown-DOWN', () => this.moveFocus(1));
     this.input.keyboard?.on('keydown-ENTER', () => {
-      if (this.modal) {
-        this.closeModal();
-        return;
-      }
       this.buttons[this.focusIndex].emit(Phaser.Input.Events.GAMEOBJECT_POINTER_UP);
     });
-    this.input.keyboard?.on('keydown-ESC', () => this.closeModal());
   }
 
   private moveFocus(direction: number): void {
-    if (this.modal) {
-      return;
-    }
     this.focusIndex = Phaser.Math.Wrap(this.focusIndex + direction, 0, this.buttons.length);
     this.updateFocus();
   }
@@ -263,96 +235,34 @@ export class HomeScene extends Phaser.Scene {
   }
 
   private openBattle(): void {
-    if (this.modal) {
+    this.leaveTo('Battle');
+  }
+
+  private openSettings(): void {
+    this.leaveTo('Settings');
+  }
+
+  private leaveTo(sceneName: string): void {
+    if (this.leaving) {
       return;
     }
+    this.leaving = true;
     this.cameras.main.fadeOut(220, 7, 10, 18);
-    this.time.delayedCall(230, () => this.scene.start('Placeholder'));
+    this.time.delayedCall(230, () => this.scene.start(sceneName));
   }
 
-  private openModal(title: string, copy: string): void {
-    this.closeModal();
-
-    const shade = this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      GAME_WIDTH,
-      GAME_HEIGHT,
-      COLORS.ink,
-      0.82,
-    );
-    shade.setInteractive();
-
-    const panel = this.add.graphics();
-    panel.fillStyle(COLORS.panel);
-    panel.fillPoints(
-      [
-        new Phaser.Geom.Point(-230, -112),
-        new Phaser.Geom.Point(250, -112),
-        new Phaser.Geom.Point(225, 112),
-        new Phaser.Geom.Point(-250, 112),
-      ],
-      true,
-    );
-    panel.lineStyle(3, COLORS.cyan);
-    panel.strokePoints(
-      [
-        new Phaser.Geom.Point(-230, -112),
-        new Phaser.Geom.Point(250, -112),
-        new Phaser.Geom.Point(225, 112),
-        new Phaser.Geom.Point(-250, 112),
-      ],
-      true,
-    );
-
-    const heading = this.add
-      .text(0, -62, title, {
+  private exitGame(): void {
+    window.close();
+    this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'CLOSE THIS TAB TO EXIT', {
         fontFamily: FONTS.display,
-        fontSize: '31px',
+        fontSize: '22px',
         color: hex(COLORS.paper),
-        letterSpacing: 4,
+        stroke: hex(COLORS.ink),
+        strokeThickness: 6,
+        letterSpacing: 2,
       })
-      .setOrigin(0.5);
-    const body = this.add
-      .text(0, 8, copy, {
-        fontFamily: FONTS.body,
-        fontSize: '17px',
-        fontStyle: 'bold',
-        color: hex(COLORS.muted),
-        align: 'center',
-        lineSpacing: 9,
-      })
-      .setOrigin(0.5);
-    const close = this.add
-      .text(0, 77, 'TAP / ENTER TO CLOSE', {
-        fontFamily: FONTS.body,
-        fontSize: '11px',
-        fontStyle: 'bold',
-        color: hex(COLORS.cyan),
-        letterSpacing: 3,
-      })
-      .setOrigin(0.5);
-
-    const content = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2, [
-      panel,
-      heading,
-      body,
-      close,
-    ]);
-    this.modal = this.add.container(0, 0, [shade, content]).setDepth(20);
-    this.modal.setAlpha(0);
-    this.tweens.add({
-      targets: this.modal,
-      alpha: 1,
-      duration: 130,
-      ease: 'Stepped',
-      easeParams: [3],
-    });
-    shade.once(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => this.closeModal());
-  }
-
-  private closeModal(): void {
-    this.modal?.destroy(true);
-    this.modal = undefined;
+      .setOrigin(0.5)
+      .setDepth(30);
   }
 }

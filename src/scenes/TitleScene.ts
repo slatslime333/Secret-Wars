@@ -54,7 +54,7 @@ export class TitleScene extends Phaser.Scene {
     });
 
     this.add
-      .text(24, GAME_HEIGHT - 22, 'PRE-ALPHA // UI PROTOTYPE', {
+      .text(24, GAME_HEIGHT - 22, 'PRE-ALPHA // DEMO 1', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -80,7 +80,7 @@ export class TitleScene extends Phaser.Scene {
     this.continuing = true;
     this.cameras.main.flash(90, 246, 241, 222);
     this.cameras.main.fadeOut(260, 7, 10, 18);
-    this.time.delayedCall(270, () => this.scene.start('Home'));
+    this.time.delayedCall(270, () => this.scene.start('MainMenu'));
   }
 
   private createSlashAccents(): void {

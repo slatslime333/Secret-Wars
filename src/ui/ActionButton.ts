@@ -61,6 +61,11 @@ export class ActionButton extends Phaser.GameObjects.Container {
     return this;
   }
 
+  setLabel(label: string): this {
+    this.labelText.setText(label);
+    return this;
+  }
+
   private draw(): void {
     const width = this.buttonWidth;
     const height = this.buttonHeight;
