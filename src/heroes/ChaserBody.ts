@@ -3,7 +3,6 @@ import { CHASER } from '../config/chaser';
 import { COMBAT } from '../config/combat';
 import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { drawChaser } from './drawChaser';
-import { COLORS, FONTS, hex } from '../ui/theme';
 import { facingFromAim, type CardinalFacing } from './drawNinja';
 
 /** Red practice opponent. Chases and swings — no block, no dash. */
@@ -15,7 +14,6 @@ export class ChaserBody {
   private facing: CardinalFacing = 'west';
   private readonly art: Phaser.GameObjects.Graphics;
   private stunnedUntil = 0;
-  private readonly label: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     ensureBodyTexture(scene);
@@ -29,18 +27,7 @@ export class ChaserBody {
 
     this.view = scene.add.container(x, y).setDepth(9);
     this.art = scene.add.graphics();
-    this.label = scene.add
-      .text(0, 28, 'CHASER', {
-        fontFamily: FONTS.body,
-        fontSize: '11px',
-        fontStyle: 'bold',
-        color: hex(COLORS.paper),
-        letterSpacing: 2,
-        stroke: hex(COLORS.ink),
-        strokeThickness: 4,
-      })
-      .setOrigin(0.5, 0);
-    this.view.add([this.art, this.label]);
+    this.view.add(this.art);
     drawChaser(this.art, this.facing, false);
   }
 
