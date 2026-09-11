@@ -24,15 +24,15 @@ export class BattleHud {
     this.staminaFill.setScrollFactor(0).setDepth(102);
 
     this.comboText = scene.add
-      .text(36, 82, '', {
-        fontFamily: FONTS.body,
-        fontSize: '12px',
-        fontStyle: 'bold',
+      .text(GAME_WIDTH / 2, 22, '', {
+        fontFamily: FONTS.display,
+        fontSize: '20px',
         color: hex(COLORS.orange),
-        letterSpacing: 2,
+        letterSpacing: 3,
         stroke: hex(COLORS.ink),
-        strokeThickness: 4,
+        strokeThickness: 6,
       })
+      .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(102);
 
@@ -80,6 +80,7 @@ export class BattleHud {
     this.dummyFill.width = Math.max(0, 72 * (dummy.health / NINJA.maxHealth));
 
     this.comboText.setText(comboLabel(comboStep));
+    this.comboText.setColor(hex(comboStep === 3 ? COLORS.yellow : COLORS.orange));
     const blockCd = block.cooldownRatio(now);
     const dashCd = dash.cooldownRatio(now);
     const blockBit = block.isActive(now) ? 'BLOCKING' : blockCd > 0 ? `K ${Math.ceil(blockCd * 4)}s` : 'K BLOCK';

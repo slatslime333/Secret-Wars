@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COMBAT } from '../config/combat';
+import { spawnCombatCallout } from '../effects/combatCallout';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { COLORS } from '../ui/theme';
 
@@ -22,6 +23,7 @@ export class BlockController {
     }
     this.activeUntil = now + COMBAT.blockDurationMs;
     this.readyAt = now + COMBAT.blockCooldownMs;
+    spawnCombatCallout(this.shield.scene, ninja.x, ninja.y, 'BLOCK', COLORS.cyan);
     return true;
   }
 

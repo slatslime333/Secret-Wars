@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COMBAT } from '../config/combat';
 import { NINJA } from '../config/ninja';
+import { spawnCombatCallout } from '../effects/combatCallout';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { COLORS } from '../ui/theme';
 
@@ -30,6 +31,7 @@ export class DashController {
     this.readyAt = now + COMBAT.dashCooldownMs;
     ninja.setSpeedCap(dashSpeed());
     this.spawnStreaks(ninja);
+    spawnCombatCallout(this.scene, ninja.x, ninja.y, 'DASH', COLORS.orange);
     return true;
   }
 

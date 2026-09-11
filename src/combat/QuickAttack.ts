@@ -5,6 +5,7 @@ import { applyDefense } from './damage';
 import { ComboTracker } from './ComboTracker';
 import { HitMarker } from './HitMarker';
 import { isInAttackArc } from './hitDetection';
+import { spawnCombatCallout } from '../effects/combatCallout';
 import { spawnHitSpark } from '../effects/hitSpark';
 import { DummyTarget } from '../heroes/DummyTarget';
 import { NinjaBody } from '../heroes/NinjaBody';
@@ -63,6 +64,13 @@ export class QuickAttack {
     if (tapQueued) {
       this.combo.tap(now, COMBAT.comboWindowMs);
       this.pendingTaps -= 1;
+      spawnCombatCallout(
+        this.scene,
+        ninja.x,
+        ninja.y,
+        finisher ? 'FINISHER' : `HIT ${this.combo.step}`,
+        finisher ? COLORS.yellow : COLORS.orange,
+      );
     }
 
     this.nextSwingAt = now + NINJA.attackCooldownMs;

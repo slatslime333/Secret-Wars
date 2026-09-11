@@ -17,7 +17,7 @@ export class ComboTracker {
     this.count = this.preview(now, windowMs);
     this.lastTapAt = now;
     this.shown = this.count;
-    this.shownUntil = now + windowMs;
+    this.shownUntil = now + Math.max(windowMs, 900);
     return this.count;
   }
 

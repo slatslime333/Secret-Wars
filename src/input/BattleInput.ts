@@ -140,16 +140,28 @@ export class BattleInput {
       rightActive ||
       Boolean(this.keys?.attack.isDown) ||
       (!this.touch && this.scene.input.activePointer.leftButtonDown());
-    const attackPressed = this.attackLatched || (attackHeld && !this.wasAttackHeld);
+    const attackPressed =
+      this.consumeLatch('attackLatched') ||
+      Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.attack)) ||
+      (attackHeld && !this.wasAttackHeld);
     this.wasAttackHeld = attackHeld;
-    this.attackLatched = false;
 
-    const blockPressed = this.blockLatched;
-    const dashPressed = this.dashLatched;
-    this.blockLatched = false;
-    this.dashLatched = false;
+    const blockPressed =
+      this.consumeLatch('blockLatched') ||
+      Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.block));
+    const dashPressed =
+      this.consumeLatch('dashLatched') ||
+      Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.dash));
 
     return { move, aim, aimActive, attackHeld, attackPressed, blockPressed, dashPressed };
+  }
+
+  private consumeLatch(key: 'attackLatched' | 'blockLatched' | 'dashLatched'): boolean {
+    if (!this[key]) {
+      return false;
+    }
+    this[key] = false;
+    return true;
   }
 
   syncButtons(now: number): void {
