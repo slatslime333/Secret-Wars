@@ -18,7 +18,7 @@ export class ComboTracker {
     this.count = this.preview(now, windowMs);
     this.lastTapAt = now;
     this.shown = this.count;
-    this.shownUntil = now + Math.max(windowMs, 900);
+    this.shownUntil = now + Math.max(windowMs, 1400);
     return this.count;
   }
 
@@ -44,7 +44,7 @@ export class ComboTracker {
       return;
     }
     this.lastTapAt = now;
-    this.shownUntil = now + Math.max(windowMs, 900);
+    this.shownUntil = now + Math.max(windowMs, 1400);
   }
 
   /** Clear the chain so the next tap is HIT 1. HUD still shows the last step. */
