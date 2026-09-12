@@ -151,7 +151,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     box.setStrokeStyle(2, COLORS.cyan);
     const left = width / 2 - boxW / 2 + 16;
     const innerW = boxW - 32;
-    const statsW = Math.min(360, Math.max(240, innerW * 0.46));
+    const statsW = Math.min(320, Math.max(230, innerW * 0.4));
     const textW = innerW - statsW - 18;
 
     this.add.text(left, top + 8, `${copy.name.toUpperCase()}  //  ${copy.role.toUpperCase()}`, {
@@ -173,7 +173,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       `ULT  ${copy.ultimate.name} — ${copy.ultimate.text}`,
     ];
     lines.forEach((line, index) => {
-      this.add.text(left, top + 56 + index * 18, line, {
+      this.add.text(left, top + 54 + index * 32, line, {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
