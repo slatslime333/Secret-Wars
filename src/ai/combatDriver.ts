@@ -38,6 +38,7 @@ export class CombatDriver {
   private strafeUntil = 0;
   private deathDashIndex = 0;
   private readonly dashDir = new Phaser.Math.Vector2();
+  readonly reactions = { block: 0, dash: 0, strafe: 0 };
 
   tick(args: {
     now: number;
@@ -80,7 +81,7 @@ export class CombatDriver {
       }
     }
 
-    this.noticeSwing(now, body, mind, dash, rng);
+    this.noticeSwing(now, body, mind, dash, foes, rng);
     this.resolvePending(now, body, mind, dash, world, scene, foes, rng);
 
     const holding = now < this.blockUntil && body.stamina > 10 && !dash.isActive(now) && !abilities?.control.block;
@@ -129,28 +130,60 @@ export class CombatDriver {
     return fired;
   }
 
-  private noticeSwing(now: number, body: NinjaBody, mind: TacticalMind, dash: DashController, rng: () => number): void {
-    const target = mind.target;
-    if (!target || target.down || this.pending) {
+  private noticeSwing(
+    now: number,
+    body: NinjaBody,
+    mind: TacticalMind,
+    dash: DashController,
+    foes: NinjaBody[],
+    rng: () => number,
+  ): void {
+    if (this.pending) {
       return;
     }
-    const swingAt = target.status.lastAttackAt;
+    let threat: NinjaBody | undefined;
+    let threatDist = 1e9;
+    const consider = (foe: NinjaBody | undefined): void => {
+      if (!foe || foe.down) {
+        return;
+      }
+      const dx = body.x - foe.x;
+      const dy = body.y - foe.y;
+      const d = Math.hypot(dx, dy) || 1;
+      if (d > foe.stats.attackRange * 1.4) {
+        return;
+      }
+      const facing = (foe.aim.x * dx + foe.aim.y * dy) / d;
+      if (facing < 0.12) {
+        return;
+      }
+      if (d < threatDist) {
+        threat = foe;
+        threatDist = d;
+      }
+    };
+    consider(mind.target);
+    for (const foe of foes) {
+      consider(foe);
+    }
+    if (!threat) {
+      return;
+    }
+    const swingAt = threat.status.lastAttackAt;
     if (swingAt <= 0 || swingAt === this.lastSwingSeen || now - swingAt > 260) {
       return;
     }
-    const dx = body.x - target.x;
-    const dy = body.y - target.y;
+    const dx = body.x - threat.x;
+    const dy = body.y - threat.y;
     const d = Math.hypot(dx, dy) || 1;
-    const facing = (target.aim.x * dx + target.aim.y * dy) / d;
-    if (facing < 0.2 || d > target.stats.attackRange * 1.35) {
-      return;
-    }
     this.lastSwingSeen = swingAt;
     const delay = 70 + rng() * 150 + mind.personality.caution * 40;
     const disruptor = body.stats.role === 'disruptor' || body.stats.role === 'support';
     const staminaOk = body.stamina > 16;
     const roll = rng();
-    const dodgeChance = 0.22 + mind.personality.caution * 0.18 + (disruptor ? 0.16 : 0) + (staminaOk ? 0.08 : -0.08);
+    const dodgeChance =
+      (0.22 + mind.personality.caution * 0.18 + (disruptor ? 0.16 : 0) + (staminaOk ? 0.08 : -0.08)) *
+      (this.reactions.dash + this.reactions.strafe > this.reactions.block ? 0.42 : 1);
     let kind: PendingReact['kind'] = 'block';
     if (roll < dodgeChance * 0.45 && dash.chargeCount > 0) {
       kind = 'dash';
@@ -162,6 +195,7 @@ export class CombatDriver {
       return;
     }
     const side = rng() < 0.5 ? 1 : -1;
+    this.reactions[kind] += 1;
     this.pending = {
       at: now + delay,
       kind,
