@@ -3,6 +3,8 @@ import { COMBAT, ComboStep, comboStepOf } from '../config/combat';
 import { COLE_ATTACK, COLE_SHOCKWAVE } from '../heroes/abilities/cole/tunables';
 import { DEATH_ATTACK } from '../heroes/abilities/death/tunables';
 import { sweepKnockback, swingSignFor } from '../heroes/abilities/death/sweep';
+import { deathIdleBatAngle } from '../heroes/drawDeath';
+import { facingFromAim } from '../heroes/drawNinja';
 import { ComboTracker } from './ComboTracker';
 import { HitMarker } from './HitMarker';
 import { NinjaBody } from '../heroes/NinjaBody';
@@ -132,7 +134,7 @@ export class QuickAttack {
         spawnLightningArc(this.scene, attacker.x, attacker.y, attacker.aim.x, attacker.aim.y, attacker.stats.attackRange, half);
       }
     } else if (attacker.heroId === 'death') {
-      attacker.playAttackAnimation(now, step);
+      this.playDeathLightSwing(attacker, now, step);
       this.spawnBatSweep(attacker, step);
       if (step === 2) {
         this.deathPairLockUntil = now + DEATH_ATTACK.pairDelayMs;
@@ -337,14 +339,47 @@ export class QuickAttack {
     }
   }
 
+  private playDeathLightSwing(death: NinjaBody, now: number, step: ComboStep): void {
+    const aimAngle = Math.atan2(death.aim.y, death.aim.x);
+    const idle = deathIdleBatAngle(facingFromAim(death.aim.x, death.aim.y));
+    const sign = swingSignFor(step);
+    const half = attackHalfFor(step) * (step === 3 ? DEATH_ATTACK.hit3RangeMul : 1);
+    const start = aimAngle - (half + DEATH_ATTACK.lightWindupRad) * sign;
+    const end = aimAngle + (half + DEATH_ATTACK.lightFollowRad) * sign;
+    const span = step === 3 ? DEATH_ATTACK.finisherAnimMs : DEATH_ATTACK.animMs;
+    const scale = step === 3 ? DEATH_ATTACK.lightFinisherBatScale : DEATH_ATTACK.lightBatScale;
+    death.playCustomAttack(
+      now,
+      span,
+      (frac) => {
+        let swingT = frac;
+        if (frac < 0.2) {
+          swingT = (frac / 0.2) * 0.14;
+        } else if (frac < 0.7) {
+          swingT = 0.14 + ((frac - 0.2) / 0.5) * 0.74;
+        } else {
+          swingT = 0.88 + ((frac - 0.7) / 0.3) * 0.12;
+        }
+        const angle = start + (end - start) * swingT;
+        return {
+          swordAngleOffset: angle - idle,
+          batScale: scale,
+          armLiftRight: frac < 0.26 ? (frac / 0.26) * 0.5 : Math.max(0.08, 0.5 - (frac - 0.26) * 0.45),
+          swayX: Math.sin(Math.min(1, frac * 1.2) * Math.PI) * (death.aim.x >= 0 ? 4 : -4),
+        };
+      },
+      'Linear',
+    );
+  }
+
   private spawnBatSweep(death: NinjaBody, step: ComboStep): void {
     const graphics = this.scene.add.graphics().setDepth(20);
     const aimAngle = Math.atan2(death.aim.y, death.aim.x);
     const sign = swingSignFor(step);
-    const half = attackHalfFor(step) * (step === 3 ? 1.12 : 1);
+    const half = attackHalfFor(step) * (step === 3 ? DEATH_ATTACK.hit3RangeMul : 1);
     const startAngle = aimAngle - half * sign;
     const totalArc = half * 2 * sign;
-    const radius = death.stats.attackRange * (0.84 + (step === 3 ? 0.22 : step * 0.06));
+    const radius = death.stats.attackRange * (step === 3 ? DEATH_ATTACK.hit3RangeMul : 1);
     const duration = step === 3 ? 240 : 150;
     const anim = { sweepProgress: 0, alpha: 1 };
     graphics.setPosition(death.x, death.y);

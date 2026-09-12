@@ -4,6 +4,9 @@ import { NINJA_RATING, fromRating } from './ratings';
 
 const r = NINJA_RATING;
 
+/** Shared melee-range baseline. Other heroes scale from this, not Ninja's tighter radius. */
+export const NINJA_BASE_RANGE = Math.round(fromRating(r, 78, 118));
+
 /**
  * Support / disruptor. Stats stay on the 70 baseline for now — identity
  * lives in the kit and role tag, not a full rebalance.
@@ -31,12 +34,12 @@ export const NINJA = {
   knockbackPower: Math.round(fromRating(r, 120, 240)),
   /** Higher rating = faster swings. Range is slow → fast milliseconds. */
   attackCooldownMs: Math.round(fromRating(r, 300, 160)),
-  /** Low-to-medium melee. Not a long-range poke. */
-  attackRange: Math.round(fromRating(r, 78, 118)),
+  /** Close attacker: 10% tighter than the shared melee baseline. */
+  attackRange: Math.round(NINJA_BASE_RANGE * 0.9),
   attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 14,
   staminaRegenPerSecond: fromRating(r, 14, 26),
-  ammoMax: COMBAT.attackAmmoMax,
+  ammoMax: 8,
   reloadMs: COMBAT.attackReloadMs,
   dashMaxCharges: COMBAT.dashMaxCharges,
 } as const satisfies HeroCombatConfig & { rating: number; ratings: Record<string, number> };

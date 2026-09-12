@@ -176,7 +176,7 @@ export class NinjaBody {
       options.hitStopMs ??
       (options.clash || options.step === 3 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs);
     body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
-    this.launch(options.dirX / length, options.dirY / length, power);
+    this.launch(options.dirX / length, options.dirY / length, power, options.launchCap ?? COMBAT.launchSpeedCap);
     if (minion) {
       this.status.applyStun(now, options.hitReactionMs ?? MINION.hitReactionMs);
     } else if (options.hitReactionMs !== undefined) {
@@ -245,14 +245,15 @@ export class NinjaBody {
     this.launch(launch.x, launch.y, Math.hypot(launch.x, launch.y));
   }
 
-  private launch(dirX: number, dirY: number, power: number): void {
+  private launch(dirX: number, dirY: number, power: number, launchCap: number = COMBAT.launchSpeedCap): void {
     const body = this.physics();
     if (!body || power <= 0) {
       return;
     }
     const length = Math.hypot(dirX, dirY) || 1;
-    this.setSpeedCap(Math.min(COMBAT.launchSpeedCap, Math.max(COMBAT.physicsMaxSpeed, power)));
-    body.setVelocity((dirX / length) * Math.min(power, COMBAT.launchSpeedCap), (dirY / length) * Math.min(power, COMBAT.launchSpeedCap));
+    const used = Math.min(power, launchCap);
+    this.setSpeedCap(Math.min(launchCap, Math.max(COMBAT.physicsMaxSpeed, used)));
+    body.setVelocity((dirX / length) * used, (dirY / length) * used);
   }
 
   applyLungeImpulse(now: number, step: ComboStep): void {
@@ -359,6 +360,7 @@ export class NinjaBody {
       batOnBack?: boolean;
       showUzi?: boolean;
     },
+    ease: string = 'Sine.InOut',
   ): void {
     this.currentAttackTween?.stop();
     this.attackingUntil = now + durationMs;
@@ -367,7 +369,7 @@ export class NinjaBody {
       targets: anim,
       frac: 1,
       duration: durationMs,
-      ease: 'Sine.InOut',
+      ease,
       onUpdate: () => {
         const pose = frame(anim.frac);
         this.armLiftLeft = pose.armLiftLeft ?? 0;

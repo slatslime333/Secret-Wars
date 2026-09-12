@@ -115,11 +115,7 @@ export const drawDeath = (
   graphics.fillCircle(15, rightY + 16, 3.4);
 
   if (!showUzi) {
-    graphics.fillStyle(palette.gun);
-    graphics.fillRect(-13, 12, 11, 5);
-    graphics.fillRect(-4, 10, 3, 9);
-    graphics.fillStyle(palette.steel);
-    graphics.fillRect(-3, 9, 2, 4);
+    drawHolsteredUzi(graphics, palette, -12, 12, 1);
   }
 
   if (!batOnBack) {
@@ -171,11 +167,7 @@ const drawDeathEast = (
   graphics.fillCircle(14, frontY + 16, 3.4);
 
   if (!showUzi) {
-    graphics.fillStyle(palette.gun);
-    graphics.fillRect(-2, 13, 10, 5);
-    graphics.fillRect(6, 11, 3, 8);
-    graphics.fillStyle(palette.steel);
-    graphics.fillRect(7, 10, 2, 4);
+    drawHolsteredUzi(graphics, palette, -1, 13, 1);
   }
 
   if (!batOnBack) {
@@ -226,11 +218,7 @@ const drawDeathWest = (
   graphics.fillCircle(-14, frontY + 16, 3.4);
 
   if (!showUzi) {
-    graphics.fillStyle(palette.gun);
-    graphics.fillRect(-8, 13, 10, 5);
-    graphics.fillRect(-9, 11, 3, 8);
-    graphics.fillStyle(palette.steel);
-    graphics.fillRect(-9, 10, 2, 4);
+    drawHolsteredUzi(graphics, palette, 1, 13, -1);
   }
 
   if (!batOnBack) {
@@ -241,7 +229,7 @@ const drawDeathWest = (
   }
 };
 
-const idleBatAngle = (facing: CardinalFacing): number => {
+export const deathIdleBatAngle = (facing: CardinalFacing): number => {
   if (facing === 'west') {
     return 2.0;
   }
@@ -249,6 +237,20 @@ const idleBatAngle = (facing: CardinalFacing): number => {
     return 1.85;
   }
   return 1.45;
+};
+
+const idleBatAngle = deathIdleBatAngle;
+
+/** Muzzle tip in sprite space while the Uzi is drawn. */
+export const deathUziMuzzleOffset = (facing: CardinalFacing, armLiftRight = 0.35): { x: number; y: number } => {
+  const frontY = 4 - armLiftRight * 8;
+  if (facing === 'west') {
+    return { x: -48, y: frontY + 9 };
+  }
+  if (facing === 'east') {
+    return { x: 34, y: frontY + 9 };
+  }
+  return { x: 36, y: frontY + 9 };
 };
 
 const drawBat = (
@@ -277,6 +279,24 @@ const drawBat = (
   }
 };
 
+const drawHolsteredUzi = (
+  graphics: Phaser.GameObjects.Graphics,
+  palette: ReturnType<typeof paletteFor>,
+  x: number,
+  y: number,
+  facing: 1 | -1,
+): void => {
+  const bodyX = facing === 1 ? x : x - 11;
+  graphics.fillStyle(palette.gun);
+  graphics.fillRect(bodyX, y, 11, 5);
+  graphics.fillRect(facing === 1 ? x : x - 3, y + 4, 3, 5);
+  graphics.fillStyle(0x141418);
+  graphics.fillRect(facing === 1 ? x + 4 : x - 7, y + 4, 3, 6);
+  graphics.fillStyle(palette.steel);
+  graphics.fillRect(facing === 1 ? x + 11 : x - 16, y + 1, 5, 2);
+  graphics.fillRect(facing === 1 ? x + 9 : x - 11, y - 2, 2, 3);
+};
+
 const drawUzi = (
   graphics: Phaser.GameObjects.Graphics,
   palette: ReturnType<typeof paletteFor>,
@@ -284,13 +304,19 @@ const drawUzi = (
   y: number,
   facing: 1 | -1,
 ): void => {
+  const bodyX = facing === 1 ? x : x - 14;
+  graphics.fillStyle(COLORS.ink, 1);
+  graphics.fillRect(bodyX - 1, y - 3, 16, 8);
   graphics.fillStyle(palette.gun);
-  graphics.fillRect(facing === 1 ? x : x, y, 16, 5);
-  graphics.fillRect(facing === 1 ? x + 10 : x + 3, y - 3, 3, 8);
+  graphics.fillRect(bodyX, y - 2, 14, 6);
+  graphics.fillRect(facing === 1 ? x - 3 : x + 14, y - 1, 3, 4);
+  graphics.fillRect(facing === 1 ? x + 1 : x - 5, y + 3, 4, 7);
+  graphics.fillStyle(0x141418);
+  graphics.fillRect(facing === 1 ? x + 6 : x - 9, y + 3, 3, 8);
+  graphics.fillRect(facing === 1 ? x + 14 : x - 22, y, 8, 3);
   graphics.fillStyle(palette.steel);
-  if (facing === 1) {
-    graphics.fillRect(x + 14, y + 1, 8, 2);
-  } else {
-    graphics.fillRect(x - 6, y + 1, 8, 2);
-  }
+  graphics.fillRect(facing === 1 ? x + 11 : x - 13, y - 4, 2, 3);
+  graphics.fillRect(facing === 1 ? x + 21 : x - 24, y, 3, 3);
+  graphics.fillStyle(0xf4e8b0);
+  graphics.fillRect(facing === 1 ? x + 23 : x - 25, y + 1, 2, 1);
 };

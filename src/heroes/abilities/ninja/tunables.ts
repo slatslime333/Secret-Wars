@@ -26,15 +26,17 @@ export const NINJA_KICK = {
   /** Path width uses body radii plus a small contact slop. */
   pathPadding: 8,
   damageMul: 1.28,
-  knockbackMul: 3.35,
-  secondaryKnockbackMul: 2.6,
+  knockbackMul: 4.55,
+  secondaryKnockbackMul: 3.45,
+  /** Lets the kick exceed the shared launch cap without changing other heroes. */
+  launchCap: 680,
   staminaDamage: 6,
   hitStopMs: 100,
-  backflipMs: 420,
-  backflipDistance: 96,
+  backflipMs: 460,
+  backflipDistance: 168,
   missRecoverMs: 200,
   missRecoverDistance: 34,
-  jumpHeight: 38,
+  jumpHeight: 44,
 } as const;
 
 export const NINJA_TORNADO = {
