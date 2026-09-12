@@ -9,6 +9,7 @@ import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
 import { drawColeElectricity } from './drawCole';
 import type { HeroDrawFn } from './heroDraw';
+import { playDeath } from '../audio';
 import { DEV_CHEATS } from '../debug/devCheats';
 import { MINION } from '../config/minion';
 
@@ -224,6 +225,9 @@ export class NinjaBody {
     });
     if (this.down) {
       this.stop();
+      if (applied > 0) {
+        playDeath(this);
+      }
     }
   }
 

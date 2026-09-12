@@ -8,6 +8,7 @@ import { spawnCombatCallout } from '../effects/combatCallout';
 import { COLORS } from '../ui/theme';
 import { BlockController } from './BlockController';
 import { HitKind } from './Hurtbox';
+import { playMeleeConnect } from '../audio';
 import { NinjaBody } from '../heroes/NinjaBody';
 
 const halfArcOf = (fighter: NinjaBody): number => (fighter.stats.attackArcDegrees * Math.PI) / 360;
@@ -83,6 +84,7 @@ export const resolveMelee = (
       inArc(defender, attacker);
     if (bothSwinging) {
       applyClash(scene, now, attacker, defender, step);
+      playMeleeConnect('clash', attacker, defender, step === 3);
       return 'clash';
     }
   }
@@ -110,6 +112,7 @@ export const resolveMelee = (
         perfect: true,
         shake: attacker.playerControlled || defender.playerControlled,
       });
+      playMeleeConnect('perfect-block', attacker, defender, heavy);
       return 'perfect-block';
     }
 
@@ -123,6 +126,7 @@ export const resolveMelee = (
       perfect: false,
       shake: attacker.playerControlled || defender.playerControlled,
     });
+    playMeleeConnect('blocked', attacker, defender, heavy);
     return 'blocked';
   }
 
@@ -151,6 +155,7 @@ export const resolveMelee = (
     shake: attacker.playerControlled || defender.playerControlled,
   });
   attacker.status.applyHitStop(now, step === 3 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs);
+  playMeleeConnect('hit', attacker, defender, step === 3);
   return 'hit';
 };
 

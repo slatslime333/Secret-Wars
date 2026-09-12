@@ -14,7 +14,7 @@ const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
 class AudioSettingsController {
   private musicVolume: number = AUDIO.defaultMusicVolume;
   private sfxVolume: number = AUDIO.defaultSfxVolume;
-  private context: AudioContext | null = null;
+  private uiTickPlayer: (() => void) | null = null;
 
   load(): void {
     try {
@@ -52,31 +52,14 @@ class AudioSettingsController {
     this.save();
   }
 
-  /** Short square blip so the SFX slider is audibly doing something. */
+  /** Lets AudioManager own the one-shot so SFX volume stays on this bus. */
+  bindUiTick(player: () => void): void {
+    this.uiTickPlayer = player;
+  }
+
+  /** Short tick so the SFX slider is audibly doing something. */
   playUiTick(): void {
-    if (this.sfxVolume <= 0.01 || typeof window === 'undefined') {
-      return;
-    }
-
-    const AudioContextImpl =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextImpl) {
-      return;
-    }
-
-    this.context ??= new AudioContextImpl();
-    void this.context.resume();
-
-    const oscillator = this.context.createOscillator();
-    const gain = this.context.createGain();
-    oscillator.type = 'square';
-    oscillator.frequency.value = AUDIO.uiTickHz;
-    gain.gain.value = 0.045 * this.sfxVolume;
-    oscillator.connect(gain);
-    gain.connect(this.context.destination);
-    oscillator.start();
-    oscillator.stop(this.context.currentTime + AUDIO.uiTickSeconds);
+    this.uiTickPlayer?.();
   }
 
   private save(): void {

@@ -14,6 +14,7 @@ import { spawnLightningArc, spawnShockwaveRing } from '../effects/lightning';
 import { resolveMelee } from './resolveMelee';
 import { resolveAbilityHit } from '../heroes/abilities/resolveAbilityHit';
 import { isInAttackArc } from './hitDetection';
+import { playLightAttack } from '../audio';
 import { BlockController } from './BlockController';
 
 type PendingImpact = {
@@ -118,6 +119,7 @@ export class QuickAttack {
     this.nextSwingAt = now + delay;
     this.lastSwingAt = now;
     this.lastSwingStep = step;
+    playLightAttack(attacker);
 
     if (attacker.heroId === 'cole') {
       const span = COLE_ATTACK.animMs;

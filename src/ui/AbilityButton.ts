@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { audio } from '../audio';
 import { AbilitySlotState } from '../heroes/abilities/types';
 import { COLORS, FONTS, hex } from './theme';
 
@@ -62,6 +63,8 @@ export class AbilityButton {
       .setDepth(118);
     this.zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => {
       this.flashPress();
+      audio.unlock();
+      audio.play('ui-click');
       options.onPress();
     });
     this.drawArt();

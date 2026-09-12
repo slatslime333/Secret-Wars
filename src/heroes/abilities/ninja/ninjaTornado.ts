@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { playWorld } from '../../../audio';
 import { NINJA } from '../../../config/ninja';
 import { COMBAT } from '../../../config/combat';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
@@ -116,6 +117,7 @@ class NinjaTornadoAbility implements ActiveAbility {
   private swipe(ctx: AbilityContext): void {
     const { caster, now, scene } = ctx;
     spawnSlash(scene, caster);
+    playWorld('ninja-tornado-slash', caster);
     for (const enemy of ctx.enemies) {
       if (enemy.down) {
         continue;
