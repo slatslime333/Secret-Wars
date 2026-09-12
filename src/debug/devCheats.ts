@@ -8,6 +8,11 @@ export const DEV_CHEATS = {
   showRanges: false,
   showAi: false,
   showHitboxes: false,
+  showSpawns: false,
+  showWaveInfo: false,
+  showXpInfo: false,
+  showScore: false,
+  showDamageStats: false,
 };
 
 export const resetDevCheats = (): void => {
@@ -17,4 +22,9 @@ export const resetDevCheats = (): void => {
   DEV_CHEATS.showRanges = false;
   DEV_CHEATS.showAi = false;
   DEV_CHEATS.showHitboxes = false;
+  DEV_CHEATS.showSpawns = false;
+  DEV_CHEATS.showWaveInfo = false;
+  DEV_CHEATS.showXpInfo = false;
+  DEV_CHEATS.showScore = false;
+  DEV_CHEATS.showDamageStats = false;
 };

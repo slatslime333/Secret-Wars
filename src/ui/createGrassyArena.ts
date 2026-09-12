@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ARENA } from '../config/arena';
+import { ARENA, LANES } from '../config/arena';
 import { COLORS, FONTS, hex } from './theme';
 
 /**
@@ -73,13 +73,19 @@ export const createGrassyArena = (scene: Phaser.Scene, playerLabel = 'NINJA'): v
   const centerX = width / 2;
   const centerY = height / 2;
   graphics.fillStyle(0x6d5c3f, 0.32);
-  graphics.fillEllipse(centerX, centerY, 460, 270);
+  graphics.fillEllipse(centerX, centerY, 560, 270);
   graphics.fillStyle(0x827050, 0.24);
-  graphics.fillEllipse(centerX, centerY, 360, 210);
+  graphics.fillEllipse(centerX, centerY, 420, 210);
 
   // Subtle natural grass cut boundary line
   graphics.lineStyle(2, 0x244c20, 0.55);
-  graphics.strokeEllipse(centerX, centerY, 480, 290);
+  graphics.strokeEllipse(centerX, centerY, 580, 290);
+
+  for (const lane of LANES) {
+    const y = ARENA.laneY[lane];
+    graphics.lineStyle(1, 0x244c20, 0.28);
+    graphics.lineBetween(fieldX + 24, y, fieldX + fieldW - 24, y);
+  }
 
   // Center division marker (subtle grass cut line)
   graphics.lineStyle(1, 0x244c20, 0.45);
@@ -88,9 +94,15 @@ export const createGrassyArena = (scene: Phaser.Scene, playerLabel = 'NINJA'): v
   // Stone/wood perimeter walls enclosing the field
   drawStonePerimeter(graphics, width, height, wallThickness);
 
-  // Spawn pads embedded in the turf
-  drawTurfSpawnPad(scene, ARENA.playerSpawn.x, ARENA.playerSpawn.y, COLORS.cyan, `${playerLabel} // ALPHA`);
-  drawTurfSpawnPad(scene, ARENA.enemySpawn.x, ARENA.enemySpawn.y, COLORS.redBright, 'BRAVO');
+  // Three team-colored spawn circles per side.
+  for (const lane of LANES) {
+    const alpha = ARENA.laneSpawns.alpha[lane];
+    const bravo = ARENA.laneSpawns.bravo[lane];
+    const laneTag = lane.toUpperCase();
+    const alphaLabel = lane === 'mid' ? `${playerLabel} // ${laneTag}` : `ALPHA ${laneTag}`;
+    drawTurfSpawnPad(scene, alpha.x, alpha.y, COLORS.cyan, alphaLabel);
+    drawTurfSpawnPad(scene, bravo.x, bravo.y, COLORS.redBright, `BRAVO ${laneTag}`);
+  }
 };
 
 const drawStonePerimeter = (

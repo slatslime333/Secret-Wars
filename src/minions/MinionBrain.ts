@@ -160,6 +160,7 @@ export class MinionBrain {
           step: 1,
           hitReactionMs: MINION.hitReactionMs,
           heavy: false,
+          sourceKind: 'other',
         },
       );
       this.body.status.markSwing(scene.time.now, 1);
@@ -214,6 +215,7 @@ export class MinionBrain {
               step: 1,
               hitReactionMs: MINION.hitReactionMs,
               heavy: false,
+              sourceKind: 'other',
             });
             return false;
           }

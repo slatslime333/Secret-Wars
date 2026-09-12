@@ -4,6 +4,7 @@ import { NINJA } from '../config/ninja';
 import { COMBAT, ComboStep, comboStepOf } from '../config/combat';
 import { CombatStatus } from '../combat/CombatStatus';
 import { TakeHitOptions } from '../combat/Hurtbox';
+import { emitCombatDamage } from '../combat/damageEvents';
 import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
 import { drawColeElectricity } from './drawCole';
@@ -29,6 +30,9 @@ export class NinjaBody {
   health: number;
   stamina: number;
   ammo: number;
+  lastAttacker?: NinjaBody;
+  lastAttackerAt = 0;
+  private present = true;
   readonly aim = new Phaser.Math.Vector2(1, 0);
   private facing: CardinalFacing = 'east';
   private readonly art: Phaser.GameObjects.Graphics;
@@ -51,7 +55,7 @@ export class NinjaBody {
     this.scene = scene;
     this.rival = Boolean(options.rival);
     this.team = options.team ?? teamOfRival(this.rival);
-    this.stats = options.stats ?? NINJA;
+    this.stats = { ...(options.stats ?? NINJA) };
     this.drawHero = options.draw ?? ((graphics, drawOptions) => drawNinja(graphics, drawOptions));
     this.health = this.stats.maxHealth;
     this.stamina = this.stats.maxStamina;
@@ -156,7 +160,7 @@ export class NinjaBody {
   }
 
   takeHit(options: TakeHitOptions): void {
-    if (this.down) {
+    if (this.down || !this.present) {
       return;
     }
     if (DEV_CHEATS.godMode && this.stats.role !== 'minion') {
@@ -167,7 +171,24 @@ export class NinjaBody {
     if (!body) {
       return;
     }
+    const applied = Math.min(this.health, options.damage);
     this.health = Math.max(0, this.health - options.damage);
+    if (options.source?.attacker) {
+      this.lastAttacker = options.source.attacker;
+      this.lastAttackerAt = now;
+    }
+    if (applied > 0) {
+      emitCombatDamage({
+        attacker: options.source?.attacker ?? null,
+        victim: this,
+        amount: applied,
+        kind: options.source?.kind ?? 'other',
+        abilityId: options.source?.abilityId,
+        at: now,
+        attackerTeam: options.source?.attacker?.team,
+        victimTeam: this.team,
+      });
+    }
     this.drainStamina(options.staminaDamage, now);
     const length = Math.hypot(options.dirX, options.dirY) || 1;
     const minion = this.stats.role === 'minion';
@@ -488,6 +509,37 @@ export class NinjaBody {
   healFull(): void {
     this.health = this.stats.maxHealth;
     this.stamina = this.stats.maxStamina;
+  }
+
+  heal(amount: number): void {
+    if (amount <= 0 || this.down || !this.present) {
+      return;
+    }
+    this.health = Math.min(this.stats.maxHealth, this.health + amount);
+  }
+
+  get isPresent(): boolean {
+    return this.present;
+  }
+
+  setPresent(value: boolean): void {
+    this.present = value;
+    this.sprite.setActive(value);
+    this.sprite.setVisible(false);
+    this.view.setVisible(value);
+    const body = this.body;
+    if (body) {
+      body.enable = value;
+    }
+    if (!value) {
+      this.stop();
+    }
+  }
+
+  placeAt(x: number, y: number): void {
+    this.sprite.setPosition(x, y);
+    this.body?.reset(x, y);
+    this.view.setPosition(x, y);
   }
 
   refillAmmo(): void {

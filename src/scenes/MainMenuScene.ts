@@ -5,7 +5,7 @@ import { createBackdrop } from '../ui/createBackdrop';
 import { createLogo } from '../ui/createLogo';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
-import { getSelectedHero, getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
 
 export class MainMenuScene extends Phaser.Scene {
   private buttons: ActionButton[] = [];
@@ -91,10 +91,11 @@ export class MainMenuScene extends Phaser.Scene {
   private createNavigation(width: number, height: number, isPortrait: boolean): void {
     if (isPortrait) {
       const showExit = !isTouchPrimary();
-      const playH = Math.min(72, height * 0.08);
-      const gap = 12;
-      const stackH = playH + gap + 56 + (showExit ? gap + 46 : 0);
-      const startY = height - 28 - stackH + playH / 2;
+      const playH = Math.min(58, height * 0.07);
+      const gap = 8;
+      const extra = showExit ? 2 : 1;
+      const stackH = playH + (playH - 6) + 48 + extra * (gap + 42);
+      const startY = height - 22 - stackH + playH / 2;
       const btnW = Math.min(340, width - 60);
       this.buttons = [
         new ActionButton(this, width / 2, startY, {
@@ -102,51 +103,64 @@ export class MainMenuScene extends Phaser.Scene {
           width: btnW,
           height: playH,
           primary: true,
-          onPress: () => this.openBattle(),
+          onPress: () => this.openPlay(),
         }),
-        new ActionButton(this, width / 2, startY + playH / 2 + gap + 28, {
+        new ActionButton(this, width / 2, startY + playH + gap, {
+          label: 'PLAY TEST',
+          width: btnW - 10,
+          height: playH - 4,
+          onPress: () => this.openPlayTest(),
+        }),
+        new ActionButton(this, width / 2, startY + playH * 2 + gap * 2, {
           label: 'SETTINGS',
           width: btnW - 30,
-          height: 56,
+          height: 48,
           onPress: () => this.openSettings(),
         }),
       ];
 
       if (showExit) {
         this.buttons.push(
-          new ActionButton(this, width / 2, startY + playH / 2 + gap + 56 + gap + 23, {
+          new ActionButton(this, width / 2, startY + playH * 2 + gap * 3 + 48, {
             label: 'EXIT',
             width: btnW - 60,
-            height: 46,
+            height: 42,
             onPress: () => this.exitGame(),
           }),
         );
       }
     } else {
       const leftCenterX = Math.max(185, Math.min(220, width * 0.22));
-      const playY = height * 0.52;
+      const playY = height * 0.46;
+      const step = Math.min(62, height * 0.105);
       this.buttons = [
         new ActionButton(this, leftCenterX + 25, playY, {
           label: 'PLAY',
           width: Math.min(330, width * 0.36),
-          height: Math.min(78, height * 0.16),
+          height: Math.min(64, height * 0.12),
           primary: true,
-          onPress: () => this.openBattle(),
+          onPress: () => this.openPlay(),
         }),
-        new ActionButton(this, leftCenterX + 17, playY + height * 0.17, {
+        new ActionButton(this, leftCenterX + 21, playY + step, {
+          label: 'PLAY TEST',
+          width: Math.min(310, width * 0.34),
+          height: Math.min(52, height * 0.1),
+          onPress: () => this.openPlayTest(),
+        }),
+        new ActionButton(this, leftCenterX + 17, playY + step * 2, {
           label: 'SETTINGS',
           width: Math.min(290, width * 0.32),
-          height: Math.min(58, height * 0.12),
+          height: Math.min(48, height * 0.09),
           onPress: () => this.openSettings(),
         }),
       ];
 
       if (!isTouchPrimary()) {
         this.buttons.push(
-          new ActionButton(this, leftCenterX + 9, playY + height * 0.31, {
+          new ActionButton(this, leftCenterX + 9, playY + step * 3, {
             label: 'EXIT',
             width: Math.min(250, width * 0.28),
-            height: Math.min(48, height * 0.1),
+            height: Math.min(42, height * 0.08),
             onPress: () => this.exitGame(),
           }),
         );
@@ -227,13 +241,13 @@ export class MainMenuScene extends Phaser.Scene {
       strokeThickness: 4,
     });
 
-    this.add.text(x + 27, y + 91, 'ARENA TRIAL', {
+    this.add.text(x + 27, y + 91, 'DRAFT MATCH', {
       fontFamily: FONTS.display,
       fontSize: '28px',
       color: hex(COLORS.paper),
       letterSpacing: 1,
     });
-    this.add.text(x + 28, y + 128, `${getSelectedHero().stats.displayName.toUpperCase()}  //  RIVAL NINJA`, {
+    this.add.text(x + 28, y + 128, '3 LANES  //  3:00  //  WAVES', {
       fontFamily: FONTS.body,
       fontSize: '17px',
       fontStyle: 'bold',
@@ -244,20 +258,20 @@ export class MainMenuScene extends Phaser.Scene {
     this.createTeamMarks(x + 28, y + 168);
     this.createHeroPick(x + 28, y + 214);
 
-    this.add.text(x + 28, y + 265, 'DEMO 1 DIRECTIVE', {
+    this.add.text(x + 28, y + 265, 'COMMAND', {
       fontFamily: FONTS.body,
       fontSize: '11px',
       fontStyle: 'bold',
       color: hex(COLORS.orange),
       letterSpacing: 3,
     });
-    this.add.text(x + 28, y + 288, 'Pick a fighter. Enter the pit.', {
+    this.add.text(x + 28, y + 288, 'PLAY starts the draft match.', {
       fontFamily: FONTS.body,
       fontSize: '16px',
       fontStyle: 'bold',
       color: hex(COLORS.paper),
     });
-    this.add.text(x + 28, y + 312, 'Combo. Block. Dash. Restart.', {
+    this.add.text(x + 28, y + 312, 'PLAY TEST keeps the combat sandbox.', {
       fontFamily: FONTS.body,
       fontSize: '13px',
       color: hex(COLORS.muted),
@@ -326,7 +340,7 @@ export class MainMenuScene extends Phaser.Scene {
       .setOrigin(0, 1);
 
     this.add
-      .text(width - 28, height - 17, 'BUILD 00.05 // DEMO 1 FIGHT', {
+      .text(width - 28, height - 17, 'BUILD 00.06 // DRAFT MATCH', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -368,7 +382,11 @@ export class MainMenuScene extends Phaser.Scene {
     this.buttons.forEach((button, index) => button.setFocused(index === this.focusIndex));
   }
 
-  private openBattle(): void {
+  private openPlay(): void {
+    this.leaveTo('CharacterSelect');
+  }
+
+  private openPlayTest(): void {
     this.leaveTo('Battle');
   }
 

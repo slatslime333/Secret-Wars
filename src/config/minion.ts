@@ -23,7 +23,7 @@ export const MINION = {
   groupJitter: 36,
   /** Reserved for the future wave director. Not used to spawn automatically. */
   wave: {
-    maxLiving: 24,
+    maxLiving: 48,
     defaultComposition: { sword: 3, ranger: 1 },
   },
 } as const;

@@ -138,6 +138,7 @@ export const resolveMelee = (
     knockback: attacker.stats.knockbackPower * profile.knockbackMultiplier * (options.knockbackMul ?? 1),
     staminaDamage: profile.staminaDamage,
     step,
+    source: { attacker, kind: 'light' },
   });
   spawnHitSpark(scene, defender.x + attacker.aim.x * 12, defender.y + attacker.aim.y * 12, {
     heavy: step === 3,
@@ -173,6 +174,7 @@ const applyClash = (
     staminaDamage: Math.max(2, Math.round(profile.staminaDamage * 0.5)),
     step,
     clash: true,
+    source: { attacker: a, kind: 'light' },
   });
   a.takeHit({
     damage: damageB,
@@ -182,6 +184,7 @@ const applyClash = (
     staminaDamage: Math.max(2, Math.round(otherProfile.staminaDamage * 0.5)),
     step: otherStep,
     clash: true,
+    source: { attacker: b, kind: 'light' },
   });
   a.status.applyClashLock(now);
   b.status.applyClashLock(now);
