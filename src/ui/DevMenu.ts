@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, FONTS, hex } from './theme';
+import { COLORS, FONTS, getUiScale, hex } from './theme';
 
 type DevMenuOptions = {
   onToggleCpu: () => void;
@@ -77,13 +77,15 @@ export class DevMenu {
       this.options.onToggleCpu();
       this.sync(this.options.cpuPresent());
     });
+    this.layout(width, height);
   }
 
   layout(width: number, height: number): void {
-    this.toggle.setPosition(width - 12, height - 12);
-    this.panel.setPosition(width - 12, height - 48);
-    this.title.setPosition(width - 24, height - 118);
-    this.action.setPosition(width - 24, height - 96);
+    const ui = getUiScale(width, height);
+    this.toggle.setPosition(width - 12, height - 12).setScale(ui);
+    this.panel.setPosition(width - 12, height - 48 * ui).setScale(ui);
+    this.title.setPosition(width - 24 * ui, height - 118 * ui).setScale(ui);
+    this.action.setPosition(width - 24 * ui, height - 96 * ui).setScale(ui);
   }
 
   sync(cpuPresent: boolean): void {

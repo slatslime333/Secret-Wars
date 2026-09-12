@@ -84,6 +84,8 @@ export class BattleInput {
           this.dashLatched = true;
         },
       });
+      this.blockButton.setRadius(layout.buttonRadius);
+      this.dashButton.setRadius(layout.buttonRadius);
       this.dashButton.setCharges(COMBAT.dashMaxCharges, COMBAT.dashMaxCharges);
       this.dashButton.setRecovered(1);
     }
@@ -129,8 +131,12 @@ export class BattleInput {
       return;
     }
     const layout = getTouchControlLayout(width, height);
+    this.leftStick?.setRadius(layout.radius);
+    this.rightStick?.setRadius(layout.radius);
     this.leftStick?.setPosition(layout.leftStick.x, layout.leftStick.y);
     this.rightStick?.setPosition(layout.rightStick.x, layout.rightStick.y);
+    this.blockButton?.setRadius(layout.buttonRadius);
+    this.dashButton?.setRadius(layout.buttonRadius);
     this.blockButton?.setPosition(layout.block.x, layout.block.y);
     this.dashButton?.setPosition(layout.dash.x, layout.dash.y);
   }

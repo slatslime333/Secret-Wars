@@ -16,6 +16,7 @@ type CombatButtonOptions = {
 export class CombatButton {
   private x: number;
   private y: number;
+  private radius = 30;
   private readonly accent: number;
   private readonly holdable: boolean;
   private readonly art: Phaser.GameObjects.Graphics;
@@ -58,8 +59,11 @@ export class CombatButton {
       .setDepth(117);
 
     this.zone = scene.add
-      .zone(x, y, 64, 64)
-      .setInteractive(new Phaser.Geom.Circle(32, 32, 32), Phaser.Geom.Circle.Contains)
+      .zone(x, y, this.radius * 2, this.radius * 2)
+      .setInteractive(
+        new Phaser.Geom.Circle(this.radius, this.radius, this.radius),
+        Phaser.Geom.Circle.Contains,
+      )
       .setScrollFactor(0)
       .setDepth(118);
     this.zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
@@ -86,13 +90,27 @@ export class CombatButton {
   }
 
   private drawArt(): void {
+    const r = this.radius;
     this.art.clear();
     this.art.fillStyle(COLORS.ink, 0.75);
-    this.art.fillCircle(this.x + 4, this.y + 5, 32);
+    this.art.fillCircle(this.x + 4, this.y + 5, r + 2);
     this.art.fillStyle(this.held ? this.accent : COLORS.panel, this.held ? 0.35 : 0.96);
-    this.art.fillCircle(this.x, this.y, 30);
+    this.art.fillCircle(this.x, this.y, r);
     this.art.lineStyle(3, this.accent);
-    this.art.strokeCircle(this.x, this.y, 30);
+    this.art.strokeCircle(this.x, this.y, r);
+  }
+
+  setRadius(radius: number): void {
+    this.radius = radius;
+    this.label.setFontSize(Math.max(9, Math.round(12 * (radius / 30))));
+    this.zone.setSize(radius * 2, radius * 2);
+    this.zone.setInteractive(
+      new Phaser.Geom.Circle(radius, radius, radius),
+      Phaser.Geom.Circle.Contains,
+    );
+    this.drawArt();
+    this.redrawFill();
+    this.redrawPips();
   }
 
   setPosition(x: number, y: number): void {
@@ -141,13 +159,27 @@ export class CombatButton {
     this.fill.fillStyle(COLORS.ink, 0.62);
     this.fill.beginPath();
     this.fill.moveTo(this.x, this.y);
-    this.fill.arc(this.x, this.y, 28, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * remaining, false);
+    this.fill.arc(
+      this.x,
+      this.y,
+      this.radius - 2,
+      -Math.PI / 2,
+      -Math.PI / 2 + Math.PI * 2 * remaining,
+      false,
+    );
     this.fill.closePath();
     this.fill.fillPath();
 
     this.fill.lineStyle(3, this.accent, 0.9);
     this.fill.beginPath();
-    this.fill.arc(this.x, this.y, 26, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * this.recovered, false);
+    this.fill.arc(
+      this.x,
+      this.y,
+      this.radius - 4,
+      -Math.PI / 2,
+      -Math.PI / 2 + Math.PI * 2 * this.recovered,
+      false,
+    );
     this.fill.strokePath();
   }
 
@@ -156,9 +188,9 @@ export class CombatButton {
     if (this.maxCharges <= 1) {
       return;
     }
-    const spacing = 10;
+    const spacing = Math.max(8, this.radius * 0.34);
     const startX = this.x - ((this.maxCharges - 1) * spacing) / 2;
-    const y = this.y + 38;
+    const y = this.y + this.radius + 8;
     for (let i = 0; i < this.maxCharges; i += 1) {
       const filled = i < this.charges;
       this.pips.fillStyle(filled ? this.accent : COLORS.ink, filled ? 0.95 : 0.7);
