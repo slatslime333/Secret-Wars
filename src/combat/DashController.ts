@@ -84,7 +84,9 @@ export class DashController {
   apply(now: number, ninja: NinjaBody): void {
     this.tickRecharge(now);
     if (!this.isActive(now)) {
-      ninja.setSpeedCap(COMBAT.physicsMaxSpeed);
+      if (!ninja.status.shouldLockMovement(now)) {
+        ninja.setSpeedCap(COMBAT.physicsMaxSpeed);
+      }
       return;
     }
     const speed = dashSpeed();

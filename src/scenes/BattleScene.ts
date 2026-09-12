@@ -184,7 +184,11 @@ export class BattleScene extends Phaser.Scene {
       this.ninja.applyMove(frame.move);
     }
 
-    this.ninja.setAim(frame.aim);
+    if (frame.blockHeld && frame.blockAimActive) {
+      this.ninja.setAim(frame.blockAim);
+    } else {
+      this.ninja.setAim(frame.aim);
+    }
     this.ninja.tickAmmo(now);
     if (!this.block.isActive(now)) {
       this.ninja.regenStamina(delta, now);

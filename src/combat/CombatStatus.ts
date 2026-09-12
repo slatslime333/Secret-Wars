@@ -127,6 +127,7 @@ export class CombatStatus {
       this.isBlockStunned(now) ||
       this.isClashLocked(now) ||
       this.isControlLocked(now) ||
+      this.isHitStopping(now) ||
       now < this.attackRecoveryUntil
     );
   }

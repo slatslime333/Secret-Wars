@@ -20,6 +20,8 @@ export type AbilityHitProfile = {
   heavy?: boolean;
   blockable?: boolean;
   spark?: 'slash' | 'kick' | 'default';
+  skipSpark?: boolean;
+  hitStopMs?: number;
 };
 
 /**
@@ -71,11 +73,16 @@ export const resolveAbilityHit = (
     staminaDamage: profile.staminaDamage,
     step,
     hitReactionMs: profile.hitReactionMs,
+    hitStopMs: profile.hitStopMs,
   });
-  spawnHitSpark(scene, defender.x + (profile.dirX / length) * 12, defender.y + (profile.dirY / length) * 12, {
-    heavy: Boolean(profile.heavy),
-  });
+  if (!profile.skipSpark) {
+    spawnHitSpark(scene, defender.x + (profile.dirX / length) * 12, defender.y + (profile.dirY / length) * 12, {
+      heavy: Boolean(profile.heavy),
+    });
+  }
   playHitJuice(scene, defender.x, defender.y, { damage, finisher: Boolean(profile.heavy) });
-  attacker.status.applyHitStop(now, profile.heavy ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs);
+  if (profile.hitStopMs !== 0) {
+    attacker.status.applyHitStop(now, profile.hitStopMs ?? (profile.heavy ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs));
+  }
   return 'hit';
 };

@@ -103,6 +103,8 @@ export const COMBAT = {
   hitStopHeavyMs: 85,
   hitStopBlockMs: 70,
   hitStopClashMs: 80,
+  /** Shared ability-impact freeze. Short enough to read as weight, not lag. */
+  hitStopImpactMs: 100,
 
   /** Simultaneous swings. */
   clashWindowMs: 90,

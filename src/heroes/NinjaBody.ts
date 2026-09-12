@@ -30,6 +30,8 @@ export class NinjaBody {
   private reloadEndsAt = 0;
   private currentAttackTween?: Phaser.Tweens.Tween;
   private lastDrawnFlash = false;
+  private frozenUntil = 0;
+  private pendingLaunch?: { x: number; y: number };
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: NinjaBodyOptions = {}) {
     this.scene = scene;
@@ -88,6 +90,7 @@ export class NinjaBody {
     if (!this.view.active || !this.sprite.active) {
       return;
     }
+    this.tickHitStop(this.now());
     this.view.setPosition(this.sprite.x, this.sprite.y);
     const flashing = this.status.isFlashingHit(this.now());
     if (flashing !== this.lastDrawnFlash && this.now() >= this.attackingUntil) {
@@ -132,17 +135,19 @@ export class NinjaBody {
     this.drainStamina(options.staminaDamage, now);
     const length = Math.hypot(options.dirX, options.dirY) || 1;
     const power = options.knockback;
+    const hitStopMs =
+      options.hitStopMs ??
+      (options.clash || options.step === 3 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs);
     body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
-    body.setVelocity((options.dirX / length) * power, (options.dirY / length) * power);
+    this.launch(options.dirX / length, options.dirY / length, power);
     if (options.hitReactionMs !== undefined) {
       this.status.applyStun(now, options.hitReactionMs);
     } else {
       this.status.applyHitReaction(now, options.step);
     }
-    this.status.applyHitStop(
-      now,
-      options.clash || options.step === 3 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs,
-    );
+    if (hitStopMs > 0) {
+      this.status.applyHitStop(now, hitStopMs);
+    }
     this.lastDrawnFlash = true;
     this.redrawIdle();
     this.view.setScale(options.step === 3 ? 1.22 : 1.12);
@@ -165,6 +170,49 @@ export class NinjaBody {
     }
     const length = Math.hypot(dirX, dirY) || 1;
     body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
+    this.launch(dirX / length, dirY / length, power);
+  }
+
+  /**
+   * Freeze in place for a shared impact pause. Other heroes can call this too.
+   * A queued launch fires the moment the freeze ends.
+   */
+  freezeForHitStop(now: number, durationMs: number): void {
+    this.status.applyHitStop(now, durationMs);
+    this.frozenUntil = Math.max(this.frozenUntil, now + durationMs);
+    this.physics()?.setVelocity(0, 0);
+  }
+
+  queueLaunch(dirX: number, dirY: number, power: number): void {
+    const length = Math.hypot(dirX, dirY) || 1;
+    this.pendingLaunch = { x: (dirX / length) * power, y: (dirY / length) * power };
+  }
+
+  private tickHitStop(now: number): void {
+    if (now < this.frozenUntil) {
+      this.physics()?.setVelocity(0, 0);
+      return;
+    }
+    if (!this.pendingLaunch) {
+      return;
+    }
+    const launch = this.pendingLaunch;
+    this.pendingLaunch = undefined;
+    const body = this.physics();
+    if (!body) {
+      return;
+    }
+    body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
+    this.launch(launch.x, launch.y, Math.hypot(launch.x, launch.y));
+  }
+
+  private launch(dirX: number, dirY: number, power: number): void {
+    const body = this.physics();
+    if (!body || power <= 0) {
+      return;
+    }
+    const length = Math.hypot(dirX, dirY) || 1;
+    this.setSpeedCap(Math.max(COMBAT.physicsMaxSpeed, power));
     body.setVelocity((dirX / length) * power, (dirY / length) * power);
   }
 
@@ -280,6 +328,7 @@ export class NinjaBody {
 
   playKickPose(durationMs: number): void {
     this.currentAttackTween?.stop();
+    this.attackingUntil = this.now() + durationMs;
     const lean = this.aim.x >= 0 ? 0.35 : -0.35;
     this.art.setRotation(lean);
     this.art.setPosition(this.aim.x * 10, this.aim.y * 10);
@@ -291,24 +340,31 @@ export class NinjaBody {
     });
   }
 
-  playBackflip(dirX: number, dirY: number, durationMs: number): void {
+  playBackflip(dirX: number, dirY: number, durationMs: number, jumpHeight = 34): void {
     this.currentAttackTween?.stop();
+    this.attackingUntil = this.now() + durationMs;
     const spin = { value: 0 };
-    const sign = dirX >= 0 ? -1 : 1;
+    const length = Math.hypot(dirX, dirY) || 1;
+    const nx = dirX / length;
+    const ny = dirY / length;
+    const sign = nx >= 0 ? -1 : 1;
     this.scene.tweens.add({
       targets: spin,
       value: 1,
       duration: durationMs,
       ease: 'Cubic.Out',
       onUpdate: () => {
+        const lift = Math.sin(spin.value * Math.PI);
         this.view.setRotation(sign * spin.value * Math.PI * 2);
-        this.art.setY(-22 * Math.sin(spin.value * Math.PI) + dirY * 4);
-        this.art.setX(dirX * 6);
+        this.art.setY(-jumpHeight * lift + ny * 6);
+        this.art.setX(nx * 10 * (1 - spin.value));
+        this.art.setScale(1 + lift * 0.12);
       },
       onComplete: () => {
         this.view.setRotation(0);
         this.art.setPosition(0, 0);
         this.art.setRotation(0);
+        this.art.setScale(1);
         this.redrawIdle();
       },
     });
