@@ -7,6 +7,8 @@ type HitJuiceOptions = {
   blocked?: boolean;
   clash?: boolean;
   perfect?: boolean;
+  /** Only the local player's swings or damage taken by the player should punch the camera. */
+  shake?: boolean;
 };
 
 /** Paper shards, damage pop, and a stepped camera punch. */
@@ -36,10 +38,12 @@ export const playHitJuice = (
         ? 'BLOCKED'
         : String(options.damage);
   spawnDamagePop(scene, x, y - 18, label, color);
-  scene.cameras.main.shake(
-    clash ? 140 : perfect ? 200 : finisher ? 160 : blocked ? 80 : 110,
-    clash ? 0.012 : perfect ? 0.016 : finisher ? 0.014 : 0.009,
-  );
+  if (options.shake) {
+    scene.cameras.main.shake(
+      clash ? 140 : perfect ? 200 : finisher ? 160 : blocked ? 80 : 110,
+      clash ? 0.012 : perfect ? 0.016 : finisher ? 0.014 : 0.009,
+    );
+  }
 };
 
 const spawnShards = (scene: Phaser.Scene, x: number, y: number, color: number, big: boolean): void => {

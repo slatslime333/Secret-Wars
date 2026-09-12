@@ -126,10 +126,10 @@ export class AbilityButton {
   private drawArt(): void {
     const r = this.radius;
     this.art.clear();
-    this.art.fillStyle(COLORS.ink, 0.78);
+    this.art.fillStyle(COLORS.ink, 0.45);
     this.art.fillCircle(this.x + 4, this.y + 5, r + 2);
     const fill = this.ultimate && this.ready && !this.consumed ? 0x3a2a12 : COLORS.panel;
-    this.art.fillStyle(fill, this.pressed ? 0.7 : 0.96);
+    this.art.fillStyle(fill, this.pressed ? 0.5 : 0.58);
     this.art.fillCircle(this.x, this.y, r);
     const ring = this.consumed
       ? COLORS.muted

@@ -25,7 +25,7 @@ export type HeroRuntimeOptions = {
 
 /**
  * One match hero: body, kit, progression, death/respawn.
- * Placeholder enemies keep the kit but receive no AI brain.
+ * Non-player heroes are driven by HeroPilot in MatchScene.
  */
 export class HeroRuntime {
   readonly instanceId: string;
@@ -60,6 +60,7 @@ export class HeroRuntime {
       handSparks: playable.handSparks,
       team: options.team,
       rival: options.team === 'bravo',
+      playerControlled: options.isPlayer,
     });
     this.body.setAim(pad.facingX, 0);
     this.attacks = new QuickAttack(scene);

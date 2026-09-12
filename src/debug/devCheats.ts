@@ -13,6 +13,7 @@ export const DEV_CHEATS = {
   showXpInfo: false,
   showScore: false,
   showDamageStats: false,
+  showMapDebug: false,
 };
 
 export const resetDevCheats = (): void => {
@@ -27,4 +28,5 @@ export const resetDevCheats = (): void => {
   DEV_CHEATS.showXpInfo = false;
   DEV_CHEATS.showScore = false;
   DEV_CHEATS.showDamageStats = false;
+  DEV_CHEATS.showMapDebug = false;
 };

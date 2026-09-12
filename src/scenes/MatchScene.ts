@@ -19,8 +19,10 @@ import { AbilityTray } from '../ui/AbilityTray';
 import { BattleHud } from '../ui/BattleHud';
 import { MatchHud } from '../ui/MatchHud';
 import { PostMatchOverlay } from '../ui/PostMatchOverlay';
-import { createGrassyArena } from '../ui/createGrassyArena';
+import { Minimap } from '../ui/Minimap';
 import { COLORS, FONTS, hex } from '../ui/theme';
+import { Battlefield, freshMatchSeed } from '../map';
+import { HeroPilot } from '../ai/HeroPilot';
 import { isTouchPrimary } from '../device';
 import { fadeToScene } from './fadeToScene';
 import { HeroRuntime } from '../match/HeroRuntime';
@@ -44,13 +46,16 @@ export type MatchSceneData = {
   heroId?: HeroId;
 };
 
-/** First draft of the real game. Reuses combat pieces; no CPU AI. */
+/** Draft match. Allies fill the other two heroes; non-players use HeroPilot. */
 export class MatchScene extends Phaser.Scene {
   private returning = false;
   private startHeroId: HeroId = 'ninja';
   private player!: HeroRuntime;
   private heroes: HeroRuntime[] = [];
   private emptyAllySlots: { team: TeamId; lane: LaneId }[] = [];
+  private pilots = new Map<HeroRuntime, HeroPilot>();
+  private battlefield?: Battlefield;
+  private minimap?: Minimap;
   private inputReader!: BattleInput;
   private marker!: HitMarker;
   private abilityWorld!: AbilityWorld;
@@ -86,7 +91,7 @@ export class MatchScene extends Phaser.Scene {
     ensureAbilityIcons(this);
     setSelectedHeroId(this.startHeroId);
     const hero = PLAYABLE_HEROES[this.startHeroId];
-    createGrassyArena(this, hero.stats.displayName.toUpperCase());
+    this.battlefield = Battlefield.install(this, { seed: freshMatchSeed(), log: true });
     this.physics.world.setBounds(
       ARENA.wallThickness,
       ARENA.wallThickness,
@@ -119,7 +124,24 @@ export class MatchScene extends Phaser.Scene {
     });
     this.heroes.push(this.player);
     this.stats.register(this.player.body, { instanceId: this.player.instanceId, player: true });
-    this.emptyAllySlots.push({ team: 'alpha', lane: 'top' }, { team: 'alpha', lane: 'bottom' });
+
+    const leftover = (['ninja', 'cole', 'death'] as HeroId[]).filter((id) => id !== this.startHeroId);
+    const allyLanes: LaneId[] = ['top', 'bottom'];
+    leftover.forEach((heroId, index) => {
+      const lane = allyLanes[index];
+      if (!lane) {
+        return;
+      }
+      const ally = new HeroRuntime(this, {
+        instanceId: `alpha-${lane}`,
+        heroId,
+        team: 'alpha',
+        lane,
+        isPlayer: false,
+      });
+      this.heroes.push(ally);
+      this.stats.register(ally.body, { instanceId: ally.instanceId, player: false });
+    });
 
     for (const lane of LANES) {
       const runtime = new HeroRuntime(this, {
@@ -135,6 +157,13 @@ export class MatchScene extends Phaser.Scene {
 
     this.heroGroup = this.physics.add.group(this.heroes.map((unit) => unit.body.sprite));
     this.physics.add.collider(this.heroGroup, this.heroGroup);
+    this.battlefield.attachGroup(this.heroGroup);
+    this.pilots.clear();
+    for (const unit of this.heroes) {
+      if (!unit.isPlayer) {
+        this.pilots.set(unit, new HeroPilot());
+      }
+    }
 
     this.marker = new HitMarker(this);
     this.inputReader = new BattleInput(this, () => this.inputLocked(), hero.kit, hero.stats.dashMaxCharges);
@@ -144,6 +173,7 @@ export class MatchScene extends Phaser.Scene {
     this.hud = new BattleHud(this);
     this.hud.placeCombo(this.scale.width / 2, 88);
     this.matchHud = new MatchHud(this);
+    this.minimap = new Minimap(this);
     this.results = new PostMatchOverlay(this, {
       onRematch: () => this.restartMatch(),
       onMenu: () => this.returnToMenu(),
@@ -174,6 +204,8 @@ export class MatchScene extends Phaser.Scene {
       this.minions.destroy();
       this.orbs.destroy();
       this.abilityTray?.destroy();
+      this.minimap?.destroy();
+      this.battlefield?.destroy();
       for (const unit of this.heroes) {
         unit.destroy();
       }
@@ -209,12 +241,9 @@ export class MatchScene extends Phaser.Scene {
 
     for (const unit of this.heroes) {
       if (!unit.isPlayer) {
-        unit.holdPlaceholder();
-        unit.body.tickAmmo(now);
-        if (!unit.block.isActive(now)) {
-          unit.body.regenStamina(delta, now);
-        }
-        unit.block.sync(now, unit.body);
+        const foes = this.livingFighters().filter((fighter) => fighter.team !== unit.team);
+        const block = foes.includes(this.player.body) ? this.player.block : undefined;
+        this.pilots.get(unit)?.update(now, delta, unit, foes, this, block);
       }
       if (unit.maybeRespawn(now) && unit.isPlayer) {
         this.cameras.main.startFollow(unit.body.sprite, true, 0.16, 0.16);
@@ -437,6 +466,14 @@ export class MatchScene extends Phaser.Scene {
       this.player.dash,
     );
     this.matchHud.sync(this.match.snapshot(), this.score.snapshot(), this.player.progression);
+    if (this.battlefield && this.minimap) {
+      this.minimap.sync({
+        layout: this.battlefield.layout,
+        player: this.player.body,
+        heroes: this.heroes.map((unit) => unit.body),
+        minions: this.minions.allBodies(),
+      });
+    }
     this.inputReader.syncButtons({
       dashCharges: this.player.dash.chargeCount,
       dashMax: this.player.dash.maxCharges,
@@ -495,6 +532,7 @@ export class MatchScene extends Phaser.Scene {
     this.hud?.layout(width);
     this.hud?.placeCombo(width / 2, 88);
     this.matchHud?.layout(width);
+    this.minimap?.layout(width);
     this.inputReader?.layout(width, height);
     this.abilityTray?.layout(52, 148, 1);
     this.cameras.main.setSize(width, height);

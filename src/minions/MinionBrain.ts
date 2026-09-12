@@ -5,6 +5,7 @@ import { resolveAbilityHit } from '../heroes/abilities/resolveAbilityHit';
 import { Projectile } from '../combat/projectile';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { distanceBetween } from '../heroes/abilities/geometry';
+import { battlefieldOf } from '../map';
 
 export type MinionState = 'advance' | 'approach' | 'attack' | 'recover';
 
@@ -117,7 +118,7 @@ export class MinionBrain {
       return;
     }
 
-    const dir = this.moveDir(target);
+    const dir = this.moveDir(target, scene);
     this.body.applyMove(dir);
   }
 
@@ -258,16 +259,22 @@ export class MinionBrain {
     return fromAcquire > MINION.leashRadius || fromSelf > MINION.leashRadius * 1.15;
   }
 
-  private moveDir(target: NinjaBody | undefined): Phaser.Math.Vector2 {
+  private moveDir(target: NinjaBody | undefined, scene: Phaser.Scene): Phaser.Math.Vector2 {
     const march = minionAdvanceX(this.body.team);
+    let dx: number;
+    let dy: number;
     if (this.state === 'approach' && target) {
-      const dx = target.x - this.body.x;
-      const dy = target.y - this.body.y;
-      const len = Math.hypot(dx, dy) || 1;
-      return new Phaser.Math.Vector2(dx / len, dy / len);
+      dx = target.x - this.body.x;
+      dy = target.y - this.body.y;
+    } else {
+      dy = Phaser.Math.Clamp((750 - this.body.y) * 0.004, -0.35, 0.35);
+      dx = march;
     }
-    const dy = (750 - this.body.y) * 0.004;
-    const vec = new Phaser.Math.Vector2(march, Phaser.Math.Clamp(dy, -0.35, 0.35));
+    const steered = battlefieldOf(scene)?.query.steer(this.body.x, this.body.y, dx, dy);
+    if (steered) {
+      return new Phaser.Math.Vector2(steered.x, steered.y);
+    }
+    const vec = new Phaser.Math.Vector2(dx, dy);
     return vec.normalize();
   }
 }

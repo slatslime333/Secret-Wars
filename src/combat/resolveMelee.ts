@@ -108,6 +108,7 @@ export const resolveMelee = (
         blocked: true,
         finisher: heavy,
         perfect: true,
+        shake: attacker.playerControlled || defender.playerControlled,
       });
       return 'perfect-block';
     }
@@ -120,6 +121,7 @@ export const resolveMelee = (
       blocked: true,
       finisher: heavy,
       perfect: false,
+      shake: attacker.playerControlled || defender.playerControlled,
     });
     return 'blocked';
   }
@@ -143,7 +145,11 @@ export const resolveMelee = (
   spawnHitSpark(scene, defender.x + attacker.aim.x * 12, defender.y + attacker.aim.y * 12, {
     heavy: step === 3,
   });
-  playHitJuice(scene, defender.x, defender.y, { damage, finisher: step === 3 });
+  playHitJuice(scene, defender.x, defender.y, {
+    damage,
+    finisher: step === 3,
+    shake: attacker.playerControlled || defender.playerControlled,
+  });
   attacker.status.applyHitStop(now, step === 3 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs);
   return 'hit';
 };
@@ -189,5 +195,9 @@ const applyClash = (
   a.status.applyClashLock(now);
   b.status.applyClashLock(now);
   spawnHitSpark(scene, (a.x + b.x) / 2, (a.y + b.y) / 2, { clash: true, heavy: true });
-  playHitJuice(scene, (a.x + b.x) / 2, (a.y + b.y) / 2, { damage: damageA, clash: true });
+  playHitJuice(scene, (a.x + b.x) / 2, (a.y + b.y) / 2, {
+    damage: damageA,
+    clash: true,
+    shake: a.playerControlled || b.playerControlled,
+  });
 };

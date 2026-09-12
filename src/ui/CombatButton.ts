@@ -92,9 +92,9 @@ export class CombatButton {
   private drawArt(): void {
     const r = this.radius;
     this.art.clear();
-    this.art.fillStyle(COLORS.ink, 0.75);
+    this.art.fillStyle(COLORS.ink, 0.45);
     this.art.fillCircle(this.x + 4, this.y + 5, r + 2);
-    this.art.fillStyle(this.held ? this.accent : COLORS.panel, this.held ? 0.35 : 0.96);
+    this.art.fillStyle(this.held ? this.accent : COLORS.panel, this.held ? 0.28 : 0.58);
     this.art.fillCircle(this.x, this.y, r);
     this.art.lineStyle(3, this.accent);
     this.art.strokeCircle(this.x, this.y, r);
