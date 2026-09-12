@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
-import { COMBAT, ComboStep, attackHalfArcRad } from '../config/combat';
-import { NINJA } from '../config/ninja';
+import { COMBAT, ComboStep } from '../config/combat';
 import { applyDefense } from './damage';
 import { isInAttackArc } from './hitDetection';
 import { playHitJuice } from '../effects/hitJuice';
@@ -11,6 +10,8 @@ import { BlockController } from './BlockController';
 import { HitKind } from './Hurtbox';
 import { NinjaBody } from '../heroes/NinjaBody';
 
+const halfArcOf = (fighter: NinjaBody): number => (fighter.stats.attackArcDegrees * Math.PI) / 360;
+
 const inArc = (attacker: NinjaBody, defender: NinjaBody): boolean =>
   isInAttackArc(
     attacker.x,
@@ -19,9 +20,9 @@ const inArc = (attacker: NinjaBody, defender: NinjaBody): boolean =>
     attacker.aim.y,
     defender.x,
     defender.y,
-    NINJA.attackRange + COMBAT.hitForgiveness,
-    attackHalfArcRad,
-    NINJA.bodyRadius,
+    attacker.stats.attackRange + COMBAT.hitForgiveness,
+    halfArcOf(attacker),
+    defender.stats.bodyRadius,
   );
 
 const flashBlockShield = (scene: Phaser.Scene, defender: NinjaBody, heavy: boolean, perfect: boolean): void => {
@@ -117,12 +118,12 @@ export const resolveMelee = (
   }
 
   const profile = COMBAT.combo[step];
-  const damage = applyDefense(NINJA.attackDamage * profile.damageMultiplier, defender.defense);
+  const damage = applyDefense(attacker.stats.attackDamage * profile.damageMultiplier, defender.defense);
   defender.takeHit({
     damage,
     dirX: attacker.aim.x,
     dirY: attacker.aim.y,
-    knockback: NINJA.knockbackPower * profile.knockbackMultiplier,
+    knockback: attacker.stats.knockbackPower * profile.knockbackMultiplier,
     staminaDamage: profile.staminaDamage,
     step,
   });
@@ -143,13 +144,13 @@ const applyClash = (
 ): void => {
   const profile = COMBAT.combo[step];
   const damageA = applyDefense(
-    NINJA.attackDamage * profile.damageMultiplier * COMBAT.clashDamageMultiplier,
+    a.stats.attackDamage * profile.damageMultiplier * COMBAT.clashDamageMultiplier,
     b.defense,
   );
   const otherStep = b.status.lastAttackStep;
   const otherProfile = COMBAT.combo[otherStep];
   const damageB = applyDefense(
-    NINJA.attackDamage * otherProfile.damageMultiplier * COMBAT.clashDamageMultiplier,
+    b.stats.attackDamage * otherProfile.damageMultiplier * COMBAT.clashDamageMultiplier,
     a.defense,
   );
   b.takeHit({

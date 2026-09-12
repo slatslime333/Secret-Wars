@@ -1,13 +1,19 @@
 import Phaser from 'phaser';
+import { HeroCombatConfig, TeamId, teamOfRival } from '../config/hero';
 import { NINJA } from '../config/ninja';
 import { COMBAT, ComboStep, comboStepOf } from '../config/combat';
 import { CombatStatus } from '../combat/CombatStatus';
 import { TakeHitOptions } from '../combat/Hurtbox';
 import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
+import type { HeroDrawFn } from './heroDraw';
 
-type NinjaBodyOptions = {
+export type FighterOptions = {
   rival?: boolean;
+  team?: TeamId;
+  stats?: HeroCombatConfig;
+  draw?: HeroDrawFn;
+  handSparks?: boolean;
 };
 
 export class NinjaBody {
@@ -15,13 +21,16 @@ export class NinjaBody {
   readonly view: Phaser.GameObjects.Container;
   readonly status = new CombatStatus();
   readonly rival: boolean;
-  health = NINJA.maxHealth;
-  stamina = NINJA.maxStamina;
-  ammo = COMBAT.attackAmmoMax;
-  readonly defense = NINJA.defense;
+  readonly team: TeamId;
+  readonly stats: HeroCombatConfig;
+  health: number;
+  stamina: number;
+  ammo: number;
   readonly aim = new Phaser.Math.Vector2(1, 0);
   private facing: CardinalFacing = 'east';
   private readonly art: Phaser.GameObjects.Graphics;
+  private readonly sparks?: Phaser.GameObjects.Graphics;
+  private readonly drawHero: HeroDrawFn;
   private readonly scene: Phaser.Scene;
   private staminaLockUntil = 0;
   private staminaDeniedAt = 0;
@@ -33,13 +42,19 @@ export class NinjaBody {
   private frozenUntil = 0;
   private pendingLaunch?: { x: number; y: number };
 
-  constructor(scene: Phaser.Scene, x: number, y: number, options: NinjaBodyOptions = {}) {
+  constructor(scene: Phaser.Scene, x: number, y: number, options: FighterOptions = {}) {
     this.scene = scene;
     this.rival = Boolean(options.rival);
+    this.team = options.team ?? teamOfRival(this.rival);
+    this.stats = options.stats ?? NINJA;
+    this.drawHero = options.draw ?? ((graphics, drawOptions) => drawNinja(graphics, drawOptions));
+    this.health = this.stats.maxHealth;
+    this.stamina = this.stats.maxStamina;
+    this.ammo = this.stats.ammoMax;
     ensureBodyTexture(scene);
     this.sprite = scene.physics.add.image(x, y, BODY_TEXTURE);
     this.sprite.setAlpha(0);
-    this.sprite.setCircle(NINJA.bodyRadius);
+    this.sprite.setCircle(this.stats.bodyRadius);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setMaxVelocity(COMBAT.physicsMaxSpeed, COMBAT.physicsMaxSpeed);
     this.sprite.setDrag(0, 0);
@@ -52,7 +67,19 @@ export class NinjaBody {
     this.view = scene.add.container(x, y).setDepth(this.rival ? 9 : 10);
     this.art = scene.add.graphics();
     this.view.add(this.art);
+    if (options.handSparks) {
+      this.sparks = scene.add.graphics();
+      this.view.add(this.sparks);
+    }
     this.redrawIdle();
+  }
+
+  get defense(): number {
+    return this.stats.defense;
+  }
+
+  get heroId(): string {
+    return this.stats.id;
   }
 
   get x(): number {
@@ -68,7 +95,7 @@ export class NinjaBody {
   }
 
   get maxAmmo(): number {
-    return COMBAT.attackAmmoMax;
+    return this.stats.ammoMax;
   }
 
   get body(): Phaser.Physics.Arcade.Body | undefined {
@@ -92,6 +119,7 @@ export class NinjaBody {
     }
     this.tickHitStop(this.now());
     this.view.setPosition(this.sprite.x, this.sprite.y);
+    this.redrawHandSparks();
     const flashing = this.status.isFlashingHit(this.now());
     if (flashing !== this.lastDrawnFlash && this.now() >= this.attackingUntil) {
       this.lastDrawnFlash = flashing;
@@ -105,7 +133,7 @@ export class NinjaBody {
       return;
     }
     const now = this.now();
-    const speed = NINJA.moveSpeed * this.status.moveMultiplier(now);
+    const speed = this.stats.moveSpeed * this.status.moveMultiplier(now);
     body.setDrag(0, 0);
     body.setVelocity(move.x * speed, move.y * speed);
   }
@@ -283,7 +311,7 @@ export class NinjaBody {
       ease: comboStep === 3 ? 'Back.Out' : 'Cubic.Out',
       yoyo: true,
       onUpdate: () => {
-        drawNinja(this.art, {
+        this.drawHero(this.art, {
           facing: this.facing,
           attacking: true,
           swordAngleOffset: swordAnimState.angleOffset,
@@ -302,6 +330,39 @@ export class NinjaBody {
         this.art.setPosition(0, 0);
         this.art.setRotation(0);
         this.art.setScale(1);
+        this.redrawIdle();
+      },
+    });
+  }
+
+  playCustomAttack(
+    now: number,
+    durationMs: number,
+    frame: (frac: number) => { swayX?: number; armLiftLeft?: number; armLiftRight?: number },
+  ): void {
+    this.currentAttackTween?.stop();
+    this.attackingUntil = now + durationMs;
+    const anim = { frac: 0 };
+    this.currentAttackTween = this.scene.tweens.add({
+      targets: anim,
+      frac: 1,
+      duration: durationMs,
+      ease: 'Sine.InOut',
+      onUpdate: () => {
+        const pose = frame(anim.frac);
+        this.drawHero(this.art, {
+          facing: this.facing,
+          attacking: true,
+          comboStep: 1,
+          hitFlash: this.status.isFlashingHit(this.now()),
+          rival: this.rival,
+          armLiftLeft: pose.armLiftLeft,
+          armLiftRight: pose.armLiftRight,
+        });
+        this.art.setPosition(pose.swayX ?? 0, 0);
+      },
+      onComplete: () => {
+        this.art.setPosition(0, 0);
         this.redrawIdle();
       },
     });
@@ -399,14 +460,14 @@ export class NinjaBody {
     }
     this.ammo -= 1;
     if (this.ammo <= 0) {
-      this.reloadEndsAt = now + COMBAT.attackReloadMs;
+      this.reloadEndsAt = now + this.stats.reloadMs;
     }
     return true;
   }
 
   tickAmmo(now: number): void {
     if (this.ammo <= 0 && this.reloadEndsAt > 0 && now >= this.reloadEndsAt) {
-      this.ammo = COMBAT.attackAmmoMax;
+      this.ammo = this.stats.ammoMax;
       this.reloadEndsAt = 0;
     }
   }
@@ -415,17 +476,17 @@ export class NinjaBody {
     this.tickAmmo(now);
     if (this.isReloading(now)) {
       const remaining = this.reloadEndsAt - now;
-      const recovered = 1 - remaining / COMBAT.attackReloadMs;
+      const recovered = 1 - remaining / this.stats.reloadMs;
       return {
-        current: Math.min(COMBAT.attackAmmoMax, Math.floor(recovered * COMBAT.attackAmmoMax)),
-        max: COMBAT.attackAmmoMax,
+        current: Math.min(this.stats.ammoMax, Math.floor(recovered * this.stats.ammoMax)),
+        max: this.stats.ammoMax,
         reloading: true,
         reloadRatio: Phaser.Math.Clamp(recovered, 0, 1),
       };
     }
     return {
       current: this.ammo,
-      max: COMBAT.attackAmmoMax,
+      max: this.stats.ammoMax,
       reloading: false,
       reloadRatio: 1,
     };
@@ -462,8 +523,8 @@ export class NinjaBody {
       return;
     }
     this.stamina = Math.min(
-      NINJA.maxStamina,
-      this.stamina + NINJA.staminaRegenPerSecond * (deltaMs / 1000),
+      this.stats.maxStamina,
+      this.stamina + this.stats.staminaRegenPerSecond * (deltaMs / 1000),
     );
   }
 
@@ -476,7 +537,7 @@ export class NinjaBody {
   }
 
   private redrawIdle(): void {
-    drawNinja(this.art, {
+    this.drawHero(this.art, {
       facing: this.facing,
       attacking: false,
       swordAngleOffset: 0,
@@ -484,5 +545,37 @@ export class NinjaBody {
       hitFlash: this.status.isFlashingHit(this.now()),
       rival: this.rival,
     });
+  }
+
+  private redrawHandSparks(): void {
+    if (!this.sparks) {
+      return;
+    }
+    const t = this.now() / 70;
+    this.sparks.clear();
+    const hands = this.facing === 'west'
+      ? [
+          { x: -13, y: 8 },
+          { x: 10, y: 8 },
+        ]
+      : [
+          { x: -10, y: 8 },
+          { x: 13, y: 8 },
+        ];
+    for (let h = 0; h < hands.length; h += 1) {
+      const hand = hands[h];
+      for (let i = 0; i < 3; i += 1) {
+        const flicker = ((t + h * 1.7 + i * 0.9) % 4) / 4;
+        const ang = (t + i * 2.1 + h) * (h === 0 ? 1 : -1);
+        const len = 3 + flicker * 5;
+        this.sparks.lineStyle(1.6, i === 0 ? 0xdff4ff : 0x4aa8ff, 0.7 + flicker * 0.3);
+        this.sparks.lineBetween(
+          hand.x,
+          hand.y,
+          hand.x + Math.cos(ang) * len,
+          hand.y + Math.sin(ang * 1.3) * len - flicker * 3,
+        );
+      }
+    }
   }
 }

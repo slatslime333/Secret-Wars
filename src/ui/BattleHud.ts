@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { NINJA } from '../config/ninja';
 import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { isTouchPrimary } from '../device';
@@ -107,8 +106,8 @@ export class BattleHud {
     block: BlockController,
     dash: DashController,
   ): void {
-    this.ninjaFill.width = 224 * (ninja.health / NINJA.maxHealth);
-    this.staminaFill.width = 224 * (ninja.stamina / NINJA.maxStamina);
+    this.ninjaFill.width = 224 * (ninja.health / ninja.stats.maxHealth);
+    this.staminaFill.width = 224 * (ninja.stamina / ninja.stats.maxStamina);
     this.staminaFill.setFillStyle(ninja.staminaDeniedRecently(now) ? COLORS.orange : COLORS.cyan);
 
     const ammo = ninja.ammoDisplay(now);
@@ -122,8 +121,8 @@ export class BattleHud {
     } else {
       this.foeBar.setVisible(true);
       this.foeBar.setPosition(rival.x, rival.y - 44);
-      this.foeFill.width = Math.max(0, 72 * (rival.health / NINJA.maxHealth));
-      this.foeStaminaFill.width = Math.max(0, 72 * (rival.stamina / NINJA.maxStamina));
+      this.foeFill.width = Math.max(0, 72 * (rival.health / rival.stats.maxHealth));
+      this.foeStaminaFill.width = Math.max(0, 72 * (rival.stamina / rival.stats.maxStamina));
     }
 
     this.comboText.setText(comboLabel(comboStep));

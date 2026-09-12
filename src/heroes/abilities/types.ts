@@ -29,6 +29,7 @@ export type AbilityContext = {
   world: AbilityWorld;
   interruptCombat: () => void;
   rivalBlock?: BlockController;
+  aimOverride?: { x: number; y: number };
 };
 
 export type ActiveAbility = {
@@ -48,6 +49,8 @@ export type AbilityDef = {
   maxCharges: number;
   iconKey: string;
   accent: number;
+  /** Mobile: hold and drag the button, fire on release. PC still uses current aim. */
+  aimOnRelease?: boolean;
   canActivate(ctx: AbilityContext): boolean;
   activate(ctx: AbilityContext): ActiveAbility | void;
 };

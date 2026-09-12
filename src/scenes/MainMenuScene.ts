@@ -5,6 +5,7 @@ import { createBackdrop } from '../ui/createBackdrop';
 import { createLogo } from '../ui/createLogo';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
+import { getSelectedHero, getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
 
 export class MainMenuScene extends Phaser.Scene {
   private buttons: ActionButton[] = [];
@@ -232,7 +233,7 @@ export class MainMenuScene extends Phaser.Scene {
       color: hex(COLORS.paper),
       letterSpacing: 1,
     });
-    this.add.text(x + 28, y + 128, 'NINJA  //  RIVAL NINJA', {
+    this.add.text(x + 28, y + 128, `${getSelectedHero().stats.displayName.toUpperCase()}  //  RIVAL NINJA`, {
       fontFamily: FONTS.body,
       fontSize: '17px',
       fontStyle: 'bold',
@@ -240,7 +241,8 @@ export class MainMenuScene extends Phaser.Scene {
       letterSpacing: 3,
     });
 
-    this.createTeamMarks(x + 28, y + 185);
+    this.createTeamMarks(x + 28, y + 168);
+    this.createHeroPick(x + 28, y + 214);
 
     this.add.text(x + 28, y + 265, 'DEMO 1 DIRECTIVE', {
       fontFamily: FONTS.body,
@@ -249,7 +251,7 @@ export class MainMenuScene extends Phaser.Scene {
       color: hex(COLORS.orange),
       letterSpacing: 3,
     });
-    this.add.text(x + 28, y + 288, 'Enter the pit. Fight a rival Ninja.', {
+    this.add.text(x + 28, y + 288, 'Pick a fighter. Enter the pit.', {
       fontFamily: FONTS.body,
       fontSize: '16px',
       fontStyle: 'bold',
@@ -260,6 +262,29 @@ export class MainMenuScene extends Phaser.Scene {
       fontSize: '13px',
       color: hex(COLORS.muted),
     });
+  }
+
+  private createHeroPick(x: number, y: number): void {
+    this.add.text(x, y - 18, 'FIGHTER', {
+      fontFamily: FONTS.body,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: hex(COLORS.muted),
+      letterSpacing: 3,
+    });
+    const make = (id: HeroId, ox: number) =>
+      new ActionButton(this, x + 62 + ox, y + 10, {
+        label: id.toUpperCase(),
+        width: 108,
+        height: 36,
+        primary: getSelectedHeroId() === id,
+        onPress: () => {
+          setSelectedHeroId(id);
+          this.scene.restart();
+        },
+      });
+    make('ninja', 0);
+    make('cole', 124);
   }
 
   private createTeamMarks(x: number, y: number): void {

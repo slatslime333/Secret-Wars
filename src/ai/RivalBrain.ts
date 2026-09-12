@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { NINJA } from '../config/ninja';
 import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { QuickAttack } from '../combat/QuickAttack';
@@ -33,7 +32,7 @@ export class RivalBrain {
     cpu.tickAmmo(now);
     cpu.setAim(player.x - cpu.x, player.y - cpu.y);
     const distance = Math.hypot(player.x - cpu.x, player.y - cpu.y);
-    const inRange = distance <= NINJA.attackRange * 1.05;
+    const inRange = distance <= cpu.stats.attackRange * 1.05;
 
     this.dash.apply(now, cpu);
     this.block.setHeld(now, cpu, now < this.blockHoldUntil && !this.dash.isActive(now));
@@ -42,12 +41,12 @@ export class RivalBrain {
 
     if (cpu.status.isBlockStunned(now) || cpu.status.isClashLocked(now)) {
       cpu.stop();
-      this.attacks.update(now, false, false, cpu, player, this.playerBlock);
+      this.attacks.update(now, false, false, cpu, [player], this.playerBlock);
       return;
     }
 
     if (this.dash.isActive(now)) {
-      this.attacks.update(now, false, false, cpu, player, this.playerBlock);
+      this.attacks.update(now, false, false, cpu, [player], this.playerBlock);
       return;
     }
 
@@ -72,9 +71,9 @@ export class RivalBrain {
       !this.dash.isActive(now) &&
       !cpu.status.cannotAttack(now)
     ) {
-      this.attacks.update(now, held, pressed, cpu, player, this.playerBlock);
+      this.attacks.update(now, held, pressed, cpu, [player], this.playerBlock);
     } else {
-      this.attacks.update(now, false, false, cpu, player, this.playerBlock);
+      this.attacks.update(now, false, false, cpu, [player], this.playerBlock);
     }
   }
 
@@ -90,7 +89,7 @@ export class RivalBrain {
     const recentlyHit = cpu.status.isHitReacting(now);
     const roll = Math.random();
 
-    if (recentlyHit && distance < NINJA.attackRange * 1.4 && roll < 0.38) {
+    if (recentlyHit && distance < cpu.stats.attackRange * 1.4 && roll < 0.38) {
       this.chase.copy(cpu.aim).scale(-1);
       if (this.dash.tryStart(now, this.chase, cpu.aim, cpu)) {
         this.blockHoldUntil = 0;
@@ -107,7 +106,7 @@ export class RivalBrain {
     }
 
     if (cpu.ammo <= 0) {
-      if (distance < NINJA.attackRange * 1.6 && roll < 0.28) {
+      if (distance < cpu.stats.attackRange * 1.6 && roll < 0.28) {
         this.chase.copy(cpu.aim).scale(-1);
         this.dash.tryStart(now, this.chase, cpu.aim, cpu);
       }
@@ -129,7 +128,7 @@ export class RivalBrain {
       return;
     }
 
-    if (distance > NINJA.attackRange * 2.2 && roll < 0.18) {
+    if (distance > cpu.stats.attackRange * 2.2 && roll < 0.18) {
       this.dash.tryStart(now, cpu.aim, cpu.aim, cpu);
     }
   }
@@ -148,7 +147,7 @@ export class RivalBrain {
       cpu.stop();
       return;
     }
-    const preferred = NINJA.attackRange * 0.72;
+    const preferred = cpu.stats.attackRange * 0.72;
     const dx = player.x - cpu.x;
     const dy = player.y - cpu.y;
     const length = Math.hypot(dx, dy) || 1;

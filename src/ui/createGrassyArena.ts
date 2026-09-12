@@ -7,7 +7,7 @@ import { COLORS, FONTS, hex } from './theme';
  * Features textured retro pixel grass tiles, dirt paths, stone perimeter borders,
  * wildflower tufts, and clean pixelated boundary markings.
  */
-export const createGrassyArena = (scene: Phaser.Scene): void => {
+export const createGrassyArena = (scene: Phaser.Scene, playerLabel = 'NINJA'): void => {
   const { width, height, wallThickness } = ARENA;
   const graphics = scene.add.graphics().setDepth(0);
 
@@ -89,7 +89,7 @@ export const createGrassyArena = (scene: Phaser.Scene): void => {
   drawStonePerimeter(graphics, width, height, wallThickness);
 
   // Spawn pads embedded in the turf
-  drawTurfSpawnPad(scene, ARENA.playerSpawn.x, ARENA.playerSpawn.y, COLORS.cyan, 'NINJA');
+  drawTurfSpawnPad(scene, ARENA.playerSpawn.x, ARENA.playerSpawn.y, COLORS.cyan, playerLabel);
   drawTurfSpawnPad(scene, ARENA.enemySpawn.x, ARENA.enemySpawn.y, COLORS.redBright, 'RIVAL');
 };
 

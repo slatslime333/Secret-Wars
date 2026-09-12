@@ -9,7 +9,7 @@ import { AbilityController } from '../heroes/abilities/AbilityController';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { AbilityContext } from '../heroes/abilities/types';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
-import { NINJA_ABILITY_KIT } from '../heroes/abilities/ninja/kit';
+import { getSelectedHero } from '../heroes/roster';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
@@ -19,7 +19,6 @@ import { createGrassyArena } from '../ui/createGrassyArena';
 import { DevMenu } from '../ui/DevMenu';
 import { RoundOverlay } from '../ui/RoundOverlay';
 import { COLORS, FONTS, hex } from '../ui/theme';
-import { NINJA } from '../config/ninja';
 import { isTouchPrimary } from '../device';
 import { fadeToScene } from './fadeToScene';
 
@@ -47,6 +46,7 @@ export class BattleScene extends Phaser.Scene {
   private chromeBar?: Phaser.GameObjects.Rectangle;
   private titleText?: Phaser.GameObjects.Text;
   private menuButton?: ActionButton;
+  private abilityAim?: { x: number; y: number };
 
   constructor() {
     super('Battle');
@@ -55,7 +55,8 @@ export class BattleScene extends Phaser.Scene {
   create(): void {
     this.returning = false;
     ensureAbilityIcons(this);
-    createGrassyArena(this);
+    const hero = getSelectedHero();
+    createGrassyArena(this, hero.stats.displayName.toUpperCase());
     this.physics.world.setBounds(
       ARENA.wallThickness,
       ARENA.wallThickness,
@@ -63,14 +64,19 @@ export class BattleScene extends Phaser.Scene {
       ARENA.height - ARENA.wallThickness * 2,
     );
 
-    this.ninja = new NinjaBody(this, ARENA.playerSpawn.x, ARENA.playerSpawn.y);
+    this.ninja = new NinjaBody(this, ARENA.playerSpawn.x, ARENA.playerSpawn.y, {
+      stats: hero.stats,
+      draw: hero.draw,
+      handSparks: hero.handSparks,
+      team: 'alpha',
+    });
     this.marker = new HitMarker(this);
     this.attacks = new QuickAttack(this, this.marker);
     this.block = new BlockController(this);
     this.dash = new DashController(this);
     this.abilityWorld = new AbilityWorld();
-    this.abilities = new AbilityController(NINJA_ABILITY_KIT);
-    this.inputReader = new BattleInput(this, () => this.round.isLocked, NINJA_ABILITY_KIT);
+    this.abilities = new AbilityController(hero.kit);
+    this.inputReader = new BattleInput(this, () => this.round.isLocked, hero.kit);
     if (!isTouchPrimary()) {
       this.abilityTray = new AbilityTray(this, 52, 128);
     }
@@ -78,6 +84,7 @@ export class BattleScene extends Phaser.Scene {
     this.round = new RoundOverlay(this, {
       onRestart: () => this.restartBattle(),
       onMenu: () => this.returnToMenu(),
+      playerName: hero.stats.displayName,
     });
     this.devMenu = new DevMenu(this, {
       onToggleCpu: () => this.toggleCpu(),
@@ -138,9 +145,13 @@ export class BattleScene extends Phaser.Scene {
     }
 
     const frame = this.inputReader.sample(this.ninja.x, this.ninja.y);
+    if (frame.ability1AimActive) {
+      this.abilityAim = { x: frame.ability1Aim.x, y: frame.ability1Aim.y };
+    }
     const ctx = this.makeAbilityContext(now, delta);
     if (frame.ability1) {
       this.abilities.tryActivate('ability1', ctx);
+      this.abilityAim = undefined;
     }
     if (frame.ability2) {
       this.abilities.tryActivate('ability2', ctx);
@@ -149,7 +160,7 @@ export class BattleScene extends Phaser.Scene {
       this.abilities.tryActivate('ultimate', ctx);
     }
     this.abilities.update(this.makeAbilityContext(now, delta));
-    this.abilityWorld.update(now, this.livingFighters());
+    this.abilityWorld.update(now, this.livingFighters(), delta);
 
     const control = this.abilities.control;
 
@@ -193,7 +204,14 @@ export class BattleScene extends Phaser.Scene {
     if (!this.block.isActive(now)) {
       this.ninja.regenStamina(delta, now);
     }
-    this.marker.sync(this.ninja.x, this.ninja.y, this.ninja.aim.x, this.ninja.aim.y);
+    this.marker.sync(
+      this.ninja.x,
+      this.ninja.y,
+      this.ninja.aim.x,
+      this.ninja.aim.y,
+      this.ninja.stats.attackRange,
+      this.ninja.stats.attackArcDegrees,
+    );
     this.block.sync(now, this.ninja);
 
     if (this.rival && this.brain) {
@@ -210,9 +228,9 @@ export class BattleScene extends Phaser.Scene {
       !this.block.isActive(now) &&
       !this.dash.isActive(now)
     ) {
-      this.attacks.update(now, frame.attackHeld, frame.attackPressed, this.ninja, this.rival, this.rivalBlock);
+      this.attacks.update(now, frame.attackHeld, frame.attackPressed, this.ninja, this.livingEnemies(), this.rivalBlock);
     } else {
-      this.attacks.update(now, false, false, this.ninja, this.rival, this.rivalBlock);
+      this.attacks.update(now, false, false, this.ninja, this.livingEnemies(), this.rivalBlock);
     }
 
     this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
@@ -221,7 +239,7 @@ export class BattleScene extends Phaser.Scene {
       dashMax: this.dash.maxCharges,
       dashRecharge: this.dash.rechargeRatio(now),
       blocking: this.block.isActive(now),
-      staminaRatio: this.ninja.stamina / NINJA.maxStamina,
+      staminaRatio: this.ninja.stamina / this.ninja.stats.maxStamina,
     });
     this.syncAbilityUi(now);
 
@@ -238,7 +256,7 @@ export class BattleScene extends Phaser.Scene {
     if (this.rival) {
       return;
     }
-    this.rival = new NinjaBody(this, ARENA.enemySpawn.x, ARENA.enemySpawn.y, { rival: true });
+    this.rival = new NinjaBody(this, ARENA.enemySpawn.x, ARENA.enemySpawn.y, { rival: true, team: 'bravo' });
     this.rivalCollider = this.physics.add.collider(this.ninja.sprite, this.rival.sprite);
     this.rivalAttacks = new QuickAttack(this);
     this.rivalBlock = new BlockController(this);
@@ -280,7 +298,7 @@ export class BattleScene extends Phaser.Scene {
     this.chromeBar.setStrokeStyle(2, COLORS.paper).setScrollFactor(0).setDepth(99);
 
     this.titleText = this.add
-      .text(22, 22, 'SECRET WARS  //  NINJA VS NINJA', {
+      .text(22, 22, `SECRET WARS  //  ${this.ninja.stats.displayName.toUpperCase()} VS NINJA`, {
         fontFamily: FONTS.display,
         fontSize: '15px',
         color: hex(COLORS.paper),
@@ -329,11 +347,16 @@ export class BattleScene extends Phaser.Scene {
         this.block.setHeld(now, this.ninja, false);
       },
       rivalBlock: this.rivalBlock,
+      aimOverride: this.abilityAim,
     };
   }
 
   private livingFighters(): NinjaBody[] {
     return this.rival ? [this.ninja, this.rival] : [this.ninja];
+  }
+
+  private livingEnemies(): NinjaBody[] {
+    return this.rival && !this.rival.down ? [this.rival] : [];
   }
 
   private syncAbilityUi(now: number): void {

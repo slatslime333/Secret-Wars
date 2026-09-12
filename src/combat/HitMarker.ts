@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
+import { COMBAT } from '../config/combat';
 import { NINJA } from '../config/ninja';
-import { attackHalfArcRad } from '../config/combat';
 import { COLORS } from '../ui/theme';
 
 /**
@@ -19,10 +19,16 @@ export class HitMarker {
     this.attacking = value;
   }
 
-  sync(x: number, y: number, aimX: number, aimY: number): void {
-    const range = NINJA.attackRange;
+  sync(
+    x: number,
+    y: number,
+    aimX: number,
+    aimY: number,
+    range: number = NINJA.attackRange,
+    arcDegrees: number = COMBAT.attackArcDegrees,
+  ): void {
     const angle = Math.atan2(aimY, aimX);
-    const half = attackHalfArcRad;
+    const half = (arcDegrees * Math.PI) / 360;
     const accent = COLORS.cyan;
     const g = this.graphics;
     g.clear();
