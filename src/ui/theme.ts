@@ -31,71 +31,8 @@ export function getGameSize(
   };
 }
 
-export type TouchControlLayout = {
-  isPortrait: boolean;
-  radius: number;
-  buttonRadius: number;
-  abilityRadius: number;
-  ultimateRadius: number;
-  leftStick: { x: number; y: number };
-  rightStick: { x: number; y: number };
-  block: { x: number; y: number };
-  dash: { x: number; y: number };
-  ability1: { x: number; y: number };
-  ability2: { x: number; y: number };
-  ultimate: { x: number; y: number };
-};
-
-/** Thumb-reachable stick and button anchors for the current screen. */
-export function getTouchControlLayout(width: number, height: number): TouchControlLayout {
-  const isPortrait = width < height;
-  const short = Math.min(width, height);
-  const radius = Math.round(clamp(short * 0.125, 52, 76));
-  const buttonRadius = 30;
-  const abilityRadius = 34;
-  const ultimateRadius = 40;
-  const sideInset = Math.round(Math.max(radius + 32, short * 0.18));
-  const bottomInset = Math.round(
-    isPortrait ? Math.max(radius + 42, short * 0.13) : Math.max(radius + 32, short * 0.2),
-  );
-  const buttonLift = isPortrait ? bottomInset + Math.round(radius + 36) : Math.round(short * 0.42);
-  const leftStick = { x: sideInset, y: height - bottomInset };
-  const rightStick = { x: width - sideInset, y: height - bottomInset };
-  const block = {
-    x: width - (isPortrait ? sideInset + 84 : sideInset + 100),
-    y: height - buttonLift,
-  };
-  const dash = {
-    x: width - (isPortrait ? Math.max(56, sideInset - 24) : sideInset),
-    y: height - buttonLift,
-  };
-
-  return {
-    isPortrait,
-    radius,
-    buttonRadius,
-    abilityRadius,
-    ultimateRadius,
-    leftStick,
-    rightStick,
-    block,
-    dash,
-    ability1: {
-      x: Math.max(abilityRadius + 10, block.x - buttonRadius - abilityRadius - 12),
-      y: block.y + 8,
-    },
-    ability2: {
-      x: Math.min(block.x + 8, rightStick.x - radius * 0.2),
-      y: Math.round((block.y + rightStick.y) * 0.52),
-    },
-    ultimate: {
-      x: Math.round((leftStick.x + rightStick.x) / 2),
-      y: height - Math.max(bottomInset, ultimateRadius + 18),
-    },
-  };
-}
-
-const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+export type { TouchControlLayout } from './touchLayout';
+export { getTouchControlLayout } from './touchLayout';
 
 export const COLORS = {
   ink: 0x070a12,
