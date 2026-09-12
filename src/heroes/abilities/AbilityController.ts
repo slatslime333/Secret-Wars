@@ -26,8 +26,8 @@ type SlotRuntime = {
 };
 
 /**
- * Per-fighter loadout. Cooldowns, once-per-match ultimates, and one active
- * ability instance. Hero-specific effects live on the kit, not here.
+ * Per-fighter loadout. Cooldowns, charge modes, and one active ability
+ * instance. Hero-specific effects live on the kit, not here.
  */
 export class AbilityController {
   private readonly slots: Record<AbilitySlot, SlotRuntime>;

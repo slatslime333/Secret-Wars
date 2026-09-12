@@ -6,6 +6,7 @@ import { ABILITY_ICON } from '../icons';
 import { DEATH_SWEEP } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
+import { playUltimateShake } from '../../../effects/hitJuice';
 import { COLORS } from '../../../ui/theme';
 import { distanceBetween } from '../geometry';
 import { sweepKnockback } from './sweep';
@@ -15,12 +16,13 @@ export const deathBatSweepDef: AbilityDef = {
   id: 'death-bat-sweep',
   name: "Death's Bat Sweep",
   slot: 'ultimate',
-  cooldownMs: 0,
-  chargeMode: 'once',
+  cooldownMs: COMBAT.ultimateCooldownMs,
+  chargeMode: 'cooldown',
   startingCharges: 1,
   maxCharges: 1,
   iconKey: ABILITY_ICON.batSweep,
   accent: COLORS.yellow,
+  tactics: { roles: ['aoe', 'knockback', 'space', 'burst', 'damage'], range: DEATH_SWEEP.radius },
   canActivate: (ctx) =>
     !ctx.caster.status.isHitReacting(ctx.now) &&
     !ctx.caster.status.isBlockStunned(ctx.now) &&
@@ -41,6 +43,7 @@ class DeathBatSweepAbility implements ActiveAbility {
     caster.status.applySlow(now, DEATH_SWEEP.durationMs, DEATH_SWEEP.moveMul);
     this.fx = new SweepFx(ctx.scene, caster);
     spawnCombatCallout(ctx.scene, caster.x, caster.y, 'SWEEP', COLORS.yellow);
+    playUltimateShake(ctx.scene);
     caster.playCustomAttack(now, DEATH_SWEEP.durationMs, (frac) => ({
       swordAngleOffset: frac * Math.PI * 2 * (DEATH_SWEEP.durationMs / DEATH_SWEEP.spinMs),
       batScale: 1.45,

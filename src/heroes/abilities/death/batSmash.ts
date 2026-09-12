@@ -21,6 +21,7 @@ export const batSmashDef: AbilityDef = {
   accent: COLORS.redBright,
   aimOnRelease: true,
   padLabel: 'SMASH',
+  tactics: { roles: ['burst', 'cc', 'damage', 'finish', 'knockback'], range: DEATH_SMASH.radius },
   canActivate: (ctx) =>
     !ctx.caster.status.isHitReacting(ctx.now) &&
     !ctx.caster.status.isBlockStunned(ctx.now) &&

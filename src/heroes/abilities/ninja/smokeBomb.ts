@@ -16,6 +16,7 @@ export const smokeBombDef: AbilityDef = {
   maxCharges: 1,
   iconKey: ABILITY_ICON.smokeBomb,
   accent: 0x6b7c8a,
+  tactics: { roles: ['escape', 'space', 'disruption', 'defense', 'mobility'], range: NINJA_SMOKE.radius },
   canActivate: (ctx) => !ctx.caster.status.isBlockStunned(ctx.now) && !ctx.caster.status.isClashLocked(ctx.now),
   activate: (ctx) => new SmokeBombAbility(ctx),
 };

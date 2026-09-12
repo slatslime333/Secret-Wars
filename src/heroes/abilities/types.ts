@@ -7,10 +7,32 @@ import type { AbilityWorld } from './AbilityWorld';
 export type AbilitySlot = 'ability1' | 'ability2' | 'ultimate';
 
 /**
- * `once` is the current ultimate rule (one use per match).
+ * `cooldown` is the live ultimate rule (shared recharge).
+ * `once` remains for kits that should stay single-use.
  * `meter` is the future minion/combat charge path — same slot, different fill.
  */
 export type AbilityChargeMode = 'cooldown' | 'once' | 'meter';
+
+/** How the CPU should think about a kit slot. Inspected from the def, not hero name. */
+export type AbilityRole =
+  | 'damage'
+  | 'burst'
+  | 'aoe'
+  | 'knockback'
+  | 'cc'
+  | 'mobility'
+  | 'escape'
+  | 'defense'
+  | 'disruption'
+  | 'initiate'
+  | 'finish'
+  | 'space'
+  | 'peel';
+
+export type AbilityTactics = {
+  roles: readonly AbilityRole[];
+  range: number;
+};
 
 export type AbilityControlFlags = {
   move: boolean;
@@ -55,6 +77,8 @@ export type AbilityDef = {
   padLabel?: string;
   /** Start the cooldown when the active instance ends, not when the button is pressed. */
   deferCooldown?: boolean;
+  /** CPU reads this instead of hard-coding per-hero trees. */
+  tactics?: AbilityTactics;
   canActivate(ctx: AbilityContext): boolean;
   activate(ctx: AbilityContext): ActiveAbility | void;
 };

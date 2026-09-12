@@ -70,6 +70,7 @@ export class BattleScene extends Phaser.Scene {
   private rivalAttacks?: QuickAttack;
   private rivalBlock?: BlockController;
   private rivalDash?: DashController;
+  private rivalAbilities?: AbilityController;
   private brain?: RivalBrain;
   private tactics = new TacticalField();
   private aiOverlay?: TacticalOverlay;
@@ -241,6 +242,7 @@ export class BattleScene extends Phaser.Scene {
       this.input.keyboard?.off('keydown-R', this.onRestartKey, this);
       window.removeEventListener('keydown', onDomKey);
       this.abilities.destroy();
+      this.rivalAbilities?.destroy();
       this.abilityWorld.destroy();
       this.minions.destroy();
       this.abilityTray?.destroy();
@@ -367,6 +369,7 @@ export class BattleScene extends Phaser.Scene {
     if (!this.block.isActive(now)) {
       this.ninja.regenStamina(delta, now);
     }
+    this.ninja.regenHealth(delta, now);
     this.marker.sync(
       this.ninja.x,
       this.ninja.y,
@@ -416,6 +419,7 @@ export class BattleScene extends Phaser.Scene {
     if (this.rival && !this.rivalBlock?.isActive(now)) {
       this.rival.regenStamina(delta, now);
     }
+    this.rival?.regenHealth(delta, now);
 
     if (
       !control.attack &&
@@ -466,8 +470,16 @@ export class BattleScene extends Phaser.Scene {
     this.battlefield?.attachMover(this.rival.sprite);
     this.rivalAttacks = new QuickAttack(this);
     this.rivalBlock = new BlockController(this);
-    this.rivalDash = new DashController(this);
-    this.brain = new RivalBrain(this.rivalAttacks, this.rivalBlock, this.rivalDash, this.block);
+    this.rivalDash = new DashController(this, hero.stats.dashMaxCharges);
+    this.rivalAbilities = new AbilityController(hero.kit);
+    this.brain = new RivalBrain(
+      this.rivalAttacks,
+      this.rivalBlock,
+      this.rivalDash,
+      this.block,
+      this.rivalAbilities,
+      this.abilityWorld,
+    );
     this.devMenu?.sync();
   }
 
@@ -478,11 +490,13 @@ export class BattleScene extends Phaser.Scene {
     this.rivalCollider?.destroy();
     this.rivalCollider = undefined;
     this.rivalBlock?.destroy();
+    this.rivalAbilities?.destroy();
     this.rival.destroy();
     this.rival = undefined;
     this.rivalAttacks = undefined;
     this.rivalBlock = undefined;
     this.rivalDash = undefined;
+    this.rivalAbilities = undefined;
     this.brain = undefined;
     this.devMenu?.sync();
   }

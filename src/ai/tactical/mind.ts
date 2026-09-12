@@ -10,6 +10,7 @@ import {
 } from './evaluate';
 import type { TacticalField } from './field';
 import { personalityFromSeed } from './personality';
+import { pickRetreatGoal, type RetreatGoal } from './retreat';
 import type {
   CombatantView,
   Personality,
@@ -32,6 +33,7 @@ export type TacticalIntent = {
   commitUntil: number;
   hpAtCommit: number;
   enemyCountAtCommit: number;
+  goal?: RetreatGoal;
 };
 
 type Memory = {
@@ -127,6 +129,18 @@ export class TacticalMind {
     return target;
   }
 
+  get goal(): RetreatGoal | undefined {
+    return this.intent.goal;
+  }
+
+  situationView(): Situation {
+    return this.situation;
+  }
+
+  wantsAbilities(): boolean {
+    return this.kind === 'hero';
+  }
+
   think(now: number, self: NinjaBody, field: TacticalField, scene?: object, force = false): void {
     if (!force && now < this.nextThinkAt && !this.mustReconsider(now, self)) {
       return;
@@ -178,6 +192,7 @@ export class TacticalMind {
       commitUntil: now + this.commitMs(picked.action),
       hpAtCommit: selfFact.hpRatio,
       enemyCountAtCommit: this.lastEnemyCount,
+      goal: this.goalFor(picked.action),
     };
   }
 
@@ -207,17 +222,32 @@ export class TacticalMind {
       action === 'chase' ||
       action === 'assist_ally' ||
       action === 'intercept' ||
-      action === 'switch_target'
+      action === 'switch_target' ||
+      action === 'wait_for_opening' ||
+      action === 'farm_minions' ||
+      (action === 'recover' && this.intent.goal?.kind === 'minions')
     );
   }
 
   wantsHold(): boolean {
     const action = this.intent.action;
-    return action === 'hold_position' || action === 'wait_for_opening';
+    if (action === 'hold_position' || action === 'wait_for_opening') {
+      return true;
+    }
+    if (action === 'recover' && this.intent.goal) {
+      const dx = this.intent.goal.x - this.situation.self.x;
+      const dy = this.intent.goal.y - this.situation.self.y;
+      return dx * dx + dy * dy < 42 * 42;
+    }
+    return false;
   }
 
   wantsEscape(): boolean {
-    return this.intent.action === 'escape' || this.intent.action === 'retreat';
+    const action = this.intent.action;
+    if (action === 'escape' || action === 'retreat') {
+      return true;
+    }
+    return action === 'recover' && this.lastEnemyCount > 0;
   }
 
   private gather(now: number, selfFact: UnitFact, field: TacticalField, scene?: object): void {
@@ -319,6 +349,15 @@ export class TacticalMind {
     if (intent.hpAtCommit - hp > 0.2) {
       return true;
     }
+    if ((intent.action === 'recover' || intent.action === 'farm_minions') && intent.hpAtCommit - hp > 0.08) {
+      return true;
+    }
+    if ((intent.action === 'recover' || intent.action === 'farm_minions') && hp > 0.72) {
+      return true;
+    }
+    if ((intent.action === 'recover' || intent.action === 'farm_minions') && this.lastEnemyCount > intent.enemyCountAtCommit) {
+      return true;
+    }
     if (hp < TACTIC.criticalHp && AGGRESSIVE.has(intent.action) && intent.action !== 'finish_target') {
       return true;
     }
@@ -338,10 +377,29 @@ export class TacticalMind {
     if (action === 'retreat' || action === 'escape') {
       return 720;
     }
+    if (action === 'recover') {
+      return 1480 + this.slot * 4;
+    }
+    if (action === 'farm_minions') {
+      return 920;
+    }
     if (action === 'push_lane' || action === 'advance' || action === 'search_for_target') {
       return 880;
     }
     return TACTIC.commitMin + (this.slot % TACTIC.commitSpan);
+  }
+
+  private goalFor(action: TacticalAction): RetreatGoal | undefined {
+    if (action === 'recover') {
+      return pickRetreatGoal(this.situation, 'cover');
+    }
+    if (action === 'farm_minions') {
+      return pickRetreatGoal(this.situation, 'minions');
+    }
+    if (action === 'retreat' || action === 'escape') {
+      return pickRetreatGoal(this.situation, 'any');
+    }
+    return undefined;
   }
 
   private nextRand(): number {

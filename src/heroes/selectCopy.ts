@@ -28,13 +28,13 @@ const ROLE_LABEL: Record<string, string> = {
 const ABILITY_TEXT: Record<string, string> = {
   'ninja-smoke-bomb': 'Throws a smoke cloud that damages and blinds enemies inside it.',
   'ninja-backflip-kick': 'Hold to aim, then dash-kick the target and backflip away.',
-  'ninja-tornado': 'Spin in a damaging wind burst. One use per match.',
+  'ninja-tornado': 'Spin in a damaging wind burst. Recharges after 45 seconds.',
   'cole-electric-ball': 'Hold to aim, then fire a ball that explodes on impact.',
   'cole-discharge': 'Release a close electric burst around Cole.',
-  'cole-thunderstorm': 'Call lightning strikes onto nearby enemies. One use per match.',
+  'cole-thunderstorm': 'Call lightning strikes onto nearby enemies. Recharges after 45 seconds.',
   'death-gun-barrage': 'Hold to aim, then spray a burst of SMG fire.',
   'death-bat-smash': 'Hold to aim, then slam the bat in that direction.',
-  'death-bat-sweep': 'Sweep the bat in a wide damaging arc. One use per match.',
+  'death-bat-sweep': 'Sweep the bat in a wide damaging arc. Recharges after 45 seconds.',
 };
 
 const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {

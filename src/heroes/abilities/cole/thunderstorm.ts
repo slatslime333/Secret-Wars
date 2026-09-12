@@ -7,6 +7,7 @@ import { COLE_STORM } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
 import { spawnLightningBolt, spawnStormWarning } from '../../../effects/lightning';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
+import { playUltimateShake } from '../../../effects/hitJuice';
 import { COLORS } from '../../../ui/theme';
 import { distanceBetween } from '../geometry';
 
@@ -14,12 +15,13 @@ export const thunderstormDef: AbilityDef = {
   id: 'cole-thunderstorm',
   name: 'Thunderstorm',
   slot: 'ultimate',
-  cooldownMs: 0,
-  chargeMode: 'once',
+  cooldownMs: COMBAT.ultimateCooldownMs,
+  chargeMode: 'cooldown',
   startingCharges: 1,
   maxCharges: 1,
   iconKey: ABILITY_ICON.thunderstorm,
   accent: COLORS.yellow,
+  tactics: { roles: ['aoe', 'burst', 'damage', 'space', 'cc'], range: COLE_STORM.radius },
   canActivate: (ctx) =>
     !ctx.caster.status.isHitReacting(ctx.now) &&
     !ctx.caster.status.isBlockStunned(ctx.now) &&
@@ -43,6 +45,7 @@ class ThunderstormAbility implements ActiveAbility {
     ctx.caster.status.applySlow(ctx.now, COLE_STORM.durationMs, COLE_STORM.moveMul);
     this.ring = ctx.scene.add.graphics().setDepth(8);
     spawnCombatCallout(ctx.scene, ctx.caster.x, ctx.caster.y, 'STORM', COLORS.yellow);
+    playUltimateShake(ctx.scene);
   }
 
   update(ctx: AbilityContext): boolean {

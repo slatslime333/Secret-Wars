@@ -19,7 +19,9 @@ export type TacticalAction =
   | 'escape'
   | 'push_lane'
   | 'search_for_target'
-  | 'intercept';
+  | 'intercept'
+  | 'recover'
+  | 'farm_minions';
 
 export type ThreatLevel = 'low' | 'medium' | 'high' | 'extreme';
 

@@ -34,8 +34,6 @@ export class TitleScene extends Phaser.Scene {
       easeParams: [7],
     });
 
-    this.cameras.main.shake(180, 0.006);
-
     const promptY = height < 600 ? height - 76 : height * 0.78;
     const prompt = this.add
       .text(width / 2, promptY, this.getContinuePrompt(), {

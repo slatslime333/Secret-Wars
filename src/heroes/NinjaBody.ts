@@ -11,6 +11,7 @@ import { drawColeElectricity } from './drawCole';
 import type { HeroDrawFn } from './heroDraw';
 import { playDeath } from '../audio';
 import { DEV_CHEATS } from '../debug/devCheats';
+import { MATCH } from '../config/match';
 import { MINION } from '../config/minion';
 
 export type FighterOptions = {
@@ -35,6 +36,8 @@ export class NinjaBody {
   ammo: number;
   lastAttacker?: NinjaBody;
   lastAttackerAt = 0;
+  /** Last time an enemy actually dealt HP damage. Minion heals / regen do not touch this. */
+  lastEnemyHitAt = -1e9;
   private present = true;
   readonly aim = new Phaser.Math.Vector2(1, 0);
   private facing: CardinalFacing = 'east';
@@ -180,6 +183,9 @@ export class NinjaBody {
     if (options.source?.attacker) {
       this.lastAttacker = options.source.attacker;
       this.lastAttackerAt = now;
+      if (applied > 0 && options.source.attacker.team !== this.team) {
+        this.lastEnemyHitAt = now;
+      }
     }
     if (applied > 0) {
       emitCombatDamage({
@@ -629,6 +635,22 @@ export class NinjaBody {
     this.stamina = Math.min(
       this.stats.maxStamina,
       this.stamina + this.stats.staminaRegenPerSecond * (deltaMs / 1000),
+    );
+  }
+
+  regenHealth(deltaMs: number, now: number): void {
+    if (this.down || !this.present || this.stats.role === 'minion') {
+      return;
+    }
+    if (now - this.lastEnemyHitAt < MATCH.outOfCombat.delayMs) {
+      return;
+    }
+    if (this.health >= this.stats.maxHealth) {
+      return;
+    }
+    this.health = Math.min(
+      this.stats.maxHealth,
+      this.health + MATCH.outOfCombat.regenPerSecond * (deltaMs / 1000),
     );
   }
 

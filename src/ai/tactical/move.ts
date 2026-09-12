@@ -59,15 +59,26 @@ export const moveGoal = (
   ally?: MoveFocus,
   flankSign = 1,
   slot = 0,
+  retreatGoal?: { x: number; y: number },
 ): MoveSample => {
   const aimTo = (x: number, y: number): { aimX: number; aimY: number } => {
     const len = Math.hypot(x - body.x, y - body.y) || 1;
     return { aimX: (x - body.x) / len, aimY: (y - body.y) / len };
   };
 
-  if ((action === 'retreat' || action === 'escape') && !target) {
-    const aim = aimTo(homeX, homeY);
-    return { x: homeX, y: homeY, halt: false, ...aim };
+  if (action === 'retreat' || action === 'escape' || action === 'recover') {
+    const destX = retreatGoal?.x ?? homeX;
+    const destY = retreatGoal?.y ?? homeY;
+    const gap = Math.hypot(destX - body.x, destY - body.y);
+    const aim = target ? aimTo(target.x, target.y) : aimTo(destX, destY);
+    const halt = action === 'recover' && gap < 40;
+    return {
+      x: destX,
+      y: destY,
+      halt,
+      aimX: target ? -aim.aimX : aim.aimX,
+      aimY: target ? -aim.aimY : aim.aimY,
+    };
   }
 
   if (!target) {
@@ -75,15 +86,6 @@ export const moveGoal = (
     const destY = body.kind === 'minion' ? 750 : laneY(body.y);
     const aim = aimTo(destX, destY);
     return { x: destX, y: destY, halt: false, ...aim };
-  }
-
-  if (action === 'retreat' || action === 'escape') {
-    const awayX = body.x - (target.x - body.x);
-    const awayY = body.y - (target.y - body.y);
-    const mixedX = homeX * 0.65 + awayX * 0.35;
-    const mixedY = homeY * 0.35 + awayY * 0.65;
-    const aim = aimTo(target.x, target.y);
-    return { x: mixedX, y: mixedY, halt: false, aimX: -aim.aimX, aimY: -aim.aimY };
   }
 
   const range = preferredRange(body, action);
