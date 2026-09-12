@@ -21,7 +21,7 @@ export class DevMenu {
     const height = scene.scale.height;
 
     this.toggle = scene.add
-      .text(width - 12, height - 12, 'DEV', {
+      .text(width - 12, 64, 'DEV', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
@@ -29,21 +29,21 @@ export class DevMenu {
         backgroundColor: hex(COLORS.ink),
         padding: { x: 10, y: 6 },
       })
-      .setOrigin(1, 1)
+      .setOrigin(1, 0)
       .setScrollFactor(0)
       .setDepth(220)
       .setInteractive({ useHandCursor: true });
 
     this.panel = scene.add
-      .rectangle(width - 12, height - 48, 168, 78, COLORS.ink, 0.92)
-      .setOrigin(1, 1)
+      .rectangle(width - 12, 92, 168, 78, COLORS.ink, 0.92)
+      .setOrigin(1, 0)
       .setScrollFactor(0)
       .setDepth(221)
       .setStrokeStyle(2, COLORS.yellow)
       .setVisible(false);
 
     this.title = scene.add
-      .text(width - 24, height - 118, 'PLAYLIST', {
+      .text(width - 24, 98, 'PLAYLIST', {
         fontFamily: FONTS.display,
         fontSize: '11px',
         color: hex(COLORS.yellow),
@@ -55,7 +55,7 @@ export class DevMenu {
       .setVisible(false);
 
     this.action = scene.add
-      .text(width - 24, height - 96, cpuLabel(options.cpuPresent()), {
+      .text(width - 24, 118, cpuLabel(options.cpuPresent()), {
         fontFamily: FONTS.body,
         fontSize: '13px',
         fontStyle: 'bold',
@@ -80,11 +80,12 @@ export class DevMenu {
     this.layout(width, height);
   }
 
-  layout(width: number, height: number): void {
-    this.toggle.setPosition(width - 12, height - 12);
-    this.panel.setPosition(width - 12, height - 48);
-    this.title.setPosition(width - 24, height - 118);
-    this.action.setPosition(width - 24, height - 96);
+  layout(width: number, height = 0): void {
+    void height;
+    this.toggle.setPosition(width - 12, 64);
+    this.panel.setPosition(width - 12, 92);
+    this.title.setPosition(width - 24, 98);
+    this.action.setPosition(width - 24, 118);
   }
 
   sync(cpuPresent: boolean): void {
