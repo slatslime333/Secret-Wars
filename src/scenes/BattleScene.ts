@@ -10,6 +10,7 @@ import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { AbilityContext } from '../heroes/abilities/types';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
 import { getSelectedHero } from '../heroes/roster';
+import { COLE_BALL } from '../heroes/abilities/cole/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
@@ -73,10 +74,10 @@ export class BattleScene extends Phaser.Scene {
     this.marker = new HitMarker(this);
     this.attacks = new QuickAttack(this, this.marker);
     this.block = new BlockController(this);
-    this.dash = new DashController(this);
+    this.dash = new DashController(this, hero.stats.dashMaxCharges);
     this.abilityWorld = new AbilityWorld();
     this.abilities = new AbilityController(hero.kit);
-    this.inputReader = new BattleInput(this, () => this.round.isLocked, hero.kit);
+    this.inputReader = new BattleInput(this, () => this.round.isLocked, hero.kit, hero.stats.dashMaxCharges);
     if (!isTouchPrimary()) {
       this.abilityTray = new AbilityTray(this, 52, 128);
     }
@@ -195,7 +196,9 @@ export class BattleScene extends Phaser.Scene {
       this.ninja.applyMove(frame.move);
     }
 
-    if (frame.blockHeld && frame.blockAimActive) {
+    if (frame.ability1Aiming && frame.ability1Aim.lengthSq() > 0) {
+      this.ninja.setAim(frame.ability1Aim);
+    } else if (frame.blockHeld && frame.blockAimActive) {
       this.ninja.setAim(frame.blockAim);
     } else {
       this.ninja.setAim(frame.aim);
@@ -212,6 +215,18 @@ export class BattleScene extends Phaser.Scene {
       this.ninja.stats.attackRange,
       this.ninja.stats.attackArcDegrees,
     );
+    if (this.ninja.heroId === 'cole') {
+      this.marker.syncBallAim(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        COLE_BALL.explodeRadius,
+        frame.ability1Aiming,
+      );
+    } else {
+      this.marker.clearBallAim();
+    }
     this.block.sync(now, this.ninja);
 
     if (this.rival && this.brain) {

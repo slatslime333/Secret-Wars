@@ -58,7 +58,7 @@ export const resolveMelee = (
   defender: NinjaBody,
   step: ComboStep,
   defenderBlock?: BlockController,
-  options: { alreadyClashed?: boolean } = {},
+  options: { alreadyClashed?: boolean; knockbackMul?: number } = {},
 ): HitKind => {
   if (defender.down) {
     return 'whiff';
@@ -123,7 +123,7 @@ export const resolveMelee = (
     damage,
     dirX: attacker.aim.x,
     dirY: attacker.aim.y,
-    knockback: attacker.stats.knockbackPower * profile.knockbackMultiplier,
+    knockback: attacker.stats.knockbackPower * profile.knockbackMultiplier * (options.knockbackMul ?? 1),
     staminaDamage: profile.staminaDamage,
     step,
   });

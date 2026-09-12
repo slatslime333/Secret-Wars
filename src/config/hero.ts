@@ -20,6 +20,7 @@ export type HeroCombatConfig = {
   staminaRegenPerSecond: number;
   ammoMax: number;
   reloadMs: number;
+  dashMaxCharges: number;
 };
 
 export const teamOfRival = (rival: boolean): TeamId => (rival ? 'bravo' : 'alpha');

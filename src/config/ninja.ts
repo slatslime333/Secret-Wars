@@ -38,4 +38,5 @@ export const NINJA = {
   staminaRegenPerSecond: fromRating(r, 14, 26),
   ammoMax: COMBAT.attackAmmoMax,
   reloadMs: COMBAT.attackReloadMs,
+  dashMaxCharges: COMBAT.dashMaxCharges,
 } as const satisfies HeroCombatConfig & { rating: number; ratings: Record<string, number> };
