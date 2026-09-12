@@ -30,6 +30,13 @@ export type DevMenuHandlers = {
   paused?: () => boolean;
   onGiveXp?: () => void;
   onGiveLevel?: () => void;
+  mapSeed?: () => number;
+  onMapRandomSeed?: () => void;
+  onMapReroll?: () => void;
+  onMapNextSeed?: () => void;
+  onMapPrevSeed?: () => void;
+  onToggleMapDebug?: () => void;
+  mapDebug?: () => boolean;
 };
 
 type Row = {
@@ -131,6 +138,16 @@ export class DevMenu {
     );
     add(() => 'SPAWN MIXED WAVE', () => options.onSpawnMixed(options.minionTeam?.() ?? 'alpha'));
     add(() => 'CLEAR MINIONS', () => options.onClearMinions());
+
+    if (options.onMapReroll) {
+      addHead('MAP');
+      add(() => `SEED  ${options.mapSeed?.() ?? 0}`, () => options.onMapReroll?.());
+      add(() => 'RANDOM SEED', () => options.onMapRandomSeed?.());
+      add(() => 'REROLL MAP', () => options.onMapReroll?.());
+      add(() => 'NEXT SEED', () => options.onMapNextSeed?.());
+      add(() => 'PREV SEED', () => options.onMapPrevSeed?.());
+      add(() => `MAP DEBUG  ${onOff(options.mapDebug?.() ?? false)}`, () => options.onToggleMapDebug?.());
+    }
 
     addHead('DEBUG');
     add(() => `HITBOX  ${onOff(DEV_CHEATS.showHitboxes)}`, () => {

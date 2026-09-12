@@ -35,7 +35,7 @@ export class VirtualThumbstick {
     this.drawBase();
 
     this.knob = scene.add
-      .circle(x, y, this.radius * 0.4, COLORS.ink, 0.82)
+      .circle(x, y, this.radius * 0.4, COLORS.ink, 0.52)
       .setStrokeStyle(3, options.accent, 0.95)
       .setScrollFactor(0)
       .setDepth(112);
@@ -66,7 +66,7 @@ export class VirtualThumbstick {
 
   private drawBase(): void {
     this.base.clear();
-    this.base.fillStyle(COLORS.ink, 0.62);
+    this.base.fillStyle(COLORS.ink, 0.38);
     this.base.fillCircle(this.originX, this.originY, this.radius + 10);
     this.base.lineStyle(3, this.accent, 0.75);
     this.base.strokeCircle(this.originX, this.originY, this.radius + 3);

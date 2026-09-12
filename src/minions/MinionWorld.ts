@@ -9,6 +9,7 @@ import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { drawRangerMinion, drawSwordMinion } from './drawMinion';
 import { MinionBrain, MinionDebugInfo } from './MinionBrain';
 import { MinionHpBar } from '../ui/world/MinionHpBar';
+import { battlefieldOf } from '../map';
 
 export type MinionRecord = {
   body: NinjaBody;
@@ -101,6 +102,7 @@ export class MinionWorld {
       hpBar,
     };
     this.units.push(record);
+    battlefieldOf(this.scene)?.attachMover(body.sprite);
     return record;
   }
 

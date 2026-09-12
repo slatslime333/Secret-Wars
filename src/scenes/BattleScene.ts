@@ -26,8 +26,16 @@ import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
 import { AbilityTray } from '../ui/AbilityTray';
 import { BattleHud } from '../ui/BattleHud';
-import { createGrassyArena } from '../ui/createGrassyArena';
 import { DevMenu } from '../ui/DevMenu';
+import { Minimap } from '../ui/Minimap';
+import {
+  Battlefield,
+  nextPlayTestSeed,
+  prevPlayTestSeed,
+  randomPlayTestSeed,
+  rememberPlayTestSeed,
+  resolvePlayTestSeed,
+} from '../map';
 import { RoundOverlay } from '../ui/RoundOverlay';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { isTouchPrimary } from '../device';
@@ -69,6 +77,9 @@ export class BattleScene extends Phaser.Scene {
   private abilityAim?: { x: number; y: number };
   private deathDashIndex = 0;
   private minions!: MinionWorld;
+  private battlefield?: Battlefield;
+  private minimap?: Minimap;
+  private mapSeed = 1;
 
   constructor() {
     super('Battle');
@@ -79,7 +90,8 @@ export class BattleScene extends Phaser.Scene {
     resetDevCheats();
     ensureAbilityIcons(this);
     const hero = getSelectedHero();
-    createGrassyArena(this, hero.stats.displayName.toUpperCase());
+    this.mapSeed = resolvePlayTestSeed();
+    this.battlefield = Battlefield.install(this, { seed: this.mapSeed, log: true });
     this.physics.world.setBounds(
       ARENA.wallThickness,
       ARENA.wallThickness,
@@ -92,7 +104,9 @@ export class BattleScene extends Phaser.Scene {
       draw: hero.draw,
       handSparks: hero.handSparks,
       team: 'alpha',
+      playerControlled: true,
     });
+    this.battlefield.attachMover(this.ninja.sprite);
     this.progression = new Progression(this.ninja);
     this.sandboxStats = new CombatStatsTracker();
     this.sandboxStats.register(this.ninja, { instanceId: 'playtest-player', player: true });
@@ -154,6 +168,16 @@ export class BattleScene extends Phaser.Scene {
       paused: () => this.sandboxPaused,
       onGiveXp: () => this.progression.grantXp(MATCH.xp.debugGrant),
       onGiveLevel: () => this.progression.giveLevel(),
+      mapSeed: () => this.mapSeed,
+      onMapRandomSeed: () => this.rebuildMap(randomPlayTestSeed()),
+      onMapReroll: () => this.rebuildMap(this.mapSeed),
+      onMapNextSeed: () => this.rebuildMap(nextPlayTestSeed()),
+      onMapPrevSeed: () => this.rebuildMap(prevPlayTestSeed()),
+      onToggleMapDebug: () => {
+        DEV_CHEATS.showMapDebug = !DEV_CHEATS.showMapDebug;
+        this.battlefield?.debug.setVisible(DEV_CHEATS.showMapDebug);
+      },
+      mapDebug: () => DEV_CHEATS.showMapDebug,
       onCheatsChanged: () => {
         if (DEV_CHEATS.noCooldowns) {
           this.abilities.resetCooldowns();
@@ -168,6 +192,7 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setZoom(1);
     this.cameras.main.fadeIn(220, 7, 10, 18);
 
+    this.minimap = new Minimap(this);
     this.createChrome();
     this.game.canvas.setAttribute('tabindex', '0');
     this.game.canvas.focus();
@@ -199,6 +224,8 @@ export class BattleScene extends Phaser.Scene {
       this.minions.destroy();
       this.abilityTray?.destroy();
       this.offDamage?.();
+      this.minimap?.destroy();
+      this.battlefield?.destroy();
     });
   }
 
@@ -212,6 +239,7 @@ export class BattleScene extends Phaser.Scene {
     }
     this.ninja.syncView();
     this.rival?.syncView();
+    this.syncMinimap();
     const everyone = this.allCombatants();
     if (this.rival && this.rivalBlock) {
       this.rivalBlock.sync(now, this.rival);
@@ -408,6 +436,7 @@ export class BattleScene extends Phaser.Scene {
     this.sandboxStats.register(this.rival, { instanceId: 'playtest-cpu', player: false });
     this.rival.setAim(pad.facingX, 0);
     this.rivalCollider = this.physics.add.collider(this.ninja.sprite, this.rival.sprite);
+    this.battlefield?.attachMover(this.rival.sprite);
     this.rivalAttacks = new QuickAttack(this);
     this.rivalBlock = new BlockController(this);
     this.rivalDash = new DashController(this);
@@ -527,6 +556,7 @@ export class BattleScene extends Phaser.Scene {
     this.inputReader?.layout(width, height);
     this.abilityTray?.layout(52, 128, 1);
     this.devMenu?.layout(width, height);
+    this.minimap?.layout(width);
     this.cameras.main.setSize(width, height);
     this.cameras.main.setZoom(1);
   }
@@ -584,6 +614,43 @@ export class BattleScene extends Phaser.Scene {
     return this.livingFighters().filter((unit) => unit.team !== this.ninja.team);
   }
 
+  private rebuildMap(seed: number): void {
+    this.mapSeed = rememberPlayTestSeed(seed);
+    this.battlefield?.regenerate(this.mapSeed);
+    this.rebindMapColliders();
+    this.battlefield?.debug.setVisible(DEV_CHEATS.showMapDebug);
+    this.devMenu?.sync();
+  }
+
+  private rebindMapColliders(): void {
+    if (!this.battlefield) {
+      return;
+    }
+    this.battlefield.attachMover(this.ninja.sprite);
+    if (this.rival) {
+      this.battlefield.attachMover(this.rival.sprite);
+    }
+    for (const body of this.minions.allBodies()) {
+      this.battlefield.attachMover(body.sprite);
+    }
+  }
+
+  private syncMinimap(): void {
+    if (!this.battlefield || !this.minimap) {
+      return;
+    }
+    const heroes = [this.ninja];
+    if (this.rival) {
+      heroes.push(this.rival);
+    }
+    this.minimap.sync({
+      layout: this.battlefield.layout,
+      player: this.ninja,
+      heroes,
+      minions: this.minions.allBodies(),
+    });
+  }
+
   private resetPlayerPos(): void {
     const pad = ARENA.teamSpawns.alpha;
     this.ninja.sprite.setPosition(pad.x, pad.y);
@@ -604,7 +671,9 @@ export class BattleScene extends Phaser.Scene {
       draw: hero.draw,
       handSparks: hero.handSparks,
       team: 'alpha',
+      playerControlled: true,
     });
+    this.battlefield?.attachMover(this.ninja.sprite);
     this.abilities = new AbilityController(hero.kit);
     this.dash = new DashController(this, hero.stats.dashMaxCharges);
     this.cameras.main.startFollow(this.ninja.sprite, true, 0.16, 0.16);

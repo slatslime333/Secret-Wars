@@ -58,13 +58,22 @@ export const resolveAbilityHit = (
       attacker.status.applyBlockStun(now, COMBAT.perfectShieldStunMs);
       attacker.status.applyHitStop(now, COMBAT.hitStopBlockMs);
       spawnCombatCallout(scene, defender.x, defender.y, 'PERFECT', COLORS.yellow);
-      playHitJuice(scene, defender.x, defender.y, { damage: 0, blocked: true, perfect: true });
+      playHitJuice(scene, defender.x, defender.y, {
+        damage: 0,
+        blocked: true,
+        perfect: true,
+        shake: attacker.playerControlled || defender.playerControlled,
+      });
       return 'perfect-block';
     }
     defender.drainStamina(Math.max(4, Math.round(profile.staminaDamage * 1.4)), now);
     attacker.applyRecoil(-attacker.aim.x, -attacker.aim.y, COMBAT.shieldHitRecoilLight);
     defender.applyRecoil(-defender.aim.x, -defender.aim.y, COMBAT.blockPushLight);
-    playHitJuice(scene, defender.x, defender.y, { damage: 0, blocked: true });
+    playHitJuice(scene, defender.x, defender.y, {
+      damage: 0,
+      blocked: true,
+      shake: attacker.playerControlled || defender.playerControlled,
+    });
     return 'blocked';
   }
 
@@ -92,7 +101,11 @@ export const resolveAbilityHit = (
       heavy: Boolean(profile.heavy),
     });
   }
-  playHitJuice(scene, defender.x, defender.y, { damage, finisher: Boolean(profile.heavy) });
+  playHitJuice(scene, defender.x, defender.y, {
+    damage,
+    finisher: Boolean(profile.heavy),
+    shake: attacker.playerControlled || defender.playerControlled,
+  });
   if (profile.hitStopMs !== 0) {
     attacker.status.applyHitStop(now, profile.hitStopMs ?? (profile.heavy ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs));
   }

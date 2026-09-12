@@ -18,6 +18,7 @@ export type FighterOptions = {
   stats?: HeroCombatConfig;
   draw?: HeroDrawFn;
   handSparks?: boolean;
+  playerControlled?: boolean;
 };
 
 export class NinjaBody {
@@ -26,6 +27,7 @@ export class NinjaBody {
   readonly status = new CombatStatus();
   readonly rival: boolean;
   readonly team: TeamId;
+  readonly playerControlled: boolean;
   readonly stats: HeroCombatConfig;
   health: number;
   stamina: number;
@@ -55,6 +57,7 @@ export class NinjaBody {
     this.scene = scene;
     this.rival = Boolean(options.rival);
     this.team = options.team ?? teamOfRival(this.rival);
+    this.playerControlled = Boolean(options.playerControlled);
     this.stats = { ...(options.stats ?? NINJA) };
     this.drawHero = options.draw ?? ((graphics, drawOptions) => drawNinja(graphics, drawOptions));
     this.health = this.stats.maxHealth;

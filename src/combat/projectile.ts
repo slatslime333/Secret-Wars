@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { ARENA } from '../config/arena';
 import { NinjaBody } from '../heroes/NinjaBody';
+import { battlefieldOf } from '../map';
 
 export type ProjectileHit = {
   target: NinjaBody;
@@ -62,12 +63,14 @@ export class Projectile {
     if (this.style === 'spark') {
       this.drawSparks();
     }
+    const map = battlefieldOf(this.view.scene);
     if (
       now >= this.endsAt ||
       this.x < 0 ||
       this.y < 0 ||
       this.x > ARENA.width ||
-      this.y > ARENA.height
+      this.y > ARENA.height ||
+      map?.query.blocksProjectile(this.x, this.y, this.radius)
     ) {
       this.destroy();
       return 'dead';

@@ -12,10 +12,10 @@ export type SpawnPad = {
 };
 
 /**
- * Slightly longer left-to-right battlefield. Height stays the same so
- * vertical space still reads as three distinct lanes, not a huge field.
+ * Slightly longer left-to-right battlefield (2200x1500). Height stays
+ * the same so north / center / south still read as distinct bands.
  */
-const WIDTH = 2000;
+const WIDTH = 2200;
 const HEIGHT = 1500;
 
 export const laneFacing = (team: TeamId): number => (team === 'alpha' ? 1 : -1);
@@ -27,13 +27,13 @@ export const ARENA_LANE_Y = {
 } as const;
 
 export const ARENA_TEAM_SPAWN_X = {
-  alpha: 196,
-  bravo: 1804,
+  alpha: 220,
+  bravo: 1980,
 } as const;
 
 export const ARENA_MINION_SPAWN_X = {
-  alpha: 360,
-  bravo: 1640,
+  alpha: 400,
+  bravo: 1800,
 } as const;
 
 export const laneSpawn = (team: TeamId, lane: LaneId): SpawnPad => ({
