@@ -67,8 +67,10 @@ dummy with a chasing opponent, round restart, and extra hit juice.
 - Right stick **wins** the hit marker while held
 - PC: WASD/arrows move, mouse aim, hold click or J to attack
 - Tap-tap-tap J/click for the three-hit combo (third hit is the finisher)
-- K / mobile BLOCK: 0.35s shield, 4s cooldown
-- L / mobile DASH: short leap in move direction, 4s cooldown
+- K / mobile SHIELD: hold-to-block
+- L / mobile DASH: short leap, 3 charges, 1.5s recharge
+- Q / E / F (or 1 / 2 / 3): Smoke Bomb, Backflip Kick, Ninja Tornado
+- Mobile: ability 1/2 around the right stick, ultimate between the sticks
 
 ## Architecture rules
 
@@ -79,8 +81,11 @@ dummy with a chasing opponent, round restart, and extra hit juice.
 
 ## Intentionally not in Demo 1
 
-Hero roster, unique abilities, 3v3, match clock, minion waves, XP, scoring,
+Hero roster, 3v3, match clock, minion waves, XP, scoring,
 respawn, advanced AI, campaign, shops, online, saves.
+
+Ninja now has a reusable three-slot ability kit (Smoke Bomb, Backflip Kick,
+Ninja Tornado). Other heroes can plug a different kit into the same system.
 
 Remembered for later:
 

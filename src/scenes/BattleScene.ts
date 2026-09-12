@@ -5,15 +5,22 @@ import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { HitMarker } from '../combat/HitMarker';
 import { QuickAttack } from '../combat/QuickAttack';
+import { AbilityController } from '../heroes/abilities/AbilityController';
+import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
+import { AbilityContext } from '../heroes/abilities/types';
+import { ensureAbilityIcons } from '../heroes/abilities/icons';
+import { NINJA_ABILITY_KIT } from '../heroes/abilities/ninja/kit';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
+import { AbilityTray } from '../ui/AbilityTray';
 import { BattleHud } from '../ui/BattleHud';
 import { createGrassyArena } from '../ui/createGrassyArena';
 import { DevMenu } from '../ui/DevMenu';
 import { RoundOverlay } from '../ui/RoundOverlay';
-import { COLORS, FONTS, getUiScale, getViewZoom, hex } from '../ui/theme';
+import { COLORS, FONTS, getUiScale, getViewZoom, hex, uiScreenPoint } from '../ui/theme';
 import { NINJA } from '../config/ninja';
+import { isTouchPrimary } from '../device';
 import { fadeToScene } from './fadeToScene';
 
 /** Ninja vs rival Ninja. Dev menu can spawn or remove the CPU. */
@@ -27,6 +34,9 @@ export class BattleScene extends Phaser.Scene {
   private attacks!: QuickAttack;
   private block!: BlockController;
   private dash!: DashController;
+  private abilities!: AbilityController;
+  private abilityWorld!: AbilityWorld;
+  private abilityTray?: AbilityTray;
   private rivalAttacks?: QuickAttack;
   private rivalBlock?: BlockController;
   private rivalDash?: DashController;
@@ -44,6 +54,7 @@ export class BattleScene extends Phaser.Scene {
 
   create(): void {
     this.returning = false;
+    ensureAbilityIcons(this);
     createGrassyArena(this);
     this.physics.world.setBounds(
       ARENA.wallThickness,
@@ -57,7 +68,13 @@ export class BattleScene extends Phaser.Scene {
     this.attacks = new QuickAttack(this, this.marker);
     this.block = new BlockController(this);
     this.dash = new DashController(this);
-    this.inputReader = new BattleInput(this, () => this.round.isLocked);
+    this.abilityWorld = new AbilityWorld();
+    this.abilities = new AbilityController(NINJA_ABILITY_KIT);
+    this.inputReader = new BattleInput(this, () => this.round.isLocked, NINJA_ABILITY_KIT);
+    if (!isTouchPrimary()) {
+      const tray = uiScreenPoint(52, 128, this.scale.width, this.scale.height);
+      this.abilityTray = new AbilityTray(this, tray.x, tray.y, tray.scale);
+    }
     this.hud = new BattleHud(this);
     this.round = new RoundOverlay(this, {
       onRestart: () => this.restartBattle(),
@@ -100,6 +117,9 @@ export class BattleScene extends Phaser.Scene {
       this.input.keyboard?.off('keydown-ESC', this.returnToMenu, this);
       this.input.keyboard?.off('keydown-R', this.onRestartKey, this);
       window.removeEventListener('keydown', onDomKey);
+      this.abilities.destroy();
+      this.abilityWorld.destroy();
+      this.abilityTray?.destroy();
     });
   }
 
@@ -113,24 +133,49 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.round.isLocked) {
       this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
+      this.syncAbilityUi(now);
       return;
     }
 
     const frame = this.inputReader.sample(this.ninja.x, this.ninja.y);
+    const ctx = this.makeAbilityContext(now, delta);
+    if (frame.ability1) {
+      this.abilities.tryActivate('ability1', ctx);
+    }
+    if (frame.ability2) {
+      this.abilities.tryActivate('ability2', ctx);
+    }
+    if (frame.ultimate) {
+      this.abilities.tryActivate('ultimate', ctx);
+    }
+    this.abilities.update(this.makeAbilityContext(now, delta));
+    this.abilityWorld.update(now, this.livingFighters());
 
-    if (!this.dash.isActive(now)) {
+    const control = this.abilities.control;
+
+    if (!control.block && !this.dash.isActive(now)) {
       this.block.setHeld(now, this.ninja, frame.blockHeld);
     } else {
       this.block.setHeld(now, this.ninja, false);
     }
     this.block.tick(delta, now, this.ninja);
 
-    if (frame.dashPressed && !this.block.isActive(now) && this.dash.tryStart(now, frame.move, this.ninja.aim, this.ninja)) {
+    if (
+      !control.dash &&
+      frame.dashPressed &&
+      !this.block.isActive(now) &&
+      this.dash.tryStart(now, frame.move, this.ninja.aim, this.ninja)
+    ) {
       this.attacks.interrupt(now);
     }
 
-    this.dash.apply(now, this.ninja);
+    if (!control.move) {
+      this.dash.apply(now, this.ninja);
+    } else {
+      this.dash.tickRecharge(now);
+    }
     if (
+      !control.move &&
       !this.dash.isActive(now) &&
       !this.ninja.status.shouldLockMovement(now) &&
       !this.block.isActive(now) &&
@@ -156,6 +201,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (
+      !control.attack &&
       !this.ninja.down &&
       !this.block.isActive(now) &&
       !this.dash.isActive(now)
@@ -173,6 +219,7 @@ export class BattleScene extends Phaser.Scene {
       blocking: this.block.isActive(now),
       staminaRatio: this.ninja.stamina / NINJA.maxStamina,
     });
+    this.syncAbilityUi(now);
 
     if (this.ninja.down) {
       this.devMenu?.close();
@@ -269,8 +316,37 @@ export class BattleScene extends Phaser.Scene {
     this.layoutChrome(width, height);
     this.hud?.layout(width, height);
     this.inputReader?.layout(width, height);
+    const tray = uiScreenPoint(52, 128, width, height);
+    this.abilityTray?.layout(tray.x, tray.y, tray.scale);
     this.devMenu?.layout(width, height);
     this.applyView(width, height);
+  }
+
+  private makeAbilityContext(now: number, delta: number): AbilityContext {
+    return {
+      scene: this,
+      now,
+      delta,
+      caster: this.ninja,
+      enemies: this.rival && !this.rival.down ? [this.rival] : [],
+      world: this.abilityWorld,
+      interruptCombat: () => {
+        this.attacks.interrupt(now);
+        this.dash.cancel(this.ninja);
+        this.block.setHeld(now, this.ninja, false);
+      },
+      rivalBlock: this.rivalBlock,
+    };
+  }
+
+  private livingFighters(): NinjaBody[] {
+    return this.rival ? [this.ninja, this.rival] : [this.ninja];
+  }
+
+  private syncAbilityUi(now: number): void {
+    const states = this.abilities.allStates(now);
+    this.inputReader.syncAbilities(states);
+    this.abilityTray?.sync(states);
   }
 
   private onRestartKey(): void {

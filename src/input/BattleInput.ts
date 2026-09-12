@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { COMBAT } from '../config/combat';
 import { INPUT } from '../config/input';
 import { isTouchPrimary } from '../device';
+import { AbilitySlotState, HeroAbilityKit } from '../heroes/abilities/types';
+import { AbilityButton } from '../ui/AbilityButton';
 import { CombatButton } from '../ui/CombatButton';
 import { COLORS, getTouchControlLayout } from '../ui/theme';
 import { VirtualThumbstick } from './VirtualThumbstick';
@@ -14,6 +16,9 @@ export type BattleFrame = {
   attackPressed: boolean;
   blockHeld: boolean;
   dashPressed: boolean;
+  ability1: boolean;
+  ability2: boolean;
+  ultimate: boolean;
 };
 
 type KeyMap = {
@@ -24,6 +29,12 @@ type KeyMap = {
   attack: Phaser.Input.Keyboard.Key;
   block: Phaser.Input.Keyboard.Key;
   dash: Phaser.Input.Keyboard.Key;
+  ability1: Phaser.Input.Keyboard.Key;
+  ability2: Phaser.Input.Keyboard.Key;
+  ultimate: Phaser.Input.Keyboard.Key;
+  ability1Alt: Phaser.Input.Keyboard.Key;
+  ability2Alt: Phaser.Input.Keyboard.Key;
+  ultimateAlt: Phaser.Input.Keyboard.Key;
 };
 
 /**
@@ -38,6 +49,9 @@ export class BattleInput {
   private readonly rightStick?: VirtualThumbstick;
   private readonly blockButton?: CombatButton;
   private readonly dashButton?: CombatButton;
+  private readonly ability1Button?: AbilityButton;
+  private readonly ability2Button?: AbilityButton;
+  private readonly ultimateButton?: AbilityButton;
   private readonly keys?: KeyMap;
   private readonly cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private readonly lastAim = new Phaser.Math.Vector2(1, 0);
@@ -45,9 +59,16 @@ export class BattleInput {
   private attackLatched = false;
   private blockHeldTouch = false;
   private dashLatched = false;
+  private ability1Latched = false;
+  private ability2Latched = false;
+  private ultimateLatched = false;
   private lastAttackPressAt = -999;
 
-  constructor(scene: Phaser.Scene, isRoundLocked: () => boolean = () => false) {
+  constructor(
+    scene: Phaser.Scene,
+    isRoundLocked: () => boolean = () => false,
+    kit?: HeroAbilityKit,
+  ) {
     this.scene = scene;
     this.isRoundLocked = isRoundLocked;
     this.touch = isTouchPrimary();
@@ -88,6 +109,33 @@ export class BattleInput {
       this.dashButton.setRadius(layout.buttonRadius);
       this.dashButton.setCharges(COMBAT.dashMaxCharges, COMBAT.dashMaxCharges);
       this.dashButton.setRecovered(1);
+
+      if (kit) {
+        this.ability1Button = new AbilityButton(
+          scene,
+          layout.ability1.x,
+          layout.ability1.y,
+          layout.abilityRadius,
+          kit.ability1.iconKey,
+          { onPress: () => { this.ability1Latched = true; } },
+        );
+        this.ability2Button = new AbilityButton(
+          scene,
+          layout.ability2.x,
+          layout.ability2.y,
+          layout.abilityRadius,
+          kit.ability2.iconKey,
+          { onPress: () => { this.ability2Latched = true; } },
+        );
+        this.ultimateButton = new AbilityButton(
+          scene,
+          layout.ultimate.x,
+          layout.ultimate.y,
+          layout.ultimateRadius,
+          kit.ultimate.iconKey,
+          { ultimate: true, onPress: () => { this.ultimateLatched = true; } },
+        );
+      }
     }
 
     const keyboard = scene.input.keyboard;
@@ -101,12 +149,36 @@ export class BattleInput {
         attack: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.J),
         block: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
         dash: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L),
+        ability1: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
+        ability2: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
+        ultimate: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F),
+        ability1Alt: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ONE),
+        ability2Alt: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TWO),
+        ultimateAlt: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.THREE),
       };
       this.keys.attack.on('down', () => {
         this.attackLatched = true;
       });
       this.keys.dash.on('down', () => {
         this.dashLatched = true;
+      });
+      this.keys.ability1.on('down', () => {
+        this.ability1Latched = true;
+      });
+      this.keys.ability2.on('down', () => {
+        this.ability2Latched = true;
+      });
+      this.keys.ultimate.on('down', () => {
+        this.ultimateLatched = true;
+      });
+      this.keys.ability1Alt.on('down', () => {
+        this.ability1Latched = true;
+      });
+      this.keys.ability2Alt.on('down', () => {
+        this.ability2Latched = true;
+      });
+      this.keys.ultimateAlt.on('down', () => {
+        this.ultimateLatched = true;
       });
     }
 
@@ -139,6 +211,12 @@ export class BattleInput {
     this.dashButton?.setRadius(layout.buttonRadius);
     this.blockButton?.setPosition(layout.block.x, layout.block.y);
     this.dashButton?.setPosition(layout.dash.x, layout.dash.y);
+    this.ability1Button?.setRadius(layout.abilityRadius);
+    this.ability2Button?.setRadius(layout.abilityRadius);
+    this.ultimateButton?.setRadius(layout.ultimateRadius);
+    this.ability1Button?.setPosition(layout.ability1.x, layout.ability1.y);
+    this.ability2Button?.setPosition(layout.ability2.x, layout.ability2.y);
+    this.ultimateButton?.setPosition(layout.ultimate.x, layout.ultimate.y);
   }
 
   sample(originX: number, originY: number): BattleFrame {
@@ -188,11 +266,27 @@ export class BattleInput {
     const dashPressed =
       this.consumeLatch('dashLatched') ||
       Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.dash));
+    const ability1 = this.consumeLatch('ability1Latched');
+    const ability2 = this.consumeLatch('ability2Latched');
+    const ultimate = this.consumeLatch('ultimateLatched');
 
-    return { move, aim, aimActive, attackHeld, attackPressed: attackEdge, blockHeld, dashPressed };
+    return {
+      move,
+      aim,
+      aimActive,
+      attackHeld,
+      attackPressed: attackEdge,
+      blockHeld,
+      dashPressed,
+      ability1,
+      ability2,
+      ultimate,
+    };
   }
 
-  private consumeLatch(key: 'attackLatched' | 'dashLatched'): boolean {
+  private consumeLatch(
+    key: 'attackLatched' | 'dashLatched' | 'ability1Latched' | 'ability2Latched' | 'ultimateLatched',
+  ): boolean {
     if (!this[key]) {
       return false;
     }
@@ -215,11 +309,26 @@ export class BattleInput {
     this.blockButton?.setDimmed(state.staminaRatio <= 0.02);
   }
 
+  syncAbilities(states: AbilitySlotState[]): void {
+    if (states[0]) {
+      this.ability1Button?.sync(states[0]);
+    }
+    if (states[1]) {
+      this.ability2Button?.sync(states[1]);
+    }
+    if (states[2]) {
+      this.ultimateButton?.sync(states[2]);
+    }
+  }
+
   destroy(): void {
     this.leftStick?.destroy();
     this.rightStick?.destroy();
     this.blockButton?.destroy();
     this.dashButton?.destroy();
+    this.ability1Button?.destroy();
+    this.ability2Button?.destroy();
+    this.ultimateButton?.destroy();
     this.scene.input?.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
   }
 

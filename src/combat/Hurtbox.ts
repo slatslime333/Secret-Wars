@@ -16,6 +16,8 @@ export type TakeHitOptions = {
   staminaDamage: number;
   step: ComboStep;
   clash?: boolean;
+  /** Ability hits can request a custom stun window instead of combo reaction. */
+  hitReactionMs?: number;
 };
 
 /** Anyone QuickAttack can injure. */

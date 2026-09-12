@@ -4,7 +4,7 @@ import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { isTouchPrimary } from '../device';
 import { NinjaBody } from '../heroes/NinjaBody';
-import { COLORS, FONTS, getUiScale, hex } from './theme';
+import { COLORS, FONTS, getUiScale, hex, uiScreenPoint } from './theme';
 
 export class BattleHud {
   private readonly ninjaFill: Phaser.GameObjects.Rectangle;
@@ -36,7 +36,7 @@ export class BattleHud {
     this.ammoFill = scene.add.rectangle(36, 84, 224, 6, COLORS.orange).setOrigin(0, 0.5);
 
     this.ammoText = scene.add
-      .text(36, 94, 'ATTACK 10/10', {
+      .text(36, 94, 'ATTACK 7/7', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -71,7 +71,7 @@ export class BattleHud {
       .setDepth(102);
 
     this.verbText = scene.add
-      .text(width - 30, 82, this.touch ? 'HOLD SHIELD   DASH 3/3' : 'HOLD K SHIELD   L DASH 3/3', {
+      .text(width - 30, 82, this.touch ? 'HOLD SHIELD   DASH 3/3' : 'HOLD K SHIELD   L DASH   Q/E/F ABILITIES', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -106,9 +106,11 @@ export class BattleHud {
 
   layout(width: number, height: number): void {
     const ui = getUiScale(width, height);
-    this.cluster.setScale(ui);
+    const cluster = uiScreenPoint(16, 48, width, height);
+    this.cluster.setPosition(cluster.x, cluster.y).setScale(cluster.scale);
     this.comboText.setPosition(width / 2, 22 * ui).setScale(ui);
-    this.verbText.setPosition(width - 30 * ui, 82 * ui).setScale(ui);
+    const verb = uiScreenPoint(width - 30 * ui, 82 * ui, width, height);
+    this.verbText.setPosition(verb.x, verb.y).setScale(verb.scale);
   }
 
   sync(
@@ -147,7 +149,8 @@ export class BattleHud {
       : this.touch
         ? `DASH ${dash.chargeCount}/${dash.maxCharges}`
         : `L DASH ${dash.chargeCount}/${dash.maxCharges}`;
-    this.verbText.setText(`${shieldBit}   ${dashBit}`);
+    const abilityBit = this.touch ? '' : '   Q E F';
+    this.verbText.setText(`${shieldBit}   ${dashBit}${abilityBit}`);
   }
 }
 
