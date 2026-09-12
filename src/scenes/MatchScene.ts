@@ -36,6 +36,7 @@ import { XpOrbWorld } from '../match/XpOrbWorld';
 import { buildMatchGameState, type MatchGameState } from '../match/MatchQuery';
 import { PLAYABLE_HEROES } from '../heroes/roster';
 import { xpForMinion } from '../config/match';
+import { audio } from '../audio';
 import type { TeamId } from '../config/hero';
 
 const ENEMY_BY_LANE: Record<LaneId, HeroId> = {
@@ -194,6 +195,8 @@ export class MatchScene extends Phaser.Scene {
     this.createChrome();
     this.waves.start(this.time.now);
     this.offDamage = onCombatDamage((event) => this.stats.recordDamage(event));
+    audio.unlock();
+    audio.play('ui-match-start');
 
     this.game.canvas.setAttribute('tabindex', '0');
     this.game.canvas.focus();
@@ -216,11 +219,13 @@ export class MatchScene extends Phaser.Scene {
       }
       this.aiOverlay?.destroy();
       this.unbindDebugApi();
+      audio.stopAllLoops();
     });
   }
 
   update(_time: number, delta: number): void {
     const now = this.time.now;
+    audio.setListener(this.player.body.x, this.player.body.y);
     if (this.match.paused) {
       this.syncHud(now);
       return;
@@ -376,8 +381,12 @@ export class MatchScene extends Phaser.Scene {
       return;
     }
     const runtime = this.heroes.find((hero) => hero.body === target);
-    runtime?.progression.grantXp(amount);
+    const leveled = runtime?.progression.grantXp(amount);
     target.heal(MATCH.healing.minionKill);
+    audio.play('ui-xp');
+    if (leveled?.leveled) {
+      audio.play('ui-level-up');
+    }
   }
 
   private resolveHeroDeaths(now: number): void {

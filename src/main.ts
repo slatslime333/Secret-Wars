@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { audioSettings } from './audio/AudioSettings';
+import { audioSettings } from './audio';
 import './style.css';
 import { getViewportSize } from './device';
 import { initOrientationHandling } from './orientation';

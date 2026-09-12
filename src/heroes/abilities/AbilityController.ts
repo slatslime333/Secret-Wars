@@ -8,6 +8,7 @@ import {
   SLOT_ORDER,
   defForSlot,
 } from './types';
+import { moveAbilityAudio, startAbilityAudio, stopAbilityAudio } from '../../audio';
 import { DEV_CHEATS } from '../../debug/devCheats';
 
 const OPEN_CONTROL: AbilityControlFlags = {
@@ -32,6 +33,7 @@ export class AbilityController {
   private readonly slots: Record<AbilitySlot, SlotRuntime>;
   private active?: ActiveAbility;
   private deferredSlot?: AbilitySlot;
+  private loopKey?: string;
 
   constructor(private readonly kit: HeroAbilityKit) {
     this.slots = {
@@ -88,8 +90,11 @@ export class AbilityController {
     }
     if (instance) {
       this.active?.destroy();
+      stopAbilityAudio(this.loopKey);
+      this.loopKey = undefined;
       this.active = instance;
     }
+    this.loopKey = startAbilityAudio(def.id, ctx.caster) ?? this.loopKey;
     return true;
   }
 
@@ -98,6 +103,7 @@ export class AbilityController {
       return;
     }
     const keep = this.active.update(ctx);
+    moveAbilityAudio(this.loopKey, ctx.caster);
     if (!keep) {
       if (this.deferredSlot && !DEV_CHEATS.noCooldowns) {
         const def = defForSlot(this.kit, this.deferredSlot);
@@ -108,6 +114,8 @@ export class AbilityController {
       }
       this.active.destroy();
       this.active = undefined;
+      stopAbilityAudio(this.loopKey);
+      this.loopKey = undefined;
     }
   }
 
@@ -145,9 +153,15 @@ export class AbilityController {
     }
   }
 
+  silence(): void {
+    stopAbilityAudio(this.loopKey);
+    this.loopKey = undefined;
+  }
+
   destroy(): void {
     this.active?.destroy();
     this.active = undefined;
+    this.silence();
   }
 }
 

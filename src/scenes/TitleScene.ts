@@ -3,6 +3,7 @@ import { isTouchPrimary } from '../device';
 import { createBackdrop } from '../ui/createBackdrop';
 import { createLogo } from '../ui/createLogo';
 import { COLORS, FONTS, hex } from '../ui/theme';
+import { audio } from '../audio';
 import { fadeToScene } from './fadeToScene';
 
 export class TitleScene extends Phaser.Scene {
@@ -97,6 +98,8 @@ export class TitleScene extends Phaser.Scene {
     }
 
     this.continuing = true;
+    audio.unlock();
+    audio.play('ui-confirm');
     this.cameras.main.flash(90, 246, 241, 222);
     fadeToScene(this, 'MainMenu', 260);
   }

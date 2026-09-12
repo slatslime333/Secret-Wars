@@ -1,3 +1,4 @@
+import { playWorld } from '../../../audio';
 import { NINJA } from '../../../config/ninja';
 import { COMBAT } from '../../../config/combat';
 import { applyImpactHitStop } from '../../../combat/hitStop';
@@ -167,6 +168,7 @@ class BackflipKickAbility implements ActiveAbility {
 
   private launchImpact(ctx: AbilityContext): void {
     spawnWindImpact(ctx.scene, this.contactX, this.contactY, this.dirX, this.dirY);
+    playWorld('ninja-kick-impact', ctx.caster);
     this.pending.forEach((enemy, index) => {
       const primary = index === 0;
       resolveAbilityHit(

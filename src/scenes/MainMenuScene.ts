@@ -5,6 +5,7 @@ import { createBackdrop } from '../ui/createBackdrop';
 import { createLogo } from '../ui/createLogo';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
+import { audio, playHeroSelect } from '../audio';
 import { getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
 
 export class MainMenuScene extends Phaser.Scene {
@@ -294,6 +295,8 @@ export class MainMenuScene extends Phaser.Scene {
         compact: true,
         primary: getSelectedHeroId() === id,
         onPress: () => {
+          audio.unlock();
+          playHeroSelect(id);
           setSelectedHeroId(id);
           this.scene.restart();
         },

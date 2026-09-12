@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { audioSettings } from '../audio/AudioSettings';
+import { audioSettings } from '../audio';
 import { INPUT } from '../config/input';
 import { isTouchPrimary } from '../device';
 import { ActionButton } from '../ui/ActionButton';

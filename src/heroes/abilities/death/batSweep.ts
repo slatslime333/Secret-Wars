@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { playWorld } from '../../../audio';
 import { COMBAT } from '../../../config/combat';
 import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
@@ -98,6 +99,9 @@ class DeathBatSweepAbility implements ActiveAbility {
       );
       if (kind === 'hit' || kind === 'blocked' || kind === 'perfect-block') {
         this.lastHitAt.set(enemy, now);
+        if (kind === 'hit') {
+          playWorld('death-sweep-hit', enemy);
+        }
       }
     }
   }

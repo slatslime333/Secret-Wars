@@ -1,3 +1,4 @@
+import { playWorld } from '../../../audio';
 import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { DEATH_GUN } from './tunables';
@@ -97,6 +98,7 @@ class GunBarrageAbility implements ActiveAbility {
     const mx = caster.x + muzzle.x;
     const my = caster.y + muzzle.y;
     spawnMuzzleFlash(scene, mx, my, sx, sy);
+    playWorld('death-gun-shot', caster);
     const shot = new Projectile(
       scene,
       mx + sx * 6,

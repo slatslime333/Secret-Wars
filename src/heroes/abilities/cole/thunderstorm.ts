@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { playWorld } from '../../../audio';
 import { COMBAT } from '../../../config/combat';
 import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
@@ -55,6 +56,7 @@ class ThunderstormAbility implements ActiveAbility {
         const x = caster.x + Math.cos(ang) * dist;
         const y = caster.y + Math.sin(ang) * dist;
         spawnStormWarning(ctx.scene, x, y, COLE_STORM.strikeRadius, COLE_STORM.warningMs);
+        playWorld('cole-storm-warn', { x, y, playerControlled: caster.playerControlled });
         this.pending.push({ x, y, at: now + COLE_STORM.warningMs });
       }
     }
@@ -65,6 +67,7 @@ class ThunderstormAbility implements ActiveAbility {
       }
       const strike = this.pending.splice(i, 1)[0];
       spawnLightningBolt(ctx.scene, caster.x, caster.y - 10, strike.x, strike.y, { heavy: true, life: 160 });
+      playWorld('cole-storm-strike', { x: strike.x, y: strike.y, playerControlled: caster.playerControlled });
       for (const enemy of ctx.enemies) {
         if (enemy.down) {
           continue;

@@ -111,6 +111,7 @@ export class HeroRuntime {
     this.dead = true;
     this.respawnAt = now + MATCH.respawnDelayMs;
     this.attacks.interrupt(now);
+    this.abilities.silence();
     this.body.setPresent(false);
     this.plate.setVisible(false);
   }

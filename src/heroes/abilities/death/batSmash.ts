@@ -1,3 +1,4 @@
+import { playWorld } from '../../../audio';
 import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { DEATH_SMASH } from './tunables';
@@ -111,6 +112,7 @@ class BatSmashAbility implements ActiveAbility {
   private impact(ctx: AbilityContext): void {
     const { caster, scene, now } = ctx;
     spawnSmashRing(scene, caster.x, caster.y, DEATH_SMASH.radius);
+    playWorld('death-smash-impact', caster);
     for (const enemy of ctx.enemies) {
       if (enemy.down) {
         continue;

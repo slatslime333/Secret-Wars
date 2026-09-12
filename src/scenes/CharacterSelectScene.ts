@@ -5,6 +5,7 @@ import { heroSelectCopy } from '../heroes/selectCopy';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
 import { COLORS, FONTS, hex } from '../ui/theme';
+import { audio, playHeroSelect } from '../audio';
 import { fadeToScene } from './fadeToScene';
 
 const HERO_ORDER: HeroId[] = ['ninja', 'cole', 'death'];
@@ -184,6 +185,8 @@ export class CharacterSelectScene extends Phaser.Scene {
       return;
     }
     this.selected = id;
+    audio.unlock();
+    playHeroSelect(id);
     this.scene.restart({ selected: id });
   }
 

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { playWorld } from '../audio';
 import { MINION, MinionKind, RANGER_MINION, SWORD_MINION, minionAdvanceX } from '../config/minion';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { resolveAbilityHit } from '../heroes/abilities/resolveAbilityHit';
@@ -188,6 +189,7 @@ export class MinionBrain {
   private swingSword(now: number, target: NinjaBody, scene: Phaser.Scene): void {
     const spec = SWORD_MINION;
     this.body.playAttackAnimation(now, 1);
+    playWorld('minion-attack', this.body);
     scene.time.delayedCall(spec.windupMs, () => {
       this.attacking = false;
       if (this.body.down || target.down) {
@@ -223,6 +225,7 @@ export class MinionBrain {
 
   private fireArrow(now: number, target: NinjaBody, world: AbilityWorld, scene: Phaser.Scene): void {
     const spec = RANGER_MINION;
+    playWorld('minion-attack', this.body);
     this.body.playCustomAttack(now, spec.windupMs + 80, (frac) => ({
       swordAngleOffset: frac < 0.7 ? frac * 0.8 : 0.2,
       armLiftRight: 0.4,

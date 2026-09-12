@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { audio } from '../audio';
 import { COLORS, FONTS, hex } from './theme';
 
 type CombatButtonOptions = {
@@ -71,6 +72,8 @@ export class CombatButton {
         return;
       }
       this.pointerId = pointer.id;
+      audio.unlock();
+      audio.play('ui-click');
       options.onPress();
       if (this.holdable) {
         scene.input.on(Phaser.Input.Events.POINTER_UP, this.onPointerUp, this);
