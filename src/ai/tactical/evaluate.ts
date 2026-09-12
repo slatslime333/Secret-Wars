@@ -477,7 +477,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
 
   const ranged = isRangedOf(self);
   const front = self.role === 'frontliner' || self.role === 'tank';
-  const support = self.role === 'support';
+  const support = self.role === 'support' || self.role === 'disruptor';
   let count = 0;
 
   const persist = (enemy: CombatantView, score: number): number =>

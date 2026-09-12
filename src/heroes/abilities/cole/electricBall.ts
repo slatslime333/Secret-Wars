@@ -74,7 +74,7 @@ const resolveBallHit = (
     caster,
     primary,
     {
-      rawDamage: caster.stats.attackDamage * COLE_BALL.damageMul,
+      rawDamage: COLE_BALL.damage,
       knockback: caster.stats.knockbackPower * COLE_BALL.knockbackMul,
       staminaDamage: 8,
       dirX: primary.x - caster.x,
@@ -110,7 +110,7 @@ const resolveBallHit = (
         caster,
         enemy,
         {
-          rawDamage: caster.stats.attackDamage * COLE_BALL.chainDamageMul,
+          rawDamage: COLE_BALL.chainDamage,
           knockback: caster.stats.knockbackPower * COLE_BALL.knockbackMul * 0.7,
           staminaDamage: 4,
           dirX: enemy.x - x,
@@ -137,7 +137,7 @@ const resolveBallHit = (
       caster,
       enemy,
       {
-        rawDamage: caster.stats.attackDamage * COLE_BALL.chainDamageMul,
+        rawDamage: COLE_BALL.chainDamage,
         knockback: caster.stats.knockbackPower * 0.7,
         staminaDamage: 3,
         dirX: enemy.x - prev.x,

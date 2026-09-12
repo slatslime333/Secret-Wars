@@ -1,23 +1,33 @@
 import { HeroCombatConfig } from './hero';
 import { COMBAT } from './combat';
-import { NINJA_BASE_RANGE } from './ninja';
+import { gameplayFromRatings, type CoreRatings } from './ratings';
 
 /**
- * Working Death baseline — durable bruiser. Power is heavy hits, absorb,
- * and disruption, not one-shots.
+ * Foundational tank / heavy bruiser. Slow because he is heavy and lacks
+ * mobility, not because the controls are unresponsive. Conversion keeps the
+ * live HP, swing cadence, and walk speed.
+ *
+ * Attack Speed 77 (not the draft 45) is required: Death’s 230ms cooldown is
+ * much faster than Cole’s 430ms. Displaying 45 would imply a sluggish kit
+ * that the live character does not have.
  */
+export const DEATH_RATINGS = {
+  health: 76,
+  stamina: 70,
+  damage: 72,
+  defense: 63,
+  speed: 30,
+  attackSpeed: 77,
+  attackRange: 50,
+  knockback: 52,
+} as const satisfies CoreRatings;
+
 export const DEATH = {
   id: 'death',
   displayName: 'Death',
-  role: 'frontliner',
-  maxHealth: 198,
-  maxStamina: 140,
-  moveSpeed: 148,
-  attackDamage: 17,
-  defense: 34,
-  knockbackPower: 210,
-  attackCooldownMs: 230,
-  attackRange: NINJA_BASE_RANGE,
+  role: 'tank',
+  ratings: DEATH_RATINGS,
+  ...gameplayFromRatings(DEATH_RATINGS),
   attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 16,
   staminaRegenPerSecond: 16,

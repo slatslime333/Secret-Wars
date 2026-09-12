@@ -1,45 +1,36 @@
 import { COMBAT } from './combat';
 import { HeroCombatConfig } from './hero';
-import { NINJA_RATING, fromRating } from './ratings';
+import { MELEE_BASE_RANGE, gameplayFromRatings, type CoreRatings } from './ratings';
 
-const r = NINJA_RATING;
-
-/** Shared melee-range baseline. Other heroes scale from this, not Ninja's tighter radius. */
-export const NINJA_BASE_RANGE = Math.round(fromRating(r, 78, 118));
+/** Shared melee-range baseline (rating 50). Other heroes and abilities scale from this. */
+export const NINJA_BASE_RANGE = MELEE_BASE_RANGE;
 
 /**
- * Support / disruptor. Stats stay on the 70 baseline for now — identity
- * lives in the kit and role tag, not a full rebalance.
+ * Foundational mobile disruptor. Ratings describe the live kit; conversion is
+ * tuned so movement, swing timing, and durability stay as they currently feel.
  */
+export const NINJA_RATINGS = {
+  health: 48,
+  stamina: 55,
+  damage: 45,
+  defense: 45,
+  speed: 80,
+  attackSpeed: 84,
+  attackRange: 42,
+  knockback: 50,
+} as const satisfies CoreRatings;
+
 export const NINJA = {
   id: 'ninja',
   displayName: 'Ninja',
-  role: 'support' as const,
-  rating: r,
-  ratings: {
-    health: r,
-    stamina: r,
-    attackDamage: r,
-    defense: r,
-    knockbackPower: r,
-    movementSpeed: r,
-    attackCooldown: r,
-    attackRange: r,
-  },
-  maxHealth: Math.round(fromRating(r, 90, 170)),
-  maxStamina: Math.round(fromRating(r, 80, 140)),
-  moveSpeed: Math.round(fromRating(r, 145, 230)),
-  attackDamage: Math.round(fromRating(r, 7, 16)),
-  defense: Math.round(fromRating(r, 10, 32)),
-  knockbackPower: Math.round(fromRating(r, 120, 240)),
-  /** Higher rating = faster swings. Range is slow → fast milliseconds. */
-  attackCooldownMs: Math.round(fromRating(r, 300, 160)),
-  /** Close attacker: 10% tighter than the shared melee baseline. */
-  attackRange: Math.round(NINJA_BASE_RANGE * 0.9),
+  role: 'disruptor' as const,
+  ratings: NINJA_RATINGS,
+  ...gameplayFromRatings(NINJA_RATINGS),
   attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 14,
-  staminaRegenPerSecond: fromRating(r, 14, 26),
+  /** Not a displayed core stat. Kept at the live regen rate. */
+  staminaRegenPerSecond: 14 + (26 - 14) * (70 / 99),
   ammoMax: 8,
   reloadMs: COMBAT.attackReloadMs,
   dashMaxCharges: COMBAT.dashMaxCharges,
-} as const satisfies HeroCombatConfig & { rating: number; ratings: Record<string, number> };
+} as const satisfies HeroCombatConfig;

@@ -135,7 +135,7 @@ class BackflipKickAbility implements ActiveAbility {
         ctx.caster,
         enemy,
         {
-          rawDamage: NINJA.attackDamage * NINJA_KICK.damageMul,
+          rawDamage: NINJA_KICK.damage,
           knockback: 0,
           staminaDamage: NINJA_KICK.staminaDamage,
           dirX: this.dirX,
@@ -177,7 +177,7 @@ class BackflipKickAbility implements ActiveAbility {
         ctx.caster,
         enemy,
         {
-          rawDamage: NINJA.attackDamage * NINJA_KICK.damageMul,
+          rawDamage: NINJA_KICK.damage,
           knockback: NINJA.knockbackPower * (primary ? NINJA_KICK.knockbackMul : NINJA_KICK.secondaryKnockbackMul),
           staminaDamage: NINJA_KICK.staminaDamage,
           dirX: this.dirX,

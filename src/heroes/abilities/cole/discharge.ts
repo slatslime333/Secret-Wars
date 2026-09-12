@@ -50,7 +50,7 @@ class DischargeAbility implements ActiveAbility {
         caster,
         enemy,
         {
-          rawDamage: caster.stats.attackDamage * COLE_DISCHARGE.damageMul,
+          rawDamage: COLE_DISCHARGE.damage,
           knockback: caster.stats.knockbackPower * COLE_DISCHARGE.knockbackMul,
           staminaDamage: 8,
           dirX: enemy.x - caster.x,

@@ -1,5 +1,6 @@
 import { COLE } from '../../../config/cole';
 import { NINJA_BASE_RANGE } from '../../../config/ninja';
+import { abilityDamage } from '../../../config/ratings';
 
 export const COLE_ATTACK = {
   lightSlowMul: 0.4,
@@ -20,10 +21,12 @@ export const COLE_BALL = {
   speed: 420,
   lifetimeMs: 2200,
   radius: 20,
-  damageMul: 1.55,
+  damageRating: 60,
+  damage: abilityDamage(60),
   knockbackMul: 3.85,
   explodeRadius: 56,
-  chainDamageMul: 0.42,
+  chainDamageRating: 14,
+  chainDamage: abilityDamage(14),
   chainSlowMul: 0.7,
   chainSlowMs: 2000,
   slowMul: 0.55,
@@ -35,7 +38,8 @@ export const COLE_BALL = {
 export const COLE_DISCHARGE = {
   cooldownMs: 10000,
   radius: NINJA_BASE_RANGE,
-  damageMul: 1.55,
+  damageRating: 60,
+  damage: abilityDamage(60),
   knockbackMul: 3.6,
   paralyzeMs: 1700,
   expandMs: 220,
@@ -49,7 +53,8 @@ export const COLE_STORM = {
   arcsPerPulse: 2,
   warningMs: 220,
   strikeRadius: 28,
-  damageMul: 1.7,
+  damageRating: 64,
+  damage: abilityDamage(64),
   slowMul: 0.5,
   slowMs: 1000,
 } as const;

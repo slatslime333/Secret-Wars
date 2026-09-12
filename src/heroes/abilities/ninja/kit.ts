@@ -11,10 +11,10 @@ export const NINJA_ABILITY_KIT: HeroAbilityKit = {
   ultimate: ninjaTornadoDef,
 };
 
-/** Fast support / disruptor. Numbers stay on the 70 baseline for now. */
+/** Foundational mobile disruptor. */
 export const NINJA_HERO: HeroDefinition = {
   id: 'ninja',
   displayName: 'Ninja',
-  role: 'support',
+  role: 'disruptor',
   abilities: NINJA_ABILITY_KIT,
 };

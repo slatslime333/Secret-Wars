@@ -10,12 +10,13 @@ import { drawNinja } from './drawNinja';
 import { drawCole } from './drawCole';
 import { drawDeath } from './drawDeath';
 import { HeroDrawFn } from './heroDraw';
+import type { CoreRatings } from '../config/ratings';
 
 export type HeroId = 'ninja' | 'cole' | 'death';
 
 export type PlayableHero = {
   id: HeroId;
-  stats: HeroCombatConfig;
+  stats: HeroCombatConfig & { ratings: CoreRatings };
   kit: HeroAbilityKit;
   draw: HeroDrawFn;
   handSparks: boolean;

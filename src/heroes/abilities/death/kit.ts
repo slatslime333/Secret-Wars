@@ -14,6 +14,6 @@ export const DEATH_ABILITY_KIT: HeroAbilityKit = {
 export const DEATH_HERO: HeroDefinition = {
   id: 'death',
   displayName: 'Death',
-  role: 'frontliner',
+  role: 'tank',
   abilities: DEATH_ABILITY_KIT,
 };

@@ -1,4 +1,5 @@
 import { PLAYABLE_HEROES, type HeroId, type PlayableHero } from './roster';
+import type { CoreRatings } from '../config/ratings';
 
 export type HeroSelectCopy = {
   id: HeroId;
@@ -6,12 +7,14 @@ export type HeroSelectCopy = {
   role: string;
   description: string;
   light: string;
+  ratings: CoreRatings;
   ability1: { name: string; text: string };
   ability2: { name: string; text: string };
   ultimate: { name: string; text: string };
 };
 
 const ROLE_LABEL: Record<string, string> = {
+  disruptor: 'Disruptor',
   support: 'Support',
   frontliner: 'Frontliner',
   assassin: 'Assassin',
@@ -44,7 +47,7 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
     light: 'Long-reach punches. Third hit sends a shockwave.',
   },
   death: {
-    description: 'Heavy frontliner who mixes SMG fire with bat slams and sweeps.',
+    description: 'Heavy tank who mixes SMG fire with bat slams and sweeps.',
     light: 'Heavy close-range swings.',
   },
 };
@@ -66,6 +69,7 @@ export const heroSelectCopy = (id: HeroId): HeroSelectCopy => {
     role: ROLE_LABEL[hero.stats.role] ?? hero.stats.role,
     description: flavor.description,
     light: flavor.light,
+    ratings: hero.stats.ratings,
     ability1: slotCopy(hero, 'ability1'),
     ability2: slotCopy(hero, 'ability2'),
     ultimate: slotCopy(hero, 'ultimate'),

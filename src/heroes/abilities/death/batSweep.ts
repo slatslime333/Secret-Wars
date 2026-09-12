@@ -87,7 +87,7 @@ class DeathBatSweepAbility implements ActiveAbility {
         caster,
         enemy,
         {
-          rawDamage: caster.stats.attackDamage * DEATH_SWEEP.damageMul,
+          rawDamage: DEATH_SWEEP.damage,
           knockback: caster.stats.knockbackPower * DEATH_SWEEP.knockbackMul,
           staminaDamage: 7,
           dirX: dir.x,

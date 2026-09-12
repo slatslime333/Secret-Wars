@@ -1,5 +1,6 @@
 /**
- * Shared combat rules. Hero-specific power comes from `NINJA` (70/99).
+ * Shared combat rules. Hero-specific power comes from 0–99 ratings converted
+ * in `src/config/ratings.ts` (50 = baseline).
  *
  * Tunables live here so knockback, lunges, ammo, dash charges, hold-shield,
  * and perfect-shield timing stay out of fighter/attack files.
@@ -14,7 +15,7 @@ export const COMBAT = {
   /** Kept for the unused Chaser practice enemy files. */
   chaserWindupMs: 280,
 
-  /** Slightly slower than the 70-rating cooldown so each swing can read. */
+  /** Slightly slower than the converted cooldown so each swing can read. */
   attackCooldownMultiplier: 1.22,
 
   attackAmmoMax: 7,
