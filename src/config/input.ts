@@ -7,6 +7,8 @@
 export const INPUT = {
   leftDeadzone: 0.18,
   rightDeadzone: 0.18,
+  /** Mini ability/shield pads: high enough that a tap-hold keeps current facing. */
+  aimPadDeadzone: 0.24,
   stickRadius: 68,
   mouseAimDeadzone: 12,
   keyboard: {

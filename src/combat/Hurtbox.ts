@@ -18,6 +18,8 @@ export type TakeHitOptions = {
   clash?: boolean;
   /** Ability hits can request a custom stun window instead of combo reaction. */
   hitReactionMs?: number;
+  /** Override the default connect freeze. `0` skips a second freeze after a shared impact pause. */
+  hitStopMs?: number;
 };
 
 /** Anyone QuickAttack can injure. */

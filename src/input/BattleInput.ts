@@ -6,6 +6,7 @@ import { AbilitySlotState, HeroAbilityKit } from '../heroes/abilities/types';
 import { AbilityButton } from '../ui/AbilityButton';
 import { CombatButton } from '../ui/CombatButton';
 import { COLORS, getTouchControlLayout } from '../ui/theme';
+import { VirtualAimPad } from './VirtualAimPad';
 import { VirtualThumbstick } from './VirtualThumbstick';
 
 export type BattleFrame = {
@@ -15,6 +16,8 @@ export type BattleFrame = {
   attackHeld: boolean;
   attackPressed: boolean;
   blockHeld: boolean;
+  blockAim: Phaser.Math.Vector2;
+  blockAimActive: boolean;
   dashPressed: boolean;
   ability1: boolean;
   ability2: boolean;
@@ -47,7 +50,7 @@ export class BattleInput {
   private readonly touch: boolean;
   private readonly leftStick?: VirtualThumbstick;
   private readonly rightStick?: VirtualThumbstick;
-  private readonly blockButton?: CombatButton;
+  private readonly blockPad?: VirtualAimPad;
   private readonly dashButton?: CombatButton;
   private readonly ability1Button?: AbilityButton;
   private readonly ability2Button?: AbilityButton;
@@ -87,10 +90,10 @@ export class BattleInput {
         radius: layout.radius,
       });
 
-      this.blockButton = new CombatButton(scene, layout.block.x, layout.block.y, {
+      this.blockPad = new VirtualAimPad(scene, layout.block.x, layout.block.y, {
         label: 'SHIELD',
         accent: COLORS.cyan,
-        holdable: true,
+        radius: layout.buttonRadius,
         onPress: () => {
           this.blockHeldTouch = true;
         },
@@ -105,7 +108,6 @@ export class BattleInput {
           this.dashLatched = true;
         },
       });
-      this.blockButton.setRadius(layout.buttonRadius);
       this.dashButton.setRadius(layout.buttonRadius);
       this.dashButton.setCharges(COMBAT.dashMaxCharges, COMBAT.dashMaxCharges);
       this.dashButton.setRecovered(1);
@@ -207,9 +209,9 @@ export class BattleInput {
     this.rightStick?.setRadius(layout.radius);
     this.leftStick?.setPosition(layout.leftStick.x, layout.leftStick.y);
     this.rightStick?.setPosition(layout.rightStick.x, layout.rightStick.y);
-    this.blockButton?.setRadius(layout.buttonRadius);
+    this.blockPad?.setRadius(layout.buttonRadius);
     this.dashButton?.setRadius(layout.buttonRadius);
-    this.blockButton?.setPosition(layout.block.x, layout.block.y);
+    this.blockPad?.setPosition(layout.block.x, layout.block.y);
     this.dashButton?.setPosition(layout.dash.x, layout.dash.y);
     this.ability1Button?.setRadius(layout.abilityRadius);
     this.ability2Button?.setRadius(layout.abilityRadius);
@@ -263,6 +265,8 @@ export class BattleInput {
     const blockHeld =
       this.blockHeldTouch ||
       Boolean(this.keys?.block.isDown);
+    const blockAim = this.blockPad?.getValue() ?? new Phaser.Math.Vector2();
+    const blockAimActive = Boolean(this.blockPad?.aiming());
     const dashPressed =
       this.consumeLatch('dashLatched') ||
       Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.dash));
@@ -277,6 +281,8 @@ export class BattleInput {
       attackHeld,
       attackPressed: attackEdge,
       blockHeld,
+      blockAim,
+      blockAimActive,
       dashPressed,
       ability1,
       ability2,
@@ -304,9 +310,9 @@ export class BattleInput {
     this.dashButton?.setCharges(state.dashCharges, state.dashMax);
     this.dashButton?.setRecovered(state.dashCharges <= 0 ? 1 - state.dashRecharge : 1);
     this.dashButton?.setDimmed(state.dashCharges <= 0);
-    this.blockButton?.setHeldVisual(state.blocking);
-    this.blockButton?.setRecovered(state.staminaRatio);
-    this.blockButton?.setDimmed(state.staminaRatio <= 0.02);
+    this.blockPad?.setHeldVisual(state.blocking);
+    this.blockPad?.setRecovered(state.staminaRatio);
+    this.blockPad?.setDimmed(state.staminaRatio <= 0.02);
   }
 
   syncAbilities(states: AbilitySlotState[]): void {
@@ -324,7 +330,7 @@ export class BattleInput {
   destroy(): void {
     this.leftStick?.destroy();
     this.rightStick?.destroy();
-    this.blockButton?.destroy();
+    this.blockPad?.destroy();
     this.dashButton?.destroy();
     this.ability1Button?.destroy();
     this.ability2Button?.destroy();

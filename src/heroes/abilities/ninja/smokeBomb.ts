@@ -50,7 +50,14 @@ class SmokeBombAbility implements ActiveAbility {
       },
     });
 
-    this.fx = new SmokeCloud(ctx.scene, caster.x, caster.y, now, now + NINJA_SMOKE.durationMs);
+    this.fx = new SmokeCloud(
+      ctx.scene,
+      caster.x,
+      caster.y,
+      now,
+      now + NINJA_SMOKE.durationMs,
+      NINJA_SMOKE.radius,
+    );
     const speed = NINJA_SMOKE.blastDistance / (NINJA_SMOKE.blastDurationMs / 1000);
     caster.setSpeedCap(speed);
     caster.body?.setDrag(0, 0);
@@ -91,6 +98,7 @@ class SmokeCloud {
     private readonly y: number,
     private readonly startedAt: number,
     endsAt: number,
+    private readonly radius: number,
   ) {
     this.ground = scene.add.graphics().setDepth(6);
     this.wisps = scene.add.graphics().setDepth(12);
@@ -125,9 +133,9 @@ class SmokeCloud {
       onUpdate: () => {
         ring.clear();
         ring.lineStyle(8 - anim.t * 5, COLORS.paper, 0.85 * (1 - anim.t));
-        ring.strokeCircle(0, 0, 8 + anim.t * NINJA_SMOKE.radius * 1.15);
+        ring.strokeCircle(0, 0, 8 + anim.t * this.radius);
         ring.lineStyle(3, 0x6b7c8a, 0.7 * (1 - anim.t));
-        ring.strokeCircle(0, 0, 4 + anim.t * NINJA_SMOKE.radius);
+        ring.strokeCircle(0, 0, 4 + anim.t * this.radius);
       },
       onComplete: () => ring.destroy(),
     });
@@ -139,31 +147,33 @@ class SmokeCloud {
     const expand = Math.min(1, age / NINJA_SMOKE.expandMs);
     const eased = 1 - (1 - expand) * (1 - expand);
     const fade = age > NINJA_SMOKE.durationMs - 480 ? (NINJA_SMOKE.durationMs - age) / 480 : 1;
-    const radius = NINJA_SMOKE.radius * eased;
+    const radius = this.radius * eased;
     const swirl = age / 180;
 
     this.ground.clear();
-    this.ground.fillStyle(COLORS.ink, 0.42 * fade);
-    this.ground.fillCircle(this.x, this.y, radius * 1.12);
+    this.ground.fillStyle(COLORS.ink, 0.46 * fade);
+    this.ground.fillCircle(this.x, this.y, radius);
     this.ground.fillStyle(0x1b2430, 0.5 * fade);
-    this.ground.fillCircle(this.x + Math.cos(swirl) * 3, this.y + Math.sin(swirl) * 2, radius * 0.88);
-    this.ground.lineStyle(2, 0x8fa1ac, 0.35 * fade);
+    this.ground.fillCircle(this.x + Math.cos(swirl) * 3, this.y + Math.sin(swirl) * 2, radius * 0.82);
+    this.ground.lineStyle(3, 0x8fa1ac, 0.55 * fade);
+    this.ground.strokeCircle(this.x, this.y, radius);
+    this.ground.lineStyle(1, COLORS.paper, 0.28 * fade);
     this.ground.strokeCircle(this.x, this.y, radius);
 
     this.wisps.clear();
     for (let rise = 0; rise < 3; rise += 1) {
-      const colY = this.y - rise * (10 + life * 8);
+      const colY = this.y - rise * (8 + life * 6);
       this.wisps.fillStyle(0x2c3644, (0.5 - rise * 0.12) * fade);
-      this.wisps.fillEllipse(this.x + Math.sin(swirl + rise) * 3, colY, radius * (1.15 - rise * 0.15), 9 + rise * 2);
+      this.wisps.fillEllipse(this.x + Math.sin(swirl + rise) * 3, colY, radius * (0.92 - rise * 0.12), 9 + rise * 2);
     }
     for (const puff of this.puffs) {
       const ang = puff.a + swirl * puff.spin * 0.15;
-      const dist = radius * puff.r * (0.7 + 0.3 * Math.sin(swirl + puff.a));
-      const px = this.x + Math.cos(ang) * dist + puff.ox;
-      const py = this.y + Math.sin(ang) * dist + puff.oy - life * 16;
-      const pr = 8 + radius * 0.35 * (0.7 + 0.3 * Math.cos(swirl * 1.4 + puff.a));
+      const pr = Math.min(radius * 0.28, 8 + radius * 0.18 * (0.7 + 0.3 * Math.cos(swirl * 1.4 + puff.a)));
+      const dist = Math.min(radius - pr, radius * puff.r * (0.7 + 0.3 * Math.sin(swirl + puff.a)));
+      const px = this.x + Math.cos(ang) * dist;
+      const py = this.y + Math.sin(ang) * dist - life * 10;
       this.wisps.fillStyle(0x2c3644, 0.55 * fade);
-      this.wisps.fillEllipse(px, py, pr * 1.4, pr);
+      this.wisps.fillEllipse(px, py, pr * 1.25, pr);
       this.wisps.fillStyle(COLORS.paper, 0.14 * fade);
       this.wisps.fillEllipse(px - 3, py - 4, pr * 0.45, pr * 0.32);
     }

@@ -8,9 +8,10 @@ export const NINJA_SMOKE = {
   cooldownMs: 15000,
   durationMs: 4000,
   expandMs: 280,
-  /** 15% larger than Ninja's actual body hit radius. */
-  radius: NINJA.bodyRadius * 1.15,
-  blastDistance: 108,
+  /** 15% larger than Ninja's actual attack radius, not the body hitbox. */
+  radius: NINJA.attackRange * 1.15,
+  /** Twice the original 108px blast so the escape actually relocates Ninja. */
+  blastDistance: 216,
   blastDurationMs: 170,
   moveMul: 0.7,
   attackSpeedMul: 0.7,
@@ -24,12 +25,16 @@ export const NINJA_KICK = {
   maxTargets: 4,
   /** Path width uses body radii plus a small contact slop. */
   pathPadding: 8,
-  damageMul: 1.12,
-  knockbackMul: 3.15,
-  secondaryKnockbackMul: 2.45,
+  damageMul: 1.28,
+  knockbackMul: 3.35,
+  secondaryKnockbackMul: 2.6,
   staminaDamage: 6,
-  backflipMs: 260,
-  backflipDistance: 46,
+  hitStopMs: 100,
+  backflipMs: 420,
+  backflipDistance: 96,
+  missRecoverMs: 200,
+  missRecoverDistance: 34,
+  jumpHeight: 38,
 } as const;
 
 export const NINJA_TORNADO = {
