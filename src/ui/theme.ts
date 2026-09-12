@@ -31,37 +31,62 @@ export function getGameSize(
   };
 }
 
+/**
+ * Keep ~540 world units on the short axis so a Fold cover (or any short,
+ * ultra-wide screen) shows a wider FOV instead of a zoomed-in character.
+ */
+export function getViewZoom(width: number, height: number): number {
+  return clamp(Math.min(width, height) / DEFAULT_HEIGHT, 0.38, 2.2);
+}
+
+/** HUD / stick scale. Shrinks on short or ultra-wide displays. */
+export function getUiScale(width: number, height: number): number {
+  const short = Math.min(width, height);
+  const long = Math.max(width, height);
+  const shortScale = short / DEFAULT_HEIGHT;
+  const widePenalty = long / short > 2 ? 0.88 : 1;
+  return clamp(shortScale * widePenalty, 0.42, 1.08);
+}
+
 export type TouchControlLayout = {
   isPortrait: boolean;
+  uiScale: number;
   radius: number;
+  buttonRadius: number;
   leftStick: { x: number; y: number };
   rightStick: { x: number; y: number };
   block: { x: number; y: number };
   dash: { x: number; y: number };
 };
 
-/** Thumb-reachable stick and button anchors for the current screen. */
+/** Thumb-reachable stick and button anchors that shrink on short screens. */
 export function getTouchControlLayout(width: number, height: number): TouchControlLayout {
   const isPortrait = width < height;
+  const uiScale = getUiScale(width, height);
   const short = Math.min(width, height);
-  const radius = Math.round(clamp(short * 0.125, 52, 76));
-  const sideInset = Math.round(Math.max(radius + 32, short * 0.18));
+  const radius = Math.round(clamp(Math.min(64 * uiScale, short * 0.11), 30, 70));
+  const buttonRadius = Math.round(clamp(radius * 0.7, 18, 32));
+  const sideInset = Math.round(clamp(radius + 22 * uiScale, 40, short * 0.2));
   const bottomInset = Math.round(
-    isPortrait ? Math.max(radius + 42, short * 0.13) : Math.max(radius + 32, short * 0.2),
+    isPortrait ? clamp(radius + 36 * uiScale, 48, short * 0.14) : clamp(radius + 24 * uiScale, 44, short * 0.2),
   );
-  const buttonLift = isPortrait ? bottomInset + Math.round(radius + 36) : Math.round(short * 0.42);
+  const buttonLift = isPortrait
+    ? bottomInset + Math.round(radius + 28 * uiScale)
+    : Math.round(clamp(short * 0.38, buttonRadius + 36, short * 0.46));
 
   return {
     isPortrait,
+    uiScale,
     radius,
+    buttonRadius,
     leftStick: { x: sideInset, y: height - bottomInset },
     rightStick: { x: width - sideInset, y: height - bottomInset },
     block: {
-      x: width - (isPortrait ? sideInset + 84 : sideInset + 100),
+      x: width - (isPortrait ? sideInset + buttonRadius * 2.4 : sideInset + buttonRadius * 2.8),
       y: height - buttonLift,
     },
     dash: {
-      x: width - (isPortrait ? Math.max(56, sideInset - 24) : sideInset),
+      x: width - (isPortrait ? Math.max(buttonRadius + 16, sideInset - buttonRadius) : sideInset),
       y: height - buttonLift,
     },
   };

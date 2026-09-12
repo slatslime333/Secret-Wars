@@ -12,7 +12,7 @@ import { BattleHud } from '../ui/BattleHud';
 import { createGrassyArena } from '../ui/createGrassyArena';
 import { DevMenu } from '../ui/DevMenu';
 import { RoundOverlay } from '../ui/RoundOverlay';
-import { COLORS, FONTS, hex } from '../ui/theme';
+import { COLORS, FONTS, getUiScale, getViewZoom, hex } from '../ui/theme';
 import { NINJA } from '../config/ninja';
 import { fadeToScene } from './fadeToScene';
 
@@ -35,6 +35,7 @@ export class BattleScene extends Phaser.Scene {
   private round!: RoundOverlay;
   private devMenu?: DevMenu;
   private chromeBar?: Phaser.GameObjects.Rectangle;
+  private titleText?: Phaser.GameObjects.Text;
   private menuButton?: ActionButton;
 
   constructor() {
@@ -70,6 +71,7 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, ARENA.width, ARENA.height);
     this.cameras.main.startFollow(this.ninja.sprite, true, 0.16, 0.16);
     this.cameras.main.setRoundPixels(true);
+    this.applyView(this.scale.width, this.scale.height);
     this.cameras.main.fadeIn(220, 7, 10, 18);
 
     this.createChrome();
@@ -226,7 +228,7 @@ export class BattleScene extends Phaser.Scene {
     this.chromeBar = this.add.rectangle(width / 2, 22, width, 44, COLORS.ink, 0.78);
     this.chromeBar.setStrokeStyle(2, COLORS.paper).setScrollFactor(0).setDepth(99);
 
-    this.add
+    this.titleText = this.add
       .text(22, 22, 'SECRET WARS  //  NINJA VS NINJA', {
         fontFamily: FONTS.display,
         fontSize: '15px',
@@ -246,17 +248,29 @@ export class BattleScene extends Phaser.Scene {
       onPress: () => this.returnToMenu(),
     });
     this.menuButton.setScrollFactor(0).setDepth(120);
+    this.layoutChrome(width, this.scale.height);
+  }
+
+  private applyView(width: number, height: number): void {
+    this.cameras.main.setSize(width, height);
+    this.cameras.main.setZoom(getViewZoom(width, height));
+  }
+
+  private layoutChrome(width: number, height: number): void {
+    const ui = getUiScale(width, height);
+    this.chromeBar?.setPosition(width / 2, 22 * ui).setSize(width, 44 * ui);
+    this.titleText?.setPosition(22 * ui, 22 * ui).setScale(ui);
+    this.menuButton?.setScale(ui).setPosition(width - 108 * ui, 22 * ui);
   }
 
   private onResize(gameSize: Phaser.Structs.Size): void {
     const width = gameSize.width;
     const height = gameSize.height;
-    this.chromeBar?.setPosition(width / 2, 22).setSize(width, 44);
-    this.menuButton?.setPosition(width - 108, 22);
-    this.hud?.layout(width);
+    this.layoutChrome(width, height);
+    this.hud?.layout(width, height);
     this.inputReader?.layout(width, height);
     this.devMenu?.layout(width, height);
-    this.cameras.main.setSize(width, height);
+    this.applyView(width, height);
   }
 
   private onRestartKey(): void {

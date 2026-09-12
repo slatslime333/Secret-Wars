@@ -4,7 +4,7 @@ import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { isTouchPrimary } from '../device';
 import { NinjaBody } from '../heroes/NinjaBody';
-import { COLORS, FONTS, hex } from './theme';
+import { COLORS, FONTS, getUiScale, hex } from './theme';
 
 export class BattleHud {
   private readonly ninjaFill: Phaser.GameObjects.Rectangle;
@@ -17,22 +17,23 @@ export class BattleHud {
   private readonly comboText: Phaser.GameObjects.Text;
   private readonly verbText: Phaser.GameObjects.Text;
   private readonly foeCaption: Phaser.GameObjects.Text;
+  private readonly cluster: Phaser.GameObjects.Container;
   private readonly touch: boolean;
 
   constructor(scene: Phaser.Scene) {
     this.touch = isTouchPrimary();
     const width = scene.scale.width;
-    scene.add.rectangle(148, 56, 224, 10, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
+    const height = scene.scale.height;
+    this.cluster = scene.add.container(0, 0).setScrollFactor(0).setDepth(101);
+
+    const ninjaTrack = scene.add.rectangle(148, 56, 224, 10, COLORS.inkSoft);
     this.ninjaFill = scene.add.rectangle(36, 56, 224, 10, COLORS.redBright).setOrigin(0, 0.5);
-    this.ninjaFill.setScrollFactor(0).setDepth(102);
 
-    scene.add.rectangle(148, 70, 224, 8, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
+    const staminaTrack = scene.add.rectangle(148, 70, 224, 8, COLORS.inkSoft);
     this.staminaFill = scene.add.rectangle(36, 70, 224, 8, COLORS.cyan).setOrigin(0, 0.5);
-    this.staminaFill.setScrollFactor(0).setDepth(102);
 
-    scene.add.rectangle(148, 84, 224, 6, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
+    const ammoTrack = scene.add.rectangle(148, 84, 224, 6, COLORS.inkSoft);
     this.ammoFill = scene.add.rectangle(36, 84, 224, 6, COLORS.orange).setOrigin(0, 0.5);
-    this.ammoFill.setScrollFactor(0).setDepth(102);
 
     this.ammoText = scene.add
       .text(36, 94, 'ATTACK 10/10', {
@@ -44,9 +45,17 @@ export class BattleHud {
         stroke: hex(COLORS.ink),
         strokeThickness: 4,
       })
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(102);
+      .setOrigin(0, 0);
+
+    this.cluster.add([
+      ninjaTrack,
+      this.ninjaFill,
+      staminaTrack,
+      this.staminaFill,
+      ammoTrack,
+      this.ammoFill,
+      this.ammoText,
+    ]);
 
     this.comboText = scene.add
       .text(width / 2, 22, '', {
@@ -77,8 +86,8 @@ export class BattleHud {
     const track = scene.add.rectangle(0, 0, 72, 10, COLORS.ink, 1);
     track.setStrokeStyle(2, COLORS.redBright);
     this.foeFill = scene.add.rectangle(-36, 0, 72, 6, COLORS.paper).setOrigin(0, 0.5);
-    const staminaTrack = scene.add.rectangle(0, 9, 72, 6, COLORS.ink, 1);
-    staminaTrack.setStrokeStyle(1, COLORS.cyanDark);
+    const foeStaminaTrack = scene.add.rectangle(0, 9, 72, 6, COLORS.ink, 1);
+    foeStaminaTrack.setStrokeStyle(1, COLORS.cyanDark);
     this.foeStaminaFill = scene.add.rectangle(-36, 9, 72, 4, COLORS.cyan).setOrigin(0, 0.5);
     this.foeCaption = scene.add
       .text(0, -14, 'RIVAL', {
@@ -90,13 +99,16 @@ export class BattleHud {
         strokeThickness: 3,
       })
       .setOrigin(0.5, 1);
-    this.foeBar.add([track, this.foeFill, staminaTrack, this.foeStaminaFill, this.foeCaption]);
+    this.foeBar.add([track, this.foeFill, foeStaminaTrack, this.foeStaminaFill, this.foeCaption]);
     this.foeBar.setVisible(false);
+    this.layout(width, height);
   }
 
-  layout(width: number): void {
-    this.comboText.setX(width / 2);
-    this.verbText.setX(width - 30);
+  layout(width: number, height: number): void {
+    const ui = getUiScale(width, height);
+    this.cluster.setScale(ui);
+    this.comboText.setPosition(width / 2, 22 * ui).setScale(ui);
+    this.verbText.setPosition(width - 30 * ui, 82 * ui).setScale(ui);
   }
 
   sync(
