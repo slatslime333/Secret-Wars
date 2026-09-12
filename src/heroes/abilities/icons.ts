@@ -321,23 +321,21 @@ const drawThunderstorm = (ctx: CanvasRenderingContext2D, size: number): void => 
 
 const drawGunBarrage = (ctx: CanvasRenderingContext2D, size: number): void => {
   const c = size / 2;
-  ctx.fillStyle = '#161418';
+  ctx.fillStyle = '#2a1c14';
   ctx.beginPath();
   ctx.arc(c, c, c - 2, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#2a2a30';
+  ctx.fillStyle = '#4a4a52';
   ctx.fillRect(c - 28, c - 6, 44, 12);
   ctx.fillRect(c + 8, c - 10, 8, 20);
-  ctx.fillStyle = '#c8c4b8';
+  ctx.fillStyle = paper;
   ctx.fillRect(c + 16, c - 3, 18, 5);
   ctx.fillStyle = orange;
-  ctx.fillRect(c + 32, c - 2, 8, 3);
+  ctx.fillRect(c + 32, c - 2, 10, 4);
   ctx.fillStyle = yellow;
-  ctx.globalAlpha = 0.7;
-  ctx.fillRect(c + 38, c - 8, 3, 3);
-  ctx.fillRect(c + 42, c + 2, 3, 3);
-  ctx.fillRect(c + 36, c + 8, 3, 3);
-  ctx.globalAlpha = 1;
+  ctx.fillRect(c + 40, c - 10, 5, 5);
+  ctx.fillRect(c + 46, c + 2, 5, 5);
+  ctx.fillRect(c + 38, c + 10, 5, 5);
 };
 
 const drawBatSmash = (ctx: CanvasRenderingContext2D, size: number): void => {

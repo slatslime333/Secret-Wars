@@ -6,6 +6,7 @@ type ActionButtonOptions = {
   width?: number;
   height?: number;
   primary?: boolean;
+  compact?: boolean;
   /** When false, the caller adds this into a parent container. Default true. */
   attachToScene?: boolean;
   onPress: () => void;
@@ -15,6 +16,7 @@ export class ActionButton extends Phaser.GameObjects.Container {
   private readonly background: Phaser.GameObjects.Graphics;
   private readonly labelText: Phaser.GameObjects.Text;
   private readonly primary: boolean;
+  private readonly compact: boolean;
   private readonly buttonWidth: number;
   private readonly buttonHeight: number;
   private focused = false;
@@ -23,17 +25,18 @@ export class ActionButton extends Phaser.GameObjects.Container {
     super(scene, x, y);
 
     this.primary = options.primary ?? false;
+    this.compact = Boolean(options.compact);
     this.buttonWidth = options.width ?? 300;
     this.buttonHeight = options.height ?? 72;
     this.background = scene.add.graphics();
     this.labelText = scene.add
       .text(0, -2, options.label, {
         fontFamily: FONTS.display,
-        fontSize: this.primary ? '30px' : '23px',
+        fontSize: this.compact ? '15px' : this.primary ? '30px' : '23px',
         color: hex(COLORS.paper),
-        letterSpacing: 4,
+        letterSpacing: this.compact ? 1 : 4,
         stroke: hex(COLORS.ink),
-        strokeThickness: 5,
+        strokeThickness: this.compact ? 3 : 5,
       })
       .setOrigin(0.5);
 
@@ -73,7 +76,8 @@ export class ActionButton extends Phaser.GameObjects.Container {
   private draw(): void {
     const width = this.buttonWidth;
     const height = this.buttonHeight;
-    const edge = this.primary ? 20 : 14;
+    const edge = this.compact ? 8 : this.primary ? 20 : 14;
+    const tab = this.compact ? 14 : 32;
     const fill = this.primary
       ? this.focused
         ? COLORS.redBright
@@ -118,7 +122,7 @@ export class ActionButton extends Phaser.GameObjects.Container {
     this.background.fillTriangle(
       -width / 2,
       -height / 2,
-      -width / 2 + 32,
+      -width / 2 + tab,
       -height / 2,
       -width / 2 - 8,
       height / 2,

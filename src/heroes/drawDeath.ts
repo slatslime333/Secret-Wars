@@ -98,8 +98,8 @@ export const drawDeath = (
 
   if (!north) {
     graphics.fillStyle(palette.eye);
-    graphics.fillTriangle(-7, -26, -2, -21, -8, -20);
-    graphics.fillTriangle(7, -26, 2, -21, 8, -20);
+    graphics.fillTriangle(-8, -28, -1, -20, -9, -19);
+    graphics.fillTriangle(8, -28, 1, -20, 9, -19);
   } else {
     graphics.fillStyle(palette.clothDark);
     graphics.fillRect(-10, -28, 20, 4);
@@ -159,7 +159,7 @@ const drawDeathEast = (
   graphics.fillCircle(6, -23, 7);
 
   graphics.fillStyle(palette.eye);
-  graphics.fillTriangle(7, -26, 11, -21, 6, -20);
+  graphics.fillTriangle(6, -28, 13, -20, 5, -19);
 
   const backY = 6 - liftL * 6;
   const frontY = 4 - liftR * 8;
@@ -214,7 +214,7 @@ const drawDeathWest = (
   graphics.fillCircle(-6, -23, 7);
 
   graphics.fillStyle(palette.eye);
-  graphics.fillTriangle(-7, -26, -11, -21, -6, -20);
+  graphics.fillTriangle(-6, -28, -13, -20, -5, -19);
 
   const backY = 6 - liftR * 6;
   const frontY = 4 - liftL * 8;
