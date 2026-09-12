@@ -13,8 +13,10 @@ export const MINION = {
   leashRadius: 340,
   retargetMs: 420,
   switchScore: 48,
-  separateRadius: 22,
-  separatePush: 28,
+  /** Soft spacing so clumps unstick without flying apart. */
+  separateRadius: 26,
+  separatePush: 38,
+  /** Hero hits still land a shove, not a launch. */
   hitKnockbackMul: 0.48,
   hitReactionMs: 110,
   deathFadeMs: 280,
@@ -26,16 +28,41 @@ export const MINION = {
   },
 } as const;
 
+/**
+ * Muted team skins. Bright cyan/red stay on pennants; bodies use darker
+ * readable versions so squads are obvious without going neon.
+ */
+export const MINION_TEAM_SKIN = {
+  alpha: {
+    skin: 0x1f6d76,
+    skinDark: 0x134850,
+    cloth: 0x16343c,
+    leather: 0x2a4a48,
+  },
+  bravo: {
+    skin: 0x8a3036,
+    skinDark: 0x54181e,
+    cloth: 0x3a161c,
+    leather: 0x5a2a24,
+  },
+} as const;
+
 export const SWORD_MINION = {
   id: 'sword-minion',
   displayName: 'Sword Minion',
   role: 'minion',
-  maxHealth: 38,
+  /** ~4 Death lights / ~6 Ninja lights. Durable unit, not a tiny hero. */
+  maxHealth: 64,
   maxStamina: 40,
   moveSpeed: 138,
-  attackDamage: 5,
+  attackDamage: 4,
   defense: 8,
   knockbackPower: 90,
+  /**
+   * Applied only vs opposing minions, as the final launch speed.
+   * ~70px travel — a visible shove, not a map launch.
+   */
+  vsMinionKnockback: 280,
   attackCooldownMs: 920,
   attackRange: 44,
   attackArcDegrees: 70,
@@ -46,19 +73,24 @@ export const SWORD_MINION = {
   dashMaxCharges: 0,
   windupMs: 180,
   recoveryMs: 220,
-} as const satisfies HeroCombatConfig & { windupMs: number; recoveryMs: number };
+} as const satisfies HeroCombatConfig & {
+  windupMs: number;
+  recoveryMs: number;
+  vsMinionKnockback: number;
+};
 
 export const RANGER_MINION = {
   id: 'ranger-minion',
   displayName: 'Ranger Minion',
   role: 'minion',
-  maxHealth: 26,
+  /** ~3 Death lights / ~4 Ninja lights. */
+  maxHealth: 48,
   maxStamina: 32,
   moveSpeed: 132,
-  attackDamage: 3,
+  attackDamage: 2,
   defense: 6,
   knockbackPower: 55,
-  attackCooldownMs: 1280,
+  attackCooldownMs: 1560,
   /** Limited poke — not map-wide. */
   attackRange: Math.round(NINJA_BASE_RANGE * 1.95),
   attackArcDegrees: 28,
@@ -72,6 +104,7 @@ export const RANGER_MINION = {
   projectileSpeed: 380,
   projectileRadius: 3,
   projectileLifetimeMs: 1400,
+  projectileColor: 0xe8c878,
   /** Radians of random aim cone. ~8° either side. */
   spreadRad: 0.14,
 } as const satisfies HeroCombatConfig & {
@@ -80,6 +113,7 @@ export const RANGER_MINION = {
   projectileSpeed: number;
   projectileRadius: number;
   projectileLifetimeMs: number;
+  projectileColor: number;
   spreadRad: number;
 };
 

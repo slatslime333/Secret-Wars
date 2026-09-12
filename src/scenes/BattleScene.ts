@@ -294,6 +294,7 @@ export class BattleScene extends Phaser.Scene {
         this.ninja.aim.y,
         NINJA_KICK.dashDistance,
         true,
+        NINJA_KICK.aimHalfWidth,
       );
     } else {
       this.marker.clearBallAim();

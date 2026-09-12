@@ -25,6 +25,8 @@ export const NINJA_KICK = {
   maxTargets: 4,
   /** Path width uses body radii plus a small contact slop. */
   pathPadding: 8,
+  /** Dash-corridor half-width shown while aiming. Matches segmentHitsCircle. */
+  aimHalfWidth: NINJA.bodyRadius + NINJA.bodyRadius + 8,
   damageMul: 1.28,
   knockbackMul: 4.55,
   secondaryKnockbackMul: 3.45,

@@ -144,6 +144,7 @@ export class MinionBrain {
       if (distanceBetween(this.body.x, this.body.y, target.x, target.y) > spec.attackRange + target.stats.bodyRadius + 12) {
         return;
       }
+      const vsMinion = target.stats.role === 'minion';
       resolveAbilityHit(
         scene,
         scene.time.now,
@@ -151,7 +152,8 @@ export class MinionBrain {
         target,
         {
           rawDamage: spec.attackDamage,
-          knockback: spec.knockbackPower,
+          knockback: vsMinion ? spec.vsMinionKnockback : spec.knockbackPower,
+          receivedKnockbackMul: vsMinion ? 1 : undefined,
           staminaDamage: 2,
           dirX: target.x - this.body.x,
           dirY: target.y - this.body.y,
@@ -191,7 +193,7 @@ export class MinionBrain {
         ny * spec.projectileSpeed,
         spec.projectileRadius,
         spec.projectileLifetimeMs,
-        0xc8a060,
+        spec.projectileColor,
         'arrow',
       );
       const caster = this.body;

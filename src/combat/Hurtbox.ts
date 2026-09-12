@@ -22,6 +22,8 @@ export type TakeHitOptions = {
   hitStopMs?: number;
   /** Optional per-hit launch speed cap. Defaults to COMBAT.launchSpeedCap. */
   launchCap?: number;
+  /** Override MINION.hitKnockbackMul (1 = use the raw knockback value). */
+  receivedKnockbackMul?: number;
 };
 
 /** Anyone QuickAttack can injure. */

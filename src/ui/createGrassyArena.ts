@@ -44,24 +44,24 @@ export const createGrassyArena = (scene: Phaser.Scene, playerLabel = 'NINJA'): v
       graphics.fillStyle(color, 1);
       graphics.fillRect(x, y, tileSize, tileSize);
 
-      // Pixel tufts of grass blades (crisp retro pixel art)
-      if (rand > 0.55) {
-        graphics.fillStyle(0x5cb554, 0.95);
+      // Sparse tufts — enough atmosphere, not a cluttered meadow.
+      if (rand > 0.88) {
+        graphics.fillStyle(0x5cb554, 0.9);
         graphics.fillRect(x + 3, y + 4, 3, 7);
         graphics.fillRect(x + 7, y + 2, 3, 9);
         graphics.fillRect(x + 11, y + 5, 3, 6);
-        graphics.fillStyle(0x214b1e, 0.85);
+        graphics.fillStyle(0x214b1e, 0.8);
         graphics.fillRect(x + 4, y + 11, 8, 2);
-      } else if (rand < 0.10) {
+      } else if (rand < 0.07) {
         // Small pebble / mossy rock
         graphics.fillStyle(0x605646, 0.85);
         graphics.fillRect(x + 8, y + 8, 4, 3);
         graphics.fillStyle(0x2c261e, 0.9);
         graphics.fillRect(x + 9, y + 11, 4, 1);
-      } else if (rand > 0.40 && rand < 0.47) {
-        // Small pixel wildflower (white daisies and red poppy accents)
-        const flowerColor = rand > 0.43 ? 0xffffff : COLORS.redBright;
-        graphics.fillStyle(flowerColor, 0.95);
+      } else if (rand > 0.44 && rand < 0.47) {
+        // Occasional wildflower
+        const flowerColor = rand > 0.455 ? 0xffffff : COLORS.redBright;
+        graphics.fillStyle(flowerColor, 0.9);
         graphics.fillRect(x + 8, y + 7, 3, 3);
         graphics.fillStyle(COLORS.yellow, 1);
         graphics.fillRect(x + 9, y + 8, 1, 1);
