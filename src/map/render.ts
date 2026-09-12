@@ -33,6 +33,7 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
 
   for (const obs of layout.obstacles) {
     const key = textureKeyFor(obs);
+    const variant = obs.variant;
     const image = scene.add.image(obs.x, obs.y, key).setDepth(obs.kind === 'tree' ? 5 : 4);
     if (obs.kind === 'wall') {
       if (obs.collision.h > obs.collision.w) {
@@ -42,9 +43,10 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
         image.setDisplaySize(obs.collision.w, Math.max(16, obs.collision.h));
       }
     } else if (obs.kind === 'tree') {
-      image.setOrigin(0.5, 0.82);
-    } else {
-      image.setDisplaySize(obs.visual.w + 4, obs.visual.h + 4);
+      image.setOrigin(0.5, 0.86);
+      image.setScale(variant === 'broad' ? 1.25 : variant === 'medium' ? 1.2 : 1.15);
+    } else if (obs.kind === 'crate') {
+      image.setScale(variant === 'pair' ? 1.15 : 1.2);
     }
     sprites.push(image);
   }

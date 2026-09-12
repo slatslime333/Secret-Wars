@@ -4,20 +4,20 @@ import { COLORS } from '../ui/theme';
 import { SeededRNG } from './seed';
 import type { MapLayout } from './types';
 
-const GRASS_KEY = 'sw-calm-grass';
+const GRASS_KEY = 'sw-calm-grass-v4';
 const TILE = 256;
 
 const tone = (value: number): number => {
   const t = Math.max(-1, Math.min(1, value));
-  const r = Math.round(52 + t * 8);
-  const g = Math.round(98 + t * 10);
-  const b = Math.round(48 + t * 6);
+  const r = Math.round(54 + t * 6);
+  const g = Math.round(98 + t * 8);
+  const b = Math.round(50 + t * 5);
   return (r << 16) | (g << 8) | b;
 };
 
 const ensureGrassTexture = (scene: Phaser.Scene): void => {
   if (scene.textures.exists(GRASS_KEY)) {
-    return;
+    scene.textures.remove(GRASS_KEY);
   }
   const canvas = scene.textures.createCanvas(GRASS_KEY, TILE, TILE);
   const ctx = canvas?.getContext();
@@ -26,23 +26,24 @@ const ensureGrassTexture = (scene: Phaser.Scene): void => {
   }
   ctx.fillStyle = '#3a6234';
   ctx.fillRect(0, 0, TILE, TILE);
-  for (let y = 0; y < TILE; y += 1) {
-    for (let x = 0; x < TILE; x += 1) {
+  const patch = 32;
+  for (let y = 0; y < TILE; y += patch) {
+    const stagger = ((y / patch) % 2) * 16;
+    for (let x = -stagger; x < TILE; x += patch) {
       const u = (x / TILE) * Math.PI * 2;
       const v = (y / TILE) * Math.PI * 2;
-      const wave =
-        Math.sin(u * 1.2 + v * 0.7) * 0.55 +
-        Math.sin(u * 0.6 - v * 1.1) * 0.32 +
-        Math.sin(u * 2.1 + v * 1.8) * 0.12;
-      const color = tone(wave);
-      ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
-      if (((x * 17 + y * 13) % 41 === 0) && wave > 0.15) {
-        ctx.fillRect(x, y, 1, 1);
-      } else if ((x * 9 + y * 5) % 73 === 0 && wave < -0.2) {
+      const wave = Math.sin(u * 0.8 + v * 0.45) * 0.75 + Math.sin(u * 0.35 - v * 0.7) * 0.25;
+      ctx.fillStyle = `#${tone(wave).toString(16).padStart(6, '0')}`;
+      ctx.fillRect(x, y, patch, patch);
+    }
+  }
+  for (let y = 8; y < TILE; y += 19) {
+    for (let x = 11; x < TILE; x += 23) {
+      const u = (x / TILE) * Math.PI * 2;
+      const v = (y / TILE) * Math.PI * 2;
+      if (Math.sin(u * 3 + v * 2) > 0.55) {
         ctx.fillStyle = '#2f522c';
-        ctx.fillRect(x, y, 2, 1);
-      } else if (x % 4 === 0 && y % 4 === 0) {
-        ctx.fillRect(x, y, 4, 4);
+        ctx.fillRect(x, y, 2, 2);
       }
     }
   }

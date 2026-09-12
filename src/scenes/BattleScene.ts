@@ -92,6 +92,7 @@ export class BattleScene extends Phaser.Scene {
     const hero = getSelectedHero();
     this.mapSeed = resolvePlayTestSeed();
     this.battlefield = Battlefield.install(this, { seed: this.mapSeed, log: true });
+    this.mapSeed = rememberPlayTestSeed(this.battlefield.result.seed);
     this.physics.world.setBounds(
       ARENA.wallThickness,
       ARENA.wallThickness,
@@ -615,8 +616,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private rebuildMap(seed: number): void {
-    this.mapSeed = rememberPlayTestSeed(seed);
-    this.battlefield?.regenerate(this.mapSeed);
+    this.battlefield?.regenerate(seed);
+    this.mapSeed = rememberPlayTestSeed(this.battlefield?.result.seed ?? seed);
     this.rebindMapColliders();
     this.battlefield?.debug.setVisible(DEV_CHEATS.showMapDebug);
     this.devMenu?.sync();
