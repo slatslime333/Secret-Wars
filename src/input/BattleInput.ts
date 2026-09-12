@@ -22,6 +22,7 @@ export type BattleFrame = {
   ability1: boolean;
   ability1Aim: Phaser.Math.Vector2;
   ability1AimActive: boolean;
+  ability1Aiming: boolean;
   ability2: boolean;
   ultimate: boolean;
 };
@@ -58,6 +59,7 @@ export class BattleInput {
   private readonly ability1Pad?: VirtualAimPad;
   private readonly ability1Aim = new Phaser.Math.Vector2();
   private ability1AimActive = false;
+  private ability1AimingHeld = false;
   private readonly ability2Button?: AbilityButton;
   private readonly ultimateButton?: AbilityButton;
   private readonly keys?: KeyMap;
@@ -76,6 +78,7 @@ export class BattleInput {
     scene: Phaser.Scene,
     isRoundLocked: () => boolean = () => false,
     kit?: HeroAbilityKit,
+    dashMaxCharges: number = COMBAT.dashMaxCharges,
   ) {
     this.scene = scene;
     this.isRoundLocked = isRoundLocked;
@@ -114,7 +117,7 @@ export class BattleInput {
         },
       });
       this.dashButton.setRadius(layout.buttonRadius);
-      this.dashButton.setCharges(COMBAT.dashMaxCharges, COMBAT.dashMaxCharges);
+      this.dashButton.setCharges(dashMaxCharges, dashMaxCharges);
       this.dashButton.setRecovered(1);
 
       if (kit) {
@@ -123,7 +126,11 @@ export class BattleInput {
             label: 'BALL',
             accent: kit.ability1.accent,
             radius: layout.abilityRadius,
+            onPress: () => {
+              this.ability1AimingHeld = true;
+            },
             onRelease: (aim) => {
+              this.ability1AimingHeld = false;
               this.ability1AimActive = aim.length() >= INPUT.aimPadDeadzone;
               if (this.ability1AimActive) {
                 this.ability1Aim.copy(aim).normalize();
@@ -292,6 +299,12 @@ export class BattleInput {
     const dashPressed =
       this.consumeLatch('dashLatched') ||
       Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.dash));
+    if (this.ability1Pad?.active) {
+      const padAim = this.ability1Pad.getValue();
+      if (padAim.length() >= INPUT.aimPadDeadzone) {
+        this.ability1Aim.copy(padAim).normalize();
+      }
+    }
     const ability1 = this.consumeLatch('ability1Latched');
     const ability2 = this.consumeLatch('ability2Latched');
     const ultimate = this.consumeLatch('ultimateLatched');
@@ -299,6 +312,8 @@ export class BattleInput {
     if (ability1) {
       this.ability1AimActive = false;
     }
+    const ability1Aiming =
+      this.ability1AimingHeld || Boolean(this.ability1Pad?.active) || Boolean(this.keys?.ability1.isDown);
 
     return {
       move,
@@ -313,6 +328,7 @@ export class BattleInput {
       ability1,
       ability1Aim: this.ability1Aim.clone(),
       ability1AimActive,
+      ability1Aiming,
       ability2,
       ultimate,
     };

@@ -6,6 +6,7 @@ import { CombatStatus } from '../combat/CombatStatus';
 import { TakeHitOptions } from '../combat/Hurtbox';
 import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
+import { drawColeElectricity } from './drawCole';
 import type { HeroDrawFn } from './heroDraw';
 
 export type FighterOptions = {
@@ -41,6 +42,8 @@ export class NinjaBody {
   private lastDrawnFlash = false;
   private frozenUntil = 0;
   private pendingLaunch?: { x: number; y: number };
+  private armLiftLeft = 0;
+  private armLiftRight = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: FighterOptions = {}) {
     this.scene = scene;
@@ -350,18 +353,22 @@ export class NinjaBody {
       ease: 'Sine.InOut',
       onUpdate: () => {
         const pose = frame(anim.frac);
+        this.armLiftLeft = pose.armLiftLeft ?? 0;
+        this.armLiftRight = pose.armLiftRight ?? 0;
         this.drawHero(this.art, {
           facing: this.facing,
           attacking: true,
           comboStep: 1,
           hitFlash: this.status.isFlashingHit(this.now()),
           rival: this.rival,
-          armLiftLeft: pose.armLiftLeft,
-          armLiftRight: pose.armLiftRight,
+          armLiftLeft: this.armLiftLeft,
+          armLiftRight: this.armLiftRight,
         });
         this.art.setPosition(pose.swayX ?? 0, 0);
       },
       onComplete: () => {
+        this.armLiftLeft = 0;
+        this.armLiftRight = 0;
         this.art.setPosition(0, 0);
         this.redrawIdle();
       },
@@ -551,31 +558,6 @@ export class NinjaBody {
     if (!this.sparks) {
       return;
     }
-    const t = this.now() / 70;
-    this.sparks.clear();
-    const hands = this.facing === 'west'
-      ? [
-          { x: -13, y: 8 },
-          { x: 10, y: 8 },
-        ]
-      : [
-          { x: -10, y: 8 },
-          { x: 13, y: 8 },
-        ];
-    for (let h = 0; h < hands.length; h += 1) {
-      const hand = hands[h];
-      for (let i = 0; i < 3; i += 1) {
-        const flicker = ((t + h * 1.7 + i * 0.9) % 4) / 4;
-        const ang = (t + i * 2.1 + h) * (h === 0 ? 1 : -1);
-        const len = 3 + flicker * 5;
-        this.sparks.lineStyle(1.6, i === 0 ? 0xdff4ff : 0x4aa8ff, 0.7 + flicker * 0.3);
-        this.sparks.lineBetween(
-          hand.x,
-          hand.y,
-          hand.x + Math.cos(ang) * len,
-          hand.y + Math.sin(ang * 1.3) * len - flicker * 3,
-        );
-      }
-    }
+    drawColeElectricity(this.sparks, this.facing, this.now(), this.armLiftLeft, this.armLiftRight);
   }
 }
