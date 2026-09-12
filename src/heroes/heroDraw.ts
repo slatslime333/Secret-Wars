@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import type { ComboStep } from '../config/combat';
+import type { TeamId } from '../config/hero';
 import type { CardinalFacing } from './drawNinja';
 
 export type HeroDrawOptions = {
@@ -9,6 +10,7 @@ export type HeroDrawOptions = {
   comboStep?: ComboStep;
   hitFlash?: boolean;
   rival?: boolean;
+  team?: TeamId;
   armLiftLeft?: number;
   armLiftRight?: number;
   swayX?: number;

@@ -8,6 +8,7 @@ import {
   SLOT_ORDER,
   defForSlot,
 } from './types';
+import { DEV_CHEATS } from '../../debug/devCheats';
 
 const OPEN_CONTROL: AbilityControlFlags = {
   move: false,
@@ -57,10 +58,10 @@ export class AbilityController {
     if (ctx.caster.down) {
       return false;
     }
-    if (def.chargeMode === 'once' && runtime.charges <= 0) {
+    if (def.chargeMode === 'once' && runtime.charges <= 0 && !DEV_CHEATS.noCooldowns) {
       return false;
     }
-    if (def.chargeMode === 'cooldown' && ctx.now < runtime.readyAt) {
+    if (def.chargeMode === 'cooldown' && ctx.now < runtime.readyAt && !DEV_CHEATS.noCooldowns) {
       return false;
     }
     if (def.chargeMode === 'meter' && runtime.meter < 1 && runtime.charges <= 0) {
@@ -72,7 +73,9 @@ export class AbilityController {
 
     ctx.interruptCombat();
     const instance = def.activate(ctx);
-    if (def.chargeMode === 'once') {
+    if (DEV_CHEATS.noCooldowns) {
+      /* keep charges and skip readyAt so the kit can be re-fired */
+    } else if (def.chargeMode === 'once') {
       runtime.charges = Math.max(0, runtime.charges - 1);
       runtime.meter = 0;
     } else if (def.chargeMode === 'meter') {
@@ -96,9 +99,11 @@ export class AbilityController {
     }
     const keep = this.active.update(ctx);
     if (!keep) {
-      if (this.deferredSlot) {
+      if (this.deferredSlot && !DEV_CHEATS.noCooldowns) {
         const def = defForSlot(this.kit, this.deferredSlot);
         this.slots[this.deferredSlot].readyAt = ctx.now + def.cooldownMs;
+        this.deferredSlot = undefined;
+      } else {
         this.deferredSlot = undefined;
       }
       this.active.destroy();
@@ -109,11 +114,12 @@ export class AbilityController {
   slotState(slot: AbilitySlot, now: number): AbilitySlotState {
     const def = defForSlot(this.kit, slot);
     const runtime = this.slots[slot];
-    const remaining = Math.max(0, runtime.readyAt - now);
-    const consumed = def.chargeMode === 'once' && runtime.charges <= 0;
+    const remaining = DEV_CHEATS.noCooldowns ? 0 : Math.max(0, runtime.readyAt - now);
+    const consumed = def.chargeMode === 'once' && runtime.charges <= 0 && !DEV_CHEATS.noCooldowns;
     const ready =
-      !consumed &&
-      (def.chargeMode === 'cooldown' ? remaining <= 0 : runtime.charges > 0 || runtime.meter >= 1);
+      DEV_CHEATS.noCooldowns ||
+      (!consumed &&
+        (def.chargeMode === 'cooldown' ? remaining <= 0 : runtime.charges > 0 || runtime.meter >= 1));
     return {
       def,
       ready,
@@ -128,6 +134,15 @@ export class AbilityController {
 
   allStates(now: number): AbilitySlotState[] {
     return SLOT_ORDER.map((slot) => this.slotState(slot, now));
+  }
+
+  resetCooldowns(): void {
+    for (const slot of SLOT_ORDER) {
+      const def = defForSlot(this.kit, slot);
+      this.slots[slot].readyAt = 0;
+      this.slots[slot].charges = def.startingCharges;
+      this.slots[slot].meter = def.startingCharges > 0 ? 1 : 0;
+    }
   }
 
   destroy(): void {

@@ -189,19 +189,24 @@ export class QuickAttack {
       return;
     }
 
-    const defender = enemies[0];
-    if (!defender || defender.down) {
+    let connected = false;
+    for (const defender of enemies) {
+      if (defender.down) {
+        continue;
+      }
+      const result = resolveMelee(this.scene, now, attacker, defender, pending.step, defenderBlock, {
+        alreadyClashed: connected,
+      });
+      if (result === 'hit') {
+        connected = true;
+      }
+      if (result === 'blocked' || result === 'perfect-block' || result === 'clash') {
+        this.combo.reset();
+      }
+    }
+    if (!connected) {
       attacker.status.applyAttackRecovery(now, profile.recoveryMs);
       this.combo.reset();
-      return;
-    }
-
-    const result = resolveMelee(this.scene, now, attacker, defender, pending.step, defenderBlock);
-    if (result === 'whiff' || result === 'blocked' || result === 'perfect-block' || result === 'clash') {
-      this.combo.reset();
-    }
-    if (result === 'whiff') {
-      attacker.status.applyAttackRecovery(now, profile.recoveryMs);
     }
     if (pending.step === 3) {
       this.combo.reset();

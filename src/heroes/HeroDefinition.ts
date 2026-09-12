@@ -13,7 +13,8 @@ export type HeroRole =
   | 'tank'
   | 'support'
   | 'crowd-control'
-  | 'hybrid';
+  | 'hybrid'
+  | 'minion';
 
 export type HeroDefinition = {
   id: string;
