@@ -225,7 +225,7 @@ const drawDeathWest = (
     drawBat(graphics, palette, -14, frontY + 16, batAngle, batScale);
   }
   if (showUzi) {
-    drawUzi(graphics, palette, -26, frontY + 8, -1);
+    drawUzi(graphics, palette, -18, frontY + 8, -1);
   }
 };
 
@@ -245,7 +245,7 @@ const idleBatAngle = deathIdleBatAngle;
 export const deathUziMuzzleOffset = (facing: CardinalFacing, armLiftRight = 0.35): { x: number; y: number } => {
   const frontY = 4 - armLiftRight * 8;
   if (facing === 'west') {
-    return { x: -48, y: frontY + 9 };
+    return { x: -40, y: frontY + 9 };
   }
   if (facing === 'east') {
     return { x: 34, y: frontY + 9 };
@@ -286,15 +286,19 @@ const drawHolsteredUzi = (
   y: number,
   facing: 1 | -1,
 ): void => {
-  const bodyX = facing === 1 ? x : x - 11;
+  const bodyX = facing === 1 ? x : x - 12;
+  graphics.fillStyle(COLORS.ink, 1);
+  graphics.fillRect(bodyX - 1, y - 1, 14, 7);
   graphics.fillStyle(palette.gun);
-  graphics.fillRect(bodyX, y, 11, 5);
-  graphics.fillRect(facing === 1 ? x : x - 3, y + 4, 3, 5);
-  graphics.fillStyle(0x141418);
-  graphics.fillRect(facing === 1 ? x + 4 : x - 7, y + 4, 3, 6);
+  graphics.fillRect(bodyX, y, 12, 5);
+  graphics.fillRect(facing === 1 ? x : x - 4, y + 4, 4, 6);
+  graphics.fillStyle(0x1a1a22);
+  graphics.fillRect(facing === 1 ? x + 4 : x - 8, y + 4, 3, 7);
   graphics.fillStyle(palette.steel);
-  graphics.fillRect(facing === 1 ? x + 11 : x - 16, y + 1, 5, 2);
-  graphics.fillRect(facing === 1 ? x + 9 : x - 11, y - 2, 2, 3);
+  graphics.fillRect(facing === 1 ? x + 12 : x - 17, y + 1, 6, 2);
+  graphics.fillRect(facing === 1 ? x + 10 : x - 12, y - 2, 2, 3);
+  graphics.fillStyle(0xf4e8b0);
+  graphics.fillRect(facing === 1 ? x + 16 : x - 18, y + 1, 2, 2);
 };
 
 const drawUzi = (
