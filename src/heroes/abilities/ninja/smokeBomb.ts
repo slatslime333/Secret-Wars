@@ -23,7 +23,6 @@ export const smokeBombDef: AbilityDef = {
 class SmokeBombAbility implements ActiveAbility {
   readonly id = smokeBombDef.id;
   readonly control = { move: true, attack: true, dash: true, block: true, abilities: true };
-  private readonly endsAt: number;
   private readonly blastUntil: number;
   private readonly dirX: number;
   private readonly dirY: number;
@@ -35,7 +34,6 @@ class SmokeBombAbility implements ActiveAbility {
     this.dirX = -caster.aim.x / aimLen;
     this.dirY = -caster.aim.y / aimLen;
     this.blastUntil = now + NINJA_SMOKE.blastDurationMs;
-    this.endsAt = now + NINJA_SMOKE.durationMs;
 
     ctx.world.spawnSmoke({
       x: caster.x,
@@ -52,7 +50,7 @@ class SmokeBombAbility implements ActiveAbility {
       },
     });
 
-    this.fx = new SmokeCloud(ctx.scene, caster.x, caster.y, now);
+    this.fx = new SmokeCloud(ctx.scene, caster.x, caster.y, now, now + NINJA_SMOKE.durationMs);
     const speed = NINJA_SMOKE.blastDistance / (NINJA_SMOKE.blastDurationMs / 1000);
     caster.setSpeedCap(speed);
     caster.body?.setDrag(0, 0);
@@ -72,17 +70,12 @@ class SmokeBombAbility implements ActiveAbility {
       caster.body?.setVelocity(this.dirX * speed, this.dirY * speed);
       return true;
     }
-    this.control.move = false;
-    this.control.attack = false;
-    this.control.dash = false;
-    this.control.block = false;
-    this.control.abilities = false;
     caster.setSpeedCap(COMBAT.physicsMaxSpeed);
-    return now < this.endsAt;
+    return false;
   }
 
   destroy(): void {
-    this.fx.destroy();
+    /* Smoke cloud owns its own lifetime so the blast can end cleanly. */
   }
 }
 
@@ -93,21 +86,31 @@ class SmokeCloud {
   private readonly puffs: { a: number; r: number; ox: number; oy: number; spin: number }[];
 
   constructor(
-    scene: Phaser.Scene,
+    private readonly scene: Phaser.Scene,
     private readonly x: number,
     private readonly y: number,
     private readonly startedAt: number,
+    endsAt: number,
   ) {
     this.ground = scene.add.graphics().setDepth(6);
     this.wisps = scene.add.graphics().setDepth(12);
-    this.puffs = Array.from({ length: 7 }, (_, i) => ({
-      a: (i / 7) * Math.PI * 2,
-      r: 0.35 + (i % 3) * 0.18,
-      ox: Math.cos(i * 1.7) * 4,
-      oy: Math.sin(i * 2.1) * 4,
+    this.puffs = Array.from({ length: 11 }, (_, i) => ({
+      a: (i / 11) * Math.PI * 2,
+      r: 0.25 + (i % 4) * 0.2,
+      ox: Math.cos(i * 1.7) * 5,
+      oy: Math.sin(i * 2.1) * 5,
       spin: (i % 2 === 0 ? 1 : -1) * (0.9 + i * 0.08),
     }));
     this.burst(scene);
+    scene.events.on(Phaser.Scenes.Events.UPDATE, this.onTick, this);
+    scene.time.delayedCall(Math.max(0, endsAt - startedAt), () => this.destroy());
+  }
+
+  private onTick(): void {
+    if (!this.ground.active) {
+      return;
+    }
+    this.redraw(this.scene.time.now);
   }
 
   private burst(scene: Phaser.Scene): void {
@@ -140,26 +143,34 @@ class SmokeCloud {
     const swirl = age / 180;
 
     this.ground.clear();
-    this.ground.fillStyle(COLORS.ink, 0.28 * fade);
-    this.ground.fillCircle(this.x, this.y, radius * 1.05);
-    this.ground.fillStyle(0x1b2430, 0.34 * fade);
-    this.ground.fillCircle(this.x + Math.cos(swirl) * 3, this.y + Math.sin(swirl) * 2, radius * 0.82);
+    this.ground.fillStyle(COLORS.ink, 0.42 * fade);
+    this.ground.fillCircle(this.x, this.y, radius * 1.12);
+    this.ground.fillStyle(0x1b2430, 0.5 * fade);
+    this.ground.fillCircle(this.x + Math.cos(swirl) * 3, this.y + Math.sin(swirl) * 2, radius * 0.88);
+    this.ground.lineStyle(2, 0x8fa1ac, 0.35 * fade);
+    this.ground.strokeCircle(this.x, this.y, radius);
 
     this.wisps.clear();
+    for (let rise = 0; rise < 3; rise += 1) {
+      const colY = this.y - rise * (10 + life * 8);
+      this.wisps.fillStyle(0x2c3644, (0.5 - rise * 0.12) * fade);
+      this.wisps.fillEllipse(this.x + Math.sin(swirl + rise) * 3, colY, radius * (1.15 - rise * 0.15), 9 + rise * 2);
+    }
     for (const puff of this.puffs) {
       const ang = puff.a + swirl * puff.spin * 0.15;
       const dist = radius * puff.r * (0.7 + 0.3 * Math.sin(swirl + puff.a));
       const px = this.x + Math.cos(ang) * dist + puff.ox;
-      const py = this.y + Math.sin(ang) * dist + puff.oy - life * 6;
-      const pr = 7 + radius * 0.22 * (0.7 + 0.3 * Math.cos(swirl * 1.4 + puff.a));
-      this.wisps.fillStyle(0x2c3644, 0.42 * fade);
-      this.wisps.fillEllipse(px, py, pr * 1.35, pr);
-      this.wisps.fillStyle(COLORS.paper, 0.1 * fade);
-      this.wisps.fillEllipse(px - 3, py - 3, pr * 0.45, pr * 0.32);
+      const py = this.y + Math.sin(ang) * dist + puff.oy - life * 16;
+      const pr = 8 + radius * 0.35 * (0.7 + 0.3 * Math.cos(swirl * 1.4 + puff.a));
+      this.wisps.fillStyle(0x2c3644, 0.55 * fade);
+      this.wisps.fillEllipse(px, py, pr * 1.4, pr);
+      this.wisps.fillStyle(COLORS.paper, 0.14 * fade);
+      this.wisps.fillEllipse(px - 3, py - 4, pr * 0.45, pr * 0.32);
     }
   }
 
   destroy(): void {
+    this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.onTick, this);
     this.ground.destroy();
     this.wisps.destroy();
   }

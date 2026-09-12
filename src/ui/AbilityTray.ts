@@ -59,8 +59,8 @@ export class AbilityTray {
   }
 
   sync(states: AbilitySlotState[]): void {
-    const gap = 46 * this.scale;
-    const radius = 16 * this.scale;
+    const gap = 52 * this.scale;
+    const radius = 18 * this.scale;
     this.rings.clear();
     states.forEach((state, i) => {
       const px = this.x + i * gap;

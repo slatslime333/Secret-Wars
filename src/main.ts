@@ -59,6 +59,8 @@ const game = new Phaser.Game({
   scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, BattleScene],
 });
 
+(window as Window & { secretWars?: Phaser.Game }).secretWars = game;
+
 const onWindowResize = () => {
   syncGameShell();
   const next = getGameSize(gameRoot?.clientWidth, gameRoot?.clientHeight);

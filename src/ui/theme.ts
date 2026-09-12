@@ -119,6 +119,25 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
+/**
+ * Phaser zoom is applied around the camera center even for scrollFactor 0
+ * objects. Convert a desired on-screen pixel to the position those objects
+ * should use so left-edge HUD stays visible on large desktop views.
+ */
+export const uiScreenPoint = (
+  screenX: number,
+  screenY: number,
+  width: number,
+  height: number,
+): { x: number; y: number; scale: number } => {
+  const zoom = getViewZoom(width, height);
+  return {
+    x: (screenX - width / 2) / zoom + width / 2,
+    y: (screenY - height / 2) / zoom + height / 2,
+    scale: getUiScale(width, height) / zoom,
+  };
+};
+
 export const COLORS = {
   ink: 0x070a12,
   inkSoft: 0x111827,
