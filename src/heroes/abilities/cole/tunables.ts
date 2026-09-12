@@ -16,7 +16,7 @@ export const COLE_SHOCKWAVE = {
 } as const;
 
 export const COLE_BALL = {
-  cooldownMs: 9000,
+  cooldownMs: 7000,
   speed: 420,
   lifetimeMs: 2200,
   radius: 20,
@@ -25,7 +25,9 @@ export const COLE_BALL = {
   explodeRadius: 56,
   chainDamageMul: 0.42,
   chainSlowMul: 0.7,
-  chainSlowMs: 1000,
+  chainSlowMs: 2000,
+  slowMul: 0.55,
+  slowMs: 2000,
   chainRange: 92,
   maxTargets: 4,
 } as const;
@@ -35,7 +37,7 @@ export const COLE_DISCHARGE = {
   radius: NINJA_BASE_RANGE,
   damageMul: 1.55,
   knockbackMul: 3.6,
-  paralyzeMs: 1000,
+  paralyzeMs: 1700,
   expandMs: 220,
 } as const;
 
@@ -44,6 +46,7 @@ export const COLE_STORM = {
   radius: Math.round(NINJA_BASE_RANGE * 2.15),
   moveMul: 0.28,
   strikeIntervalMs: 280,
+  arcsPerPulse: 2,
   warningMs: 220,
   strikeRadius: 28,
   damageMul: 1.7,

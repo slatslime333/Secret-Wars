@@ -188,6 +188,7 @@ class BackflipKickAbility implements ActiveAbility {
         },
         ctx.rivalBlock,
       );
+      enemy.status.applySlow(ctx.now, NINJA_KICK.hitSlowMs, NINJA_KICK.hitSlowMul);
     });
     this.beginFlip(ctx, NINJA_KICK.backflipDistance, NINJA_KICK.backflipMs, NINJA_KICK.jumpHeight);
   }
