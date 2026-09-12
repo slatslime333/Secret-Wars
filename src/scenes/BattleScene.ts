@@ -18,7 +18,7 @@ import { BattleHud } from '../ui/BattleHud';
 import { createGrassyArena } from '../ui/createGrassyArena';
 import { DevMenu } from '../ui/DevMenu';
 import { RoundOverlay } from '../ui/RoundOverlay';
-import { COLORS, FONTS, getUiScale, getViewZoom, hex, uiScreenPoint } from '../ui/theme';
+import { COLORS, FONTS, hex } from '../ui/theme';
 import { NINJA } from '../config/ninja';
 import { isTouchPrimary } from '../device';
 import { fadeToScene } from './fadeToScene';
@@ -72,8 +72,7 @@ export class BattleScene extends Phaser.Scene {
     this.abilities = new AbilityController(NINJA_ABILITY_KIT);
     this.inputReader = new BattleInput(this, () => this.round.isLocked, NINJA_ABILITY_KIT);
     if (!isTouchPrimary()) {
-      const tray = uiScreenPoint(52, 128, this.scale.width, this.scale.height);
-      this.abilityTray = new AbilityTray(this, tray.x, tray.y, tray.scale);
+      this.abilityTray = new AbilityTray(this, 52, 128);
     }
     this.hud = new BattleHud(this);
     this.round = new RoundOverlay(this, {
@@ -88,7 +87,8 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, ARENA.width, ARENA.height);
     this.cameras.main.startFollow(this.ninja.sprite, true, 0.16, 0.16);
     this.cameras.main.setRoundPixels(true);
-    this.applyView(this.scale.width, this.scale.height);
+    this.cameras.main.setSize(this.scale.width, this.scale.height);
+    this.cameras.main.setZoom(1);
     this.cameras.main.fadeIn(220, 7, 10, 18);
 
     this.createChrome();
@@ -295,31 +295,20 @@ export class BattleScene extends Phaser.Scene {
       onPress: () => this.returnToMenu(),
     });
     this.menuButton.setScrollFactor(0).setDepth(120);
-    this.layoutChrome(width, this.scale.height);
-  }
-
-  private applyView(width: number, height: number): void {
-    this.cameras.main.setSize(width, height);
-    this.cameras.main.setZoom(getViewZoom(width, height));
-  }
-
-  private layoutChrome(width: number, height: number): void {
-    const ui = getUiScale(width, height);
-    this.chromeBar?.setPosition(width / 2, 22 * ui).setSize(width, 44 * ui);
-    this.titleText?.setPosition(22 * ui, 22 * ui).setScale(ui);
-    this.menuButton?.setScale(ui).setPosition(width - 108 * ui, 22 * ui);
   }
 
   private onResize(gameSize: Phaser.Structs.Size): void {
     const width = gameSize.width;
     const height = gameSize.height;
-    this.layoutChrome(width, height);
-    this.hud?.layout(width, height);
+    this.chromeBar?.setPosition(width / 2, 22).setSize(width, 44);
+    this.titleText?.setPosition(22, 22).setScale(1);
+    this.menuButton?.setScale(1).setPosition(width - 108, 22);
+    this.hud?.layout(width);
     this.inputReader?.layout(width, height);
-    const tray = uiScreenPoint(52, 128, width, height);
-    this.abilityTray?.layout(tray.x, tray.y, tray.scale);
+    this.abilityTray?.layout(52, 128, 1);
     this.devMenu?.layout(width, height);
-    this.applyView(width, height);
+    this.cameras.main.setSize(width, height);
+    this.cameras.main.setZoom(1);
   }
 
   private makeAbilityContext(now: number, delta: number): AbilityContext {
