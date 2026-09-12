@@ -29,7 +29,7 @@ export const batSmashDef: AbilityDef = {
 
 class BatSmashAbility implements ActiveAbility {
   readonly id = batSmashDef.id;
-  readonly control = { move: true, attack: true, dash: true, block: true, abilities: true };
+  readonly control = { move: false, attack: true, dash: true, block: true, abilities: true };
   private readonly until: number;
   private readonly impactAt: number;
   private readonly dirX: number;
@@ -44,6 +44,7 @@ class BatSmashAbility implements ActiveAbility {
     this.dirX = aim.x / len;
     this.dirY = aim.y / len;
     caster.setAim(this.dirX, this.dirY);
+    caster.stop();
     this.until = now + DEATH_SMASH.animMs;
     this.impactAt = now + DEATH_SMASH.impactAt;
     caster.status.applyControlLock(now, DEATH_SMASH.animMs);
@@ -73,6 +74,9 @@ class BatSmashAbility implements ActiveAbility {
   }
 
   update(ctx: AbilityContext): boolean {
+    if (!this.struck) {
+      ctx.caster.stop();
+    }
     this.drawTelegraph(ctx);
     if (!this.struck && ctx.now >= this.impactAt) {
       this.struck = true;
@@ -111,13 +115,17 @@ class BatSmashAbility implements ActiveAbility {
       if (enemy.down) {
         continue;
       }
-      if (distanceBetween(caster.x, caster.y, enemy.x, enemy.y) > DEATH_SMASH.radius + enemy.stats.bodyRadius) {
+      if (
+        distanceBetween(caster.x, caster.y, enemy.x, enemy.y) >
+        DEATH_SMASH.radius + enemy.stats.bodyRadius + 12
+      ) {
         continue;
       }
-      const toX = enemy.x - caster.x;
-      const toY = enemy.y - caster.y;
-      const cross = this.dirX * toY - this.dirY * toX;
-      const sign = cross >= 0 ? 1 : -1;
+      const awayX = enemy.x - caster.x;
+      const awayY = enemy.y - caster.y;
+      const awayLen = Math.hypot(awayX, awayY);
+      const dirX = awayLen < 10 ? this.dirX : this.dirX * 0.72 + (awayX / awayLen) * 0.28;
+      const dirY = awayLen < 10 ? this.dirY : this.dirY * 0.72 + (awayY / awayLen) * 0.28;
       const kind = resolveAbilityHit(
         scene,
         now,
@@ -127,10 +135,11 @@ class BatSmashAbility implements ActiveAbility {
           rawDamage: caster.stats.attackDamage * DEATH_SMASH.damageMul,
           knockback: caster.stats.knockbackPower * DEATH_SMASH.knockbackMul,
           staminaDamage: 8,
-          dirX: -this.dirY * sign,
-          dirY: this.dirX * sign,
+          dirX,
+          dirY,
           step: 3,
           heavy: true,
+          launchCap: DEATH_SMASH.launchCap,
         },
         ctx.rivalBlock,
       );

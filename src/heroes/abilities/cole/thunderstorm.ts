@@ -49,12 +49,14 @@ class ThunderstormAbility implements ActiveAbility {
     this.drawBound(caster.x, caster.y);
     if (now >= this.nextWarnAt && now < this.endsAt - COLE_STORM.warningMs) {
       this.nextWarnAt = now + COLE_STORM.strikeIntervalMs;
-      const ang = Math.random() * Math.PI * 2;
-      const dist = Math.sqrt(Math.random()) * COLE_STORM.radius * 0.88;
-      const x = caster.x + Math.cos(ang) * dist;
-      const y = caster.y + Math.sin(ang) * dist;
-      spawnStormWarning(ctx.scene, x, y, COLE_STORM.strikeRadius, COLE_STORM.warningMs);
-      this.pending.push({ x, y, at: now + COLE_STORM.warningMs });
+      for (let i = 0; i < COLE_STORM.arcsPerPulse; i += 1) {
+        const ang = Math.random() * Math.PI * 2;
+        const dist = Math.sqrt(Math.random()) * COLE_STORM.radius * 0.88;
+        const x = caster.x + Math.cos(ang) * dist;
+        const y = caster.y + Math.sin(ang) * dist;
+        spawnStormWarning(ctx.scene, x, y, COLE_STORM.strikeRadius, COLE_STORM.warningMs);
+        this.pending.push({ x, y, at: now + COLE_STORM.warningMs });
+      }
     }
 
     for (let i = this.pending.length - 1; i >= 0; i -= 1) {
