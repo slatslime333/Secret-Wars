@@ -220,6 +220,7 @@ export class BattleScene extends Phaser.Scene {
     };
     window.addEventListener('keydown', onDomKey);
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
+    this.bindDebugApi();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
       this.input.keyboard?.off('keydown-ESC', this.returnToMenu, this);
@@ -233,6 +234,7 @@ export class BattleScene extends Phaser.Scene {
       this.minimap?.destroy();
       this.aiOverlay?.destroy();
       this.battlefield?.destroy();
+      this.unbindDebugApi();
     });
   }
 
@@ -727,6 +729,26 @@ export class BattleScene extends Phaser.Scene {
     const states = this.abilities.allStates(now);
     this.inputReader.syncAbilities(states);
     this.abilityTray?.sync(states);
+  }
+
+  private bindDebugApi(): void {
+    (window as Window & { secretWarsPlaytest?: object }).secretWarsPlaytest = {
+      spawnCpu: () => this.spawnCpu(),
+      spawnMixed: (team: 'alpha' | 'bravo' = 'bravo') => this.minions.spawnMixed(team),
+      toggleAi: () => {
+        DEV_CHEATS.showAi = !DEV_CHEATS.showAi;
+        return DEV_CHEATS.showAi;
+      },
+      aiDebug: () => ({
+        cpu: this.rival && this.brain ? this.brain.debugInfo(this.rival) : null,
+        minions: this.minions.debugSnapshot(this.time.now),
+      }),
+    };
+  }
+
+  private unbindDebugApi(): void {
+    const host = window as Window & { secretWarsPlaytest?: object };
+    delete host.secretWarsPlaytest;
   }
 
   private onRestartKey(): void {
