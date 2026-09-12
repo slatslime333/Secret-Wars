@@ -57,11 +57,13 @@ export const drawMinion = (
   graphics.fillStyle(COLORS.ink, 0.4);
   graphics.fillEllipse(0, 12, 14, 5);
 
-  const flagX = west ? 5 : -5;
+  const flagX = west ? 6 : -6;
+  graphics.lineStyle(1.6, COLORS.ink, 1);
+  graphics.lineBetween(flagX, -14, flagX, 5);
   graphics.fillStyle(flag);
-  graphics.fillTriangle(flagX, -10, flagX, -2, flagX + (west ? 7 : -7), -6);
-  graphics.lineStyle(1.4, COLORS.ink, 0.9);
-  graphics.lineBetween(flagX, -11, flagX, 4);
+  graphics.fillTriangle(flagX, -13, flagX, -3, flagX + (west ? 9 : -9), -8);
+  graphics.lineStyle(1, COLORS.paper, 0.55);
+  graphics.strokeTriangle(flagX, -13, flagX, -3, flagX + (west ? 9 : -9), -8);
 
   graphics.fillStyle(palette.cloth);
   graphics.fillRoundedRect(-7, -4, 14, 14, 3);
