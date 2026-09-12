@@ -158,7 +158,7 @@ export class BattleScene extends Phaser.Scene {
       this.abilities.tryActivate('ultimate', ctx);
     }
     this.abilities.update(this.makeAbilityContext(now, delta));
-    this.abilityWorld.update(now, this.livingFighters());
+    this.abilityWorld.update(now, this.livingFighters(), delta);
 
     const control = this.abilities.control;
 

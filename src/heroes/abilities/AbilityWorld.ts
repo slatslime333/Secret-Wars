@@ -23,9 +23,19 @@ export type SmokeZone = {
  * Persistent world effects that outlive the ability press (smoke, future zones).
  * Heroes add zones; the world applies and clears status on living enemies.
  */
+export type WorldTicker = {
+  update: (now: number, delta: number, fighters: NinjaBody[]) => boolean;
+  destroy?: () => void;
+};
+
 export class AbilityWorld {
   private nextId = 1;
   private readonly smokeZones: SmokeZone[] = [];
+  private readonly tickers: WorldTicker[] = [];
+
+  addTicker(ticker: WorldTicker): void {
+    this.tickers.push(ticker);
+  }
 
   spawnSmoke(zone: Omit<SmokeZone, 'id'>): SmokeZone {
     const created = { ...zone, id: this.nextId };
@@ -48,7 +58,13 @@ export class AbilityWorld {
     return zone.radius;
   }
 
-  update(now: number, fighters: NinjaBody[]): void {
+  update(now: number, fighters: NinjaBody[], delta = 16): void {
+    for (let i = this.tickers.length - 1; i >= 0; i -= 1) {
+      if (!this.tickers[i].update(now, delta, fighters)) {
+        this.tickers[i].destroy?.();
+        this.tickers.splice(i, 1);
+      }
+    }
     for (let i = this.smokeZones.length - 1; i >= 0; i -= 1) {
       if (now >= this.smokeZones[i].endsAt) {
         this.smokeZones.splice(i, 1);
@@ -76,6 +92,10 @@ export class AbilityWorld {
   }
 
   destroy(): void {
+    for (const ticker of this.tickers) {
+      ticker.destroy?.();
+    }
+    this.tickers.length = 0;
     this.smokeZones.length = 0;
   }
 }

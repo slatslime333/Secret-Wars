@@ -27,7 +27,6 @@ export class MainMenuScene extends Phaser.Scene {
 
     this.createHeader(width, height, isPortrait);
     this.createMissionCard(width, height, isPortrait);
-    this.createHeroPick(width, height, isPortrait);
     this.createNavigation(width, height, isPortrait);
     this.createFooter(width, height);
     this.bindKeyboard();
@@ -242,7 +241,8 @@ export class MainMenuScene extends Phaser.Scene {
       letterSpacing: 3,
     });
 
-    this.createTeamMarks(x + 28, y + 185);
+    this.createTeamMarks(x + 28, y + 168);
+    this.createHeroPick(x + 28, y + 214);
 
     this.add.text(x + 28, y + 265, 'DEMO 1 DIRECTIVE', {
       fontFamily: FONTS.body,
@@ -264,31 +264,27 @@ export class MainMenuScene extends Phaser.Scene {
     });
   }
 
-  private createHeroPick(width: number, height: number, isPortrait: boolean): void {
-    const y = isPortrait ? Math.min(height * 0.58, height - 220) : height * 0.42;
-    const x = isPortrait ? width / 2 : Math.max(185, Math.min(220, width * 0.22)) + 25;
-    this.add
-      .text(x, y - 28, 'FIGHTER', {
-        fontFamily: FONTS.body,
-        fontSize: '11px',
-        fontStyle: 'bold',
-        color: hex(COLORS.muted),
-        letterSpacing: 3,
-      })
-      .setOrigin(0.5);
+  private createHeroPick(x: number, y: number): void {
+    this.add.text(x, y - 18, 'FIGHTER', {
+      fontFamily: FONTS.body,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: hex(COLORS.muted),
+      letterSpacing: 3,
+    });
     const make = (id: HeroId, ox: number) =>
-      new ActionButton(this, x + ox, y, {
+      new ActionButton(this, x + 62 + ox, y + 10, {
         label: id.toUpperCase(),
-        width: 120,
-        height: 40,
+        width: 108,
+        height: 36,
         primary: getSelectedHeroId() === id,
         onPress: () => {
           setSelectedHeroId(id);
           this.scene.restart();
         },
       });
-    make('ninja', -70);
-    make('cole', 70);
+    make('ninja', 0);
+    make('cole', 124);
   }
 
   private createTeamMarks(x: number, y: number): void {
