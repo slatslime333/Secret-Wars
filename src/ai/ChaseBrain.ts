@@ -5,8 +5,7 @@ import { ChaserBody } from '../heroes/ChaserBody';
 import { NinjaBody } from '../heroes/NinjaBody';
 
 /**
- * Walk at Ninja. Stop in melee and swing. No dodge, no block.
- * Stun from a hit cancels the current path so combos can land.
+ * Walk at a single dummy. Not match CPU — see src/ai/tactical for battlefield AI.
  */
 export class ChaseBrain {
   constructor(private readonly attack: ChaserAttack) {}

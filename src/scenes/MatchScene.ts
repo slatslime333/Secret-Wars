@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { ARENA, LANES, type LaneId } from '../config/arena';
 import { MATCH } from '../config/match';
-import { resetDevCheats } from '../debug/devCheats';
+import { DEV_CHEATS, resetDevCheats } from '../debug/devCheats';
 import { MinionWorld } from '../minions/MinionWorld';
 import { getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
 import { HitMarker } from '../combat/HitMarker';
@@ -23,6 +23,8 @@ import { Minimap } from '../ui/Minimap';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { Battlefield, freshMatchSeed } from '../map';
 import { HeroPilot } from '../ai/HeroPilot';
+import { TacticalField } from '../ai/tactical/field';
+import { TacticalOverlay } from '../ai/tactical/overlay';
 import { isTouchPrimary } from '../device';
 import { fadeToScene } from './fadeToScene';
 import { HeroRuntime } from '../match/HeroRuntime';
@@ -55,6 +57,8 @@ export class MatchScene extends Phaser.Scene {
   private heroes: HeroRuntime[] = [];
   private emptyAllySlots: { team: TeamId; lane: LaneId }[] = [];
   private pilots = new Map<HeroRuntime, HeroPilot>();
+  private tactics = new TacticalField();
+  private aiOverlay?: TacticalOverlay;
   private battlefield?: Battlefield;
   private minimap?: Minimap;
   private inputReader!: BattleInput;
@@ -162,10 +166,11 @@ export class MatchScene extends Phaser.Scene {
     this.pilots.clear();
     for (const unit of this.heroes) {
       if (!unit.isPlayer) {
-        this.pilots.set(unit, new HeroPilot());
+        this.pilots.set(unit, new HeroPilot(unit));
       }
     }
 
+    this.aiOverlay = new TacticalOverlay(this);
     this.marker = new HitMarker(this);
     this.inputReader = new BattleInput(this, () => this.inputLocked(), hero.kit, hero.stats.dashMaxCharges);
     if (!isTouchPrimary()) {
@@ -212,6 +217,7 @@ export class MatchScene extends Phaser.Scene {
       for (const unit of this.heroes) {
         unit.destroy();
       }
+      this.aiOverlay?.destroy();
       this.unbindDebugApi();
       audio.stopAllLoops();
     });
@@ -242,18 +248,19 @@ export class MatchScene extends Phaser.Scene {
     this.waves.update(now);
     this.orbs.update(now, delta);
     this.abilityWorld.update(now, this.allCombatants(), delta);
-    this.minions.update(now, delta, this.livingFighters(), this.abilityWorld);
+    this.tactics.refresh(now, this.livingFighters());
+    this.minions.update(now, delta, this.abilityWorld, this.tactics);
 
     for (const unit of this.heroes) {
       if (!unit.isPlayer) {
-        const foes = this.livingFighters().filter((fighter) => fighter.team !== unit.team);
-        const block = foes.includes(this.player.body) ? this.player.block : undefined;
-        this.pilots.get(unit)?.update(now, delta, unit, foes, this, block);
+        const block = unit.team !== this.player.team ? this.player.block : undefined;
+        this.pilots.get(unit)?.update(now, delta, unit, this.tactics, this, block);
       }
       if (unit.maybeRespawn(now) && unit.isPlayer) {
         this.cameras.main.startFollow(unit.body.sprite, true, 0.16, 0.16);
       }
     }
+    this.drawAiDebug();
 
     this.resolveHeroDeaths(now);
 
@@ -507,6 +514,28 @@ export class MatchScene extends Phaser.Scene {
     return this.livingFighters().filter((unit) => unit.team !== this.player.team);
   }
 
+  private drawAiDebug(): void {
+    this.minions.drawDebug(DEV_CHEATS.showRanges, DEV_CHEATS.showAi, DEV_CHEATS.showHitboxes, this.time.now);
+    if (!DEV_CHEATS.showAi) {
+      this.aiOverlay?.draw([], false);
+      return;
+    }
+    const subjects = [];
+    for (const [unit, pilot] of this.pilots) {
+      if (!unit.alive) {
+        continue;
+      }
+      const info = pilot.debugInfo(unit);
+      subjects.push({
+        x: unit.body.x,
+        y: unit.body.y,
+        debug: info,
+        target: pilot.mind.target,
+      });
+    }
+    this.aiOverlay?.draw(subjects, true);
+  }
+
   private createChrome(): void {
     const width = this.scale.width;
     this.chromeBar = this.add.rectangle(width / 2, 22, width, 44, COLORS.ink, 0.78);
@@ -571,6 +600,10 @@ export class MatchScene extends Phaser.Scene {
       giveLevel: () => this.player.progression.giveLevel(),
       scores: () => this.score.snapshot(),
       phase: () => this.match.snapshot(),
+      toggleAi: () => {
+        DEV_CHEATS.showAi = !DEV_CHEATS.showAi;
+        return DEV_CHEATS.showAi;
+      },
     };
   }
 

@@ -1,57 +1,73 @@
 import Phaser from 'phaser';
+import { ARENA } from '../config/arena';
 import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { QuickAttack } from '../combat/QuickAttack';
 import { NinjaBody } from '../heroes/NinjaBody';
+import { battlefieldOf } from '../map';
+import { TacticalField } from './tactical/field';
+import { TacticalMind } from './tactical/mind';
+import { moveGoal } from './tactical/move';
+import type { TacticalDebugInfo } from './tactical/types';
 
 /**
- * Imperfect rival Ninja. Uses the same attack / shield / dash kit as the player
- * with delayed, sometimes-wrong decisions so it never feels frame-perfect.
+ * Play Test rival. Same attack / shield / dash kit as the player, with
+ * battlefield decisions from the shared tactical layer and imperfect reflexes.
  */
 export class RivalBrain {
-  private nextDecisionAt = 0;
   private tapQueued = false;
   private holdUntil = 0;
   private blockHoldUntil = 0;
   private lastPlayerSwingSeen = -9999;
+  private nextDashAt = 0;
   private readonly chase = new Phaser.Math.Vector2();
+  private readonly foes: NinjaBody[] = [];
+  readonly mind: TacticalMind;
 
   constructor(
     private readonly attacks: QuickAttack,
     private readonly block: BlockController,
     private readonly dash: DashController,
     private readonly playerBlock: BlockController,
-  ) {}
+    seed = 'playtest-rival',
+  ) {
+    const pad = ARENA.teamSpawns.bravo;
+    this.mind = new TacticalMind('hero', seed, pad.x, pad.y);
+  }
 
-  update(now: number, delta: number, cpu: NinjaBody, player: NinjaBody): void {
-    if (cpu.down || player.down) {
+  debugInfo(cpu: NinjaBody): TacticalDebugInfo {
+    return this.mind.debugInfo(cpu);
+  }
+
+  update(now: number, delta: number, cpu: NinjaBody, field: TacticalField, scene: Phaser.Scene): void {
+    if (cpu.down) {
       this.block.setHeld(now, cpu, false);
       return;
     }
 
+    field.fillEnemies(cpu, this.foes);
+    const foes = this.foes;
     cpu.tickAmmo(now);
-    cpu.setAim(player.x - cpu.x, player.y - cpu.y);
-    const distance = Math.hypot(player.x - cpu.x, player.y - cpu.y);
-    const inRange = distance <= cpu.stats.attackRange * 1.05;
+    this.mind.think(now, cpu, field, scene);
+    const target = this.mind.target ?? foes[0];
+    if (target) {
+      cpu.setAim(target.x - cpu.x, target.y - cpu.y);
+    }
 
     this.dash.apply(now, cpu);
-    this.block.setHeld(now, cpu, now < this.blockHoldUntil && !this.dash.isActive(now));
+    this.reflex(now, cpu, target);
     this.block.tick(delta, now, cpu);
     this.block.sync(now, cpu);
 
     if (cpu.status.isBlockStunned(now) || cpu.status.isClashLocked(now)) {
       cpu.stop();
-      this.attacks.update(now, false, false, cpu, [player], this.playerBlock);
+      this.attacks.update(now, false, false, cpu, foes, this.playerBlock);
       return;
     }
 
     if (this.dash.isActive(now)) {
-      this.attacks.update(now, false, false, cpu, [player], this.playerBlock);
+      this.attacks.update(now, false, false, cpu, foes, this.playerBlock);
       return;
-    }
-
-    if (now >= this.nextDecisionAt) {
-      this.choose(now, cpu, player, distance, inRange);
     }
 
     if (cpu.status.shouldLockMovement(now) || this.block.isActive(now)) {
@@ -59,106 +75,115 @@ export class RivalBrain {
         cpu.stop();
       }
     } else {
-      this.move(cpu, player, distance, now);
+      this.walk(now, cpu, scene);
     }
 
-    const held = now < this.holdUntil && inRange && cpu.canAttack(now);
-    const pressed = this.tapQueued && cpu.canAttack(now);
+    this.queueSwing(now, cpu, target);
+    const inRange = target ? Math.hypot(target.x - cpu.x, target.y - cpu.y) <= cpu.stats.attackRange * 1.05 : false;
+    const held = now < this.holdUntil && inRange && cpu.canAttack(now) && this.mind.wantsAttack();
+    const pressed = this.tapQueued && cpu.canAttack(now) && this.mind.wantsAttack();
     this.tapQueued = false;
-    if (
-      !cpu.down &&
-      !this.block.isActive(now) &&
-      !this.dash.isActive(now) &&
-      !cpu.status.cannotAttack(now)
-    ) {
-      this.attacks.update(now, held, pressed, cpu, [player], this.playerBlock);
+    if (!cpu.down && !this.block.isActive(now) && !this.dash.isActive(now) && !cpu.status.cannotAttack(now)) {
+      this.attacks.update(now, held, pressed, cpu, foes, this.playerBlock);
     } else {
-      this.attacks.update(now, false, false, cpu, [player], this.playerBlock);
+      this.attacks.update(now, false, false, cpu, foes, this.playerBlock);
     }
   }
 
-  private choose(
-    now: number,
-    cpu: NinjaBody,
-    player: NinjaBody,
-    distance: number,
-    inRange: boolean,
-  ): void {
-    this.nextDecisionAt = now + 280 + Math.random() * 320;
-    const playerSwinging = now - player.status.lastAttackAt < 200;
+  private reflex(now: number, cpu: NinjaBody, target: NinjaBody | undefined): void {
+    const p = this.mind.personality;
+    if (this.mind.wantsEscape() && now >= this.nextDashAt) {
+      this.chase.set(this.mind.homeX - cpu.x, this.mind.homeY - cpu.y);
+      if (this.dash.tryStart(now, this.chase, cpu.aim, cpu)) {
+        this.blockHoldUntil = 0;
+        this.nextDashAt = now + 480 + p.thinkJitterMs;
+        return;
+      }
+    }
+    if (!target) {
+      this.block.setHeld(now, cpu, now < this.blockHoldUntil && !this.dash.isActive(now));
+      return;
+    }
+    const distance = Math.hypot(target.x - cpu.x, target.y - cpu.y);
+    const inRange = distance <= cpu.stats.attackRange * 1.05;
     const recentlyHit = cpu.status.isHitReacting(now);
     const roll = Math.random();
-
-    if (recentlyHit && distance < cpu.stats.attackRange * 1.4 && roll < 0.38) {
+    if (recentlyHit && distance < cpu.stats.attackRange * 1.4 && roll < 0.28 + p.caution * 0.2) {
       this.chase.copy(cpu.aim).scale(-1);
       if (this.dash.tryStart(now, this.chase, cpu.aim, cpu)) {
         this.blockHoldUntil = 0;
         return;
       }
     }
-
-    if (playerSwinging && inRange && player.status.lastAttackAt !== this.lastPlayerSwingSeen) {
-      this.lastPlayerSwingSeen = player.status.lastAttackAt;
-      if (roll < 0.42 && cpu.stamina > 12) {
+    const playerSwinging = now - target.status.lastAttackAt < 200;
+    if (playerSwinging && inRange && target.status.lastAttackAt !== this.lastPlayerSwingSeen) {
+      this.lastPlayerSwingSeen = target.status.lastAttackAt;
+      if (roll < 0.38 + p.caution * 0.16 && cpu.stamina > 12) {
         this.blockHoldUntil = now + 380 + Math.random() * 280;
-        return;
       }
     }
-
-    if (cpu.ammo <= 0) {
-      if (distance < cpu.stats.attackRange * 1.6 && roll < 0.28) {
-        this.chase.copy(cpu.aim).scale(-1);
-        this.dash.tryStart(now, this.chase, cpu.aim, cpu);
-      }
-      return;
-    }
-
-    if (inRange && player.status.isBlockStunned(now) && roll < 0.7) {
-      this.blockHoldUntil = 0;
-      this.queueAttack(now, true);
-      return;
-    }
-
-    if (inRange) {
-      if (roll < 0.38) {
-        return;
-      }
-      this.blockHoldUntil = 0;
-      this.queueAttack(now, roll > 0.72);
-      return;
-    }
-
-    if (distance > cpu.stats.attackRange * 2.2 && roll < 0.18) {
-      this.dash.tryStart(now, cpu.aim, cpu.aim, cpu);
-    }
+    this.block.setHeld(now, cpu, now < this.blockHoldUntil && !this.dash.isActive(now));
   }
 
-  private queueAttack(now: number, tap: boolean): void {
-    if (tap) {
+  private queueSwing(now: number, cpu: NinjaBody, target: NinjaBody | undefined): void {
+    if (!target || !this.mind.wantsAttack() || !cpu.canAttack(now)) {
+      return;
+    }
+    const distance = Math.hypot(target.x - cpu.x, target.y - cpu.y);
+    if (distance > cpu.stats.attackRange * 1.05) {
+      return;
+    }
+    if (now < this.holdUntil) {
+      return;
+    }
+    const roll = Math.random();
+    if (target.status.isBlockStunned(now) && roll < 0.7) {
+      this.blockHoldUntil = 0;
       this.tapQueued = true;
       this.holdUntil = now + 90;
-    } else {
-      this.holdUntil = now + 160 + Math.random() * 140;
+      return;
     }
+    if (roll < 0.3 + this.mind.personality.caution * 0.12) {
+      return;
+    }
+    this.tapQueued = roll > 0.72;
+    this.holdUntil = now + (this.tapQueued ? 90 : 160 + Math.random() * 140);
   }
 
-  private move(cpu: NinjaBody, player: NinjaBody, distance: number, now: number): void {
-    if (this.block.isActive(now)) {
+  private walk(now: number, cpu: NinjaBody, scene: Phaser.Scene): void {
+    const target = this.mind.target;
+    const ally = this.mind.intent.ally;
+    const goal = moveGoal(
+      this.mind.action,
+      {
+        x: cpu.x,
+        y: cpu.y,
+        team: cpu.team,
+        attackRange: cpu.stats.attackRange,
+        role: cpu.stats.role,
+        kind: 'hero',
+      },
+      now,
+      this.mind.homeX,
+      this.mind.homeY,
+      target ? { x: target.x, y: target.y, aimX: target.aim.x, aimY: target.aim.y } : undefined,
+      ally ? { x: ally.x, y: ally.y, aimX: ally.aim.x, aimY: ally.aim.y } : undefined,
+      this.mind.intent.flankSign,
+      cpu.x,
+    );
+    if (goal.halt || this.block.isActive(now)) {
       cpu.stop();
       return;
     }
-    const preferred = cpu.stats.attackRange * 0.72;
-    const dx = player.x - cpu.x;
-    const dy = player.y - cpu.y;
-    const length = Math.hypot(dx, dy) || 1;
-    if (distance > preferred + 18) {
-      this.chase.set(dx / length, dy / length);
-      cpu.applyMove(this.chase);
-    } else if (distance < preferred - 22 && cpu.status.isHitReacting(now)) {
-      this.chase.set(-dx / length, -dy / length);
-      cpu.applyMove(this.chase);
-    } else {
+    const dx = goal.x - cpu.x;
+    const dy = goal.y - cpu.y;
+    const len = Math.hypot(dx, dy) || 1;
+    if (len < 10) {
       cpu.stop();
+      return;
     }
+    const steered = battlefieldOf(scene)?.query.steer(cpu.x, cpu.y, dx / len, dy / len) ?? { x: dx / len, y: dy / len };
+    this.chase.set(steered.x, steered.y);
+    cpu.applyMove(this.chase);
   }
 }

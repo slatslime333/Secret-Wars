@@ -10,6 +10,7 @@ import { drawRangerMinion, drawSwordMinion } from './drawMinion';
 import { MinionBrain, MinionDebugInfo } from './MinionBrain';
 import { MinionHpBar } from '../ui/world/MinionHpBar';
 import { battlefieldOf } from '../map';
+import type { TacticalField } from '../ai/tactical/field';
 
 export type MinionRecord = {
   body: NinjaBody;
@@ -159,7 +160,7 @@ export class MinionWorld {
     this.clearLabels();
   }
 
-  update(now: number, delta: number, combatants: NinjaBody[], world: AbilityWorld): void {
+  update(now: number, delta: number, world: AbilityWorld, field: TacticalField): void {
     for (let i = this.units.length - 1; i >= 0; i -= 1) {
       const unit = this.units[i];
       if (unit.body.down) {
@@ -184,7 +185,7 @@ export class MinionWorld {
       }
       unit.body.syncView();
       unit.hpBar.sync();
-      unit.brain.update(now, delta, combatants, world, this.scene);
+      unit.brain.update(now, delta, field, world, this.scene);
     }
     this.separate();
   }
@@ -212,12 +213,17 @@ export class MinionWorld {
       if (showAi) {
         const info = brain.debugInfo(now);
         const text = this.scene.add
-          .text(body.x, body.y - 28, `${info.state}\n${info.targetLabel}`, {
+          .text(
+            body.x,
+            body.y - 28,
+            `${info.state}  ${info.targetLabel}\n${info.threat} a${info.allyCount} e${info.enemyCount} ${info.hp}\n${info.reason}`,
+            {
             fontFamily: 'monospace',
             fontSize: '9px',
             color: '#f6f1de',
             align: 'center',
-          })
+          },
+          )
           .setOrigin(0.5, 1)
           .setDepth(25);
         this.labels.push(text);

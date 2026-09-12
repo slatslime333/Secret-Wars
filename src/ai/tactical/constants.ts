@@ -1,0 +1,21 @@
+/** Shared tactical tunables. Decision layer only — not combat damage. */
+export const TACTIC = {
+  heroVision: 540,
+  minionVision: 290,
+  clusterRadius: 160,
+  engagePad: 36,
+  memoryMs: 2400,
+  heroThinkMin: 190,
+  heroThinkSpan: 150,
+  minionThinkMin: 270,
+  minionThinkSpan: 130,
+  fieldRefreshMs: 170,
+  commitMin: 440,
+  commitSpan: 480,
+  flankCommit: 1020,
+  cellSize: 180,
+  overkillAllies: 2,
+  finishHp: 0.22,
+  criticalHp: 0.16,
+  ghostScoreMul: 0.82,
+} as const;
