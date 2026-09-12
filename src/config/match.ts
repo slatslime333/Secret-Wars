@@ -43,6 +43,18 @@ export const MATCH = {
   healing: {
     minionKill: 5,
   },
+  /** Scoreboard shows immediately; Rematch/Menu wait this long. */
+  postMatch: {
+    actionDelayMs: 2_000,
+  },
+  /**
+   * Passive hero regen after a stretch without enemy damage.
+   * Slow on purpose — disengage is a tactic, not a full reset.
+   */
+  outOfCombat: {
+    delayMs: 5_000,
+    regenPerSecond: 4,
+  },
   growth: {
     order: ['maxHealth', 'attackDamage', 'defense'] as const satisfies readonly StatGrowthKey[],
     perLevel: {

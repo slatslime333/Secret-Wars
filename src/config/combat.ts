@@ -109,6 +109,9 @@ export const COMBAT = {
   /** Shared ability-impact freeze. Short enough to read as weight, not lag. */
   hitStopImpactMs: 100,
 
+  /** Ultimates recharge on this timer instead of once per match. */
+  ultimateCooldownMs: 45_000,
+
   /** Simultaneous swings. */
   clashWindowMs: 90,
   clashDamageMultiplier: 0.55,

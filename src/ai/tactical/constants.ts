@@ -17,5 +17,6 @@ export const TACTIC = {
   overkillAllies: 2,
   finishHp: 0.22,
   criticalHp: 0.16,
+  recoverHp: 0.48,
   ghostScoreMul: 0.82,
 } as const;

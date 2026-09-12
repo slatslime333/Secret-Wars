@@ -218,6 +218,21 @@ const scenarioJ = (): ScenarioResult => {
   return { name: 'J target escapes', ok, detail: `best=${best(rows)} drop=${drop.toFixed(1)} chase=${chase.toFixed(1)}` };
 };
 
+const scenarioK = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 280, y: 750, hpRatio: 0.24 });
+  const rows = rankActions(situationOf(self, [], []));
+  const ok = among(rows, ['recover', 'retreat', 'search_for_target', 'advance'], 2);
+  return { name: 'K recover space', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioL = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.5, role: 'tank', defense: 40, power: 1.2 });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 470, y: 750, hpRatio: 0.7, power: 1 })];
+  const rows = rankActions(situationOf(self, [], enemies));
+  const ok = !['retreat', 'escape', 'recover'].includes(best(rows));
+  return { name: 'L tank holds', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -229,4 +244,6 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioH(),
   scenarioI(),
   scenarioJ(),
+  scenarioK(),
+  scenarioL(),
 ];

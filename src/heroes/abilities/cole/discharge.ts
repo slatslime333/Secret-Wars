@@ -17,6 +17,7 @@ export const dischargeDef: AbilityDef = {
   maxCharges: 1,
   iconKey: ABILITY_ICON.discharge,
   accent: COLORS.cyan,
+  tactics: { roles: ['aoe', 'cc', 'peel', 'space', 'damage'], range: COLE_DISCHARGE.radius },
   canActivate: (ctx) =>
     !ctx.caster.status.isHitReacting(ctx.now) &&
     !ctx.caster.status.isBlockStunned(ctx.now) &&

@@ -3,6 +3,7 @@ import { playWorld } from '../../../audio';
 import { NINJA } from '../../../config/ninja';
 import { COMBAT } from '../../../config/combat';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
+import { playUltimateShake } from '../../../effects/hitJuice';
 import { COLORS } from '../../../ui/theme';
 import { NinjaBody } from '../../NinjaBody';
 import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
@@ -15,12 +16,13 @@ export const ninjaTornadoDef: AbilityDef = {
   id: 'ninja-tornado',
   name: 'Ninja Tornado',
   slot: 'ultimate',
-  cooldownMs: 0,
-  chargeMode: 'once',
+  cooldownMs: COMBAT.ultimateCooldownMs,
+  chargeMode: 'cooldown',
   startingCharges: 1,
   maxCharges: 1,
   iconKey: ABILITY_ICON.ninjaTornado,
   accent: COLORS.yellow,
+  tactics: { roles: ['aoe', 'burst', 'cc', 'damage', 'space'], range: NINJA_TORNADO.radius },
   canActivate: (ctx) =>
     !ctx.caster.status.isHitReacting(ctx.now) &&
     !ctx.caster.status.isBlockStunned(ctx.now) &&
@@ -54,6 +56,7 @@ class NinjaTornadoAbility implements ActiveAbility {
     caster.setSpeedCap(NINJA_TORNADO.bounceSpeed);
     this.fx = new TornadoFx(ctx.scene, caster);
     spawnCombatCallout(ctx.scene, caster.x, caster.y, 'TORNADO', COLORS.yellow);
+    playUltimateShake(ctx.scene);
   }
 
   update(ctx: AbilityContext): boolean {

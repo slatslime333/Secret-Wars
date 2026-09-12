@@ -203,6 +203,14 @@ const localRisk = (self: CombatantView, allies: CombatantView[], enemies: Combat
   if (self.hpRatio < TACTIC.criticalHp) {
     risk += 0.18;
   }
+  if ((self.role === 'tank' || self.role === 'frontliner') && self.hpRatio >= 0.42) {
+    risk -= 0.14;
+  } else if ((self.role === 'tank' || self.role === 'frontliner') && self.hpRatio >= 0.3) {
+    risk -= 0.06;
+  }
+  if ((self.role === 'disruptor' || self.role === 'assassin') && self.hpRatio < 0.38 && nearEnemies > 0) {
+    risk += 0.08;
+  }
   if (self.staminaRatio < 0.18) {
     risk += 0.1;
   }
@@ -524,6 +532,9 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (front && pile < 0.5) {
       attack += 4;
     }
+    if (support && d < range * 1.2) {
+      attack -= 6;
+    }
     attack += (personality.aggression - 0.5) * 10;
     if (kind === 'minion' && pile < 0.5) {
       attack += 4;
@@ -575,6 +586,9 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       if (kind === 'minion' && ranged) {
         flank -= 8;
       }
+      if (support) {
+        flank += 8;
+      }
       count = write(out, count, 'flank', persist(enemy, flank * vis), 'better angle', enemy.id);
     }
 
@@ -587,6 +601,9 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       }
       if (self.hpRatio < 0.28) {
         chase -= 16;
+      }
+      if (self.hpRatio < 0.34 && enemy.hpRatio > 0.4) {
+        chase -= 12;
       }
       chase += personality.aggression * 8 + personality.persistence * 6;
       count = write(out, count, 'chase', persist(enemy, chase * vis), 'pursue', enemy.id);
@@ -711,9 +728,69 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     disengage += 6;
   }
   disengage -= personality.aggression * 8;
+  if ((self.role === 'tank' || self.role === 'frontliner') && self.hpRatio > 0.4) {
+    disengage -= 14;
+  }
   count = write(out, count, 'retreat', disengage, risk >= 0.54 ? 'bad fight' : 'reset');
   if (risk >= 0.7 || (self.hpRatio < TACTIC.criticalHp && risk >= 0.45)) {
     count = write(out, count, 'escape', disengage + 8 + (self.recentlyHit ? 6 : 0), 'survive');
+  }
+
+  if (kind === 'hero' && self.hpRatio < TACTIC.recoverHp) {
+    const closeHero = enemies.some((enemy) => enemy.kind === 'hero' && enemy.visible && dist(self, enemy) < 180);
+    let recover = 10 + (1 - self.hpRatio) * 24;
+    if (!closeHero) {
+      recover += 20;
+    } else {
+      recover -= 16;
+    }
+    if (self.hpRatio < TACTIC.criticalHp && !closeHero) {
+      recover += 12;
+    }
+    const homeGap = Math.hypot(self.x - situation.homeX, self.y - situation.homeY);
+    if (homeGap < 170 && !closeHero) {
+      recover += 14;
+    }
+    count = write(out, count, 'recover', recover, closeHero ? 'need space first' : 'recover');
+  }
+
+  if (kind === 'hero') {
+    let nearestMinion: CombatantView | undefined;
+    let minionGap = 1e9;
+    for (const enemy of enemies) {
+      if (enemy.kind !== 'minion' || !enemy.visible) {
+        continue;
+      }
+      const d = dist(self, enemy);
+      if (d < minionGap) {
+        nearestMinion = enemy;
+        minionGap = d;
+      }
+    }
+    if (nearestMinion) {
+      const pack = nearestMinion;
+      const heroThreat = enemies.some(
+        (enemy) => enemy.kind === 'hero' && enemy.visible && dist(enemy, pack) < 210,
+      );
+      let farmScore = 12 + (handledNearby ? 8 : 0) - (minionGap / situation.vision) * 10;
+      if (self.hpRatio > 0.16 && self.hpRatio < 0.72 && !heroThreat) {
+        farmScore += 12;
+      }
+      if (heroThreat) {
+        farmScore -= 16;
+      }
+      if (self.hpRatio < 0.2) {
+        farmScore -= 8;
+      }
+      count = write(
+        out,
+        count,
+        'farm_minions',
+        farmScore,
+        heroThreat ? 'minions are hot' : 'farm and recover',
+        nearestMinion.id,
+      );
+    }
   }
 
   const standEnemy = enemies.find((enemy) => standoff(self, enemy, allies, enemies) && dist(self, enemy) < self.attackRange * 2.1);
@@ -736,6 +813,8 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     count = write(out, count, 'reposition', repo, 'better spot', standEnemy.id);
   } else if (ranged && enemies.some((enemy) => dist(self, enemy) < self.attackRange * 0.5)) {
     count = write(out, count, 'reposition', 18 + personality.caution * 6, 'make space', enemies[0]?.id ?? -1);
+  } else if (support && enemies.some((enemy) => dist(self, enemy) < self.attackRange * 1.15)) {
+    count = write(out, count, 'reposition', 16 + personality.flankTendency * 8, "don't trade", enemies[0]?.id ?? -1);
   }
 
   const farm = handledNearby || (urgent?.handled ?? false) || enemies.length === 0;

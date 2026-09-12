@@ -254,7 +254,7 @@ export class MatchScene extends Phaser.Scene {
     for (const unit of this.heroes) {
       if (!unit.isPlayer) {
         const block = unit.team !== this.player.team ? this.player.block : undefined;
-        this.pilots.get(unit)?.update(now, delta, unit, this.tactics, this, block);
+        this.pilots.get(unit)?.update(now, delta, unit, this.tactics, this, this.abilityWorld, block);
       }
       if (unit.maybeRespawn(now) && unit.isPlayer) {
         this.cameras.main.startFollow(unit.body.sprite, true, 0.16, 0.16);
@@ -343,6 +343,7 @@ export class MatchScene extends Phaser.Scene {
     if (!this.player.block.isActive(now)) {
       this.player.body.regenStamina(delta, now);
     }
+    this.player.body.regenHealth(delta, now);
     this.marker.sync(
       this.player.body.x,
       this.player.body.y,

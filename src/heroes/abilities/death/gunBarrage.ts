@@ -23,6 +23,7 @@ export const gunBarrageDef: AbilityDef = {
   aimOnRelease: true,
   padLabel: 'GUN',
   deferCooldown: true,
+  tactics: { roles: ['damage', 'disruption', 'space'], range: 520 },
   canActivate: (ctx) =>
     !ctx.caster.status.isHitReacting(ctx.now) &&
     !ctx.caster.status.isBlockStunned(ctx.now) &&

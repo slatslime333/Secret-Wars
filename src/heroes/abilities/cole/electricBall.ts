@@ -21,6 +21,7 @@ export const electricBallDef: AbilityDef = {
   accent: 0x4aa8ff,
   aimOnRelease: true,
   padLabel: 'BALL',
+  tactics: { roles: ['damage', 'cc', 'initiate', 'disruption'], range: 420 },
   canActivate: (ctx) => !ctx.caster.status.isBlockStunned(ctx.now) && !ctx.caster.status.isClashLocked(ctx.now),
   activate: (ctx) => {
     const aim = ctx.aimOverride ?? ctx.caster.aim;

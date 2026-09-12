@@ -24,6 +24,7 @@ export const backflipKickDef: AbilityDef = {
   accent: COLORS.orange,
   aimOnRelease: true,
   padLabel: 'KICK',
+  tactics: { roles: ['damage', 'mobility', 'initiate', 'disruption', 'finish', 'escape'], range: NINJA_KICK.dashDistance },
   canActivate: (ctx) =>
     !ctx.caster.status.isHitReacting(ctx.now) &&
     !ctx.caster.status.isBlockStunned(ctx.now) &&

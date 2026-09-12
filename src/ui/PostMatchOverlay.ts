@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
+import { MATCH } from '../config/match';
 import type { TeamId } from '../config/hero';
 import type { HeroStatLine } from '../match/CombatStatsTracker';
 import { ActionButton } from './ActionButton';
@@ -106,6 +107,8 @@ export class PostMatchOverlay {
       onPress: () => this.handlers.onRematch(),
     });
     rematch.setScrollFactor(0).setDepth(241);
+    rematch.disableInteractive();
+    rematch.setVisible(false);
     const menu = new ActionButton(this.scene, width / 2 + 110, height - 48, {
       label: 'MENU',
       width: 190,
@@ -114,10 +117,21 @@ export class PostMatchOverlay {
       onPress: () => this.handlers.onMenu(),
     });
     menu.setScrollFactor(0).setDepth(241);
+    menu.disableInteractive();
+    menu.setVisible(false);
     this.root.add([rematch, menu]);
     this.root.setVisible(true);
     this.visible = true;
     audio.play(result === 'VICTORY' ? 'ui-victory' : result === 'DEFEAT' ? 'ui-defeat' : 'ui-draw');
+    this.scene.time.delayedCall(MATCH.postMatch.actionDelayMs, () => {
+      if (!this.visible) {
+        return;
+      }
+      rematch.setVisible(true);
+      menu.setVisible(true);
+      rematch.setInteractive({ useHandCursor: true });
+      menu.setInteractive({ useHandCursor: true });
+    });
   }
 
   destroy(): void {
