@@ -212,8 +212,8 @@ export class NinjaBody {
       return;
     }
     const length = Math.hypot(dirX, dirY) || 1;
-    this.setSpeedCap(Math.max(COMBAT.physicsMaxSpeed, power));
-    body.setVelocity((dirX / length) * power, (dirY / length) * power);
+    this.setSpeedCap(Math.min(COMBAT.launchSpeedCap, Math.max(COMBAT.physicsMaxSpeed, power)));
+    body.setVelocity((dirX / length) * Math.min(power, COMBAT.launchSpeedCap), (dirY / length) * Math.min(power, COMBAT.launchSpeedCap));
   }
 
   applyLungeImpulse(now: number, step: ComboStep): void {
@@ -342,17 +342,19 @@ export class NinjaBody {
 
   playBackflip(dirX: number, dirY: number, durationMs: number, jumpHeight = 34): void {
     this.currentAttackTween?.stop();
+    this.scene.tweens.killTweensOf(this.art);
+    this.scene.tweens.killTweensOf(this.view);
     this.attackingUntil = this.now() + durationMs;
     const spin = { value: 0 };
     const length = Math.hypot(dirX, dirY) || 1;
     const nx = dirX / length;
     const ny = dirY / length;
     const sign = nx >= 0 ? -1 : 1;
-    this.scene.tweens.add({
+    this.currentAttackTween = this.scene.tweens.add({
       targets: spin,
       value: 1,
       duration: durationMs,
-      ease: 'Cubic.Out',
+      ease: 'Sine.Out',
       onUpdate: () => {
         const lift = Math.sin(spin.value * Math.PI);
         this.view.setRotation(sign * spin.value * Math.PI * 2);

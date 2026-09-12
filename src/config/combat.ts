@@ -91,6 +91,8 @@ export const COMBAT = {
 
   /** Walk speed is separate; this cap lets knockback and lunges actually move. */
   physicsMaxSpeed: 520,
+  /** Ability launches can exceed walk speed without flying the width of the map. */
+  launchSpeedCap: 570,
   bodyDrag: 540,
 
   hitMoveMultiplier: 0.42,

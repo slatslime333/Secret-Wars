@@ -25,7 +25,7 @@ export const spawnWindImpact = (
   scene.tweens.add({
     targets: ringAnim,
     t: 1,
-    duration: 150,
+      duration: 180,
     ease: 'Cubic.Out',
     onUpdate: () => {
       ring.clear();
@@ -46,7 +46,7 @@ export const spawnWindImpact = (
     const spread = (i - 3) * 0.16;
     const sx = x + px * spread * 18 - nx * 4;
     const sy = y + py * spread * 18 - ny * 4;
-    const streak = scene.add.rectangle(sx, sy, 22 + Math.abs(i - 3) * 3, 3, COLORS.paper, 0.92);
+    const streak = scene.add.rectangle(sx, sy, 26 + Math.abs(i - 3) * 4, 3.5, COLORS.paper, 0.95);
     streak.setRotation(angle + spread * 0.35).setDepth(16);
     scene.tweens.add({
       targets: streak,
