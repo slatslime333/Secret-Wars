@@ -31,26 +31,8 @@ export function getGameSize(
   };
 }
 
-/**
- * Keep ~540 world units on the short axis so a Fold cover (or any short,
- * ultra-wide screen) shows a wider FOV instead of a zoomed-in character.
- */
-export function getViewZoom(width: number, height: number): number {
-  return clamp(Math.min(width, height) / DEFAULT_HEIGHT, 0.38, 2.2);
-}
-
-/** HUD / stick scale. Shrinks on short or ultra-wide displays. */
-export function getUiScale(width: number, height: number): number {
-  const short = Math.min(width, height);
-  const long = Math.max(width, height);
-  const shortScale = short / DEFAULT_HEIGHT;
-  const widePenalty = long / short > 2 ? 0.88 : 1;
-  return clamp(shortScale * widePenalty, 0.42, 1.08);
-}
-
 export type TouchControlLayout = {
   isPortrait: boolean;
-  uiScale: number;
   radius: number;
   buttonRadius: number;
   abilityRadius: number;
@@ -64,36 +46,32 @@ export type TouchControlLayout = {
   ultimate: { x: number; y: number };
 };
 
-/** Thumb-reachable stick and button anchors that shrink on short screens. */
+/** Thumb-reachable stick and button anchors for the current screen. */
 export function getTouchControlLayout(width: number, height: number): TouchControlLayout {
   const isPortrait = width < height;
-  const uiScale = getUiScale(width, height);
   const short = Math.min(width, height);
-  const radius = Math.round(clamp(Math.min(64 * uiScale, short * 0.11), 30, 70));
-  const buttonRadius = Math.round(clamp(radius * 0.7, 18, 32));
-  const sideInset = Math.round(clamp(radius + 22 * uiScale, 40, short * 0.2));
+  const radius = Math.round(clamp(short * 0.125, 52, 76));
+  const buttonRadius = 30;
+  const abilityRadius = 34;
+  const ultimateRadius = 40;
+  const sideInset = Math.round(Math.max(radius + 32, short * 0.18));
   const bottomInset = Math.round(
-    isPortrait ? clamp(radius + 36 * uiScale, 48, short * 0.14) : clamp(radius + 24 * uiScale, 44, short * 0.2),
+    isPortrait ? Math.max(radius + 42, short * 0.13) : Math.max(radius + 32, short * 0.2),
   );
-  const buttonLift = isPortrait
-    ? bottomInset + Math.round(radius + 28 * uiScale)
-    : Math.round(clamp(short * 0.38, buttonRadius + 36, short * 0.46));
-  const abilityRadius = Math.round(clamp(buttonRadius * 1.18, 24, 38));
-  const ultimateRadius = Math.round(clamp(buttonRadius * 1.42, 28, 44));
+  const buttonLift = isPortrait ? bottomInset + Math.round(radius + 36) : Math.round(short * 0.42);
   const leftStick = { x: sideInset, y: height - bottomInset };
   const rightStick = { x: width - sideInset, y: height - bottomInset };
   const block = {
-    x: width - (isPortrait ? sideInset + buttonRadius * 2.4 : sideInset + buttonRadius * 2.8),
+    x: width - (isPortrait ? sideInset + 84 : sideInset + 100),
     y: height - buttonLift,
   };
   const dash = {
-    x: width - (isPortrait ? Math.max(buttonRadius + 16, sideInset - buttonRadius) : sideInset),
+    x: width - (isPortrait ? Math.max(56, sideInset - 24) : sideInset),
     y: height - buttonLift,
   };
 
   return {
     isPortrait,
-    uiScale,
     radius,
     buttonRadius,
     abilityRadius,
@@ -103,40 +81,21 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
     block,
     dash,
     ability1: {
-      x: Math.max(abilityRadius + 8, block.x - buttonRadius - abilityRadius - Math.round(10 * uiScale)),
-      y: block.y + Math.round(8 * uiScale),
+      x: Math.max(abilityRadius + 10, block.x - buttonRadius - abilityRadius - 12),
+      y: block.y + 8,
     },
     ability2: {
-      x: Math.min(block.x + Math.round(buttonRadius * 0.2), rightStick.x - radius * 0.15),
+      x: Math.min(block.x + 8, rightStick.x - radius * 0.2),
       y: Math.round((block.y + rightStick.y) * 0.52),
     },
     ultimate: {
       x: Math.round((leftStick.x + rightStick.x) / 2),
-      y: height - Math.round(clamp(bottomInset + ultimateRadius * 0.15, ultimateRadius + 14, short * 0.24)),
+      y: height - Math.max(bottomInset, ultimateRadius + 18),
     },
   };
 }
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
-
-/**
- * Phaser zoom is applied around the camera center even for scrollFactor 0
- * objects. Convert a desired on-screen pixel to the position those objects
- * should use so left-edge HUD stays visible on large desktop views.
- */
-export const uiScreenPoint = (
-  screenX: number,
-  screenY: number,
-  width: number,
-  height: number,
-): { x: number; y: number; scale: number } => {
-  const zoom = getViewZoom(width, height);
-  return {
-    x: (screenX - width / 2) / zoom + width / 2,
-    y: (screenY - height / 2) / zoom + height / 2,
-    scale: getUiScale(width, height) / zoom,
-  };
-};
 
 export const COLORS = {
   ink: 0x070a12,
