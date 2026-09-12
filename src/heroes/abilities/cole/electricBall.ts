@@ -1,3 +1,4 @@
+import { playWorld } from '../../../audio';
 import { AbilityContext, AbilityDef } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { COLE_BALL } from './tunables';
@@ -86,6 +87,7 @@ const resolveBallHit = (
   if (kind !== 'hit') {
     return;
   }
+  playWorld('cole-ball-impact', primary);
   primary.status.applySlow(now, COLE_BALL.slowMs, COLE_BALL.slowMul);
 
   spawnLightningBolt(scene, caster.x, caster.y, primary.x, primary.y, { heavy: true, life: 180 });
@@ -120,6 +122,7 @@ const resolveBallHit = (
       );
       enemy.status.applySlow(now, COLE_BALL.chainSlowMs, COLE_BALL.chainSlowMul);
       spawnLightningBolt(scene, x, y, enemy.x, enemy.y, { heavy: false, life: 140 });
+      playWorld('cole-ball-chain', enemy);
       chained.push(enemy);
       continue;
     }
@@ -144,6 +147,7 @@ const resolveBallHit = (
       },
       rivalBlock,
     );
+    playWorld('cole-ball-chain', enemy);
     enemy.status.applySlow(now, COLE_BALL.chainSlowMs, COLE_BALL.chainSlowMul);
     chained.push(enemy);
   }

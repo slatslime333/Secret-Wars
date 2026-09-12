@@ -39,6 +39,7 @@ import {
 import { RoundOverlay } from '../ui/RoundOverlay';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { isTouchPrimary } from '../device';
+import { audio } from '../audio';
 import { fadeToScene } from './fadeToScene';
 
 /** Combat sandbox. PLAY uses MatchScene; this stays the Play Test pit. */
@@ -167,8 +168,19 @@ export class BattleScene extends Phaser.Scene {
       onForceWave: () => this.minions.spawnDraftWave(),
       onTogglePause: () => this.toggleSandboxPause(),
       paused: () => this.sandboxPaused,
-      onGiveXp: () => this.progression.grantXp(MATCH.xp.debugGrant),
-      onGiveLevel: () => this.progression.giveLevel(),
+      onGiveXp: () => {
+        const result = this.progression.grantXp(MATCH.xp.debugGrant);
+        audio.play('ui-xp');
+        if (result.leveled) {
+          audio.play('ui-level-up');
+        }
+      },
+      onGiveLevel: () => {
+        const result = this.progression.giveLevel();
+        if (result.leveled) {
+          audio.play('ui-level-up');
+        }
+      },
       mapSeed: () => this.mapSeed,
       onMapRandomSeed: () => this.rebuildMap(randomPlayTestSeed()),
       onMapReroll: () => this.rebuildMap(this.mapSeed),
@@ -192,6 +204,8 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setSize(this.scale.width, this.scale.height);
     this.cameras.main.setZoom(1);
     this.cameras.main.fadeIn(220, 7, 10, 18);
+    audio.unlock();
+    audio.play('ui-match-start');
 
     this.minimap = new Minimap(this);
     this.createChrome();
@@ -227,11 +241,13 @@ export class BattleScene extends Phaser.Scene {
       this.offDamage?.();
       this.minimap?.destroy();
       this.battlefield?.destroy();
+      audio.stopAllLoops();
     });
   }
 
   update(_time: number, delta: number): void {
     const now = this.time.now;
+    audio.setListener(this.ninja.x, this.ninja.y);
     this.drawSandboxDebug(now);
     if (this.sandboxPaused) {
       this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);

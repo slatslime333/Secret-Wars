@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { audio } from '../audio';
+import type { SoundId } from '../audio';
 import { COLORS, FONTS, hex } from './theme';
 
 type ActionButtonOptions = {
@@ -45,7 +47,11 @@ export class ActionButton extends Phaser.GameObjects.Container {
     this.setInteractive({ useHandCursor: true });
     this.draw();
 
-    this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => this.setFocused(true));
+    this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => {
+      this.setFocused(true);
+      audio.unlock();
+      audio.play('ui-hover');
+    });
     this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => this.setFocused(false));
     this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => {
       this.setScale(0.97);
@@ -54,6 +60,8 @@ export class ActionButton extends Phaser.GameObjects.Container {
     this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => {
       this.setScale(1);
       this.labelText.setY(-2);
+      audio.unlock();
+      audio.play(clickSoundFor(options.label));
       options.onPress();
     });
 
@@ -129,3 +137,14 @@ export class ActionButton extends Phaser.GameObjects.Container {
     );
   }
 }
+
+const clickSoundFor = (label: string): SoundId => {
+  const key = label.toUpperCase();
+  if (key.includes('PLAY') || key === 'CONFIRM' || key === 'REMATCH') {
+    return 'ui-confirm';
+  }
+  if (key === 'BACK' || key === 'MENU' || key === 'EXIT') {
+    return 'ui-back';
+  }
+  return 'ui-click';
+};

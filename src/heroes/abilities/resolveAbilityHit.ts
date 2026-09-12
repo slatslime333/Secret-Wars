@@ -8,6 +8,7 @@ import { COLORS } from '../../ui/theme';
 import { BlockController } from '../../combat/BlockController';
 import { HitKind } from '../../combat/Hurtbox';
 import type { DamageSourceKind } from '../../combat/damageEvents';
+import { playAbilityConnect } from '../../audio';
 import { NinjaBody } from '../NinjaBody';
 
 export type AbilityHitProfile = {
@@ -64,6 +65,7 @@ export const resolveAbilityHit = (
         perfect: true,
         shake: attacker.playerControlled || defender.playerControlled,
       });
+      playAbilityConnect('perfect-block', attacker, defender, { heavy: profile.heavy, sourceKind: profile.sourceKind });
       return 'perfect-block';
     }
     defender.drainStamina(Math.max(4, Math.round(profile.staminaDamage * 1.4)), now);
@@ -74,6 +76,7 @@ export const resolveAbilityHit = (
       blocked: true,
       shake: attacker.playerControlled || defender.playerControlled,
     });
+    playAbilityConnect('blocked', attacker, defender, { heavy: profile.heavy, sourceKind: profile.sourceKind });
     return 'blocked';
   }
 
@@ -109,5 +112,6 @@ export const resolveAbilityHit = (
   if (profile.hitStopMs !== 0) {
     attacker.status.applyHitStop(now, profile.hitStopMs ?? (profile.heavy ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs));
   }
+  playAbilityConnect('hit', attacker, defender, { heavy: profile.heavy, sourceKind: profile.sourceKind });
   return 'hit';
 };

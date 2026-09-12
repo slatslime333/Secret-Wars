@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { audio } from '../audio';
 import type { TeamId } from '../config/hero';
 import type { HeroStatLine } from '../match/CombatStatsTracker';
 import { ActionButton } from './ActionButton';
@@ -116,6 +117,7 @@ export class PostMatchOverlay {
     this.root.add([rematch, menu]);
     this.root.setVisible(true);
     this.visible = true;
+    audio.play(result === 'VICTORY' ? 'ui-victory' : result === 'DEFEAT' ? 'ui-defeat' : 'ui-draw');
   }
 
   destroy(): void {
