@@ -56,6 +56,11 @@ export const drawCole = (
   const liftL = opts.armLiftLeft ?? 0;
   const liftR = opts.armLiftRight ?? 0;
 
+  if (facing === 'east') {
+    drawColeEast(graphics, palette, liftL, liftR);
+    return;
+  }
+
   graphics.clear();
   graphics.fillStyle(COLORS.ink, 0.45);
   graphics.fillEllipse(0, 16, 22, 8);
@@ -86,7 +91,7 @@ export const drawCole = (
   graphics.fillRect(-11, -18, 22, 4);
 
   graphics.fillStyle(palette.eye);
-  if (facing === 'south' || facing === 'east') {
+  if (facing === 'south') {
     graphics.fillRect(-6, -12, 4, 3);
     graphics.fillRect(2, -12, 4, 3);
     graphics.fillRect(-6, -14, 5, 2);
@@ -106,6 +111,56 @@ export const drawCole = (
   graphics.fillStyle(palette.skin);
   graphics.fillCircle(-11, leftY + 12, 3.5);
   graphics.fillCircle(11, rightY + 12, 3.5);
+};
+
+/** East profile — same hoodie/buzz, body turned so both eyes are not a front stare. */
+const drawColeEast = (
+  graphics: Phaser.GameObjects.Graphics,
+  palette: ReturnType<typeof paletteFor>,
+  liftL: number,
+  liftR: number,
+): void => {
+  graphics.clear();
+  graphics.fillStyle(COLORS.ink, 0.45);
+  graphics.fillEllipse(1, 16, 20, 8);
+
+  graphics.fillStyle(palette.hoodie);
+  graphics.fillRoundedRect(-10, -24, 22, 14, 7);
+
+  graphics.fillStyle(palette.jeans);
+  graphics.fillRoundedRect(-9, 6, 20, 8, 2);
+
+  graphics.fillStyle(palette.hoodie);
+  graphics.fillRoundedRect(-9, -6, 20, 16, 3);
+  graphics.fillStyle(palette.hoodieDark);
+  graphics.fillRect(-9, 8, 20, 2);
+
+  graphics.fillStyle(palette.shirt);
+  graphics.fillRect(1, -5, 3, 14);
+  graphics.fillRect(0, -6, 6, 3);
+
+  graphics.fillStyle(palette.hair);
+  graphics.fillCircle(2, -14, 11);
+
+  graphics.fillStyle(palette.skin);
+  graphics.fillRect(0, -13, 10, 8);
+  graphics.fillCircle(4, -10, 6);
+
+  graphics.fillStyle(palette.band);
+  graphics.fillRect(-8, -18, 20, 4);
+
+  graphics.fillStyle(palette.eye);
+  graphics.fillRect(5, -12, 4, 3);
+  graphics.fillRect(4, -14, 5, 2);
+
+  const leftY = 2 - liftL * 8;
+  const rightY = 0 - liftR * 10;
+  graphics.fillStyle(palette.hoodie);
+  graphics.fillRect(-12, leftY, 5, 10);
+  graphics.fillRect(8, rightY, 6, 12);
+  graphics.fillStyle(palette.skin);
+  graphics.fillCircle(-10, leftY + 10, 3);
+  graphics.fillCircle(12, rightY + 12, 3.5);
 };
 
 const jagged = (

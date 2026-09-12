@@ -19,6 +19,7 @@ export class Projectile {
   private alive = true;
   private readonly endsAt: number;
   private flicker = 0;
+  private readonly style: 'spark' | 'slug';
 
   constructor(
     scene: Phaser.Scene,
@@ -29,11 +30,13 @@ export class Projectile {
     private readonly radius: number,
     lifetimeMs: number,
     color: number,
+    style: 'spark' | 'slug' = 'spark',
   ) {
+    this.style = style;
     this.endsAt = scene.time.now + lifetimeMs;
     this.view = scene.add.container(x, y).setDepth(15);
-    this.body = scene.add.circle(0, 0, radius, color, 0.88);
-    this.body.setStrokeStyle(2, 0xdff4ff, 1);
+    this.body = scene.add.circle(0, 0, radius, color, style === 'slug' ? 0.95 : 0.88);
+    this.body.setStrokeStyle(2, style === 'slug' ? 0x2a2010 : 0xdff4ff, 1);
     this.sparks = scene.add.graphics();
     this.view.add(this.body);
     this.view.add(this.sparks);
@@ -47,7 +50,9 @@ export class Projectile {
     this.y += this.vy * dt;
     this.view.setPosition(this.x, this.y);
     this.flicker += 1;
-    this.drawSparks();
+    if (this.style === 'spark') {
+      this.drawSparks();
+    }
     if (
       now >= this.endsAt ||
       this.x < 0 ||

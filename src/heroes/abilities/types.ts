@@ -51,6 +51,8 @@ export type AbilityDef = {
   accent: number;
   /** Mobile: hold and drag the button, fire on release. PC still uses current aim. */
   aimOnRelease?: boolean;
+  /** Start the cooldown when the active instance ends, not when the button is pressed. */
+  deferCooldown?: boolean;
   canActivate(ctx: AbilityContext): boolean;
   activate(ctx: AbilityContext): ActiveAbility | void;
 };

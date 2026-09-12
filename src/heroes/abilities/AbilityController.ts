@@ -30,6 +30,7 @@ type SlotRuntime = {
 export class AbilityController {
   private readonly slots: Record<AbilitySlot, SlotRuntime>;
   private active?: ActiveAbility;
+  private deferredSlot?: AbilitySlot;
 
   constructor(private readonly kit: HeroAbilityKit) {
     this.slots = {
@@ -77,6 +78,8 @@ export class AbilityController {
     } else if (def.chargeMode === 'meter') {
       runtime.charges = Math.max(0, runtime.charges - 1);
       runtime.meter = 0;
+    } else if (def.deferCooldown) {
+      this.deferredSlot = slot;
     } else {
       runtime.readyAt = ctx.now + def.cooldownMs;
     }
@@ -93,6 +96,11 @@ export class AbilityController {
     }
     const keep = this.active.update(ctx);
     if (!keep) {
+      if (this.deferredSlot) {
+        const def = defForSlot(this.kit, this.deferredSlot);
+        this.slots[this.deferredSlot].readyAt = ctx.now + def.cooldownMs;
+        this.deferredSlot = undefined;
+      }
       this.active.destroy();
       this.active = undefined;
     }

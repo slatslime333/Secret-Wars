@@ -341,7 +341,15 @@ export class NinjaBody {
   playCustomAttack(
     now: number,
     durationMs: number,
-    frame: (frac: number) => { swayX?: number; armLiftLeft?: number; armLiftRight?: number },
+    frame: (frac: number) => {
+      swayX?: number;
+      armLiftLeft?: number;
+      armLiftRight?: number;
+      swordAngleOffset?: number;
+      batScale?: number;
+      batOnBack?: boolean;
+      showUzi?: boolean;
+    },
   ): void {
     this.currentAttackTween?.stop();
     this.attackingUntil = now + durationMs;
@@ -358,11 +366,15 @@ export class NinjaBody {
         this.drawHero(this.art, {
           facing: this.facing,
           attacking: true,
+          swordAngleOffset: pose.swordAngleOffset ?? 0,
           comboStep: 1,
           hitFlash: this.status.isFlashingHit(this.now()),
           rival: this.rival,
           armLiftLeft: this.armLiftLeft,
           armLiftRight: this.armLiftRight,
+          batScale: pose.batScale,
+          batOnBack: pose.batOnBack,
+          showUzi: pose.showUzi,
         });
         this.art.setPosition(pose.swayX ?? 0, 0);
       },

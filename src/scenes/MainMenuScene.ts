@@ -273,9 +273,9 @@ export class MainMenuScene extends Phaser.Scene {
       letterSpacing: 3,
     });
     const make = (id: HeroId, ox: number) =>
-      new ActionButton(this, x + 62 + ox, y + 10, {
+      new ActionButton(this, x + 48 + ox, y + 10, {
         label: id.toUpperCase(),
-        width: 108,
+        width: 86,
         height: 36,
         primary: getSelectedHeroId() === id,
         onPress: () => {
@@ -284,7 +284,8 @@ export class MainMenuScene extends Phaser.Scene {
         },
       });
     make('ninja', 0);
-    make('cole', 124);
+    make('cole', 94);
+    make('death', 188);
   }
 
   private createTeamMarks(x: number, y: number): void {

@@ -12,7 +12,7 @@ import { NinjaBody } from '../heroes/NinjaBody';
 
 const halfArcOf = (fighter: NinjaBody): number => (fighter.stats.attackArcDegrees * Math.PI) / 360;
 
-const inArc = (attacker: NinjaBody, defender: NinjaBody): boolean =>
+const inArc = (attacker: NinjaBody, defender: NinjaBody, rangeMul = 1): boolean =>
   isInAttackArc(
     attacker.x,
     attacker.y,
@@ -20,7 +20,7 @@ const inArc = (attacker: NinjaBody, defender: NinjaBody): boolean =>
     attacker.aim.y,
     defender.x,
     defender.y,
-    attacker.stats.attackRange + COMBAT.hitForgiveness,
+    attacker.stats.attackRange * rangeMul + COMBAT.hitForgiveness,
     halfArcOf(attacker),
     defender.stats.bodyRadius,
   );
@@ -58,12 +58,19 @@ export const resolveMelee = (
   defender: NinjaBody,
   step: ComboStep,
   defenderBlock?: BlockController,
-  options: { alreadyClashed?: boolean; knockbackMul?: number } = {},
+  options: {
+    alreadyClashed?: boolean;
+    knockbackMul?: number;
+    damageMul?: number;
+    dirX?: number;
+    dirY?: number;
+    rangeMul?: number;
+  } = {},
 ): HitKind => {
   if (defender.down) {
     return 'whiff';
   }
-  if (!inArc(attacker, defender)) {
+  if (!inArc(attacker, defender, options.rangeMul ?? 1)) {
     return 'whiff';
   }
   if (defender.isInvulnerable(now)) {
@@ -118,11 +125,16 @@ export const resolveMelee = (
   }
 
   const profile = COMBAT.combo[step];
-  const damage = applyDefense(attacker.stats.attackDamage * profile.damageMultiplier, defender.defense);
+  const damage = applyDefense(
+    attacker.stats.attackDamage * (options.damageMul ?? profile.damageMultiplier),
+    defender.defense,
+  );
+  const dirX = options.dirX ?? attacker.aim.x;
+  const dirY = options.dirY ?? attacker.aim.y;
   defender.takeHit({
     damage,
-    dirX: attacker.aim.x,
-    dirY: attacker.aim.y,
+    dirX,
+    dirY,
     knockback: attacker.stats.knockbackPower * profile.knockbackMultiplier * (options.knockbackMul ?? 1),
     staminaDamage: profile.staminaDamage,
     step,
