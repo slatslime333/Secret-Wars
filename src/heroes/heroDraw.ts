@@ -12,6 +12,9 @@ export type HeroDrawOptions = {
   armLiftLeft?: number;
   armLiftRight?: number;
   swayX?: number;
+  batScale?: number;
+  batOnBack?: boolean;
+  showUzi?: boolean;
 };
 
 export type HeroDrawFn = (graphics: Phaser.GameObjects.Graphics, options: HeroDrawOptions) => void;

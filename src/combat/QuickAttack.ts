@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { COMBAT, ComboStep, comboStepOf } from '../config/combat';
 import { COLE_ATTACK, COLE_SHOCKWAVE } from '../heroes/abilities/cole/tunables';
+import { DEATH_ATTACK } from '../heroes/abilities/death/tunables';
+import { sweepKnockback, swingSignFor } from '../heroes/abilities/death/sweep';
 import { ComboTracker } from './ComboTracker';
 import { HitMarker } from './HitMarker';
 import { NinjaBody } from '../heroes/NinjaBody';
@@ -32,6 +34,7 @@ export class QuickAttack {
   private readonly combo = new ComboTracker();
   lastSwingAt = -9999;
   lastSwingStep: ComboStep = 1;
+  private deathPairLockUntil = 0;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -84,11 +87,14 @@ export class QuickAttack {
     if ((!held && this.pendingTaps === 0) || now < this.nextSwingAt) {
       return;
     }
+
+    const step = this.nextComboStep(now, attacker);
+    if (attacker.heroId === 'death' && step === 1 && now < this.deathPairLockUntil) {
+      return;
+    }
     if (!attacker.trySpendAmmo(now)) {
       return;
     }
-
-    const step = comboStepOf(this.pendingTaps > 0 ? this.combo.preview(now, COMBAT.comboWindowMs) : 1);
     const profile = COMBAT.combo[step];
     if (this.pendingTaps > 0) {
       this.combo.tap(now, COMBAT.comboWindowMs);
@@ -112,7 +118,7 @@ export class QuickAttack {
     this.lastSwingStep = step;
 
     if (attacker.heroId === 'cole') {
-      const span = attacker.heroId === 'cole' ? COLE_ATTACK.animMs : 220;
+      const span = COLE_ATTACK.animMs;
       attacker.status.applySlow(now, span, COLE_ATTACK.lightSlowMul);
       attacker.playCustomAttack(now, span, (frac) => ({
         armLiftLeft: frac < 0.55 ? Math.sin(frac * Math.PI) : 0.15,
@@ -125,11 +131,27 @@ export class QuickAttack {
         const half = (attacker.stats.attackArcDegrees * Math.PI) / 360;
         spawnLightningArc(this.scene, attacker.x, attacker.y, attacker.aim.x, attacker.aim.y, attacker.stats.attackRange, half);
       }
+    } else if (attacker.heroId === 'death') {
+      attacker.playAttackAnimation(now, step);
+      this.spawnBatSweep(attacker, step);
+      if (step === 2) {
+        this.deathPairLockUntil = now + DEATH_ATTACK.pairDelayMs;
+      }
     } else {
       attacker.playAttackAnimation(now, step);
       this.spawnWhiteLineSlice(attacker, step);
     }
     this.pendingImpact = { at: now + profile.impactDelayMs, step };
+  }
+
+  private nextComboStep(now: number, attacker: NinjaBody): ComboStep {
+    if (this.pendingTaps > 0) {
+      return comboStepOf(this.combo.preview(now, COMBAT.comboWindowMs));
+    }
+    if (attacker.heroId === 'death' && this.lastSwingStep === 1 && now - this.lastSwingAt < COMBAT.comboWindowMs) {
+      return 2;
+    }
+    return 1;
   }
 
   private resolveImpactIfReady(
@@ -154,6 +176,13 @@ export class QuickAttack {
 
     if (attacker.heroId === 'cole') {
       this.resolveColeImpact(now, attacker, enemies, pending.step, defenderBlock);
+      if (pending.step === 3) {
+        this.combo.reset();
+      }
+      return;
+    }
+    if (attacker.heroId === 'death') {
+      this.resolveDeathImpact(now, attacker, enemies, pending.step, defenderBlock);
       if (pending.step === 3) {
         this.combo.reset();
       }
@@ -267,6 +296,88 @@ export class QuickAttack {
       attacker.status.applyAttackRecovery(now, COMBAT.combo[3].recoveryMs);
       this.combo.reset();
     }
+  }
+
+  private resolveDeathImpact(
+    now: number,
+    attacker: NinjaBody,
+    enemies: NinjaBody[],
+    step: ComboStep,
+    defenderBlock?: BlockController,
+  ): void {
+    const kb = sweepKnockback(attacker.aim.x, attacker.aim.y, swingSignFor(step));
+    const rangeMul = step === 3 ? DEATH_ATTACK.hit3RangeMul : 1;
+    const damageMul = step === 3 ? DEATH_ATTACK.hit3DamageMul : step === 2 ? 1.05 : 1;
+    const knockbackMul = step === 3 ? DEATH_ATTACK.hit3KnockbackMul : DEATH_ATTACK.hit12KnockbackMul;
+    let connected = false;
+    for (const enemy of enemies) {
+      if (enemy.down) {
+        continue;
+      }
+      const kind = resolveMelee(this.scene, now, attacker, enemy, step === 3 ? 3 : 1, defenderBlock, {
+        alreadyClashed: connected,
+        knockbackMul,
+        damageMul,
+        dirX: kb.x,
+        dirY: kb.y,
+        rangeMul,
+      });
+      if (kind === 'hit') {
+        connected = true;
+      }
+    }
+    if (!connected) {
+      attacker.status.applyAttackRecovery(now, COMBAT.combo[step].recoveryMs);
+      this.combo.reset();
+    }
+  }
+
+  private spawnBatSweep(death: NinjaBody, step: ComboStep): void {
+    const graphics = this.scene.add.graphics().setDepth(20);
+    const aimAngle = Math.atan2(death.aim.y, death.aim.x);
+    const sign = swingSignFor(step);
+    const half = attackHalfFor(step) * (step === 3 ? 1.12 : 1);
+    const startAngle = aimAngle - half * sign;
+    const totalArc = half * 2 * sign;
+    const radius = death.stats.attackRange * (0.84 + (step === 3 ? 0.22 : step * 0.06));
+    const duration = step === 3 ? 240 : 150;
+    const anim = { sweepProgress: 0, alpha: 1 };
+    graphics.setPosition(death.x, death.y);
+    this.scene.tweens.add({
+      targets: anim,
+      sweepProgress: 1,
+      duration: duration * 0.55,
+      ease: 'Cubic.Out',
+      onUpdate: () => {
+        graphics.clear();
+        graphics.setPosition(death.x, death.y);
+        const currentEnd = startAngle + totalArc * anim.sweepProgress;
+        const a0 = sign >= 0 ? startAngle : currentEnd;
+        const a1 = sign >= 0 ? currentEnd : startAngle;
+        graphics.lineStyle(step === 3 ? 14 : 9, 0x3a2410, 0.4 * anim.alpha);
+        graphics.beginPath();
+        graphics.arc(0, 0, radius, a0, a1);
+        graphics.strokePath();
+        graphics.lineStyle(step === 3 ? 6 : 4, 0xc68654, 0.95 * anim.alpha);
+        graphics.beginPath();
+        graphics.arc(0, 0, radius, a0, a1);
+        graphics.strokePath();
+        if (step === 3) {
+          graphics.lineStyle(2, COLORS.paper, 0.7 * anim.alpha);
+          graphics.beginPath();
+          graphics.arc(0, 0, radius - 8, a0, a1);
+          graphics.strokePath();
+        }
+      },
+    });
+    this.scene.tweens.add({
+      targets: anim,
+      alpha: 0,
+      delay: duration * 0.45,
+      duration: duration * 0.55,
+      ease: 'Quad.In',
+      onComplete: () => graphics.destroy(),
+    });
   }
 
   /**

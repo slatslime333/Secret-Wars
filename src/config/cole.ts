@@ -17,7 +17,7 @@ export const COLE = {
   knockbackPower: 248,
   attackCooldownMs: 430,
   /** Long versus Ninja, still a frontliner — not full-screen. */
-  attackRange: Math.round(NINJA.attackRange * 2),
+  attackRange: Math.round(NINJA.attackRange * 1.85),
   /** 1/4 narrower than the original 108° Cole wedge. */
   attackArcDegrees: 81,
   bodyRadius: NINJA.bodyRadius,

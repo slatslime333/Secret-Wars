@@ -11,6 +11,7 @@ import { AbilityContext } from '../heroes/abilities/types';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
 import { getSelectedHero } from '../heroes/roster';
 import { COLE_BALL } from '../heroes/abilities/cole/tunables';
+import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
@@ -48,6 +49,7 @@ export class BattleScene extends Phaser.Scene {
   private titleText?: Phaser.GameObjects.Text;
   private menuButton?: ActionButton;
   private abilityAim?: { x: number; y: number };
+  private deathDashIndex = 0;
 
   constructor() {
     super('Battle');
@@ -160,7 +162,12 @@ export class BattleScene extends Phaser.Scene {
     if (frame.ultimate) {
       this.abilities.tryActivate('ultimate', ctx);
     }
-    this.abilities.update(this.makeAbilityContext(now, delta));
+    if (frame.ability1Aiming && frame.ability1Aim.lengthSq() > 0) {
+      this.ninja.setAim(frame.ability1Aim);
+    } else if (frame.aimActive || frame.aim.lengthSq() > 0.01) {
+      this.ninja.setAim(frame.aim);
+    }
+    this.abilities.update(this.makeAbilityContext(now, delta, this.liveAbilityAim(frame)));
     this.abilityWorld.update(now, this.livingFighters(), delta);
 
     const control = this.abilities.control;
@@ -179,6 +186,19 @@ export class BattleScene extends Phaser.Scene {
       this.dash.tryStart(now, frame.move, this.ninja.aim, this.ninja)
     ) {
       this.attacks.interrupt(now);
+      if (this.ninja.heroId === 'death') {
+        startDeathDashSweep(
+          this,
+          this.abilityWorld,
+          this.ninja,
+          now,
+          this.deathDashIndex,
+          this.dash.direction,
+          this.livingEnemies(),
+          this.rivalBlock,
+        );
+        this.deathDashIndex += 1;
+      }
     }
 
     if (!control.move) {
@@ -348,7 +368,18 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setZoom(1);
   }
 
-  private makeAbilityContext(now: number, delta: number): AbilityContext {
+  private liveAbilityAim(frame: { ability1Aiming: boolean; ability1Aim: Phaser.Math.Vector2 }): { x: number; y: number } | undefined {
+    if (frame.ability1Aiming && frame.ability1Aim.lengthSq() > 0) {
+      return { x: frame.ability1Aim.x, y: frame.ability1Aim.y };
+    }
+    return this.abilityAim;
+  }
+
+  private makeAbilityContext(
+    now: number,
+    delta: number,
+    aimOverride = this.abilityAim,
+  ): AbilityContext {
     return {
       scene: this,
       now,
@@ -362,7 +393,7 @@ export class BattleScene extends Phaser.Scene {
         this.block.setHeld(now, this.ninja, false);
       },
       rivalBlock: this.rivalBlock,
-      aimOverride: this.abilityAim,
+      aimOverride,
     };
   }
 

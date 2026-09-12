@@ -1,14 +1,17 @@
 import { COLE } from '../config/cole';
+import { DEATH } from '../config/death';
 import { NINJA } from '../config/ninja';
 import { HeroCombatConfig } from '../config/hero';
 import { HeroAbilityKit } from './abilities/types';
 import { NINJA_ABILITY_KIT } from './abilities/ninja/kit';
 import { COLE_ABILITY_KIT } from './abilities/cole/kit';
+import { DEATH_ABILITY_KIT } from './abilities/death/kit';
 import { drawNinja } from './drawNinja';
 import { drawCole } from './drawCole';
+import { drawDeath } from './drawDeath';
 import { HeroDrawFn } from './heroDraw';
 
-export type HeroId = 'ninja' | 'cole';
+export type HeroId = 'ninja' | 'cole' | 'death';
 
 export type PlayableHero = {
   id: HeroId;
@@ -32,6 +35,13 @@ export const PLAYABLE_HEROES: Record<HeroId, PlayableHero> = {
     kit: COLE_ABILITY_KIT,
     draw: drawCole,
     handSparks: true,
+  },
+  death: {
+    id: 'death',
+    stats: DEATH,
+    kit: DEATH_ABILITY_KIT,
+    draw: drawDeath,
+    handSparks: false,
   },
 };
 

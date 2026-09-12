@@ -30,6 +30,10 @@ export class DashController {
     return this.chargeCap;
   }
 
+  get direction(): Phaser.Math.Vector2 {
+    return this.dir;
+  }
+
   tryStart(now: number, move: Phaser.Math.Vector2, aim: Phaser.Math.Vector2, ninja: NinjaBody): boolean {
     this.tickRecharge(now);
     if (this.charges <= 0 || this.isActive(now) || ninja.status.isBlockStunned(now)) {
