@@ -292,6 +292,7 @@ export class QuickAttack {
           dirY: enemy.y - attacker.y || attacker.aim.y,
           step: 3,
           heavy: true,
+          sourceKind: 'light',
         },
         defenderBlock,
       );

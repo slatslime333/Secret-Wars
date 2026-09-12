@@ -2,7 +2,12 @@ import Phaser from 'phaser';
 import { ARENA } from '../config/arena';
 import { DEV_CHEATS, resetDevCheats } from '../debug/devCheats';
 import { MinionWorld } from '../minions/MinionWorld';
-import { getSelectedHero, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { getSelectedHero, PLAYABLE_HEROES, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { MATCH } from '../config/match';
+import { Progression } from '../match/Progression';
+import { CombatStatsTracker } from '../match/CombatStatsTracker';
+import { onCombatDamage } from '../combat/damageEvents';
+import type { TeamId } from '../config/hero';
 import { RivalBrain } from '../ai/RivalBrain';
 import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
@@ -28,11 +33,20 @@ import { COLORS, FONTS, hex } from '../ui/theme';
 import { isTouchPrimary } from '../device';
 import { fadeToScene } from './fadeToScene';
 
-/** Ninja vs rival Ninja. Dev menu can spawn or remove the CPU. */
+/** Combat sandbox. PLAY uses MatchScene; this stays the Play Test pit. */
 export class BattleScene extends Phaser.Scene {
   private returning = false;
   private ninja!: NinjaBody;
   private rival?: NinjaBody;
+  private cpuHeroId: HeroId = 'ninja';
+  private minionTeam: TeamId = 'alpha';
+  private minionQty = 1;
+  private sandboxPaused = false;
+  private progression!: Progression;
+  private sandboxStats = new CombatStatsTracker();
+  private offDamage?: () => void;
+  private debugText?: Phaser.GameObjects.Text;
+  private spawnDebug?: Phaser.GameObjects.Graphics;
   private rivalCollider?: Phaser.Physics.Arcade.Collider;
   private inputReader!: BattleInput;
   private marker!: HitMarker;
@@ -79,6 +93,22 @@ export class BattleScene extends Phaser.Scene {
       handSparks: hero.handSparks,
       team: 'alpha',
     });
+    this.progression = new Progression(this.ninja);
+    this.sandboxStats = new CombatStatsTracker();
+    this.sandboxStats.register(this.ninja, { instanceId: 'playtest-player', player: true });
+    this.offDamage = onCombatDamage((event) => this.sandboxStats.recordDamage(event));
+    this.debugText = this.add
+      .text(16, 128, '', {
+        fontFamily: FONTS.body,
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: hex(COLORS.paper),
+        stroke: hex(COLORS.ink),
+        strokeThickness: 3,
+      })
+      .setScrollFactor(0)
+      .setDepth(130);
+    this.spawnDebug = this.add.graphics().setDepth(3);
     this.marker = new HitMarker(this);
     this.attacks = new QuickAttack(this, this.marker);
     this.block = new BlockController(this);
@@ -99,6 +129,8 @@ export class BattleScene extends Phaser.Scene {
     this.devMenu = new DevMenu(this, {
       onToggleCpu: () => this.toggleCpu(),
       cpuPresent: () => Boolean(this.rival),
+      cpuHeroId: () => this.cpuHeroId,
+      onSetCpuHero: (id) => this.setCpuHero(id),
       onSwapHero: (id) => this.swapHero(id),
       onHeal: () => this.ninja.healFull(),
       onRefillAmmo: () => this.ninja.refillAmmo(),
@@ -108,6 +140,20 @@ export class BattleScene extends Phaser.Scene {
       onSpawnMixed: (team) => this.minions.spawnMixed(team),
       onClearMinions: () => this.minions.clear(),
       onClearBattlefield: () => this.clearBattlefield(),
+      minionTeam: () => this.minionTeam,
+      onCycleMinionTeam: () => {
+        this.minionTeam = this.minionTeam === 'alpha' ? 'bravo' : 'alpha';
+      },
+      minionCount: () => this.minionQty,
+      onCycleMinionCount: () => {
+        this.minionQty = this.minionQty === 1 ? 4 : this.minionQty === 4 ? 6 : 1;
+      },
+      onResetMatch: () => this.restartBattle(),
+      onForceWave: () => this.minions.spawnDraftWave(),
+      onTogglePause: () => this.toggleSandboxPause(),
+      paused: () => this.sandboxPaused,
+      onGiveXp: () => this.progression.grantXp(MATCH.xp.debugGrant),
+      onGiveLevel: () => this.progression.giveLevel(),
       onCheatsChanged: () => {
         if (DEV_CHEATS.noCooldowns) {
           this.abilities.resetCooldowns();
@@ -152,11 +198,18 @@ export class BattleScene extends Phaser.Scene {
       this.abilityWorld.destroy();
       this.minions.destroy();
       this.abilityTray?.destroy();
+      this.offDamage?.();
     });
   }
 
   update(_time: number, delta: number): void {
     const now = this.time.now;
+    this.drawSandboxDebug(now);
+    if (this.sandboxPaused) {
+      this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
+      this.syncAbilityUi(now);
+      return;
+    }
     this.ninja.syncView();
     this.rival?.syncView();
     const everyone = this.allCombatants();
@@ -344,7 +397,15 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     const pad = ARENA.teamSpawns.bravo;
-    this.rival = new NinjaBody(this, pad.x, pad.y, { rival: true, team: 'bravo' });
+    const hero = PLAYABLE_HEROES[this.cpuHeroId];
+    this.rival = new NinjaBody(this, pad.x, pad.y, {
+      rival: true,
+      team: 'bravo',
+      stats: hero.stats,
+      draw: hero.draw,
+      handSparks: hero.handSparks,
+    });
+    this.sandboxStats.register(this.rival, { instanceId: 'playtest-cpu', player: false });
     this.rival.setAim(pad.facingX, 0);
     this.rivalCollider = this.physics.add.collider(this.ninja.sprite, this.rival.sprite);
     this.rivalAttacks = new QuickAttack(this);
@@ -381,13 +442,61 @@ export class BattleScene extends Phaser.Scene {
     this.spawnCpu();
   }
 
+  private setCpuHero(id: HeroId): void {
+    this.cpuHeroId = id;
+    if (this.rival && !this.round.isLocked) {
+      this.removeCpu();
+      this.spawnCpu();
+    }
+  }
+
+  private toggleSandboxPause(): void {
+    this.sandboxPaused = !this.sandboxPaused;
+    if (this.sandboxPaused) {
+      this.physics.world.pause();
+    } else {
+      this.physics.world.resume();
+    }
+  }
+
+  private drawSandboxDebug(now: number): void {
+    this.spawnDebug?.clear();
+    if (DEV_CHEATS.showSpawns) {
+      this.spawnDebug?.lineStyle(2, COLORS.yellow, 0.7);
+      for (const team of ['alpha', 'bravo'] as const) {
+        for (const lane of ['top', 'mid', 'bottom'] as const) {
+          const pad = ARENA.laneSpawns[team][lane];
+          this.spawnDebug?.strokeCircle(pad.x, pad.y, ARENA.spawnRadius);
+        }
+      }
+    }
+    const bits: string[] = [];
+    if (DEV_CHEATS.showXpInfo) {
+      bits.push(`LV ${this.progression.level}  XP ${Math.floor(this.progression.xp)}/${this.progression.xpToNext || 'MAX'}`);
+    }
+    if (DEV_CHEATS.showWaveInfo) {
+      bits.push(`MINIONS ${this.minions.size}  A ${this.minions.livingOnTeam('alpha')}  B ${this.minions.livingOnTeam('bravo')}`);
+    }
+    if (DEV_CHEATS.showScore) {
+      bits.push('SCORE  sandbox — no match clock');
+    }
+    if (DEV_CHEATS.showDamageStats) {
+      const line = this.sandboxStats.lineOf(this.ninja);
+      if (line) {
+        bits.push(`DMG H${line.playerDamage}  L${Math.round(line.lightDamage)}  A${Math.round(line.abilityDamage)}`);
+      }
+    }
+    this.debugText?.setText(bits.join('\n'));
+    void now;
+  }
+
   private createChrome(): void {
     const width = this.scale.width;
     this.chromeBar = this.add.rectangle(width / 2, 22, width, 44, COLORS.ink, 0.78);
     this.chromeBar.setStrokeStyle(2, COLORS.paper).setScrollFactor(0).setDepth(99);
 
     this.titleText = this.add
-      .text(22, 22, `SECRET WARS  //  ${this.ninja.stats.displayName.toUpperCase()} VS NINJA`, {
+      .text(22, 22, `PLAY TEST  //  ${this.ninja.stats.displayName.toUpperCase()}`, {
         fontFamily: FONTS.display,
         fontSize: '15px',
         color: hex(COLORS.paper),
@@ -503,7 +612,9 @@ export class BattleScene extends Phaser.Scene {
     if (this.rival) {
       this.rivalCollider = this.physics.add.collider(this.ninja.sprite, this.rival.sprite);
     }
-    this.titleText?.setText(`SECRET WARS  //  ${hero.stats.displayName.toUpperCase()} VS NINJA`);
+    this.progression = new Progression(this.ninja);
+    this.sandboxStats.register(this.ninja, { instanceId: 'playtest-player', player: true });
+    this.titleText?.setText(`PLAY TEST  //  ${hero.stats.displayName.toUpperCase()}`);
   }
 
   private clearBattlefield(): void {

@@ -7,6 +7,7 @@ import { spawnCombatCallout } from '../../effects/combatCallout';
 import { COLORS } from '../../ui/theme';
 import { BlockController } from '../../combat/BlockController';
 import { HitKind } from '../../combat/Hurtbox';
+import type { DamageSourceKind } from '../../combat/damageEvents';
 import { NinjaBody } from '../NinjaBody';
 
 export type AbilityHitProfile = {
@@ -24,6 +25,8 @@ export type AbilityHitProfile = {
   hitStopMs?: number;
   launchCap?: number;
   receivedKnockbackMul?: number;
+  sourceKind?: DamageSourceKind;
+  abilityId?: string;
 };
 
 /**
@@ -78,6 +81,11 @@ export const resolveAbilityHit = (
     hitStopMs: profile.hitStopMs,
     launchCap: profile.launchCap,
     receivedKnockbackMul: profile.receivedKnockbackMul,
+    source: {
+      attacker,
+      kind: profile.sourceKind ?? 'ability',
+      abilityId: profile.abilityId,
+    },
   });
   if (!profile.skipSpark) {
     spawnHitSpark(scene, defender.x + (profile.dirX / length) * 12, defender.y + (profile.dirY / length) * 12, {

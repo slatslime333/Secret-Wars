@@ -5,7 +5,9 @@ import { getViewportSize } from './device';
 import { initOrientationHandling } from './orientation';
 import { BattleScene } from './scenes/BattleScene';
 import { BootScene } from './scenes/BootScene';
+import { CharacterSelectScene } from './scenes/CharacterSelectScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
+import { MatchScene } from './scenes/MatchScene';
 import { SettingsScene } from './scenes/SettingsScene';
 import { TitleScene } from './scenes/TitleScene';
 import { getGameSize } from './ui/theme';
@@ -56,7 +58,7 @@ const game = new Phaser.Game({
       debug: false,
     },
   },
-  scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, BattleScene],
+  scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, CharacterSelectScene, BattleScene, MatchScene],
 });
 
 (window as Window & { secretWars?: Phaser.Game }).secretWars = game;

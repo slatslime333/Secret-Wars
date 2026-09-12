@@ -98,6 +98,10 @@ export class BattleHud {
     this.verbText.setX(width - 30);
   }
 
+  placeCombo(x: number, y: number): void {
+    this.comboText.setPosition(x, y);
+  }
+
   sync(
     ninja: NinjaBody,
     rival: NinjaBody | undefined,
