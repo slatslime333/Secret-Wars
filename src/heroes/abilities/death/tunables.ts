@@ -23,7 +23,7 @@ export const DEATH_DASH = {
 } as const;
 
 export const DEATH_GUN = {
-  cooldownMs: 16000,
+  cooldownMs: 14500,
   bullets: 15,
   intervalMs: 350,
   speed: 500,
@@ -31,21 +31,22 @@ export const DEATH_GUN = {
   lifetimeMs: 5000,
   damageMul: 0.38,
   knockbackMul: 0.35,
-  /** Radians of random aim cone. ~5° either side — not a laser. */
-  spreadRad: 0.09,
+  /** Radians of random aim cone. ~7.5° either side — readable spray, not a laser. */
+  spreadRad: 0.13,
 } as const;
 
 export const DEATH_SMASH = {
-  cooldownMs: 8600,
+  cooldownMs: 7000,
   animMs: 760,
   impactAt: 430,
   radius: Math.round(NINJA_BASE_RANGE * 1.08),
   damageMul: 1.48,
   /**
-   * Very strong shove, not a map launch. 1.6 sent bodies ~across a lane.
-   * Distance ≈ (knockbackPower * mul)^2 / (2 * COMBAT.bodyDrag).
+   * Aimed shove along the smash, not a sideways sweep.
+   * launchCap keeps a running target from stacking into a map launch.
    */
-  knockbackMul: 1.08,
+  knockbackMul: 1.22,
+  launchCap: 310,
   stunMs: 1300,
   batScale: 2.55,
   windupRad: 2.15,

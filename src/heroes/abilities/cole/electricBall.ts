@@ -86,6 +86,7 @@ const resolveBallHit = (
   if (kind !== 'hit') {
     return;
   }
+  primary.status.applySlow(now, COLE_BALL.slowMs, COLE_BALL.slowMul);
 
   spawnLightningBolt(scene, caster.x, caster.y, primary.x, primary.y, { heavy: true, life: 180 });
   spawnShockwaveRing(scene, x, y, COLE_BALL.explodeRadius);
