@@ -1,12 +1,28 @@
+import type { TeamId } from './hero';
+
 /**
  * Medium battlefield: frequent contact, room to disengage.
- * Camera follows Ninja; HUD and sticks stay viewport-fixed.
+ * Camera follows the player; HUD and sticks stay viewport-fixed.
+ *
+ * Team pads sit at opposite ends so 1v1 and future 3v3 share one layout.
+ * Minion pads sit just inward — wave spawning can reuse them later.
  */
+export const TEAM_SPAWNS: Record<TeamId, { x: number; y: number; facingX: number }> = {
+  alpha: { x: 168, y: 750, facingX: 1 },
+  bravo: { x: 1432, y: 750, facingX: -1 },
+};
+
+export const MINION_SPAWNS: Record<TeamId, { x: number; y: number; facingX: number }> = {
+  alpha: { x: 280, y: 750, facingX: 1 },
+  bravo: { x: 1320, y: 750, facingX: -1 },
+};
+
 export const ARENA = {
   width: 1600,
   height: 1500,
   wallThickness: 40,
-  playerSpawn: { x: 550, y: 750 },
-  /** On-screen to the right so the rival Ninja walks in immediately. */
-  enemySpawn: { x: 1050, y: 750 },
+  teamSpawns: TEAM_SPAWNS,
+  minionSpawns: MINION_SPAWNS,
+  playerSpawn: TEAM_SPAWNS.alpha,
+  enemySpawn: TEAM_SPAWNS.bravo,
 } as const;

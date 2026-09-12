@@ -8,6 +8,8 @@ import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
 import { drawColeElectricity } from './drawCole';
 import type { HeroDrawFn } from './heroDraw';
+import { DEV_CHEATS } from '../debug/devCheats';
+import { MINION } from '../config/minion';
 
 export type FighterOptions = {
   rival?: boolean;
@@ -157,6 +159,9 @@ export class NinjaBody {
     if (this.down) {
       return;
     }
+    if (DEV_CHEATS.godMode && this.stats.role !== 'minion') {
+      return;
+    }
     const now = this.now();
     const body = this.physics();
     if (!body) {
@@ -165,13 +170,16 @@ export class NinjaBody {
     this.health = Math.max(0, this.health - options.damage);
     this.drainStamina(options.staminaDamage, now);
     const length = Math.hypot(options.dirX, options.dirY) || 1;
-    const power = options.knockback;
+    const minion = this.stats.role === 'minion';
+    const power = options.knockback * (minion ? MINION.hitKnockbackMul : 1);
     const hitStopMs =
       options.hitStopMs ??
       (options.clash || options.step === 3 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs);
     body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
     this.launch(options.dirX / length, options.dirY / length, power);
-    if (options.hitReactionMs !== undefined) {
+    if (minion) {
+      this.status.applyStun(now, options.hitReactionMs ?? MINION.hitReactionMs);
+    } else if (options.hitReactionMs !== undefined) {
       this.status.applyStun(now, options.hitReactionMs);
     } else {
       this.status.applyHitReaction(now, options.step);
@@ -321,6 +329,7 @@ export class NinjaBody {
           comboStep,
           hitFlash: this.status.isFlashingHit(this.now()),
           rival: this.rival,
+          team: this.team,
         });
         this.art.setPosition(
           lungeX * swordAnimState.lungeFrac,
@@ -370,6 +379,7 @@ export class NinjaBody {
           comboStep: 1,
           hitFlash: this.status.isFlashingHit(this.now()),
           rival: this.rival,
+          team: this.team,
           armLiftLeft: this.armLiftLeft,
           armLiftRight: this.armLiftRight,
           batScale: pose.batScale,
@@ -472,8 +482,21 @@ export class NinjaBody {
     return this.ammo > 0 && !this.isReloading(now) && !this.status.cannotAttack(now);
   }
 
+  healFull(): void {
+    this.health = this.stats.maxHealth;
+    this.stamina = this.stats.maxStamina;
+  }
+
+  refillAmmo(): void {
+    this.ammo = this.stats.ammoMax;
+    this.reloadEndsAt = 0;
+  }
+
   trySpendAmmo(now: number): boolean {
     this.tickAmmo(now);
+    if (DEV_CHEATS.infiniteAmmo && this.stats.role !== 'minion') {
+      return true;
+    }
     if (this.ammo <= 0 || now < this.reloadEndsAt) {
       return false;
     }
@@ -563,6 +586,7 @@ export class NinjaBody {
       comboStep: 1,
       hitFlash: this.status.isFlashingHit(this.now()),
       rival: this.rival,
+      team: this.team,
     });
   }
 

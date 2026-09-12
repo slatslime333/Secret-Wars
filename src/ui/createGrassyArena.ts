@@ -89,8 +89,8 @@ export const createGrassyArena = (scene: Phaser.Scene, playerLabel = 'NINJA'): v
   drawStonePerimeter(graphics, width, height, wallThickness);
 
   // Spawn pads embedded in the turf
-  drawTurfSpawnPad(scene, ARENA.playerSpawn.x, ARENA.playerSpawn.y, COLORS.cyan, playerLabel);
-  drawTurfSpawnPad(scene, ARENA.enemySpawn.x, ARENA.enemySpawn.y, COLORS.redBright, 'RIVAL');
+  drawTurfSpawnPad(scene, ARENA.playerSpawn.x, ARENA.playerSpawn.y, COLORS.cyan, `${playerLabel} // ALPHA`);
+  drawTurfSpawnPad(scene, ARENA.enemySpawn.x, ARENA.enemySpawn.y, COLORS.redBright, 'BRAVO');
 };
 
 const drawStonePerimeter = (

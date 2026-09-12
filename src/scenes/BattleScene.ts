@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
 import { ARENA } from '../config/arena';
+import { DEV_CHEATS, resetDevCheats } from '../debug/devCheats';
+import { MinionWorld } from '../minions/MinionWorld';
+import { getSelectedHero, setSelectedHeroId, type HeroId } from '../heroes/roster';
 import { RivalBrain } from '../ai/RivalBrain';
 import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
@@ -9,7 +12,6 @@ import { AbilityController } from '../heroes/abilities/AbilityController';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { AbilityContext } from '../heroes/abilities/types';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
-import { getSelectedHero } from '../heroes/roster';
 import { COLE_BALL } from '../heroes/abilities/cole/tunables';
 import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
 import { NinjaBody } from '../heroes/NinjaBody';
@@ -50,6 +52,7 @@ export class BattleScene extends Phaser.Scene {
   private menuButton?: ActionButton;
   private abilityAim?: { x: number; y: number };
   private deathDashIndex = 0;
+  private minions!: MinionWorld;
 
   constructor() {
     super('Battle');
@@ -57,6 +60,7 @@ export class BattleScene extends Phaser.Scene {
 
   create(): void {
     this.returning = false;
+    resetDevCheats();
     ensureAbilityIcons(this);
     const hero = getSelectedHero();
     createGrassyArena(this, hero.stats.displayName.toUpperCase());
@@ -78,6 +82,7 @@ export class BattleScene extends Phaser.Scene {
     this.block = new BlockController(this);
     this.dash = new DashController(this, hero.stats.dashMaxCharges);
     this.abilityWorld = new AbilityWorld();
+    this.minions = new MinionWorld(this);
     this.abilities = new AbilityController(hero.kit);
     this.inputReader = new BattleInput(this, () => this.round.isLocked, hero.kit, hero.stats.dashMaxCharges);
     if (!isTouchPrimary()) {
@@ -92,6 +97,20 @@ export class BattleScene extends Phaser.Scene {
     this.devMenu = new DevMenu(this, {
       onToggleCpu: () => this.toggleCpu(),
       cpuPresent: () => Boolean(this.rival),
+      onSwapHero: (id) => this.swapHero(id),
+      onHeal: () => this.ninja.healFull(),
+      onRefillAmmo: () => this.ninja.refillAmmo(),
+      onResetPos: () => this.resetPlayerPos(),
+      onResetCooldowns: () => this.abilities.resetCooldowns(),
+      onSpawnMinion: (kind, team, count) => this.minions.spawnMany(kind, team, count),
+      onSpawnMixed: (team) => this.minions.spawnMixed(team),
+      onClearMinions: () => this.minions.clear(),
+      onClearBattlefield: () => this.clearBattlefield(),
+      onCheatsChanged: () => {
+        if (DEV_CHEATS.noCooldowns) {
+          this.abilities.resetCooldowns();
+        }
+      },
     });
 
     this.cameras.main.setBounds(0, 0, ARENA.width, ARENA.height);
@@ -129,6 +148,7 @@ export class BattleScene extends Phaser.Scene {
       window.removeEventListener('keydown', onDomKey);
       this.abilities.destroy();
       this.abilityWorld.destroy();
+      this.minions.destroy();
       this.abilityTray?.destroy();
     });
   }
@@ -137,6 +157,7 @@ export class BattleScene extends Phaser.Scene {
     const now = this.time.now;
     this.ninja.syncView();
     this.rival?.syncView();
+    const everyone = this.allCombatants();
     if (this.rival && this.rivalBlock) {
       this.rivalBlock.sync(now, this.rival);
     }
@@ -168,7 +189,9 @@ export class BattleScene extends Phaser.Scene {
       this.ninja.setAim(frame.aim);
     }
     this.abilities.update(this.makeAbilityContext(now, delta, this.liveAbilityAim(frame)));
-    this.abilityWorld.update(now, this.livingFighters(), delta);
+    this.abilityWorld.update(now, everyone, delta);
+    this.minions.update(now, delta, this.livingFighters(), this.abilityWorld);
+    this.minions.drawDebug(DEV_CHEATS.showRanges, DEV_CHEATS.showAi, DEV_CHEATS.showHitboxes, now);
 
     const control = this.abilities.control;
 
@@ -291,13 +314,15 @@ export class BattleScene extends Phaser.Scene {
     if (this.rival) {
       return;
     }
-    this.rival = new NinjaBody(this, ARENA.enemySpawn.x, ARENA.enemySpawn.y, { rival: true, team: 'bravo' });
+    const pad = ARENA.teamSpawns.bravo;
+    this.rival = new NinjaBody(this, pad.x, pad.y, { rival: true, team: 'bravo' });
+    this.rival.setAim(pad.facingX, 0);
     this.rivalCollider = this.physics.add.collider(this.ninja.sprite, this.rival.sprite);
     this.rivalAttacks = new QuickAttack(this);
     this.rivalBlock = new BlockController(this);
     this.rivalDash = new DashController(this);
     this.brain = new RivalBrain(this.rivalAttacks, this.rivalBlock, this.rivalDash, this.block);
-    this.devMenu?.sync(true);
+    this.devMenu?.sync();
   }
 
   private removeCpu(): void {
@@ -313,7 +338,7 @@ export class BattleScene extends Phaser.Scene {
     this.rivalBlock = undefined;
     this.rivalDash = undefined;
     this.brain = undefined;
-    this.devMenu?.sync(false);
+    this.devMenu?.sync();
   }
 
   private toggleCpu(): void {
@@ -385,7 +410,7 @@ export class BattleScene extends Phaser.Scene {
       now,
       delta,
       caster: this.ninja,
-      enemies: this.rival && !this.rival.down ? [this.rival] : [],
+      enemies: this.livingEnemies(),
       world: this.abilityWorld,
       interruptCombat: () => {
         this.attacks.interrupt(now);
@@ -397,12 +422,60 @@ export class BattleScene extends Phaser.Scene {
     };
   }
 
+  private allCombatants(): NinjaBody[] {
+    const list = [this.ninja, ...this.minions.allBodies()];
+    if (this.rival) {
+      list.push(this.rival);
+    }
+    return list;
+  }
+
   private livingFighters(): NinjaBody[] {
-    return this.rival ? [this.ninja, this.rival] : [this.ninja];
+    return this.allCombatants().filter((unit) => !unit.down);
   }
 
   private livingEnemies(): NinjaBody[] {
-    return this.rival && !this.rival.down ? [this.rival] : [];
+    return this.livingFighters().filter((unit) => unit.team !== this.ninja.team);
+  }
+
+  private resetPlayerPos(): void {
+    const pad = ARENA.teamSpawns.alpha;
+    this.ninja.sprite.setPosition(pad.x, pad.y);
+    this.ninja.body?.reset(pad.x, pad.y);
+    this.ninja.setAim(pad.facingX, 0);
+  }
+
+  private swapHero(id: HeroId): void {
+    setSelectedHeroId(id);
+    const hero = getSelectedHero();
+    const x = this.ninja.x;
+    const y = this.ninja.y;
+    this.attacks.interrupt(this.time.now);
+    this.abilities.destroy();
+    this.ninja.destroy();
+    this.ninja = new NinjaBody(this, x, y, {
+      stats: hero.stats,
+      draw: hero.draw,
+      handSparks: hero.handSparks,
+      team: 'alpha',
+    });
+    this.abilities = new AbilityController(hero.kit);
+    this.dash = new DashController(this, hero.stats.dashMaxCharges);
+    this.cameras.main.startFollow(this.ninja.sprite, true, 0.16, 0.16);
+    this.rivalCollider?.destroy();
+    if (this.rival) {
+      this.rivalCollider = this.physics.add.collider(this.ninja.sprite, this.rival.sprite);
+    }
+    this.titleText?.setText(`SECRET WARS  //  ${hero.stats.displayName.toUpperCase()} VS NINJA`);
+  }
+
+  private clearBattlefield(): void {
+    this.minions.clear();
+    this.removeCpu();
+    this.ninja.healFull();
+    this.ninja.refillAmmo();
+    this.abilities.resetCooldowns();
+    this.resetPlayerPos();
   }
 
   private syncAbilityUi(now: number): void {
