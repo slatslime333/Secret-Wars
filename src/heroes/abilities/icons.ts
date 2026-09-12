@@ -5,6 +5,9 @@ export const ABILITY_ICON = {
   smokeBomb: 'ability-icon-smoke-bomb',
   backflipKick: 'ability-icon-backflip-kick',
   ninjaTornado: 'ability-icon-ninja-tornado',
+  electricBall: 'ability-icon-electric-ball',
+  discharge: 'ability-icon-discharge',
+  thunderstorm: 'ability-icon-thunderstorm',
 } as const;
 
 const SIZE = 128;
@@ -15,6 +18,9 @@ export const ensureAbilityIcons = (scene: Phaser.Scene): void => {
   drawIfMissing(scene, ABILITY_ICON.smokeBomb, drawSmokeBomb);
   drawIfMissing(scene, ABILITY_ICON.backflipKick, drawBackflipKick);
   drawIfMissing(scene, ABILITY_ICON.ninjaTornado, drawNinjaTornado);
+  drawIfMissing(scene, ABILITY_ICON.electricBall, drawElectricBall);
+  drawIfMissing(scene, ABILITY_ICON.discharge, drawDischarge);
+  drawIfMissing(scene, ABILITY_ICON.thunderstorm, drawThunderstorm);
 };
 
 const drawIfMissing = (
@@ -232,5 +238,77 @@ const drawNinjaTornado = (ctx: CanvasRenderingContext2D, size: number): void => 
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(c, c, c - 6, 2.2, 3.6);
+  ctx.stroke();
+};
+
+const drawElectricBall = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = '#102030';
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#4aa8ff';
+  ctx.beginPath();
+  ctx.arc(c, c, 22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#dff4ff';
+  ctx.beginPath();
+  ctx.arc(c - 5, c - 6, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = cyan;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(c - 28, c + 8);
+  ctx.lineTo(c - 8, c - 10);
+  ctx.lineTo(c + 6, c + 4);
+  ctx.lineTo(c + 26, c - 12);
+  ctx.stroke();
+};
+
+const drawDischarge = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = cyan;
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.arc(c, c, 28, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = paper;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(c, c, 40, 0.2, 2);
+  ctx.stroke();
+  ctx.fillStyle = '#4aa8ff';
+  ctx.beginPath();
+  ctx.arc(c, c, 8, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+const drawThunderstorm = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = '#101820';
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2a3344';
+  ctx.beginPath();
+  ctx.ellipse(c, c - 18, 36, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = yellow;
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(c - 8, c - 10);
+  ctx.lineTo(c + 4, c + 8);
+  ctx.lineTo(c - 6, c + 10);
+  ctx.lineTo(c + 10, c + 32);
+  ctx.stroke();
+  ctx.strokeStyle = cyan;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(c + 16, c - 8);
+  ctx.lineTo(c + 22, c + 14);
   ctx.stroke();
 };

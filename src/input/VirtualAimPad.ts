@@ -8,7 +8,7 @@ export type VirtualAimPadOptions = {
   radius?: number;
   deadzone?: number;
   onPress?: () => void;
-  onRelease?: () => void;
+  onRelease?: (aim: Phaser.Math.Vector2) => void;
 };
 
 /**
@@ -21,7 +21,7 @@ export class VirtualAimPad {
   private readonly accent: number;
   private readonly deadzone: number;
   private readonly onPress?: () => void;
-  private readonly onRelease?: () => void;
+  private readonly onRelease?: (aim: Phaser.Math.Vector2) => void;
   private readonly pixel = new Phaser.Math.Vector2();
   private readonly vector = new Phaser.Math.Vector2();
   private readonly art: Phaser.GameObjects.Graphics;
@@ -171,6 +171,7 @@ export class VirtualAimPad {
     if (pointer.id !== this.pointerId) {
       return;
     }
+    const released = this.vector.clone();
     this.pointerId = undefined;
     this.pixel.set(0, 0);
     this.vector.set(0, 0);
@@ -178,7 +179,7 @@ export class VirtualAimPad {
     this.knob.setPosition(this.x, this.y);
     this.label.setAlpha(this.dimmed ? 0.4 : 1);
     this.stopListening();
-    this.onRelease?.();
+    this.onRelease?.(released);
   }
 
   private stopListening(): void {

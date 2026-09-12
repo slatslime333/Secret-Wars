@@ -17,6 +17,9 @@ export class CombatStatus {
   private hitStopUntil = 0;
   private lungeUntil = 0;
   private controlLockUntil = 0;
+  private slowUntil = 0;
+  private slowMul = 1;
+  private paralyzeUntil = 0;
   private zone: AreaModifier = OPEN_ZONE;
   private lastSwingAt = -9999;
   private lastSwingStep: ComboStep = 1;
@@ -81,6 +84,29 @@ export class CombatStatus {
     this.lungeUntil = now + durationMs;
   }
 
+  /** Reusable move slow. `moveMul` 0.8 = 20% slower. */
+  applySlow(now: number, durationMs: number, moveMul: number): void {
+    if (now + durationMs >= this.slowUntil) {
+      this.slowUntil = now + durationMs;
+      this.slowMul = moveMul;
+    } else if (moveMul < this.slowMul) {
+      this.slowMul = moveMul;
+    }
+  }
+
+  applyParalyze(now: number, durationMs: number): void {
+    this.paralyzeUntil = Math.max(this.paralyzeUntil, now + durationMs);
+    this.applyStun(now, durationMs);
+  }
+
+  isSlowed(now: number): boolean {
+    return now < this.slowUntil;
+  }
+
+  isParalyzed(now: number): boolean {
+    return now < this.paralyzeUntil;
+  }
+
   isHitReacting(now: number): boolean {
     return now < this.hitReactionUntil;
   }
@@ -117,7 +143,8 @@ export class CombatStatus {
       this.isBlockStunned(now) ||
       this.isHitStopping(now) ||
       this.isClashLocked(now) ||
-      this.isControlLocked(now)
+      this.isControlLocked(now) ||
+      this.isParalyzed(now)
     );
   }
 
@@ -133,13 +160,17 @@ export class CombatStatus {
   }
 
   moveMultiplier(now: number): number {
+    if (this.isParalyzed(now)) {
+      return 0;
+    }
+    const slow = now < this.slowUntil ? this.slowMul : 1;
     if (this.isBlockStunned(now) || this.isHitStopping(now)) {
-      return 0.2 * this.zone.moveMul;
+      return 0.2 * this.zone.moveMul * slow;
     }
     if (this.isHitReacting(now)) {
-      return COMBAT.hitMoveMultiplier * this.zone.moveMul;
+      return COMBAT.hitMoveMultiplier * this.zone.moveMul * slow;
     }
-    return this.zone.moveMul;
+    return this.zone.moveMul * slow;
   }
 
   extraSwingDelay(now: number): number {

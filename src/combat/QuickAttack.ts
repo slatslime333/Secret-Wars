@@ -1,12 +1,15 @@
 import Phaser from 'phaser';
 import { COMBAT, ComboStep, comboStepOf } from '../config/combat';
-import { NINJA } from '../config/ninja';
+import { COLE_ATTACK, COLE_SHOCKWAVE } from '../heroes/abilities/cole/tunables';
 import { ComboTracker } from './ComboTracker';
 import { HitMarker } from './HitMarker';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { COLORS } from '../ui/theme';
 import { spawnCombatCallout } from '../effects/combatCallout';
+import { spawnLightningArc, spawnShockwaveRing } from '../effects/lightning';
 import { resolveMelee } from './resolveMelee';
+import { resolveAbilityHit } from '../heroes/abilities/resolveAbilityHit';
+import { isInAttackArc } from './hitDetection';
 import { BlockController } from './BlockController';
 
 type PendingImpact = {
@@ -50,11 +53,11 @@ export class QuickAttack {
     held: boolean,
     pressed: boolean,
     attacker: NinjaBody,
-    defender: NinjaBody | undefined,
+    enemies: NinjaBody[],
     defenderBlock?: BlockController,
   ): void {
     attacker.tickAmmo(now);
-    this.resolveImpactIfReady(now, attacker, defender, defenderBlock);
+    this.resolveImpactIfReady(now, attacker, enemies, defenderBlock);
 
     const tapQueued = this.pendingTaps > 0;
     this.combo.expire(now, COMBAT.comboWindowMs, held || tapQueued || pressed);
@@ -102,21 +105,37 @@ export class QuickAttack {
     }
 
     const delay = Math.round(
-      NINJA.attackCooldownMs * COMBAT.attackCooldownMultiplier * attacker.status.attackSlowMultiplier(now),
+      attacker.stats.attackCooldownMs * COMBAT.attackCooldownMultiplier * attacker.status.attackSlowMultiplier(now),
     );
     this.nextSwingAt = now + delay;
     this.lastSwingAt = now;
     this.lastSwingStep = step;
 
-    attacker.playAttackAnimation(now, step);
-    this.spawnWhiteLineSlice(attacker, step);
+    if (attacker.heroId === 'cole') {
+      const span = attacker.heroId === 'cole' ? COLE_ATTACK.animMs : 220;
+      attacker.status.applySlow(now, span, COLE_ATTACK.lightSlowMul);
+      attacker.playCustomAttack(now, span, (frac) => ({
+        armLiftLeft: frac < 0.55 ? Math.sin(frac * Math.PI) : 0.15,
+        armLiftRight: frac >= 0.35 ? Math.sin((frac - 0.2) * Math.PI) : 0,
+        swayX: Math.sin(frac * Math.PI * 2) * 5,
+      }));
+      if (step === 3) {
+        spawnShockwaveRing(this.scene, attacker.x, attacker.y, COLE_SHOCKWAVE.radius);
+      } else {
+        const half = (attacker.stats.attackArcDegrees * Math.PI) / 360;
+        spawnLightningArc(this.scene, attacker.x, attacker.y, attacker.aim.x, attacker.aim.y, attacker.stats.attackRange, half);
+      }
+    } else {
+      attacker.playAttackAnimation(now, step);
+      this.spawnWhiteLineSlice(attacker, step);
+    }
     this.pendingImpact = { at: now + profile.impactDelayMs, step };
   }
 
   private resolveImpactIfReady(
     now: number,
     attacker: NinjaBody,
-    defender: NinjaBody | undefined,
+    enemies: NinjaBody[],
     defenderBlock?: BlockController,
   ): void {
     const pending = this.pendingImpact;
@@ -133,6 +152,15 @@ export class QuickAttack {
 
     attacker.applyLungeImpulse(now, pending.step);
 
+    if (attacker.heroId === 'cole') {
+      this.resolveColeImpact(now, attacker, enemies, pending.step, defenderBlock);
+      if (pending.step === 3) {
+        this.combo.reset();
+      }
+      return;
+    }
+
+    const defender = enemies[0];
     if (!defender || defender.down) {
       attacker.status.applyAttackRecovery(now, profile.recoveryMs);
       this.combo.reset();
@@ -151,6 +179,93 @@ export class QuickAttack {
     }
   }
 
+  private resolveColeImpact(
+    now: number,
+    attacker: NinjaBody,
+    enemies: NinjaBody[],
+    step: ComboStep,
+    defenderBlock?: BlockController,
+  ): void {
+    if (step === 3) {
+      this.resolveColeShockwave(now, attacker, enemies, defenderBlock);
+      return;
+    }
+    const half = (attacker.stats.attackArcDegrees * Math.PI) / 360;
+    let connected = false;
+    for (const enemy of enemies) {
+      if (enemy.down) {
+        continue;
+      }
+      if (
+        !isInAttackArc(
+          attacker.x,
+          attacker.y,
+          attacker.aim.x,
+          attacker.aim.y,
+          enemy.x,
+          enemy.y,
+          attacker.stats.attackRange + COMBAT.hitForgiveness,
+          half,
+          enemy.stats.bodyRadius,
+        )
+      ) {
+        continue;
+      }
+      const kind = resolveMelee(this.scene, now, attacker, enemy, step, defenderBlock, { alreadyClashed: connected });
+      if (kind === 'hit') {
+        enemy.status.applySlow(now, COLE_ATTACK.targetSlowMs, COLE_ATTACK.targetSlowMul);
+        connected = true;
+      }
+    }
+    if (!connected) {
+      attacker.status.applyAttackRecovery(now, COMBAT.combo[step].recoveryMs);
+      this.combo.reset();
+    }
+  }
+
+  private resolveColeShockwave(
+    now: number,
+    attacker: NinjaBody,
+    enemies: NinjaBody[],
+    defenderBlock?: BlockController,
+  ): void {
+    let connected = false;
+    for (const enemy of enemies) {
+      if (enemy.down) {
+        continue;
+      }
+      const dist = Math.hypot(enemy.x - attacker.x, enemy.y - attacker.y);
+      if (dist > COLE_SHOCKWAVE.radius + enemy.stats.bodyRadius) {
+        continue;
+      }
+      const t = Math.min(1, dist / COLE_SHOCKWAVE.radius);
+      const knockback = COLE_SHOCKWAVE.knockbackNear + (COLE_SHOCKWAVE.knockbackFar - COLE_SHOCKWAVE.knockbackNear) * t;
+      const kind = resolveAbilityHit(
+        this.scene,
+        now,
+        attacker,
+        enemy,
+        {
+          rawDamage: attacker.stats.attackDamage * COMBAT.combo[3].damageMultiplier,
+          knockback,
+          staminaDamage: COMBAT.combo[3].staminaDamage,
+          dirX: enemy.x - attacker.x || attacker.aim.x,
+          dirY: enemy.y - attacker.y || attacker.aim.y,
+          step: 3,
+          heavy: true,
+        },
+        defenderBlock,
+      );
+      if (kind === 'hit') {
+        connected = true;
+      }
+    }
+    if (!connected) {
+      attacker.status.applyAttackRecovery(now, COMBAT.combo[3].recoveryMs);
+      this.combo.reset();
+    }
+  }
+
   /**
    * White line slice grows with combo step so the finisher reads as a bigger cut.
    */
@@ -162,7 +277,7 @@ export class QuickAttack {
     const half = attackHalfFor(step);
     const startAngle = aimAngle - half;
     const totalArc = half * 2;
-    const radius = NINJA.attackRange * (0.82 + step * 0.08);
+    const radius = ninja.stats.attackRange * (0.82 + step * 0.08);
     const duration = 160 + step * 44;
     const rivalTint = ninja.rival;
 

@@ -11,10 +11,10 @@ export const NINJA_ABILITY_KIT: HeroAbilityKit = {
   ultimate: ninjaTornadoDef,
 };
 
-/** Current all-rounder identity. Future Ninja shifts toward a fast diver kit. */
+/** Fast support / disruptor. Numbers stay on the 70 baseline for now. */
 export const NINJA_HERO: HeroDefinition = {
   id: 'ninja',
   displayName: 'Ninja',
-  role: 'generalist',
+  role: 'support',
   abilities: NINJA_ABILITY_KIT,
 };

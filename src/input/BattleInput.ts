@@ -20,6 +20,8 @@ export type BattleFrame = {
   blockAimActive: boolean;
   dashPressed: boolean;
   ability1: boolean;
+  ability1Aim: Phaser.Math.Vector2;
+  ability1AimActive: boolean;
   ability2: boolean;
   ultimate: boolean;
 };
@@ -53,6 +55,9 @@ export class BattleInput {
   private readonly blockPad?: VirtualAimPad;
   private readonly dashButton?: CombatButton;
   private readonly ability1Button?: AbilityButton;
+  private readonly ability1Pad?: VirtualAimPad;
+  private readonly ability1Aim = new Phaser.Math.Vector2();
+  private ability1AimActive = false;
   private readonly ability2Button?: AbilityButton;
   private readonly ultimateButton?: AbilityButton;
   private readonly keys?: KeyMap;
@@ -113,14 +118,29 @@ export class BattleInput {
       this.dashButton.setRecovered(1);
 
       if (kit) {
-        this.ability1Button = new AbilityButton(
-          scene,
-          layout.ability1.x,
-          layout.ability1.y,
-          layout.abilityRadius,
-          kit.ability1.iconKey,
-          { onPress: () => { this.ability1Latched = true; } },
-        );
+        if (kit.ability1.aimOnRelease) {
+          this.ability1Pad = new VirtualAimPad(scene, layout.ability1.x, layout.ability1.y, {
+            label: 'BALL',
+            accent: kit.ability1.accent,
+            radius: layout.abilityRadius,
+            onRelease: (aim) => {
+              this.ability1AimActive = aim.length() >= INPUT.aimPadDeadzone;
+              if (this.ability1AimActive) {
+                this.ability1Aim.copy(aim).normalize();
+              }
+              this.ability1Latched = true;
+            },
+          });
+        } else {
+          this.ability1Button = new AbilityButton(
+            scene,
+            layout.ability1.x,
+            layout.ability1.y,
+            layout.abilityRadius,
+            kit.ability1.iconKey,
+            { onPress: () => { this.ability1Latched = true; } },
+          );
+        }
         this.ability2Button = new AbilityButton(
           scene,
           layout.ability2.x,
@@ -214,9 +234,11 @@ export class BattleInput {
     this.blockPad?.setPosition(layout.block.x, layout.block.y);
     this.dashButton?.setPosition(layout.dash.x, layout.dash.y);
     this.ability1Button?.setRadius(layout.abilityRadius);
+    this.ability1Pad?.setRadius(layout.abilityRadius);
     this.ability2Button?.setRadius(layout.abilityRadius);
     this.ultimateButton?.setRadius(layout.ultimateRadius);
     this.ability1Button?.setPosition(layout.ability1.x, layout.ability1.y);
+    this.ability1Pad?.setPosition(layout.ability1.x, layout.ability1.y);
     this.ability2Button?.setPosition(layout.ability2.x, layout.ability2.y);
     this.ultimateButton?.setPosition(layout.ultimate.x, layout.ultimate.y);
   }
@@ -285,6 +307,8 @@ export class BattleInput {
       blockAimActive,
       dashPressed,
       ability1,
+      ability1Aim: this.ability1Aim.clone(),
+      ability1AimActive: ability1 && this.ability1AimActive,
       ability2,
       ultimate,
     };
@@ -318,6 +342,8 @@ export class BattleInput {
   syncAbilities(states: AbilitySlotState[]): void {
     if (states[0]) {
       this.ability1Button?.sync(states[0]);
+      this.ability1Pad?.setRecovered(states[0].ready ? 1 : 1 - states[0].cooldownRatio);
+      this.ability1Pad?.setDimmed(!states[0].ready || states[0].consumed);
     }
     if (states[1]) {
       this.ability2Button?.sync(states[1]);
@@ -333,6 +359,7 @@ export class BattleInput {
     this.blockPad?.destroy();
     this.dashButton?.destroy();
     this.ability1Button?.destroy();
+    this.ability1Pad?.destroy();
     this.ability2Button?.destroy();
     this.ultimateButton?.destroy();
     this.scene.input?.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);

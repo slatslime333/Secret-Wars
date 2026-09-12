@@ -61,7 +61,7 @@ export class AbilityWorld {
         continue;
       }
       const inside = this.smokeZones.find((zone) => {
-        if (zone.owner === fighter) {
+        if (zone.owner.team === fighter.team) {
           return false;
         }
         const radius = this.currentSmokeRadius(zone, now);

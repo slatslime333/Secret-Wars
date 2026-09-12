@@ -191,7 +191,7 @@ export class SettingsScene extends Phaser.Scene {
           'Mouse  aim',
           `${keyboard.attack} / click  attack`,
           `${keyboard.block}  hold shield    ${keyboard.dash}  dash`,
-          `${keyboard.ability1} smoke   ${keyboard.ability2} kick   ${keyboard.ultimate} ultimate`,
+          `${keyboard.ability1} ability 1   ${keyboard.ability2} ability 2   ${keyboard.ultimate} ultimate`,
           'ESC  back / menu',
         ];
 

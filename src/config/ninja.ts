@@ -1,15 +1,17 @@
+import { COMBAT } from './combat';
+import { HeroCombatConfig } from './hero';
 import { NINJA_RATING, fromRating } from './ratings';
 
 const r = NINJA_RATING;
 
 /**
- * Ninja is the only Demo 1 hero: average generalist, 70/99 on every primary.
- * Converted values live here so combat code never hardcodes 70.
+ * Support / disruptor. Stats stay on the 70 baseline for now — identity
+ * lives in the kit and role tag, not a full rebalance.
  */
 export const NINJA = {
   id: 'ninja',
   displayName: 'Ninja',
-  role: 'Baseline generalist',
+  role: 'support' as const,
   rating: r,
   ratings: {
     health: r,
@@ -30,7 +32,10 @@ export const NINJA = {
   /** Higher rating = faster swings. Range is slow → fast milliseconds. */
   attackCooldownMs: Math.round(fromRating(r, 300, 160)),
   /** Low-to-medium melee. Not a long-range poke. */
-    attackRange: Math.round(fromRating(r, 78, 118)),
+  attackRange: Math.round(fromRating(r, 78, 118)),
+  attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 14,
   staminaRegenPerSecond: fromRating(r, 14, 26),
-} as const;
+  ammoMax: COMBAT.attackAmmoMax,
+  reloadMs: COMBAT.attackReloadMs,
+} as const satisfies HeroCombatConfig & { rating: number; ratings: Record<string, number> };
