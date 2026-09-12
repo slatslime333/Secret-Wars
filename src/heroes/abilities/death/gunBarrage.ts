@@ -89,16 +89,20 @@ class GunBarrageAbility implements ActiveAbility {
     const nx = aim.x / length;
     const ny = aim.y / length;
     caster.setAim(nx, ny);
+    const spread = (Math.random() - 0.5) * 2 * DEATH_GUN.spreadRad;
+    const shotAngle = Math.atan2(ny, nx) + spread;
+    const sx = Math.cos(shotAngle);
+    const sy = Math.sin(shotAngle);
     const muzzle = deathUziMuzzleOffset(facingFromAim(nx, ny), 0.35);
     const mx = caster.x + muzzle.x;
     const my = caster.y + muzzle.y;
-    spawnMuzzleFlash(scene, mx, my, nx, ny);
+    spawnMuzzleFlash(scene, mx, my, sx, sy);
     const shot = new Projectile(
       scene,
-      mx + nx * 6,
-      my + ny * 4,
-      nx * DEATH_GUN.speed,
-      ny * DEATH_GUN.speed,
+      mx + sx * 6,
+      my + sy * 4,
+      sx * DEATH_GUN.speed,
+      sy * DEATH_GUN.speed,
       DEATH_GUN.radius,
       DEATH_GUN.lifetimeMs,
       0xe8c070,
@@ -121,8 +125,8 @@ class GunBarrageAbility implements ActiveAbility {
               rawDamage: caster.stats.attackDamage * DEATH_GUN.damageMul,
               knockback: caster.stats.knockbackPower * DEATH_GUN.knockbackMul,
               staminaDamage: 2,
-              dirX: nx,
-              dirY: ny,
+              dirX: sx,
+              dirY: sy,
               step: 1,
               heavy: false,
             },

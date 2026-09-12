@@ -31,10 +31,12 @@ export const DEATH_GUN = {
   lifetimeMs: 5000,
   damageMul: 0.38,
   knockbackMul: 0.35,
+  /** Radians of random aim cone. ~5° either side — not a laser. */
+  spreadRad: 0.09,
 } as const;
 
 export const DEATH_SMASH = {
-  cooldownMs: 11000,
+  cooldownMs: 8600,
   animMs: 760,
   impactAt: 430,
   radius: Math.round(NINJA_BASE_RANGE * 1.08),

@@ -5,7 +5,7 @@ import { NINJA } from '../../../config/ninja';
  * can ship completely different radii, timings, and effects.
  */
 export const NINJA_SMOKE = {
-  cooldownMs: 15000,
+  cooldownMs: 10000,
   durationMs: 4000,
   expandMs: 280,
   /** 15% larger than Ninja's actual attack radius, not the body hitbox. */
@@ -19,7 +19,7 @@ export const NINJA_SMOKE = {
 } as const;
 
 export const NINJA_KICK = {
-  cooldownMs: 8000,
+  cooldownMs: 6300,
   dashDistance: 112,
   dashDurationMs: 125,
   maxTargets: 4,
@@ -28,14 +28,14 @@ export const NINJA_KICK = {
   /** Dash-corridor half-width shown while aiming. Matches segmentHitsCircle. */
   aimHalfWidth: NINJA.bodyRadius + NINJA.bodyRadius + 8,
   damageMul: 1.28,
-  knockbackMul: 4.55,
-  secondaryKnockbackMul: 3.45,
+  knockbackMul: 5.05,
+  secondaryKnockbackMul: 3.85,
   /** Lets the kick exceed the shared launch cap without changing other heroes. */
-  launchCap: 680,
+  launchCap: 740,
   staminaDamage: 6,
   hitStopMs: 100,
   backflipMs: 460,
-  backflipDistance: 168,
+  backflipDistance: 192,
   missRecoverMs: 200,
   missRecoverDistance: 34,
   jumpHeight: 44,

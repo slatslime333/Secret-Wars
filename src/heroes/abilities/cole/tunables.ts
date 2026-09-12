@@ -16,7 +16,7 @@ export const COLE_SHOCKWAVE = {
 } as const;
 
 export const COLE_BALL = {
-  cooldownMs: 11000,
+  cooldownMs: 9000,
   speed: 420,
   lifetimeMs: 2200,
   radius: 20,
