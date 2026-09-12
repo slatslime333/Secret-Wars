@@ -31,13 +31,13 @@ const paletteFor = (rival: boolean, hitFlash: boolean) => {
     };
   }
   return {
-    jacket: 0xb8921a,
-    jacketDark: 0x7a6412,
-    shirt: 0xf7f3e8,
-    jeans: 0x101014,
+    jacket: 0xe0b41c,
+    jacketDark: 0x8a6c10,
+    shirt: 0xfffaf0,
+    jeans: 0x0a0a10,
     skin: 0xd4a06a,
-    hair: 0x4a2c16,
-    hairDark: 0x2e1a0c,
+    hair: 0x3a2210,
+    hairDark: 0x1c1008,
     eye: 0x1a1010,
     brow: 0x2a160c,
   };

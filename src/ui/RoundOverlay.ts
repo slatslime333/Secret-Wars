@@ -5,6 +5,7 @@ import { COLORS, FONTS, hex } from './theme';
 type RoundOverlayOptions = {
   onRestart: () => void;
   onMenu: () => void;
+  playerName?: string;
 };
 
 /** KO banner with RESTART / MENU. Viewport-fixed over the pit. */
@@ -51,7 +52,11 @@ export class RoundOverlay {
       .setDepth(181);
 
     this.scene.add
-      .text(width / 2, height / 2 - 18, win ? 'NINJA WINS' : 'RIVAL WINS', {
+      .text(
+        width / 2,
+        height / 2 - 18,
+        win ? `${(this.options.playerName ?? 'NINJA').toUpperCase()} WINS` : 'RIVAL WINS',
+        {
         fontFamily: FONTS.body,
         fontSize: '16px',
         fontStyle: 'bold',

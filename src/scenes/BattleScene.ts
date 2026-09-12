@@ -55,7 +55,8 @@ export class BattleScene extends Phaser.Scene {
   create(): void {
     this.returning = false;
     ensureAbilityIcons(this);
-    createGrassyArena(this);
+    const hero = getSelectedHero();
+    createGrassyArena(this, hero.stats.displayName.toUpperCase());
     this.physics.world.setBounds(
       ARENA.wallThickness,
       ARENA.wallThickness,
@@ -63,7 +64,6 @@ export class BattleScene extends Phaser.Scene {
       ARENA.height - ARENA.wallThickness * 2,
     );
 
-    const hero = getSelectedHero();
     this.ninja = new NinjaBody(this, ARENA.playerSpawn.x, ARENA.playerSpawn.y, {
       stats: hero.stats,
       draw: hero.draw,
@@ -84,6 +84,7 @@ export class BattleScene extends Phaser.Scene {
     this.round = new RoundOverlay(this, {
       onRestart: () => this.restartBattle(),
       onMenu: () => this.returnToMenu(),
+      playerName: hero.stats.displayName,
     });
     this.devMenu = new DevMenu(this, {
       onToggleCpu: () => this.toggleCpu(),
