@@ -9,6 +9,8 @@ import { CombatStatsTracker } from '../match/CombatStatsTracker';
 import { onCombatDamage } from '../combat/damageEvents';
 import type { TeamId } from '../config/hero';
 import { RivalBrain } from '../ai/RivalBrain';
+import { TacticalField } from '../ai/tactical/field';
+import { TacticalOverlay } from '../ai/tactical/overlay';
 import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { HitMarker } from '../combat/HitMarker';
@@ -68,6 +70,8 @@ export class BattleScene extends Phaser.Scene {
   private rivalBlock?: BlockController;
   private rivalDash?: DashController;
   private brain?: RivalBrain;
+  private tactics = new TacticalField();
+  private aiOverlay?: TacticalOverlay;
   private hud!: BattleHud;
   private round!: RoundOverlay;
   private devMenu?: DevMenu;
@@ -130,6 +134,7 @@ export class BattleScene extends Phaser.Scene {
     this.dash = new DashController(this, hero.stats.dashMaxCharges);
     this.abilityWorld = new AbilityWorld();
     this.minions = new MinionWorld(this);
+    this.aiOverlay = new TacticalOverlay(this);
     this.abilities = new AbilityController(hero.kit);
     this.inputReader = new BattleInput(this, () => this.round.isLocked, hero.kit, hero.stats.dashMaxCharges);
     if (!isTouchPrimary()) {
@@ -226,6 +231,7 @@ export class BattleScene extends Phaser.Scene {
       this.abilityTray?.destroy();
       this.offDamage?.();
       this.minimap?.destroy();
+      this.aiOverlay?.destroy();
       this.battlefield?.destroy();
     });
   }
@@ -280,7 +286,8 @@ export class BattleScene extends Phaser.Scene {
     }
     this.abilities.update(this.makeAbilityContext(now, delta, this.liveAbilityAim(frame)));
     this.abilityWorld.update(now, everyone, delta);
-    this.minions.update(now, delta, this.livingFighters(), this.abilityWorld);
+    this.tactics.refresh(now, this.livingFighters());
+    this.minions.update(now, delta, this.abilityWorld, this.tactics);
     this.minions.drawDebug(DEV_CHEATS.showRanges, DEV_CHEATS.showAi, DEV_CHEATS.showHitboxes, now);
 
     const control = this.abilities.control;
@@ -384,8 +391,9 @@ export class BattleScene extends Phaser.Scene {
     this.block.sync(now, this.ninja);
 
     if (this.rival && this.brain) {
-      this.brain.update(now, delta, this.rival, this.ninja);
+      this.brain.update(now, delta, this.rival, this.tactics, this);
     }
+    this.drawRivalAi();
     this.rival?.tickAmmo(now);
     if (this.rival && !this.rivalBlock?.isActive(now)) {
       this.rival.regenStamina(delta, now);
@@ -613,6 +621,25 @@ export class BattleScene extends Phaser.Scene {
 
   private livingEnemies(): NinjaBody[] {
     return this.livingFighters().filter((unit) => unit.team !== this.ninja.team);
+  }
+
+  private drawRivalAi(): void {
+    if (!this.rival || !this.brain) {
+      this.aiOverlay?.draw([], DEV_CHEATS.showAi);
+      return;
+    }
+    const info = this.brain.debugInfo(this.rival);
+    this.aiOverlay?.draw(
+      [
+        {
+          x: this.rival.x,
+          y: this.rival.y,
+          debug: info,
+          target: this.brain.mind.target,
+        },
+      ],
+      DEV_CHEATS.showAi,
+    );
   }
 
   private rebuildMap(seed: number): void {

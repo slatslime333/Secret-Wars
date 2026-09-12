@@ -1,0 +1,418 @@
+import type { NinjaBody } from '../../heroes/NinjaBody';
+import { TACTIC } from './constants';
+import {
+  byId,
+  ensureScoreBuffer,
+  pickScoredAction,
+  riskOfSituation,
+  scoreSituation,
+  threatFromRisk,
+} from './evaluate';
+import type { TacticalField } from './field';
+import { personalityFromSeed } from './personality';
+import type {
+  CombatantView,
+  Personality,
+  ScoredAction,
+  Situation,
+  TacticalAction,
+  TacticalDebugInfo,
+  TacticalKind,
+  UnitFact,
+} from './types';
+
+export type TacticalIntent = {
+  action: TacticalAction;
+  target?: NinjaBody;
+  ally?: NinjaBody;
+  score: number;
+  reason: string;
+  threat: ReturnType<typeof threatFromRisk>;
+  flankSign: number;
+  commitUntil: number;
+  hpAtCommit: number;
+  enemyCountAtCommit: number;
+};
+
+type Memory = {
+  ref: NinjaBody;
+  view: CombatantView;
+  seenAt: number;
+};
+
+const AGGRESSIVE: ReadonlySet<TacticalAction> = new Set([
+  'attack',
+  'chase',
+  'finish_target',
+  'flank',
+  'intercept',
+  'assist_ally',
+]);
+
+const labelOf = (unit?: NinjaBody): string => {
+  if (!unit || unit.down) {
+    return 'none';
+  }
+  if (unit.stats.role === 'minion') {
+    return unit.stats.displayName;
+  }
+  return unit.stats.displayName;
+};
+
+/**
+ * Per-CPU decision state. Perception comes from TacticalField; this class
+ * commits to an action long enough to look intentional.
+ */
+export class TacticalMind {
+  readonly personality: Personality;
+  readonly kind: TacticalKind;
+  readonly homeX: number;
+  readonly homeY: number;
+  intent: TacticalIntent;
+  private nextThinkAt = 0;
+  private readonly nearby: UnitFact[] = [];
+  private nearbyCount = 0;
+  private readonly allies: CombatantView[] = [];
+  private readonly enemies: CombatantView[] = [];
+  private readonly memory: Memory[] = [];
+  private readonly bodyById = new Map<number, NinjaBody>();
+  private readonly scores: ScoredAction[];
+  private readonly situation: Situation;
+  private readonly rngState: { s: number };
+  private readonly slot: number;
+  private lastAllyCount = 0;
+  private lastEnemyCount = 0;
+
+  constructor(kind: TacticalKind, seed: string, homeX: number, homeY: number) {
+    this.kind = kind;
+    this.personality = personalityFromSeed(seed);
+    this.homeX = homeX;
+    this.homeY = homeY;
+    this.slot = Math.floor(hashInt(seed) % 97);
+    this.rngState = { s: hashInt(seed) || 1 };
+    this.scores = ensureScoreBuffer();
+    this.intent = {
+      action: kind === 'minion' ? 'push_lane' : 'advance',
+      score: 0,
+      reason: 'spawn',
+      threat: 'low',
+      flankSign: hashInt(seed) % 2 === 0 ? 1 : -1,
+      commitUntil: 0,
+      hpAtCommit: 1,
+      enemyCountAtCommit: 0,
+    };
+    this.situation = {
+      self: blankView(),
+      allies: this.allies,
+      enemies: this.enemies,
+      currentTargetId: -1,
+      kind,
+      personality: this.personality,
+      escapeOpen: true,
+      homeX,
+      homeY,
+      vision: kind === 'minion' ? TACTIC.minionVision : TACTIC.heroVision,
+    };
+  }
+
+  get action(): TacticalAction {
+    return this.intent.action;
+  }
+
+  get target(): NinjaBody | undefined {
+    const target = this.intent.target;
+    if (!target || target.down || !target.isPresent) {
+      return undefined;
+    }
+    return target;
+  }
+
+  think(now: number, self: NinjaBody, field: TacticalField, scene?: object, force = false): void {
+    if (!force && now < this.nextThinkAt && !this.mustReconsider(now, self)) {
+      return;
+    }
+    const jitter = this.personality.thinkJitterMs;
+    const base = this.kind === 'minion' ? TACTIC.minionThinkMin : TACTIC.heroThinkMin;
+    const span = this.kind === 'minion' ? TACTIC.minionThinkSpan : TACTIC.heroThinkSpan;
+    this.nextThinkAt = now + base + (this.slot % span) + jitter;
+
+    const selfFact = field.factOf(self);
+    if (!selfFact) {
+      this.intent.action = this.kind === 'minion' ? 'push_lane' : 'search_for_target';
+      this.intent.target = undefined;
+      this.intent.reason = 'absent';
+      return;
+    }
+
+    this.gather(now, selfFact, field, scene);
+    const risk = riskOfSituation(this.situation);
+    const threat = threatFromRisk(risk);
+    const count = scoreSituation(this.situation, this.scores);
+    const picked = pickScoredAction(this.scores, count, () => this.nextRand());
+    if (!picked) {
+      return;
+    }
+
+    const nextTarget = this.resolve(picked.targetId, true);
+    const nextAlly = this.resolve(picked.allyId, false);
+    const same =
+      picked.action === this.intent.action &&
+      nextTarget === this.intent.target &&
+      now < this.intent.commitUntil &&
+      !this.mustReconsider(now, self);
+    if (same) {
+      this.intent.score = picked.score;
+      this.intent.reason = picked.reason;
+      this.intent.threat = threat;
+      return;
+    }
+
+    this.intent = {
+      action: picked.action,
+      target: nextTarget,
+      ally: nextAlly,
+      score: picked.score,
+      reason: picked.reason,
+      threat,
+      flankSign: this.intent.flankSign,
+      commitUntil: now + this.commitMs(picked.action),
+      hpAtCommit: selfFact.hpRatio,
+      enemyCountAtCommit: this.lastEnemyCount,
+    };
+  }
+
+  debugInfo(self: NinjaBody): TacticalDebugInfo {
+    const target = this.target;
+    const maxHp = Math.max(1, self.stats.maxHealth);
+    return {
+      action: this.intent.action,
+      targetLabel: labelOf(target),
+      targetScore: Math.round(this.intent.score),
+      threat: this.intent.threat,
+      allyCount: this.lastAllyCount,
+      enemyCount: this.lastEnemyCount,
+      hp: `${Math.round((self.health / maxHp) * 100)}%`,
+      reason: this.intent.reason,
+      flanking: this.intent.action === 'flank',
+      assisting: this.intent.action === 'assist_ally' || this.intent.action === 'protect_ally',
+    };
+  }
+
+  wantsAttack(): boolean {
+    const action = this.intent.action;
+    return (
+      action === 'attack' ||
+      action === 'finish_target' ||
+      action === 'flank' ||
+      action === 'chase' ||
+      action === 'assist_ally' ||
+      action === 'intercept' ||
+      action === 'switch_target'
+    );
+  }
+
+  wantsHold(): boolean {
+    const action = this.intent.action;
+    return action === 'hold_position' || action === 'wait_for_opening';
+  }
+
+  wantsEscape(): boolean {
+    return this.intent.action === 'escape' || this.intent.action === 'retreat';
+  }
+
+  private gather(now: number, selfFact: UnitFact, field: TacticalField, scene?: object): void {
+    const vision = this.situation.vision;
+    this.nearbyCount = field.queryNearby(selfFact.x, selfFact.y, vision, this.nearby);
+    this.allies.length = 0;
+    this.enemies.length = 0;
+    this.bodyById.clear();
+    copyView(this.situation.self, selfFact);
+    this.situation.self.visible = true;
+    this.situation.currentTargetId = -1;
+    this.situation.escapeOpen = field.escapeOpen(selfFact.x, selfFact.y, this.homeX, this.homeY, scene);
+    this.situation.homeX = this.homeX;
+    this.situation.homeY = this.homeY;
+    this.bodyById.set(selfFact.id, selfFact.ref);
+
+    const seenNow = new Set<NinjaBody>();
+    for (let i = 0; i < this.nearbyCount; i += 1) {
+      const fact = this.nearby[i];
+      this.bodyById.set(fact.id, fact.ref);
+      if (fact.ref === selfFact.ref) {
+        continue;
+      }
+      if (fact.team === selfFact.team) {
+        this.allies.push(fact);
+      } else {
+        this.enemies.push(fact);
+        this.remember(now, fact);
+        seenNow.add(fact.ref);
+      }
+    }
+
+    for (let i = this.memory.length - 1; i >= 0; i -= 1) {
+      const item = this.memory[i];
+      if (now - item.seenAt > TACTIC.memoryMs || item.ref.down || !item.ref.isPresent) {
+        this.memory.splice(i, 1);
+        continue;
+      }
+      if (seenNow.has(item.ref)) {
+        continue;
+      }
+      item.view.visible = false;
+      this.enemies.push(item.view);
+      this.bodyById.set(item.view.id, item.ref);
+    }
+
+    const current = this.intent.target;
+    if (current && !current.down) {
+      const fact = field.factOf(current);
+      if (fact) {
+        this.situation.currentTargetId = fact.id;
+      } else {
+        const remembered = this.memory.find((item) => item.ref === current);
+        if (remembered) {
+          this.situation.currentTargetId = remembered.view.id;
+        }
+      }
+    }
+
+    this.lastAllyCount = this.allies.length;
+    this.lastEnemyCount = this.enemies.filter((enemy) => enemy.visible).length;
+  }
+
+  private remember(now: number, fact: UnitFact): void {
+    for (const item of this.memory) {
+      if (item.ref === fact.ref) {
+        copyView(item.view, fact);
+        item.view.visible = true;
+        item.seenAt = now;
+        return;
+      }
+    }
+    if (this.memory.length >= 8) {
+      this.memory.shift();
+    }
+    this.memory.push({ ref: fact.ref, view: cloneView(fact), seenAt: now });
+  }
+
+  private resolve(id: number, enemy: boolean): NinjaBody | undefined {
+    if (id < 0) {
+      return undefined;
+    }
+    const list = enemy ? this.enemies : this.allies;
+    if (!byId(list, id)) {
+      return undefined;
+    }
+    return this.bodyById.get(id);
+  }
+
+  private mustReconsider(now: number, self: NinjaBody): boolean {
+    const intent = this.intent;
+    if (now >= intent.commitUntil) {
+      return true;
+    }
+    if (intent.target && (intent.target.down || !intent.target.isPresent)) {
+      return true;
+    }
+    const hp = self.health / Math.max(1, self.stats.maxHealth);
+    if (intent.hpAtCommit - hp > 0.2) {
+      return true;
+    }
+    if (hp < TACTIC.criticalHp && AGGRESSIVE.has(intent.action) && intent.action !== 'finish_target') {
+      return true;
+    }
+    if (this.lastEnemyCount >= intent.enemyCountAtCommit + 2 && AGGRESSIVE.has(intent.action)) {
+      return true;
+    }
+    return false;
+  }
+
+  private commitMs(action: TacticalAction): number {
+    if (action === 'flank') {
+      return TACTIC.flankCommit + this.slot * 2;
+    }
+    if (action === 'wait_for_opening' || action === 'hold_position') {
+      return 640 + this.slot * 3;
+    }
+    if (action === 'retreat' || action === 'escape') {
+      return 720;
+    }
+    if (action === 'push_lane' || action === 'advance' || action === 'search_for_target') {
+      return 880;
+    }
+    return TACTIC.commitMin + (this.slot % TACTIC.commitSpan);
+  }
+
+  private nextRand(): number {
+    this.rngState.s = (Math.imul(1664525, this.rngState.s) + 1013904223) >>> 0;
+    return this.rngState.s / 4294967296;
+  }
+}
+
+const hashInt = (seed: string): number => {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+};
+
+const blankView = (): CombatantView => ({
+  id: 0,
+  x: 0,
+  y: 0,
+  vx: 0,
+  vy: 0,
+  aimX: 1,
+  aimY: 0,
+  team: 'alpha',
+  kind: 'hero',
+  role: 'generalist',
+  hpRatio: 1,
+  staminaRatio: 1,
+  ammoRatio: 1,
+  attackRange: 40,
+  moveSpeed: 140,
+  defense: 10,
+  power: 1,
+  attacking: false,
+  stunned: false,
+  recentlyHit: false,
+  canAttack: true,
+  lastAttackerId: -1,
+  visible: true,
+});
+
+const copyView = (dest: CombatantView, src: CombatantView): void => {
+  dest.id = src.id;
+  dest.x = src.x;
+  dest.y = src.y;
+  dest.vx = src.vx;
+  dest.vy = src.vy;
+  dest.aimX = src.aimX;
+  dest.aimY = src.aimY;
+  dest.team = src.team;
+  dest.kind = src.kind;
+  dest.role = src.role;
+  dest.hpRatio = src.hpRatio;
+  dest.staminaRatio = src.staminaRatio;
+  dest.ammoRatio = src.ammoRatio;
+  dest.attackRange = src.attackRange;
+  dest.moveSpeed = src.moveSpeed;
+  dest.defense = src.defense;
+  dest.power = src.power;
+  dest.attacking = src.attacking;
+  dest.stunned = src.stunned;
+  dest.recentlyHit = src.recentlyHit;
+  dest.canAttack = src.canAttack;
+  dest.lastAttackerId = src.lastAttackerId;
+  dest.visible = src.visible;
+};
+
+const cloneView = (src: CombatantView): CombatantView => {
+  const dest = blankView();
+  copyView(dest, src);
+  return dest;
+};

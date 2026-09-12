@@ -6,8 +6,12 @@ import { Projectile } from '../combat/projectile';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { distanceBetween } from '../heroes/abilities/geometry';
 import { battlefieldOf } from '../map';
+import { TacticalField } from '../ai/tactical/field';
+import { TacticalMind } from '../ai/tactical/mind';
+import { moveGoal } from '../ai/tactical/move';
+import type { TacticalAction } from '../ai/tactical/types';
 
-export type MinionState = 'advance' | 'approach' | 'attack' | 'recover';
+export type MinionState = TacticalAction | 'recover';
 
 export type MinionDebugInfo = {
   state: MinionState;
@@ -16,43 +20,62 @@ export type MinionDebugInfo = {
   cooldownMs: number;
   team: string;
   hp: string;
+  threat: string;
+  allyCount: number;
+  enemyCount: number;
+  reason: string;
+  targetScore: number;
 };
 
 /**
- * Advance the lane, pick a nearby enemy, fight, then keep pushing.
- * No infinite chase — scan + leash keep them on the battlefield axis.
+ * Advance the lane unless a nearby fight is actually worth taking.
+ * Combat still uses the minion kit; targeting comes from TacticalMind.
  */
 export class MinionBrain {
-  state: MinionState = 'advance';
+  state: MinionState = 'push_lane';
   target?: NinjaBody;
-  private nextThinkAt = 0;
   private nextAttackAt = 0;
   private recoverUntil = 0;
   private acquireX = 0;
   private acquireY = 0;
   private attacking = false;
+  private readonly steer = new Phaser.Math.Vector2();
+  readonly mind: TacticalMind;
 
   constructor(
     readonly body: NinjaBody,
     readonly kind: MinionKind,
-  ) {}
+  ) {
+    this.mind = new TacticalMind(
+      'minion',
+      `${body.team}:${kind}:${Math.round(body.x)}:${Math.round(body.y)}`,
+      body.team === 'alpha' ? 400 : 1800,
+      body.y,
+    );
+  }
 
   debugInfo(now: number): MinionDebugInfo {
+    const info = this.mind.debugInfo(this.body);
     const target = this.target && !this.target.down ? this.target : undefined;
     return {
-      state: this.state,
-      targetLabel: target ? labelOf(target) : 'none',
+      state: this.attacking ? 'attack' : now < this.recoverUntil ? 'recover' : info.action,
+      targetLabel: target ? labelOf(target) : info.targetLabel,
       distance: target ? distanceBetween(this.body.x, this.body.y, target.x, target.y) : 0,
       cooldownMs: Math.max(0, this.nextAttackAt - now),
       team: this.body.team,
-      hp: `${Math.round(this.body.health)}/${this.body.stats.maxHealth}`,
+      hp: info.hp,
+      threat: info.threat,
+      allyCount: info.allyCount,
+      enemyCount: info.enemyCount,
+      reason: info.reason,
+      targetScore: info.targetScore,
     };
   }
 
   update(
     now: number,
     _delta: number,
-    others: NinjaBody[],
+    field: TacticalField,
     world: AbilityWorld,
     scene: Phaser.Scene,
   ): void {
@@ -60,41 +83,24 @@ export class MinionBrain {
       this.body.stop();
       return;
     }
-    if (now >= this.nextThinkAt) {
-      this.think(now, others);
-      this.nextThinkAt = now + MINION.retargetMs;
-    }
+    this.mind.think(now, this.body, field, scene);
+    this.syncTarget();
     this.act(now, world, scene);
   }
 
-  private think(now: number, others: NinjaBody[]): void {
-    if (this.target && (this.target.down || this.shouldDrop(this.target))) {
-      this.target = undefined;
-    }
-    const enemies = others.filter((unit) => unit.team !== this.body.team && !unit.down);
-    const next = this.pickTarget(enemies);
+  private syncTarget(): void {
+    const next = this.mind.target;
     if (next && next !== this.target) {
       this.target = next;
       this.acquireX = this.body.x;
       this.acquireY = this.body.y;
+    } else if (!next) {
+      this.target = undefined;
     }
-
-    const target = this.target;
-    if (!target) {
-      this.state = 'advance';
-      return;
+    if (this.target && this.shouldDrop(this.target)) {
+      this.target = undefined;
     }
-    const dist = distanceBetween(this.body.x, this.body.y, target.x, target.y);
-    const range = this.body.stats.attackRange + target.stats.bodyRadius;
-    if (now < this.recoverUntil || this.attacking) {
-      this.state = this.attacking ? 'attack' : 'recover';
-      return;
-    }
-    if (dist <= range) {
-      this.state = 'attack';
-      return;
-    }
-    this.state = 'approach';
+    this.state = this.attacking ? 'attack' : this.mind.action;
   }
 
   private act(now: number, world: AbilityWorld, scene: Phaser.Scene): void {
@@ -108,18 +114,62 @@ export class MinionBrain {
       this.body.setAim(minionAdvanceX(this.body.team), 0);
     }
 
-    if (this.state === 'attack' && target) {
+    if (now < this.recoverUntil) {
+      this.body.stop();
+      this.state = 'recover';
+      return;
+    }
+
+    const range = target ? this.body.stats.attackRange + target.stats.bodyRadius : 0;
+    const inRange = target ? distanceBetween(this.body.x, this.body.y, target.x, target.y) <= range : false;
+    if (this.mind.wantsAttack() && inRange && target) {
       this.body.stop();
       this.tryAttack(now, target, world, scene);
       return;
     }
-    if (this.state === 'recover') {
+
+    if (this.attacking) {
       this.body.stop();
       return;
     }
 
-    const dir = this.moveDir(target, scene);
-    this.body.applyMove(dir);
+    const ally = this.mind.intent.ally;
+    const goal = moveGoal(
+      this.mind.action,
+      {
+        x: this.body.x,
+        y: this.body.y,
+        team: this.body.team,
+        attackRange: this.body.stats.attackRange,
+        role: this.body.stats.role,
+        kind: 'minion',
+      },
+      now,
+      this.mind.homeX,
+      this.mind.homeY,
+      target ? { x: target.x, y: target.y, aimX: target.aim.x, aimY: target.aim.y } : undefined,
+      ally ? { x: ally.x, y: ally.y, aimX: ally.aim.x, aimY: ally.aim.y } : undefined,
+      this.mind.intent.flankSign,
+      this.body.y,
+    );
+    if (goal.halt) {
+      this.body.stop();
+      return;
+    }
+    let dx = goal.x - this.body.x;
+    let dy = goal.y - this.body.y;
+    if (this.mind.action === 'push_lane' || this.mind.action === 'advance' || this.mind.action === 'search_for_target') {
+      dx = minionAdvanceX(this.body.team);
+      dy = Phaser.Math.Clamp((this.mind.homeY - this.body.y) * 0.004, -0.35, 0.35);
+    }
+    const len = Math.hypot(dx, dy) || 1;
+    const steered = battlefieldOf(scene)?.query.steer(this.body.x, this.body.y, dx / len, dy / len);
+    if (steered) {
+      this.steer.set(steered.x, steered.y);
+    } else {
+      this.steer.set(dx / len, dy / len);
+    }
+    this.body.applyMove(this.steer);
   }
 
   private tryAttack(now: number, target: NinjaBody, world: AbilityWorld, scene: Phaser.Scene): void {
@@ -127,6 +177,7 @@ export class MinionBrain {
       return;
     }
     this.attacking = true;
+    this.state = 'attack';
     if (this.kind === 'ranger') {
       this.fireArrow(now, target, world, scene);
     } else {
@@ -229,53 +280,10 @@ export class MinionBrain {
     });
   }
 
-  private pickTarget(enemies: NinjaBody[]): NinjaBody | undefined {
-    const current = this.target && !this.target.down && !this.shouldDrop(this.target) ? this.target : undefined;
-    let best: NinjaBody | undefined;
-    let bestDist = MINION.scanRadius as number;
-    for (const enemy of enemies) {
-      const dist = distanceBetween(this.body.x, this.body.y, enemy.x, enemy.y);
-      if (dist < bestDist) {
-        best = enemy;
-        bestDist = dist;
-      }
-    }
-    if (!best) {
-      return current;
-    }
-    if (!current) {
-      return best;
-    }
-    const currentDist = distanceBetween(this.body.x, this.body.y, current.x, current.y);
-    if (best !== current && currentDist - bestDist > MINION.switchScore) {
-      return best;
-    }
-    return current;
-  }
-
   private shouldDrop(target: NinjaBody): boolean {
     const fromAcquire = distanceBetween(this.acquireX, this.acquireY, target.x, target.y);
     const fromSelf = distanceBetween(this.body.x, this.body.y, target.x, target.y);
     return fromAcquire > MINION.leashRadius || fromSelf > MINION.leashRadius * 1.15;
-  }
-
-  private moveDir(target: NinjaBody | undefined, scene: Phaser.Scene): Phaser.Math.Vector2 {
-    const march = minionAdvanceX(this.body.team);
-    let dx: number;
-    let dy: number;
-    if (this.state === 'approach' && target) {
-      dx = target.x - this.body.x;
-      dy = target.y - this.body.y;
-    } else {
-      dy = Phaser.Math.Clamp((750 - this.body.y) * 0.004, -0.35, 0.35);
-      dx = march;
-    }
-    const steered = battlefieldOf(scene)?.query.steer(this.body.x, this.body.y, dx, dy);
-    if (steered) {
-      return new Phaser.Math.Vector2(steered.x, steered.y);
-    }
-    const vec = new Phaser.Math.Vector2(dx, dy);
-    return vec.normalize();
   }
 }
 

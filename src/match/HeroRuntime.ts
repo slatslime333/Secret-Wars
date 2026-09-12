@@ -25,7 +25,7 @@ export type HeroRuntimeOptions = {
 
 /**
  * One match hero: body, kit, progression, death/respawn.
- * Non-player heroes are driven by HeroPilot in MatchScene.
+ * Non-player heroes are driven by HeroPilot + the shared tactical layer.
  */
 export class HeroRuntime {
   readonly instanceId: string;
