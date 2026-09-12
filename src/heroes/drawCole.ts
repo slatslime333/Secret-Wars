@@ -25,8 +25,8 @@ const paletteFor = (rival: boolean, hitFlash: boolean) => {
       shirt: 0xf4efe0,
       jeans: 0x101014,
       skin: 0xc68654,
-      hair: 0x5a3818,
-      hairDark: 0x3a2210,
+      hair: 0x3c2410,
+      hairDark: 0x241408,
       eye: 0x2a1010,
       brow: 0x1a0c08,
       band: COLORS.redBright,
@@ -38,8 +38,8 @@ const paletteFor = (rival: boolean, hitFlash: boolean) => {
     shirt: 0xfffaf0,
     jeans: 0x0a0a10,
     skin: 0xd4a06a,
-    hair: 0x5c3a1a,
-    hairDark: 0x3a2410,
+    hair: 0x4a2a12,
+    hairDark: 0x2a1808,
     eye: 0x1a1010,
     brow: 0x2a160c,
     band: COLORS.cyan,
@@ -88,20 +88,20 @@ export const drawCole = (
   graphics.fillCircle(0, -14, 10);
 
   graphics.fillStyle(palette.hair);
-  graphics.fillEllipse(0, -19, 10, 6);
-  graphics.fillRect(-9, -20, 18, 5);
+  graphics.fillEllipse(0, -18, 10, 8);
+  graphics.fillRect(-10, -21, 20, 6);
   graphics.fillStyle(palette.hairDark);
-  graphics.fillRect(-9, -17, 18, 2);
-  graphics.fillRect(-9, -20, 2, 6);
-  graphics.fillRect(7, -20, 2, 6);
-  graphics.fillCircle(-5, -20, 1.2);
-  graphics.fillCircle(4, -21, 1.2);
-  graphics.fillCircle(0, -22, 1.1);
+  graphics.fillRect(-10, -18, 20, 2);
+  graphics.fillRect(-10, -21, 3, 7);
+  graphics.fillRect(7, -21, 3, 7);
+  graphics.fillCircle(-4, -21, 1.4);
+  graphics.fillCircle(3, -22, 1.4);
+  graphics.fillCircle(0, -23, 1.3);
 
   graphics.fillStyle(palette.band);
-  graphics.fillRect(-10, -17, 20, 3);
+  graphics.fillRect(-10, -16, 20, 3);
   graphics.fillStyle(COLORS.paper, 0.35);
-  graphics.fillRect(-10, -17, 20, 1);
+  graphics.fillRect(-10, -16, 20, 1);
 
   graphics.fillStyle(palette.brow);
   if (facing === 'south' || facing === 'east') {
