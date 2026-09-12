@@ -295,6 +295,10 @@ export class BattleInput {
     const ability1 = this.consumeLatch('ability1Latched');
     const ability2 = this.consumeLatch('ability2Latched');
     const ultimate = this.consumeLatch('ultimateLatched');
+    const ability1AimActive = ability1 && this.ability1AimActive;
+    if (ability1) {
+      this.ability1AimActive = false;
+    }
 
     return {
       move,
@@ -308,7 +312,7 @@ export class BattleInput {
       dashPressed,
       ability1,
       ability1Aim: this.ability1Aim.clone(),
-      ability1AimActive: ability1 && this.ability1AimActive,
+      ability1AimActive,
       ability2,
       ultimate,
     };

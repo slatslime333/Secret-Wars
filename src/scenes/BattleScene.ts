@@ -150,6 +150,7 @@ export class BattleScene extends Phaser.Scene {
     const ctx = this.makeAbilityContext(now, delta);
     if (frame.ability1) {
       this.abilities.tryActivate('ability1', ctx);
+      this.abilityAim = undefined;
     }
     if (frame.ability2) {
       this.abilities.tryActivate('ability2', ctx);

@@ -358,7 +358,6 @@ export class NinjaBody {
           rival: this.rival,
           armLiftLeft: pose.armLiftLeft,
           armLiftRight: pose.armLiftRight,
-          swayX: pose.swayX,
         });
         this.art.setPosition(pose.swayX ?? 0, 0);
       },
@@ -569,7 +568,7 @@ export class NinjaBody {
         const flicker = ((t + h * 1.7 + i * 0.9) % 4) / 4;
         const ang = (t + i * 2.1 + h) * (h === 0 ? 1 : -1);
         const len = 3 + flicker * 5;
-        this.sparks.lineStyle(1.4, i === 0 ? 0xb8e8ff : 0x4aa8ff, 0.55 + flicker * 0.35);
+        this.sparks.lineStyle(1.6, i === 0 ? 0xdff4ff : 0x4aa8ff, 0.7 + flicker * 0.3);
         this.sparks.lineBetween(
           hand.x,
           hand.y,

@@ -2,7 +2,7 @@ import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { COLE_DISCHARGE } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
-import { spawnShockwaveRing } from '../../../effects/lightning';
+import { spawnLightningBolt, spawnShockwaveRing } from '../../../effects/lightning';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { COLORS } from '../../../ui/theme';
 import { distanceBetween } from '../geometry';
@@ -61,6 +61,7 @@ class DischargeAbility implements ActiveAbility {
         ctx.rivalBlock,
       );
       if (kind === 'hit') {
+        spawnLightningBolt(ctx.scene, caster.x, caster.y, enemy.x, enemy.y, { heavy: true, life: 180 });
         enemy.status.applyParalyze(now, COLE_DISCHARGE.paralyzeMs);
       }
     }

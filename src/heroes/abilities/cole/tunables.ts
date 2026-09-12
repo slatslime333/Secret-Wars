@@ -18,7 +18,7 @@ export const COLE_BALL = {
   cooldownMs: 15000,
   speed: 420,
   lifetimeMs: 2200,
-  radius: 11,
+  radius: 15,
   damageMul: 1.55,
   knockbackMul: 3.1,
   chainDamageMul: 0.42,

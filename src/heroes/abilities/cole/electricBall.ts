@@ -86,6 +86,8 @@ const resolveBallHit = (
     return;
   }
 
+  spawnLightningBolt(scene, caster.x, caster.y, primary.x, primary.y, { heavy: true, life: 180 });
+
   const chained: NinjaBody[] = [primary];
   const pool = enemies
     .filter((enemy) => enemy !== primary && !enemy.down)
