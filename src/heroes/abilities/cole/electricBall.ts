@@ -3,7 +3,7 @@ import { ABILITY_ICON } from '../icons';
 import { COLE_BALL } from './tunables';
 import { Projectile } from '../../../combat/projectile';
 import { resolveAbilityHit } from '../resolveAbilityHit';
-import { spawnLightningBolt } from '../../../effects/lightning';
+import { spawnLightningBolt, spawnShockwaveRing } from '../../../effects/lightning';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { NinjaBody } from '../../NinjaBody';
 import { distanceBetween } from '../geometry';
@@ -87,6 +87,7 @@ const resolveBallHit = (
   }
 
   spawnLightningBolt(scene, caster.x, caster.y, primary.x, primary.y, { heavy: true, life: 180 });
+  spawnShockwaveRing(scene, x, y, COLE_BALL.explodeRadius);
 
   const chained: NinjaBody[] = [primary];
   const pool = enemies
@@ -97,7 +98,30 @@ const resolveBallHit = (
     if (chained.length >= COLE_BALL.maxTargets) {
       break;
     }
-    if (distanceBetween(x, y, enemy.x, enemy.y) > COLE_BALL.chainRange) {
+    const dist = distanceBetween(x, y, enemy.x, enemy.y);
+    if (dist <= COLE_BALL.explodeRadius + enemy.stats.bodyRadius) {
+      resolveAbilityHit(
+        scene,
+        now,
+        caster,
+        enemy,
+        {
+          rawDamage: caster.stats.attackDamage * COLE_BALL.chainDamageMul,
+          knockback: caster.stats.knockbackPower * COLE_BALL.knockbackMul * 0.7,
+          staminaDamage: 4,
+          dirX: enemy.x - x,
+          dirY: enemy.y - y,
+          step: 2,
+          heavy: true,
+        },
+        rivalBlock,
+      );
+      enemy.status.applySlow(now, COLE_BALL.chainSlowMs, COLE_BALL.chainSlowMul);
+      spawnLightningBolt(scene, x, y, enemy.x, enemy.y, { heavy: false, life: 140 });
+      chained.push(enemy);
+      continue;
+    }
+    if (dist > COLE_BALL.chainRange) {
       continue;
     }
     const prev = chained[chained.length - 1];

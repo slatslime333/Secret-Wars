@@ -555,12 +555,12 @@ export class NinjaBody {
     this.sparks.clear();
     const hands = this.facing === 'west'
       ? [
-          { x: -13, y: 8 },
-          { x: 10, y: 8 },
+          { x: -11, y: 8 },
+          { x: 9, y: 8 },
         ]
       : [
-          { x: -10, y: 8 },
-          { x: 13, y: 8 },
+          { x: -9, y: 8 },
+          { x: 11, y: 8 },
         ];
     for (let h = 0; h < hands.length; h += 1) {
       const hand = hands[h];

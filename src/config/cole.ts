@@ -18,9 +18,11 @@ export const COLE = {
   attackCooldownMs: 430,
   /** Long versus Ninja, still a frontliner — not full-screen. */
   attackRange: Math.round(NINJA.attackRange * 2),
-  attackArcDegrees: 108,
+  /** 1/4 narrower than the original 108° Cole wedge. */
+  attackArcDegrees: 81,
   bodyRadius: NINJA.bodyRadius,
   staminaRegenPerSecond: 17,
   ammoMax: 4,
   reloadMs: 2500,
+  dashMaxCharges: 2,
 } as const satisfies HeroCombatConfig;

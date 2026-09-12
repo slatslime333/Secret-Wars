@@ -8,22 +8,26 @@ const dashSpeed = (): number => COMBAT.dashDistance / (COMBAT.dashDurationMs / 1
 
 /**
  * Short leap in move direction, or facing if standing still.
- * Three charges; each spends one charge and recharges on a 1.5s timer.
+ * Hero-specific charge count; each spend recharges on a 1.5s timer.
  */
 export class DashController {
   private activeUntil = 0;
-  private charges = COMBAT.dashMaxCharges;
+  private charges: number;
   private rechargeAt = 0;
   private readonly dir = new Phaser.Math.Vector2(1, 0);
+  private readonly chargeCap: number;
 
-  constructor(private readonly scene: Phaser.Scene) {}
+  constructor(private readonly scene: Phaser.Scene, maxCharges: number = COMBAT.dashMaxCharges) {
+    this.chargeCap = maxCharges;
+    this.charges = maxCharges;
+  }
 
   get chargeCount(): number {
     return this.charges;
   }
 
   get maxCharges(): number {
-    return COMBAT.dashMaxCharges;
+    return this.chargeCap;
   }
 
   tryStart(now: number, move: Phaser.Math.Vector2, aim: Phaser.Math.Vector2, ninja: NinjaBody): boolean {
@@ -61,9 +65,9 @@ export class DashController {
   }
 
   tickRecharge(now: number): void {
-    while (this.charges < COMBAT.dashMaxCharges && this.rechargeAt > 0 && now >= this.rechargeAt) {
+    while (this.charges < this.chargeCap && this.rechargeAt > 0 && now >= this.rechargeAt) {
       this.charges += 1;
-      if (this.charges < COMBAT.dashMaxCharges) {
+      if (this.charges < this.chargeCap) {
         this.rechargeAt += COMBAT.dashRechargeMs;
       } else {
         this.rechargeAt = 0;
@@ -74,7 +78,7 @@ export class DashController {
   /** 1 = just spent / empty fill, 0 = next charge ready or full. */
   rechargeRatio(now: number): number {
     this.tickRecharge(now);
-    if (this.charges >= COMBAT.dashMaxCharges || this.rechargeAt <= 0) {
+    if (this.charges >= this.chargeCap || this.rechargeAt <= 0) {
       return 0;
     }
     const remaining = this.rechargeAt - now;

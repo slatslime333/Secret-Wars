@@ -15,6 +15,7 @@ const paletteFor = (rival: boolean, hitFlash: boolean) => {
       hairDark: 0x4a2410,
       eye: 0x4a1010,
       brow: 0x3a1810,
+      band: rival ? COLORS.redBright : COLORS.cyan,
     };
   }
   if (rival) {
@@ -24,10 +25,11 @@ const paletteFor = (rival: boolean, hitFlash: boolean) => {
       shirt: 0xf4efe0,
       jeans: 0x101014,
       skin: 0xc68654,
-      hair: 0x3c2414,
-      hairDark: 0x24140c,
+      hair: 0x5a3818,
+      hairDark: 0x3a2210,
       eye: 0x2a1010,
       brow: 0x1a0c08,
+      band: COLORS.redBright,
     };
   }
   return {
@@ -36,14 +38,15 @@ const paletteFor = (rival: boolean, hitFlash: boolean) => {
     shirt: 0xfffaf0,
     jeans: 0x0a0a10,
     skin: 0xd4a06a,
-    hair: 0x3a2210,
-    hairDark: 0x1c1008,
+    hair: 0x5c3a1a,
+    hairDark: 0x3a2410,
     eye: 0x1a1010,
     brow: 0x2a160c,
+    band: COLORS.cyan,
   };
 };
 
-/** Same pixel-comic proportions as Ninja — tan, buzz cut, dark yellow jacket. */
+/** Slimmer pixel-comic Cole — open jacket, brown buzz, team headband. */
 export const drawCole = (
   graphics: Phaser.GameObjects.Graphics,
   options: HeroDrawOptions | CardinalFacing,
@@ -58,61 +61,71 @@ export const drawCole = (
 
   graphics.clear();
   graphics.fillStyle(COLORS.ink, 0.45);
-  graphics.fillEllipse(0, 16, 22, 8);
+  graphics.fillEllipse(0, 16, 18, 7);
 
   graphics.fillStyle(palette.jeans);
-  graphics.fillRoundedRect(-10, 7, 20, 13, 2);
+  graphics.fillRoundedRect(-8, 7, 16, 12, 2);
   graphics.fillStyle(0x08080c);
-  graphics.fillRect(-10, 18, 8, 3);
-  graphics.fillRect(2, 18, 8, 3);
+  graphics.fillRect(-8, 17, 7, 3);
+  graphics.fillRect(1, 17, 7, 3);
 
   graphics.fillStyle(palette.shirt);
-  graphics.fillRoundedRect(-8, -1, 16, 10, 2);
+  graphics.fillRoundedRect(-7, -3, 14, 12, 2);
+  graphics.fillStyle(palette.skin);
+  graphics.fillTriangle(-3, -3, 3, -3, 0, 2);
 
   graphics.fillStyle(palette.jacket);
-  graphics.fillRoundedRect(-12, -6, 24, 16, 3);
+  graphics.fillRoundedRect(-13, -5, 7, 15, 2);
+  graphics.fillRoundedRect(6, -5, 7, 15, 2);
   graphics.fillStyle(palette.jacketDark);
-  graphics.fillRect(-12, 8, 24, 3);
-  graphics.fillRect(-1, -5, 2, 14);
-  graphics.fillTriangle(-12, -6, -4, -6, -12, 1);
-  graphics.fillTriangle(12, -6, 4, -6, 12, 1);
-  graphics.fillStyle(palette.shirt);
-  graphics.fillTriangle(-3, -4, 3, -4, 0, 2);
+  graphics.fillRect(-13, 8, 7, 3);
+  graphics.fillRect(6, 8, 7, 3);
+  graphics.fillStyle(palette.jacket);
+  graphics.fillTriangle(-13, -5, -6, -5, -13, 1);
+  graphics.fillTriangle(13, -5, 6, -5, 13, 1);
 
   graphics.fillStyle(palette.skin);
-  graphics.fillCircle(0, -14, 11);
+  graphics.fillCircle(0, -14, 10);
 
   graphics.fillStyle(palette.hair);
-  graphics.fillEllipse(0, -18, 12, 8);
-  graphics.fillRect(-11, -20, 22, 6);
+  graphics.fillEllipse(0, -19, 10, 6);
+  graphics.fillRect(-9, -20, 18, 5);
   graphics.fillStyle(palette.hairDark);
-  graphics.fillRect(-11, -16, 22, 3);
-  graphics.fillRect(-11, -20, 3, 8);
-  graphics.fillRect(8, -20, 3, 8);
+  graphics.fillRect(-9, -17, 18, 2);
+  graphics.fillRect(-9, -20, 2, 6);
+  graphics.fillRect(7, -20, 2, 6);
+  graphics.fillCircle(-5, -20, 1.2);
+  graphics.fillCircle(4, -21, 1.2);
+  graphics.fillCircle(0, -22, 1.1);
+
+  graphics.fillStyle(palette.band);
+  graphics.fillRect(-10, -17, 20, 3);
+  graphics.fillStyle(COLORS.paper, 0.35);
+  graphics.fillRect(-10, -17, 20, 1);
 
   graphics.fillStyle(palette.brow);
   if (facing === 'south' || facing === 'east') {
-    graphics.fillTriangle(-7, -16, -1, -15, -6, -14);
-    graphics.fillTriangle(7, -16, 1, -15, 6, -14);
+    graphics.fillTriangle(-6, -14, -1, -13, -5, -12);
+    graphics.fillTriangle(6, -14, 1, -13, 5, -12);
     graphics.fillStyle(palette.eye);
-    graphics.fillTriangle(-6, -13, -2, -12, -6, -10);
-    graphics.fillTriangle(6, -13, 2, -12, 6, -10);
+    graphics.fillTriangle(-5, -11, -2, -10, -5, -8);
+    graphics.fillTriangle(5, -11, 2, -10, 5, -8);
   } else if (facing === 'west') {
-    graphics.fillTriangle(-7, -16, -1, -15, -6, -14);
+    graphics.fillTriangle(-6, -14, -1, -13, -5, -12);
     graphics.fillStyle(palette.eye);
-    graphics.fillTriangle(-6, -13, -2, -12, -6, -10);
+    graphics.fillTriangle(-5, -11, -2, -10, -5, -8);
   } else {
-    graphics.fillRect(-5, -16, 10, 2);
+    graphics.fillRect(-4, -14, 8, 2);
     graphics.fillStyle(palette.eye);
-    graphics.fillRect(-4, -13, 8, 2);
+    graphics.fillRect(-3, -11, 6, 2);
   }
 
-  const leftY = 2 - liftL * 10;
-  const rightY = 2 - liftR * 10;
+  const leftY = 1 - liftL * 10;
+  const rightY = 1 - liftR * 10;
   graphics.fillStyle(palette.jacket);
-  graphics.fillRect(-15, leftY, 6, 12);
-  graphics.fillRect(9, rightY, 6, 12);
+  graphics.fillRect(-14, leftY, 5, 11);
+  graphics.fillRect(9, rightY, 5, 11);
   graphics.fillStyle(palette.skin);
-  graphics.fillCircle(-12, leftY + 12, 3.5);
-  graphics.fillCircle(12, rightY + 12, 3.5);
+  graphics.fillCircle(-11, leftY + 11, 3);
+  graphics.fillCircle(11, rightY + 11, 3);
 };
