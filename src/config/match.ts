@@ -52,9 +52,10 @@ export const MATCH = {
     } satisfies Record<StatGrowthKey, number>,
   },
   orbs: {
-    speed: 420,
+    speed: 620,
     arriveRadius: 18,
-    lifetimeMs: 2_400,
+    /** Long enough to cross the 2000-wide map; then the orb is discarded. */
+    lifetimeMs: 6_500,
     radius: 5,
   },
 } as const;
