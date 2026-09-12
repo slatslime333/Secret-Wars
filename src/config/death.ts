@@ -1,5 +1,6 @@
 import { HeroCombatConfig } from './hero';
-import { NINJA } from './ninja';
+import { COMBAT } from './combat';
+import { NINJA_BASE_RANGE } from './ninja';
 
 /**
  * Working Death baseline — durable bruiser. Power is heavy hits, absorb,
@@ -16,8 +17,8 @@ export const DEATH = {
   defense: 34,
   knockbackPower: 210,
   attackCooldownMs: 230,
-  attackRange: NINJA.attackRange,
-  attackArcDegrees: NINJA.attackArcDegrees,
+  attackRange: NINJA_BASE_RANGE,
+  attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 16,
   staminaRegenPerSecond: 16,
   ammoMax: 6,

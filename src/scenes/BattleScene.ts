@@ -13,7 +13,9 @@ import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { AbilityContext } from '../heroes/abilities/types';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
 import { COLE_BALL } from '../heroes/abilities/cole/tunables';
+import { DEATH_SMASH } from '../heroes/abilities/death/tunables';
 import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
+import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
@@ -172,6 +174,9 @@ export class BattleScene extends Phaser.Scene {
     if (frame.ability1AimActive) {
       this.abilityAim = { x: frame.ability1Aim.x, y: frame.ability1Aim.y };
     }
+    if (frame.ability2AimActive) {
+      this.abilityAim = { x: frame.ability2Aim.x, y: frame.ability2Aim.y };
+    }
     const ctx = this.makeAbilityContext(now, delta);
     if (frame.ability1) {
       this.abilities.tryActivate('ability1', ctx);
@@ -179,11 +184,14 @@ export class BattleScene extends Phaser.Scene {
     }
     if (frame.ability2) {
       this.abilities.tryActivate('ability2', ctx);
+      this.abilityAim = undefined;
     }
     if (frame.ultimate) {
       this.abilities.tryActivate('ultimate', ctx);
     }
-    if (frame.ability1Aiming && frame.ability1Aim.lengthSq() > 0) {
+    if (frame.ability2Aiming && frame.ability2Aim.lengthSq() > 0) {
+      this.ninja.setAim(frame.ability2Aim);
+    } else if (frame.ability1Aiming && frame.ability1Aim.lengthSq() > 0) {
       this.ninja.setAim(frame.ability1Aim);
     } else if (frame.aimActive || frame.aim.lengthSq() > 0.01) {
       this.ninja.setAim(frame.aim);
@@ -239,7 +247,9 @@ export class BattleScene extends Phaser.Scene {
       this.ninja.applyMove(frame.move);
     }
 
-    if (frame.ability1Aiming && frame.ability1Aim.lengthSq() > 0) {
+    if (frame.ability2Aiming && frame.ability2Aim.lengthSq() > 0) {
+      this.ninja.setAim(frame.ability2Aim);
+    } else if (frame.ability1Aiming && frame.ability1Aim.lengthSq() > 0) {
       this.ninja.setAim(frame.ability1Aim);
     } else if (frame.blockHeld && frame.blockAimActive) {
       this.ninja.setAim(frame.blockAim);
@@ -266,6 +276,24 @@ export class BattleScene extends Phaser.Scene {
         this.ninja.aim.y,
         COLE_BALL.explodeRadius,
         frame.ability1Aiming,
+      );
+    } else if (this.ninja.heroId === 'death' && frame.ability2Aiming) {
+      this.marker.syncSmashAim(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        DEATH_SMASH.radius,
+        true,
+      );
+    } else if (this.ninja.heroId === 'ninja' && frame.ability2Aiming) {
+      this.marker.syncKickAim(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        NINJA_KICK.dashDistance,
+        true,
       );
     } else {
       this.marker.clearBallAim();
@@ -393,7 +421,15 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setZoom(1);
   }
 
-  private liveAbilityAim(frame: { ability1Aiming: boolean; ability1Aim: Phaser.Math.Vector2 }): { x: number; y: number } | undefined {
+  private liveAbilityAim(frame: {
+    ability1Aiming: boolean;
+    ability1Aim: Phaser.Math.Vector2;
+    ability2Aiming: boolean;
+    ability2Aim: Phaser.Math.Vector2;
+  }): { x: number; y: number } | undefined {
+    if (frame.ability2Aiming && frame.ability2Aim.lengthSq() > 0) {
+      return { x: frame.ability2Aim.x, y: frame.ability2Aim.y };
+    }
     if (frame.ability1Aiming && frame.ability1Aim.lengthSq() > 0) {
       return { x: frame.ability1Aim.x, y: frame.ability1Aim.y };
     }

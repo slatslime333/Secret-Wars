@@ -4,7 +4,10 @@ import { DEATH_GUN } from './tunables';
 import { Projectile } from '../../../combat/projectile';
 import { resolveAbilityHit } from '../resolveAbilityHit';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
+import { spawnMuzzleFlash } from '../../../effects/muzzleFlash';
 import { COLORS } from '../../../ui/theme';
+import { deathUziMuzzleOffset } from '../../drawDeath';
+import { facingFromAim } from '../../drawNinja';
 
 export const gunBarrageDef: AbilityDef = {
   id: 'death-gun-barrage',
@@ -17,6 +20,7 @@ export const gunBarrageDef: AbilityDef = {
   iconKey: ABILITY_ICON.gunBarrage,
   accent: COLORS.orange,
   aimOnRelease: true,
+  padLabel: 'GUN',
   deferCooldown: true,
   canActivate: (ctx) =>
     !ctx.caster.status.isHitReacting(ctx.now) &&
@@ -85,10 +89,14 @@ class GunBarrageAbility implements ActiveAbility {
     const nx = aim.x / length;
     const ny = aim.y / length;
     caster.setAim(nx, ny);
+    const muzzle = deathUziMuzzleOffset(facingFromAim(nx, ny), 0.35);
+    const mx = caster.x + muzzle.x;
+    const my = caster.y + muzzle.y;
+    spawnMuzzleFlash(scene, mx, my, nx, ny);
     const shot = new Projectile(
       scene,
-      caster.x + nx * 22,
-      caster.y + ny * 10,
+      mx + nx * 6,
+      my + ny * 4,
       nx * DEATH_GUN.speed,
       ny * DEATH_GUN.speed,
       DEATH_GUN.radius,

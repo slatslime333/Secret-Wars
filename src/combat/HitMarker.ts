@@ -102,4 +102,77 @@ export class HitMarker {
   clearBallAim(): void {
     this.ballAim.clear();
   }
+
+  /** Bat Smash radius ring + direction crosshair. Matches the smash hit area. */
+  syncSmashAim(
+    x: number,
+    y: number,
+    aimX: number,
+    aimY: number,
+    radius: number,
+    aiming: boolean,
+  ): void {
+    const angle = Math.atan2(aimY, aimX);
+    const g = this.ballAim;
+    g.clear();
+    g.setPosition(x, y);
+    const alpha = aiming ? 0.92 : 0.55;
+    g.lineStyle(3, 0xc04040, alpha);
+    g.strokeCircle(0, 0, radius);
+    g.lineStyle(1.5, 0xc8a060, alpha * 0.75);
+    g.strokeCircle(0, 0, radius * 0.62);
+    const reach = radius + 22;
+    g.lineStyle(aiming ? 3 : 2, 0xffc028, alpha);
+    g.lineBetween(Math.cos(angle) * 10, Math.sin(angle) * 10, Math.cos(angle) * reach, Math.sin(angle) * reach);
+    const tipX = Math.cos(angle) * reach;
+    const tipY = Math.sin(angle) * reach;
+    g.fillStyle(0xfff0c8, alpha);
+    g.fillTriangle(
+      tipX + Math.cos(angle) * 8,
+      tipY + Math.sin(angle) * 8,
+      tipX + Math.cos(angle + 1.4) * 6,
+      tipY + Math.sin(angle + 1.4) * 6,
+      tipX + Math.cos(angle - 1.4) * 6,
+      tipY + Math.sin(angle - 1.4) * 6,
+    );
+  }
+
+  /** Backflip Kick dash path + direction. */
+  syncKickAim(
+    x: number,
+    y: number,
+    aimX: number,
+    aimY: number,
+    dashDistance: number,
+    aiming: boolean,
+  ): void {
+    const angle = Math.atan2(aimY, aimX);
+    const g = this.ballAim;
+    g.clear();
+    g.setPosition(x, y);
+    const alpha = aiming ? 0.92 : 0.55;
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    g.lineStyle(6, 0xff8a2a, alpha * 0.28);
+    g.lineBetween(nx * 8, ny * 8, nx * dashDistance, ny * dashDistance);
+    g.lineStyle(aiming ? 3 : 2, 0xffc028, alpha);
+    g.lineBetween(nx * 8, ny * 8, nx * dashDistance, ny * dashDistance);
+    g.lineStyle(1.5, 0xffe0a0, alpha * 0.7);
+    const px = -ny * 10;
+    const py = nx * 10;
+    g.strokeCircle(nx * dashDistance, ny * dashDistance, 12);
+    g.lineBetween(nx * 18 + px, ny * 18 + py, nx * (dashDistance - 8) + px, ny * (dashDistance - 8) + py);
+    g.lineBetween(nx * 18 - px, ny * 18 - py, nx * (dashDistance - 8) - px, ny * (dashDistance - 8) - py);
+    const tipX = nx * dashDistance;
+    const tipY = ny * dashDistance;
+    g.fillStyle(0xfff0c8, alpha);
+    g.fillTriangle(
+      tipX + nx * 8,
+      tipY + ny * 8,
+      tipX + Math.cos(angle + 1.4) * 6,
+      tipY + Math.sin(angle + 1.4) * 6,
+      tipX + Math.cos(angle - 1.4) * 6,
+      tipY + Math.sin(angle - 1.4) * 6,
+    );
+  }
 }

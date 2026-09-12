@@ -24,6 +24,9 @@ export type BattleFrame = {
   ability1AimActive: boolean;
   ability1Aiming: boolean;
   ability2: boolean;
+  ability2Aim: Phaser.Math.Vector2;
+  ability2AimActive: boolean;
+  ability2Aiming: boolean;
   ultimate: boolean;
 };
 
@@ -61,6 +64,11 @@ export class BattleInput {
   private ability1AimActive = false;
   private ability1AimingHeld = false;
   private readonly ability2Button?: AbilityButton;
+  private readonly ability2Pad?: VirtualAimPad;
+  private readonly ability2Aim = new Phaser.Math.Vector2();
+  private ability2AimActive = false;
+  private ability2AimingHeld = false;
+  private readonly ability2AimOnRelease: boolean;
   private readonly ultimateButton?: AbilityButton;
   private readonly keys?: KeyMap;
   private readonly cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -83,6 +91,7 @@ export class BattleInput {
     this.scene = scene;
     this.isRoundLocked = isRoundLocked;
     this.touch = isTouchPrimary();
+    this.ability2AimOnRelease = Boolean(kit?.ability2.aimOnRelease);
 
     if (this.touch) {
       const layout = getTouchControlLayout(scene.scale.width, scene.scale.height);
@@ -123,7 +132,7 @@ export class BattleInput {
       if (kit) {
         if (kit.ability1.aimOnRelease) {
           this.ability1Pad = new VirtualAimPad(scene, layout.ability1.x, layout.ability1.y, {
-            label: 'BALL',
+            label: kit.ability1.padLabel ?? 'AIM',
             accent: kit.ability1.accent,
             radius: layout.abilityRadius,
             onPress: () => {
@@ -148,14 +157,33 @@ export class BattleInput {
             { onPress: () => { this.ability1Latched = true; } },
           );
         }
-        this.ability2Button = new AbilityButton(
-          scene,
-          layout.ability2.x,
-          layout.ability2.y,
-          layout.abilityRadius,
-          kit.ability2.iconKey,
-          { onPress: () => { this.ability2Latched = true; } },
-        );
+        if (kit.ability2.aimOnRelease) {
+          this.ability2Pad = new VirtualAimPad(scene, layout.ability2.x, layout.ability2.y, {
+            label: kit.ability2.padLabel ?? 'AIM',
+            accent: kit.ability2.accent,
+            radius: layout.abilityRadius,
+            onPress: () => {
+              this.ability2AimingHeld = true;
+            },
+            onRelease: (aim) => {
+              this.ability2AimingHeld = false;
+              this.ability2AimActive = aim.length() >= INPUT.aimPadDeadzone;
+              if (this.ability2AimActive) {
+                this.ability2Aim.copy(aim).normalize();
+              }
+              this.ability2Latched = true;
+            },
+          });
+        } else {
+          this.ability2Button = new AbilityButton(
+            scene,
+            layout.ability2.x,
+            layout.ability2.y,
+            layout.abilityRadius,
+            kit.ability2.iconKey,
+            { onPress: () => { this.ability2Latched = true; } },
+          );
+        }
         this.ultimateButton = new AbilityButton(
           scene,
           layout.ultimate.x,
@@ -195,7 +223,16 @@ export class BattleInput {
         this.ability1Latched = true;
       });
       this.keys.ability2.on('down', () => {
-        this.ability2Latched = true;
+        if (!this.ability2AimOnRelease) {
+          this.ability2Latched = true;
+        }
+      });
+      this.keys.ability2.on('up', () => {
+        if (this.ability2AimOnRelease) {
+          this.ability2Aim.copy(this.lastAim);
+          this.ability2AimActive = this.lastAim.lengthSq() > 0.01;
+          this.ability2Latched = true;
+        }
       });
       this.keys.ultimate.on('down', () => {
         this.ultimateLatched = true;
@@ -204,7 +241,16 @@ export class BattleInput {
         this.ability1Latched = true;
       });
       this.keys.ability2Alt.on('down', () => {
-        this.ability2Latched = true;
+        if (!this.ability2AimOnRelease) {
+          this.ability2Latched = true;
+        }
+      });
+      this.keys.ability2Alt.on('up', () => {
+        if (this.ability2AimOnRelease) {
+          this.ability2Aim.copy(this.lastAim);
+          this.ability2AimActive = this.lastAim.lengthSq() > 0.01;
+          this.ability2Latched = true;
+        }
       });
       this.keys.ultimateAlt.on('down', () => {
         this.ultimateLatched = true;
@@ -243,10 +289,12 @@ export class BattleInput {
     this.ability1Button?.setRadius(layout.abilityRadius);
     this.ability1Pad?.setRadius(layout.abilityRadius);
     this.ability2Button?.setRadius(layout.abilityRadius);
+    this.ability2Pad?.setRadius(layout.abilityRadius);
     this.ultimateButton?.setRadius(layout.ultimateRadius);
     this.ability1Button?.setPosition(layout.ability1.x, layout.ability1.y);
     this.ability1Pad?.setPosition(layout.ability1.x, layout.ability1.y);
     this.ability2Button?.setPosition(layout.ability2.x, layout.ability2.y);
+    this.ability2Pad?.setPosition(layout.ability2.x, layout.ability2.y);
     this.ultimateButton?.setPosition(layout.ultimate.x, layout.ultimate.y);
   }
 
@@ -305,6 +353,18 @@ export class BattleInput {
         this.ability1Aim.copy(padAim).normalize();
       }
     }
+    if (this.ability2Pad?.active) {
+      const padAim = this.ability2Pad.getValue();
+      if (padAim.length() >= INPUT.aimPadDeadzone) {
+        this.ability2Aim.copy(padAim).normalize();
+      }
+    }
+    const ability2KeyAiming =
+      this.ability2AimOnRelease &&
+      Boolean(this.keys?.ability2.isDown || this.keys?.ability2Alt.isDown);
+    if (ability2KeyAiming) {
+      this.ability2Aim.copy(this.lastAim);
+    }
     const ability1 = this.consumeLatch('ability1Latched');
     const ability2 = this.consumeLatch('ability2Latched');
     const ultimate = this.consumeLatch('ultimateLatched');
@@ -312,8 +372,14 @@ export class BattleInput {
     if (ability1) {
       this.ability1AimActive = false;
     }
+    const ability2AimActive = ability2 && this.ability2AimActive;
+    if (ability2) {
+      this.ability2AimActive = false;
+    }
     const ability1Aiming =
       this.ability1AimingHeld || Boolean(this.ability1Pad?.active) || Boolean(this.keys?.ability1.isDown);
+    const ability2Aiming =
+      this.ability2AimingHeld || Boolean(this.ability2Pad?.active) || ability2KeyAiming;
 
     return {
       move,
@@ -330,6 +396,9 @@ export class BattleInput {
       ability1AimActive,
       ability1Aiming,
       ability2,
+      ability2Aim: this.ability2Aim.clone(),
+      ability2AimActive,
+      ability2Aiming,
       ultimate,
     };
   }
@@ -367,6 +436,8 @@ export class BattleInput {
     }
     if (states[1]) {
       this.ability2Button?.sync(states[1]);
+      this.ability2Pad?.setRecovered(states[1].ready ? 1 : 1 - states[1].cooldownRatio);
+      this.ability2Pad?.setDimmed(!states[1].ready || states[1].consumed);
     }
     if (states[2]) {
       this.ultimateButton?.sync(states[2]);
@@ -381,6 +452,7 @@ export class BattleInput {
     this.ability1Button?.destroy();
     this.ability1Pad?.destroy();
     this.ability2Button?.destroy();
+    this.ability2Pad?.destroy();
     this.ultimateButton?.destroy();
     this.scene.input?.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
   }

@@ -1,5 +1,5 @@
 import { COLE } from '../../../config/cole';
-import { NINJA } from '../../../config/ninja';
+import { NINJA_BASE_RANGE } from '../../../config/ninja';
 
 export const COLE_ATTACK = {
   lightSlowMul: 0.4,
@@ -10,7 +10,7 @@ export const COLE_ATTACK = {
 } as const;
 
 export const COLE_SHOCKWAVE = {
-  radius: Math.round(NINJA.attackRange * 0.7),
+  radius: Math.round(NINJA_BASE_RANGE * 0.7),
   knockbackNear: COLE.knockbackPower * 3.4,
   knockbackFar: COLE.knockbackPower * 1.35,
 } as const;
@@ -32,7 +32,7 @@ export const COLE_BALL = {
 
 export const COLE_DISCHARGE = {
   cooldownMs: 10000,
-  radius: NINJA.attackRange,
+  radius: NINJA_BASE_RANGE,
   damageMul: 1.55,
   knockbackMul: 3.6,
   paralyzeMs: 1000,
@@ -41,7 +41,7 @@ export const COLE_DISCHARGE = {
 
 export const COLE_STORM = {
   durationMs: 5000,
-  radius: Math.round(NINJA.attackRange * 2.15),
+  radius: Math.round(NINJA_BASE_RANGE * 2.15),
   moveMul: 0.28,
   strikeIntervalMs: 280,
   warningMs: 220,

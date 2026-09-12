@@ -19,6 +19,7 @@ export const electricBallDef: AbilityDef = {
   iconKey: ABILITY_ICON.electricBall,
   accent: 0x4aa8ff,
   aimOnRelease: true,
+  padLabel: 'BALL',
   canActivate: (ctx) => !ctx.caster.status.isBlockStunned(ctx.now) && !ctx.caster.status.isClashLocked(ctx.now),
   activate: (ctx) => {
     const aim = ctx.aimOverride ?? ctx.caster.aim;

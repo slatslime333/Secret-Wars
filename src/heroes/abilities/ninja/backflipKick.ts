@@ -21,6 +21,8 @@ export const backflipKickDef: AbilityDef = {
   maxCharges: 1,
   iconKey: ABILITY_ICON.backflipKick,
   accent: COLORS.orange,
+  aimOnRelease: true,
+  padLabel: 'KICK',
   canActivate: (ctx) =>
     !ctx.caster.status.isHitReacting(ctx.now) &&
     !ctx.caster.status.isBlockStunned(ctx.now) &&
@@ -48,9 +50,11 @@ class BackflipKickAbility implements ActiveAbility {
 
   constructor(ctx: AbilityContext) {
     const { caster, now } = ctx;
-    const len = Math.hypot(caster.aim.x, caster.aim.y) || 1;
-    this.dirX = caster.aim.x / len;
-    this.dirY = caster.aim.y / len;
+    const aim = ctx.aimOverride ?? caster.aim;
+    const len = Math.hypot(aim.x, aim.y) || 1;
+    this.dirX = aim.x / len;
+    this.dirY = aim.y / len;
+    caster.setAim(this.dirX, this.dirY);
     this.dashUntil = now + NINJA_KICK.dashDurationMs;
     this.lastX = caster.x;
     this.lastY = caster.y;
@@ -180,6 +184,7 @@ class BackflipKickAbility implements ActiveAbility {
           heavy: primary,
           skipSpark: primary,
           hitStopMs: 0,
+          launchCap: NINJA_KICK.launchCap,
         },
         ctx.rivalBlock,
       );

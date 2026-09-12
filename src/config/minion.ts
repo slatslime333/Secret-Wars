@@ -1,6 +1,6 @@
 import type { HeroCombatConfig } from './hero';
 import type { TeamId } from './hero';
-import { NINJA } from './ninja';
+import { NINJA_BASE_RANGE } from './ninja';
 
 export type MinionKind = 'sword' | 'ranger';
 
@@ -60,7 +60,7 @@ export const RANGER_MINION = {
   knockbackPower: 55,
   attackCooldownMs: 1280,
   /** Limited poke — not map-wide. */
-  attackRange: Math.round(NINJA.attackRange * 1.95),
+  attackRange: Math.round(NINJA_BASE_RANGE * 1.95),
   attackArcDegrees: 28,
   bodyRadius: 9,
   staminaRegenPerSecond: 10,

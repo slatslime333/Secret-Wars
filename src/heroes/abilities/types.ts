@@ -49,8 +49,10 @@ export type AbilityDef = {
   maxCharges: number;
   iconKey: string;
   accent: number;
-  /** Mobile: hold and drag the button, fire on release. PC still uses current aim. */
+  /** Hold to aim, fire on release. Mobile uses the aim pad; PC holds the key. */
   aimOnRelease?: boolean;
+  /** Short label on the mobile aim pad. */
+  padLabel?: string;
   /** Start the cooldown when the active instance ends, not when the button is pressed. */
   deferCooldown?: boolean;
   canActivate(ctx: AbilityContext): boolean;

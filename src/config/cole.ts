@@ -1,5 +1,5 @@
 import { HeroCombatConfig } from './hero';
-import { NINJA } from './ninja';
+import { NINJA, NINJA_BASE_RANGE } from './ninja';
 
 /**
  * Working Cole baseline — not locked. Power budget is range, coverage, and
@@ -17,7 +17,7 @@ export const COLE = {
   knockbackPower: 248,
   attackCooldownMs: 430,
   /** Long versus Ninja, still a frontliner — not full-screen. */
-  attackRange: Math.round(NINJA.attackRange * 1.85),
+  attackRange: Math.round(NINJA_BASE_RANGE * 1.85),
   /** 1/4 narrower than the original 108° Cole wedge. */
   attackArcDegrees: 81,
   bodyRadius: NINJA.bodyRadius,

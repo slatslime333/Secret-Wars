@@ -20,6 +20,8 @@ export type TakeHitOptions = {
   hitReactionMs?: number;
   /** Override the default connect freeze. `0` skips a second freeze after a shared impact pause. */
   hitStopMs?: number;
+  /** Optional per-hit launch speed cap. Defaults to COMBAT.launchSpeedCap. */
+  launchCap?: number;
 };
 
 /** Anyone QuickAttack can injure. */
