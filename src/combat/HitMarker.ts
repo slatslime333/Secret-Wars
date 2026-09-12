@@ -137,7 +137,7 @@ export class HitMarker {
     );
   }
 
-  /** Backflip Kick dash path + direction. */
+  /** Backflip Kick dash corridor — length and width match the swept hit path. */
   syncKickAim(
     x: number,
     y: number,
@@ -145,6 +145,7 @@ export class HitMarker {
     aimY: number,
     dashDistance: number,
     aiming: boolean,
+    halfWidth: number = 18,
   ): void {
     const angle = Math.atan2(aimY, aimX);
     const g = this.ballAim;
@@ -153,18 +154,21 @@ export class HitMarker {
     const alpha = aiming ? 0.92 : 0.55;
     const nx = Math.cos(angle);
     const ny = Math.sin(angle);
-    g.lineStyle(6, 0xff8a2a, alpha * 0.28);
-    g.lineBetween(nx * 8, ny * 8, nx * dashDistance, ny * dashDistance);
-    g.lineStyle(aiming ? 3 : 2, 0xffc028, alpha);
-    g.lineBetween(nx * 8, ny * 8, nx * dashDistance, ny * dashDistance);
-    g.lineStyle(1.5, 0xffe0a0, alpha * 0.7);
-    const px = -ny * 10;
-    const py = nx * 10;
-    g.strokeCircle(nx * dashDistance, ny * dashDistance, 12);
-    g.lineBetween(nx * 18 + px, ny * 18 + py, nx * (dashDistance - 8) + px, ny * (dashDistance - 8) + py);
-    g.lineBetween(nx * 18 - px, ny * 18 - py, nx * (dashDistance - 8) - px, ny * (dashDistance - 8) - py);
-    const tipX = nx * dashDistance;
-    const tipY = ny * dashDistance;
+    const px = -ny * halfWidth;
+    const py = nx * halfWidth;
+    const end = dashDistance;
+    g.fillStyle(0xff8a2a, alpha * 0.16);
+    g.fillTriangle(px, py, -px, -py, nx * end + px, ny * end + py);
+    g.fillTriangle(-px, -py, nx * end - px, ny * end - py, nx * end + px, ny * end + py);
+    g.lineStyle(aiming ? 2.5 : 2, 0xffc028, alpha);
+    g.lineBetween(px, py, nx * end + px, ny * end + py);
+    g.lineBetween(-px, -py, nx * end - px, ny * end - py);
+    g.strokeCircle(0, 0, halfWidth);
+    g.strokeCircle(nx * end, ny * end, halfWidth);
+    g.lineStyle(aiming ? 3 : 2, 0xffe0a0, alpha);
+    g.lineBetween(nx * 8, ny * 8, nx * end, ny * end);
+    const tipX = nx * end;
+    const tipY = ny * end;
     g.fillStyle(0xfff0c8, alpha);
     g.fillTriangle(
       tipX + nx * 8,

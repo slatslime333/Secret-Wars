@@ -171,7 +171,8 @@ export class NinjaBody {
     this.drainStamina(options.staminaDamage, now);
     const length = Math.hypot(options.dirX, options.dirY) || 1;
     const minion = this.stats.role === 'minion';
-    const power = options.knockback * (minion ? MINION.hitKnockbackMul : 1);
+    const receiveMul = options.receivedKnockbackMul ?? (minion ? MINION.hitKnockbackMul : 1);
+    const power = options.knockback * receiveMul;
     const hitStopMs =
       options.hitStopMs ??
       (options.clash || options.step === 3 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs);

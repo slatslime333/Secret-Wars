@@ -23,6 +23,7 @@ export type AbilityHitProfile = {
   skipSpark?: boolean;
   hitStopMs?: number;
   launchCap?: number;
+  receivedKnockbackMul?: number;
 };
 
 /**
@@ -76,6 +77,7 @@ export const resolveAbilityHit = (
     hitReactionMs: profile.hitReactionMs,
     hitStopMs: profile.hitStopMs,
     launchCap: profile.launchCap,
+    receivedKnockbackMul: profile.receivedKnockbackMul,
   });
   if (!profile.skipSpark) {
     spawnHitSpark(scene, defender.x + (profile.dirX / length) * 12, defender.y + (profile.dirY / length) * 12, {

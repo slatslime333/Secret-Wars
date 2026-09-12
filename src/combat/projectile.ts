@@ -36,9 +36,10 @@ export class Projectile {
     this.endsAt = scene.time.now + lifetimeMs;
     this.view = scene.add.container(x, y).setDepth(15);
     if (style === 'arrow') {
-      this.body = scene.add.circle(0, 0, radius, color, 1);
-      this.body.setStrokeStyle(1, 0x3a2410, 1);
-      const shaft = scene.add.rectangle(0, 0, radius * 5, 2, 0x8a5a28, 1);
+      this.body = scene.add.circle(0, 0, radius + 0.6, color, 1);
+      this.body.setStrokeStyle(1.4, 0x2a1c10, 1);
+      const shaft = scene.add.rectangle(0, 0, radius * 6, 2.4, 0xd4a050, 1);
+      shaft.setStrokeStyle(1, 0x3a2410, 0.9);
       shaft.setRotation(Math.atan2(vy, vx));
       this.view.add(shaft);
     } else {
