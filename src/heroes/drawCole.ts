@@ -151,12 +151,12 @@ export const drawColeElectricity = (
   ];
   const pulse = 0.7 + ((now / 80) % 4) * 0.07;
   for (const arm of arms) {
-    graphics.lineStyle(3.2, 0xdff4ff, 0.85 * pulse);
-    jagged(graphics, arm.sx, arm.sy, arm.ex, arm.ey, 6, 5);
-    graphics.lineStyle(1.8, 0x4aa8ff, 0.95);
-    jagged(graphics, arm.sx + 1.5, arm.sy, arm.ex + 1.5, arm.ey, 5, 4);
-    graphics.lineStyle(1.2, 0x7ecbff, 0.75);
-    jagged(graphics, arm.sx - 1.5, arm.sy + 2, arm.ex - 1, arm.ey, 4, 3);
+    graphics.lineStyle(4, 0xdff4ff, 0.9 * pulse);
+    jagged(graphics, arm.sx, arm.sy, arm.ex, arm.ey, 6, 7);
+    graphics.lineStyle(2.4, 0x4aa8ff, 1);
+    jagged(graphics, arm.sx + 2, arm.sy, arm.ex + 2, arm.ey, 5, 6);
+    graphics.lineStyle(1.6, 0x7ecbff, 0.85);
+    jagged(graphics, arm.sx - 2, arm.sy + 1, arm.ex - 2, arm.ey, 5, 5);
     graphics.fillStyle(0xdff4ff, 0.9);
     graphics.fillCircle(arm.ex, arm.ey, 2.2);
     graphics.fillStyle(0x4aa8ff, 0.7);
