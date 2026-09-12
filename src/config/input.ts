@@ -17,5 +17,8 @@ export const INPUT = {
     attack: 'J',
     block: 'K',
     dash: 'L',
+    ability1: 'Q',
+    ability2: 'E',
+    ultimate: 'F',
   },
 } as const;

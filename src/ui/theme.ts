@@ -53,10 +53,15 @@ export type TouchControlLayout = {
   uiScale: number;
   radius: number;
   buttonRadius: number;
+  abilityRadius: number;
+  ultimateRadius: number;
   leftStick: { x: number; y: number };
   rightStick: { x: number; y: number };
   block: { x: number; y: number };
   dash: { x: number; y: number };
+  ability1: { x: number; y: number };
+  ability2: { x: number; y: number };
+  ultimate: { x: number; y: number };
 };
 
 /** Thumb-reachable stick and button anchors that shrink on short screens. */
@@ -73,21 +78,41 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
   const buttonLift = isPortrait
     ? bottomInset + Math.round(radius + 28 * uiScale)
     : Math.round(clamp(short * 0.38, buttonRadius + 36, short * 0.46));
+  const abilityRadius = Math.round(clamp(buttonRadius * 1.18, 24, 38));
+  const ultimateRadius = Math.round(clamp(buttonRadius * 1.42, 28, 44));
+  const leftStick = { x: sideInset, y: height - bottomInset };
+  const rightStick = { x: width - sideInset, y: height - bottomInset };
+  const block = {
+    x: width - (isPortrait ? sideInset + buttonRadius * 2.4 : sideInset + buttonRadius * 2.8),
+    y: height - buttonLift,
+  };
+  const dash = {
+    x: width - (isPortrait ? Math.max(buttonRadius + 16, sideInset - buttonRadius) : sideInset),
+    y: height - buttonLift,
+  };
 
   return {
     isPortrait,
     uiScale,
     radius,
     buttonRadius,
-    leftStick: { x: sideInset, y: height - bottomInset },
-    rightStick: { x: width - sideInset, y: height - bottomInset },
-    block: {
-      x: width - (isPortrait ? sideInset + buttonRadius * 2.4 : sideInset + buttonRadius * 2.8),
-      y: height - buttonLift,
+    abilityRadius,
+    ultimateRadius,
+    leftStick,
+    rightStick,
+    block,
+    dash,
+    ability1: {
+      x: Math.max(abilityRadius + 8, block.x - buttonRadius - abilityRadius - Math.round(10 * uiScale)),
+      y: block.y + Math.round(8 * uiScale),
     },
-    dash: {
-      x: width - (isPortrait ? Math.max(buttonRadius + 16, sideInset - buttonRadius) : sideInset),
-      y: height - buttonLift,
+    ability2: {
+      x: Math.min(block.x + Math.round(buttonRadius * 0.2), rightStick.x - radius * 0.15),
+      y: Math.round((block.y + rightStick.y) * 0.52),
+    },
+    ultimate: {
+      x: Math.round((leftStick.x + rightStick.x) / 2),
+      y: height - Math.round(clamp(bottomInset + ultimateRadius * 0.15, ultimateRadius + 14, short * 0.24)),
     },
   };
 }

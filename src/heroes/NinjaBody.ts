@@ -134,7 +134,11 @@ export class NinjaBody {
     const power = options.knockback;
     body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
     body.setVelocity((options.dirX / length) * power, (options.dirY / length) * power);
-    this.status.applyHitReaction(now, options.step);
+    if (options.hitReactionMs !== undefined) {
+      this.status.applyStun(now, options.hitReactionMs);
+    } else {
+      this.status.applyHitReaction(now, options.step);
+    }
     this.status.applyHitStop(
       now,
       options.clash || options.step === 3 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs,
@@ -255,6 +259,61 @@ export class NinjaBody {
     });
   }
 
+  playEvasiveLean(dirX: number, dirY: number, durationMs: number): void {
+    this.currentAttackTween?.stop();
+    this.view.setRotation(dirX >= 0 ? 0.22 : -0.22);
+    this.art.setPosition(dirX * 6, dirY * 6);
+    this.scene.tweens.add({
+      targets: this.view,
+      rotation: 0,
+      duration: durationMs + 80,
+      ease: 'Quad.Out',
+    });
+    this.scene.tweens.add({
+      targets: this.art,
+      x: 0,
+      y: 0,
+      duration: durationMs,
+      ease: 'Quad.Out',
+    });
+  }
+
+  playKickPose(durationMs: number): void {
+    this.currentAttackTween?.stop();
+    const lean = this.aim.x >= 0 ? 0.35 : -0.35;
+    this.art.setRotation(lean);
+    this.art.setPosition(this.aim.x * 10, this.aim.y * 10);
+    this.scene.tweens.add({
+      targets: this.art,
+      rotation: lean * 1.15,
+      duration: durationMs,
+      ease: 'Cubic.Out',
+    });
+  }
+
+  playBackflip(dirX: number, dirY: number, durationMs: number): void {
+    this.currentAttackTween?.stop();
+    const spin = { value: 0 };
+    const sign = dirX >= 0 ? -1 : 1;
+    this.scene.tweens.add({
+      targets: spin,
+      value: 1,
+      duration: durationMs,
+      ease: 'Cubic.Out',
+      onUpdate: () => {
+        this.view.setRotation(sign * spin.value * Math.PI * 2);
+        this.art.setY(-22 * Math.sin(spin.value * Math.PI) + dirY * 4);
+        this.art.setX(dirX * 6);
+      },
+      onComplete: () => {
+        this.view.setRotation(0);
+        this.art.setPosition(0, 0);
+        this.art.setRotation(0);
+        this.redrawIdle();
+      },
+    });
+  }
+
   playBlockRecoil(now: number, heavy: boolean): void {
     this.status.applyBlockStun(now, heavy ? COMBAT.perfectShieldStunMs : COMBAT.perfectShieldStunMs * 0.75);
     this.applyRecoil(-this.aim.x, -this.aim.y, heavy ? 120 : 70);
@@ -331,7 +390,8 @@ export class NinjaBody {
     if (amount <= 0) {
       return;
     }
-    this.stamina = Math.max(0, this.stamina - amount);
+    const scaled = amount * this.status.staminaDrainMultiplier();
+    this.stamina = Math.max(0, this.stamina - scaled);
     this.staminaLockUntil = now + COMBAT.staminaRegenDelayMs;
   }
 

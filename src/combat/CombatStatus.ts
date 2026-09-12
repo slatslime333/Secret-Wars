@@ -1,4 +1,7 @@
 import { COMBAT, ComboStep } from '../config/combat';
+import type { AreaModifier } from '../heroes/abilities/AbilityWorld';
+
+const OPEN_ZONE: AreaModifier = { moveMul: 1, attackSpeedMul: 1, staminaDrainMul: 1 };
 
 /**
  * Lightweight per-fighter combat timers.
@@ -13,6 +16,8 @@ export class CombatStatus {
   private hitFlashUntil = 0;
   private hitStopUntil = 0;
   private lungeUntil = 0;
+  private controlLockUntil = 0;
+  private zone: AreaModifier = OPEN_ZONE;
   private lastSwingAt = -9999;
   private lastSwingStep: ComboStep = 1;
 
@@ -29,11 +34,31 @@ export class CombatStatus {
     return this.lastSwingStep;
   }
 
-  applyHitReaction(now: number, step: ComboStep = 1): void {
-    const reactionMs = COMBAT.combo[step].hitReactionMs;
-    this.hitReactionUntil = now + reactionMs;
-    this.attackSlowUntil = Math.min(now + COMBAT.hitSlowMaxMs, now + reactionMs + 80);
+  applyHitReaction(now: number, step: ComboStep = 1, reactionMs?: number): void {
+    const duration = reactionMs ?? COMBAT.combo[step].hitReactionMs;
+    this.hitReactionUntil = now + duration;
+    this.attackSlowUntil = Math.min(now + COMBAT.hitSlowMaxMs, now + duration + 80);
     this.hitFlashUntil = now + COMBAT.hitFlashMs;
+  }
+
+  applyStun(now: number, durationMs: number): void {
+    this.applyHitReaction(now, 1, durationMs);
+  }
+
+  applyControlLock(now: number, durationMs: number): void {
+    this.controlLockUntil = Math.max(this.controlLockUntil, now + durationMs);
+  }
+
+  setZoneModifiers(modifiers: AreaModifier): void {
+    this.zone = modifiers;
+  }
+
+  clearZoneModifiers(): void {
+    this.zone = OPEN_ZONE;
+  }
+
+  staminaDrainMultiplier(): number {
+    return this.zone.staminaDrainMul;
   }
 
   applyAttackRecovery(now: number, recoveryMs: number): void {
@@ -81,13 +106,18 @@ export class CombatStatus {
   }
 
   /** True when physics (knockback / lunge / stun) should own velocity. */
+  isControlLocked(now: number): boolean {
+    return now < this.controlLockUntil;
+  }
+
   shouldLockMovement(now: number): boolean {
     return (
       this.isHitReacting(now) ||
       this.isLunging(now) ||
       this.isBlockStunned(now) ||
       this.isHitStopping(now) ||
-      this.isClashLocked(now)
+      this.isClashLocked(now) ||
+      this.isControlLocked(now)
     );
   }
 
@@ -96,18 +126,19 @@ export class CombatStatus {
     return (
       this.isBlockStunned(now) ||
       this.isClashLocked(now) ||
+      this.isControlLocked(now) ||
       now < this.attackRecoveryUntil
     );
   }
 
   moveMultiplier(now: number): number {
     if (this.isBlockStunned(now) || this.isHitStopping(now)) {
-      return 0.2;
+      return 0.2 * this.zone.moveMul;
     }
     if (this.isHitReacting(now)) {
-      return COMBAT.hitMoveMultiplier;
+      return COMBAT.hitMoveMultiplier * this.zone.moveMul;
     }
-    return 1;
+    return this.zone.moveMul;
   }
 
   extraSwingDelay(now: number): number {
@@ -122,6 +153,7 @@ export class CombatStatus {
   }
 
   attackSlowMultiplier(now: number): number {
-    return now < this.attackSlowUntil ? COMBAT.hitAttackSlowMultiplier : 1;
+    const hitSlow = now < this.attackSlowUntil ? COMBAT.hitAttackSlowMultiplier : 1;
+    return hitSlow / this.zone.attackSpeedMul;
   }
 }

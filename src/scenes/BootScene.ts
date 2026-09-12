@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ensureAbilityIcons } from '../heroes/abilities/icons';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -6,6 +7,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    ensureAbilityIcons(this);
     this.scene.start('Title');
   }
 }

@@ -183,12 +183,15 @@ export class SettingsScene extends Phaser.Scene {
           'Right stick  aim / attack',
           'Hold SHIELD to block',
           'DASH next to SHIELD',
+          'Ability buttons around AIM',
+          'Ultimate between the sticks',
         ]
       : [
           `${keyboard.up}${keyboard.left}${keyboard.down}${keyboard.right} / arrows  move`,
           'Mouse  aim',
           `${keyboard.attack} / click  attack`,
           `${keyboard.block}  hold shield    ${keyboard.dash}  dash`,
+          `${keyboard.ability1} smoke   ${keyboard.ability2} kick   ${keyboard.ultimate} ultimate`,
           'ESC  back / menu',
         ];
 

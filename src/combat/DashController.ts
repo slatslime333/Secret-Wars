@@ -8,7 +8,7 @@ const dashSpeed = (): number => COMBAT.dashDistance / (COMBAT.dashDurationMs / 1
 
 /**
  * Short leap in move direction, or facing if standing still.
- * Three charges; each spends one charge and recharges on a 2.5s timer.
+ * Three charges; each spends one charge and recharges on a 1.5s timer.
  */
 export class DashController {
   private activeUntil = 0;
@@ -50,6 +50,14 @@ export class DashController {
 
   isActive(now: number): boolean {
     return now < this.activeUntil;
+  }
+
+  cancel(ninja: NinjaBody): void {
+    if (this.activeUntil <= 0) {
+      return;
+    }
+    this.activeUntil = 0;
+    ninja.setSpeedCap(COMBAT.physicsMaxSpeed);
   }
 
   tickRecharge(now: number): void {

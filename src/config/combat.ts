@@ -17,7 +17,7 @@ export const COMBAT = {
   /** Slightly slower than the 70-rating cooldown so each swing can read. */
   attackCooldownMultiplier: 1.22,
 
-  attackAmmoMax: 10,
+  attackAmmoMax: 7,
   attackReloadMs: 1500,
 
   /** Hold-to-block. Stamina is the shield resource. */
@@ -34,8 +34,8 @@ export const COMBAT = {
 
   /** Three charges, each recovering through the same recharge timer. */
   dashMaxCharges: 3,
-  dashRechargeMs: 2500,
-  dashDistance: 96,
+  dashRechargeMs: 1500,
+  dashDistance: 118,
   dashDurationMs: 120,
 
   comboWindowMs: 720,
