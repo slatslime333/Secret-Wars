@@ -64,7 +64,7 @@ export const startDeathDashSweep = (
           caster,
           enemy,
           {
-            rawDamage: caster.stats.attackDamage * DEATH_DASH.damageMul,
+            rawDamage: DEATH_DASH.damage,
             knockback: caster.stats.knockbackPower * DEATH_DASH.knockbackMul,
             staminaDamage: 5,
             dirX: kb.x,

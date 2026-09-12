@@ -9,4 +9,14 @@ export { DEATH } from './death';
 export { MINION, SWORD_MINION, RANGER_MINION } from './minion';
 export type { HeroCombatConfig, TeamId } from './hero';
 export { INPUT } from './input';
-export { NINJA_RATING, RATING_CAP, fromRating } from './ratings';
+export {
+  RATING_CAP,
+  BASELINE_RATING,
+  MELEE_BASE_RANGE,
+  abilityDamage,
+  coreStatValue,
+  formatRating,
+  gameplayFromRatings,
+  fromStatRating,
+} from './ratings';
+export type { CoreRatings, CoreStatId } from './ratings';

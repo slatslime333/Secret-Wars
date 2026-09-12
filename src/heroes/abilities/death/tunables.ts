@@ -1,5 +1,6 @@
 import { NINJA_BASE_RANGE } from '../../../config/ninja';
 import { DEATH } from '../../../config/death';
+import { abilityDamage } from '../../../config/ratings';
 
 /** 1 → 2 is the fast pair. Then a short pause before the next pair. */
 export const DEATH_ATTACK = {
@@ -18,7 +19,8 @@ export const DEATH_ATTACK = {
 } as const;
 
 export const DEATH_DASH = {
-  damageMul: 1.08,
+  damageRating: 54,
+  damage: abilityDamage(54),
   knockbackMul: 1.15,
 } as const;
 
@@ -29,7 +31,8 @@ export const DEATH_GUN = {
   speed: 500,
   radius: 4,
   lifetimeMs: 5000,
-  damageMul: 0.38,
+  damageRating: 16,
+  damage: abilityDamage(16),
   knockbackMul: 0.35,
   /** Radians of random aim cone. ~7.5° either side — readable spray, not a laser. */
   spreadRad: 0.13,
@@ -40,7 +43,8 @@ export const DEATH_SMASH = {
   animMs: 760,
   impactAt: 430,
   radius: Math.round(NINJA_BASE_RANGE * 1.08),
-  damageMul: 1.48,
+  damageRating: 66,
+  damage: abilityDamage(66),
   /**
    * Aimed shove along the smash, not a sideways sweep.
    * launchCap keeps a running target from stacking into a map launch.
@@ -58,7 +62,8 @@ export const DEATH_SWEEP = {
   radius: NINJA_BASE_RANGE * 1.2,
   moveMul: 0.52,
   hitCooldownMs: 420,
-  damageMul: 1.2,
+  damageRating: 58,
+  damage: abilityDamage(58),
   knockbackMul: 3.55,
   spinMs: 720,
 } as const;

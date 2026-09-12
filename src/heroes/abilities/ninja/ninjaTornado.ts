@@ -137,7 +137,7 @@ class NinjaTornadoAbility implements ActiveAbility {
         caster,
         enemy,
         {
-          rawDamage: NINJA.attackDamage * NINJA_TORNADO.damageMul,
+          rawDamage: NINJA_TORNADO.damage,
           knockback: NINJA_TORNADO.knockback,
           staminaDamage: NINJA_TORNADO.staminaDamage,
           dirX: dirX || caster.aim.x,

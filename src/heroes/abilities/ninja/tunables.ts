@@ -1,8 +1,12 @@
 import { NINJA } from '../../../config/ninja';
+import { abilityDamage } from '../../../config/ratings';
 
 /**
  * Ninja kit numbers. Kept off the shared COMBAT table so other heroes
  * can ship completely different radii, timings, and effects.
+ *
+ * Ability Damage ratings convert through `abilityDamage()` so live hit amounts
+ * stay in the same defense-rounding buckets as the previous attackDamage * mul.
  */
 export const NINJA_SMOKE = {
   cooldownMs: 10000,
@@ -27,7 +31,8 @@ export const NINJA_KICK = {
   pathPadding: 8,
   /** Dash-corridor half-width shown while aiming. Matches segmentHitsCircle. */
   aimHalfWidth: NINJA.bodyRadius + NINJA.bodyRadius + 8,
-  damageMul: 1.28,
+  damageRating: 51,
+  damage: abilityDamage(51),
   knockbackMul: 5.7,
   secondaryKnockbackMul: 4.25,
   /** Lets the kick exceed the shared launch cap without changing other heroes. */
@@ -49,7 +54,8 @@ export const NINJA_TORNADO = {
   radius: NINJA.attackRange * 1.2,
   swipeIntervalMs: 165,
   hitCooldownMs: 280,
-  damageMul: 0.86,
+  damageRating: 33,
+  damage: abilityDamage(33),
   stunMs: 150,
   knockback: 92,
   bounceSpeed: 400,

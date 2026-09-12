@@ -134,7 +134,7 @@ class BatSmashAbility implements ActiveAbility {
         caster,
         enemy,
         {
-          rawDamage: caster.stats.attackDamage * DEATH_SMASH.damageMul,
+          rawDamage: DEATH_SMASH.damage,
           knockback: caster.stats.knockbackPower * DEATH_SMASH.knockbackMul,
           staminaDamage: 8,
           dirX,

@@ -81,7 +81,7 @@ class ThunderstormAbility implements ActiveAbility {
           caster,
           enemy,
           {
-            rawDamage: caster.stats.attackDamage * COLE_STORM.damageMul,
+            rawDamage: COLE_STORM.damage,
             knockback: caster.stats.knockbackPower * 1.4,
             staminaDamage: 6,
             dirX: enemy.x - caster.x,

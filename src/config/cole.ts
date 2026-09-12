@@ -1,23 +1,28 @@
 import { HeroCombatConfig } from './hero';
-import { NINJA, NINJA_BASE_RANGE } from './ninja';
+import { NINJA } from './ninja';
+import { gameplayFromRatings, type CoreRatings } from './ratings';
 
 /**
- * Working Cole baseline — not locked. Power budget is range, coverage, and
- * CC. Direct damage stays respectable, not a carry nuke.
+ * Foundational frontliner. Conversion preserves current punches, reach, and
+ * weight. Ratings describe that kit rather than rewriting it.
  */
+export const COLE_RATINGS = {
+  health: 60,
+  stamina: 60,
+  damage: 55,
+  defense: 50,
+  speed: 48,
+  attackSpeed: 36,
+  attackRange: 74,
+  knockback: 67,
+} as const satisfies CoreRatings;
+
 export const COLE = {
   id: 'cole',
   displayName: 'Cole',
   role: 'frontliner',
-  maxHealth: 168,
-  maxStamina: 128,
-  moveSpeed: 168,
-  attackDamage: 14,
-  defense: 28,
-  knockbackPower: 248,
-  attackCooldownMs: 430,
-  /** Long versus Ninja, then 13% tighter, then 12% more reach. */
-  attackRange: Math.round(NINJA_BASE_RANGE * 1.85 * 0.87 * 1.12),
+  ratings: COLE_RATINGS,
+  ...gameplayFromRatings(COLE_RATINGS),
   /** 20% tighter than the previous 81° Cole wedge. */
   attackArcDegrees: 65,
   bodyRadius: NINJA.bodyRadius,

@@ -9,7 +9,7 @@ import { facingFromAim, type CardinalFacing } from './drawNinja';
 export class ChaserBody {
   readonly sprite: Phaser.Physics.Arcade.Image;
   readonly view: Phaser.GameObjects.Container;
-  health = CHASER.maxHealth;
+  health: number = CHASER.maxHealth;
   readonly aim = new Phaser.Math.Vector2(-1, 0);
   private facing: CardinalFacing = 'west';
   private readonly art: Phaser.GameObjects.Graphics;

@@ -124,7 +124,7 @@ class GunBarrageAbility implements ActiveAbility {
             caster,
             result.target,
             {
-              rawDamage: caster.stats.attackDamage * DEATH_GUN.damageMul,
+              rawDamage: DEATH_GUN.damage,
               knockback: caster.stats.knockbackPower * DEATH_GUN.knockbackMul,
               staminaDamage: 2,
               dirX: sx,
