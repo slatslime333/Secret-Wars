@@ -104,6 +104,10 @@ export class HitMarker {
     this.ballAim.clear();
   }
 
+  clearRange(): void {
+    this.graphics.clear();
+  }
+
   /** Gun Barrage aim laser. Same length as the live barrage beam. */
   syncGunAim(
     x: number,
@@ -128,6 +132,85 @@ export class HitMarker {
     g.fillCircle(nx * length, ny * length, 4);
   }
 
+  /** Thin long-range aim line for Rope Man's light attack. */
+  syncRopeAim(
+    x: number,
+    y: number,
+    aimX: number,
+    aimY: number,
+    length: number,
+    aiming: boolean,
+    arm: -1 | 1 = -1,
+    offsetRad = 0.055,
+  ): void {
+    const angle = Math.atan2(aimY, aimX) + arm * offsetRad;
+    const g = this.graphics;
+    g.clear();
+    g.setPosition(x, y);
+    const alpha = aiming ? 0.82 : 0.5;
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    g.lineStyle(3.5, 0x5a3014, alpha * 0.22);
+    g.lineBetween(nx * 10, ny * 10, nx * length, ny * length);
+    g.lineStyle(aiming ? 1.8 : 1.4, 0xd4a06a, alpha);
+    g.lineBetween(nx * 10, ny * 10, nx * length, ny * length);
+    g.fillStyle(0xf0d0a0, alpha);
+    g.fillCircle(nx * length, ny * length, 3);
+  }
+
+  /** Rope Grab travel line. */
+  syncRopeGrabAim(
+    x: number,
+    y: number,
+    aimX: number,
+    aimY: number,
+    length: number,
+    aiming: boolean,
+  ): void {
+    const angle = Math.atan2(aimY, aimX);
+    const g = this.ballAim;
+    g.clear();
+    g.setPosition(x, y);
+    const alpha = aiming ? 0.9 : 0.5;
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    g.lineStyle(4, 0x5a3014, alpha * 0.2);
+    g.lineBetween(nx * 8, ny * 8, nx * length, ny * length);
+    g.lineStyle(aiming ? 2.2 : 1.8, 0xc4894a, alpha);
+    g.lineBetween(nx * 8, ny * 8, nx * length, ny * length);
+    g.fillStyle(0xf0d0a0, alpha);
+    g.fillCircle(nx * length, ny * length, 4);
+  }
+
+  /** Mega Punch forward burst. */
+  syncPunchAim(
+    x: number,
+    y: number,
+    aimX: number,
+    aimY: number,
+    radius: number,
+    aiming: boolean,
+  ): void {
+    const angle = Math.atan2(aimY, aimX);
+    const g = this.ballAim;
+    g.clear();
+    g.setPosition(x, y);
+    const alpha = aiming ? 0.88 : 0.5;
+    const cx = Math.cos(angle) * 18;
+    const cy = Math.sin(angle) * 18;
+    g.fillStyle(0xc4894a, alpha * 0.14);
+    g.fillCircle(cx, cy, radius);
+    g.lineStyle(aiming ? 2.4 : 2, 0xd4a06a, alpha);
+    g.strokeCircle(cx, cy, radius);
+    g.lineStyle(aiming ? 2.5 : 2, 0xffc028, alpha);
+    g.lineBetween(
+      Math.cos(angle) * 8,
+      Math.sin(angle) * 8,
+      Math.cos(angle) * (radius + 8),
+      Math.sin(angle) * (radius + 8),
+    );
+  }
+
   /** Bat Smash sweep fan. Matches smashCrashOffsets + smash radius. */
   syncSmashAim(
     x: number,
@@ -136,8 +219,9 @@ export class HitMarker {
     aimY: number,
     radius: number,
     aiming: boolean,
-    _halfWidth: number = 42,
+    _halfWidth = 42,
   ): void {
+    void _halfWidth;
     const aim = Math.atan2(aimY, aimX);
     const span = smashCrashOffsets();
     const a0 = aim + span.from;

@@ -105,13 +105,12 @@ export class AbilityController {
     const keep = this.active.update(ctx);
     moveAbilityAudio(this.loopKey, ctx.caster);
     if (!keep) {
-      if (this.deferredSlot && !DEV_CHEATS.noCooldowns) {
+      const consume = this.active.consumeDeferred !== false;
+      if (this.deferredSlot && consume && !DEV_CHEATS.noCooldowns) {
         const def = defForSlot(this.kit, this.deferredSlot);
         this.slots[this.deferredSlot].readyAt = ctx.now + def.cooldownMs;
-        this.deferredSlot = undefined;
-      } else {
-        this.deferredSlot = undefined;
       }
+      this.deferredSlot = undefined;
       this.active.destroy();
       this.active = undefined;
       stopAbilityAudio(this.loopKey);
@@ -156,6 +155,14 @@ export class AbilityController {
   silence(): void {
     stopAbilityAudio(this.loopKey);
     this.loopKey = undefined;
+  }
+
+  /** Drop the active instance without starting a deferred cooldown (death / interrupt). */
+  interruptActive(): void {
+    this.active?.destroy();
+    this.active = undefined;
+    this.deferredSlot = undefined;
+    this.silence();
   }
 
   destroy(): void {

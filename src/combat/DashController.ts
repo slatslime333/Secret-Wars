@@ -3,6 +3,7 @@ import { COMBAT } from '../config/combat';
 import { spawnCombatCallout } from '../effects/combatCallout';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { COLORS } from '../ui/theme';
+import { RopeSlingDash } from './RopeSlingDash';
 
 const dashSpeed = (): number => COMBAT.dashDistance / (COMBAT.dashDurationMs / 1000);
 
@@ -16,6 +17,7 @@ export class DashController {
   private rechargeAt = 0;
   private readonly dir = new Phaser.Math.Vector2(1, 0);
   private readonly chargeCap: number;
+  private sling?: RopeSlingDash;
 
   constructor(private readonly scene: Phaser.Scene, maxCharges: number = COMBAT.dashMaxCharges) {
     this.chargeCap = maxCharges;
@@ -48,6 +50,15 @@ export class DashController {
     if (this.rechargeAt <= now) {
       this.rechargeAt = now + COMBAT.dashRechargeMs;
     }
+    if (ninja.heroId === 'rope') {
+      this.sling?.destroy();
+      this.sling = new RopeSlingDash(this.scene, ninja, this.dir);
+      this.sling.begin(now);
+      this.activeUntil = now + this.sling.durationMs;
+      ninja.grantInvulnerable(now + this.sling.durationMs);
+      spawnCombatCallout(this.scene, ninja.x, ninja.y, 'DASH', COLORS.orange);
+      return true;
+    }
     this.activeUntil = now + COMBAT.dashDurationMs;
     ninja.setSpeedCap(dashSpeed());
     ninja.grantInvulnerable(now + COMBAT.dashDurationMs);
@@ -57,10 +68,15 @@ export class DashController {
   }
 
   isActive(now: number): boolean {
+    if (this.sling) {
+      return this.sling.isActive(now);
+    }
     return now < this.activeUntil;
   }
 
   cancel(ninja: NinjaBody): void {
+    this.sling?.destroy();
+    this.sling = undefined;
     if (this.activeUntil <= 0) {
       return;
     }
@@ -91,6 +107,19 @@ export class DashController {
 
   apply(now: number, ninja: NinjaBody): void {
     this.tickRecharge(now);
+    if (this.sling) {
+      if (!this.sling.isActive(now) || ninja.down) {
+        this.sling.destroy();
+        this.sling = undefined;
+        this.activeUntil = 0;
+        if (!ninja.status.shouldLockMovement(now)) {
+          ninja.setSpeedCap(COMBAT.physicsMaxSpeed);
+        }
+        return;
+      }
+      this.sling.apply(now, ninja);
+      return;
+    }
     if (!this.isActive(now)) {
       if (!ninja.status.shouldLockMovement(now)) {
         ninja.setSpeedCap(COMBAT.physicsMaxSpeed);

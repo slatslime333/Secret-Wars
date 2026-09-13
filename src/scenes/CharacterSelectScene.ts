@@ -97,61 +97,62 @@ export class CharacterSelectScene extends Phaser.Scene {
   }
 
   private drawCards(width: number): void {
-    const cardW = Math.min(210, width * 0.26);
-    const gap = 16;
-    const total = cardW * 3 + gap * 2;
+    const n = HERO_ORDER.length;
+    const gap = 10;
+    const cardW = Math.min(168, (width - 40 - gap * (n - 1)) / n);
+    const total = cardW * n + gap * (n - 1);
     const left = width / 2 - total / 2 + cardW / 2;
     HERO_ORDER.forEach((id, index) => {
       const copy = heroSelectCopy(id);
       const x = left + index * (cardW + gap);
-      const y = 64;
+      const y = 52;
       const selected = this.selected === id;
-      const panel = this.add.rectangle(x, y, cardW, 168, COLORS.panel, 0.96).setOrigin(0.5, 0);
+      const panel = this.add.rectangle(x, y, cardW, 156, COLORS.panel, 0.96).setOrigin(0.5, 0);
       panel.setStrokeStyle(3, selected ? COLORS.yellow : COLORS.cyan);
       const art = this.add.graphics();
-      art.setPosition(x, y + 56);
-      art.setScale(1.35);
+      art.setPosition(x, y + 50);
+      art.setScale(1.25);
       PLAYABLE_HEROES[id].draw(art, { facing: 'east', team: 'alpha' });
       this.add
-        .text(x, y + 96, copy.name.toUpperCase(), {
+        .text(x, y + 88, copy.name.toUpperCase(), {
           fontFamily: FONTS.display,
-          fontSize: '15px',
+          fontSize: '13px',
           color: hex(COLORS.paper),
           letterSpacing: 1,
         })
         .setOrigin(0.5, 0);
       this.add
-        .text(x, y + 114, copy.role.toUpperCase(), {
+        .text(x, y + 104, copy.role.toUpperCase(), {
           fontFamily: FONTS.body,
-          fontSize: '11px',
+          fontSize: '10px',
           fontStyle: 'bold',
           color: hex(COLORS.cyan),
           letterSpacing: 2,
         })
         .setOrigin(0.5, 0);
       this.add
-        .text(x, y + 132, `OVR  ${copy.overall}`, {
+        .text(x, y + 120, `OVR  ${copy.overall}`, {
           fontFamily: FONTS.display,
-          fontSize: '16px',
+          fontSize: '14px',
           color: hex(COLORS.yellow),
           letterSpacing: 1,
         })
         .setOrigin(0.5, 0);
       this.add
-        .text(x, y + 150, `PWR  ${copy.power}`, {
+        .text(x, y + 136, `PWR  ${copy.power}`, {
           fontFamily: FONTS.body,
-          fontSize: '11px',
+          fontSize: '10px',
           fontStyle: 'bold',
           color: hex(COLORS.orange),
           letterSpacing: 2,
         })
         .setOrigin(0.5, 0);
-      const hit = this.add.rectangle(x, y + 84, cardW, 168, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      const hit = this.add.rectangle(x, y + 78, cardW, 156, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
       hit.on(Phaser.Input.Events.POINTER_UP, () => this.select(id));
-      new ActionButton(this, x, y + 186, {
+      new ActionButton(this, x, y + 174, {
         label: selected ? 'SELECTED' : 'SELECT',
-        width: cardW - 18,
-        height: 32,
+        width: cardW - 14,
+        height: 30,
         compact: true,
         primary: selected,
         onPress: () => this.select(id),
@@ -161,7 +162,7 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   private drawDetail(width: number, height: number): void {
     const copy = heroSelectCopy(this.selected);
-    const top = 268;
+    const top = 248;
     const boxH = Math.max(180, height - top - 70);
     const boxW = Math.min(860, width - 40);
     const box = this.add.rectangle(width / 2, top, boxW, boxH, COLORS.ink, 0.82).setOrigin(0.5, 0);

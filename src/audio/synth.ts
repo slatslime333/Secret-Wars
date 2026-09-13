@@ -72,6 +72,7 @@ export const LOOP_PERIOD_MS: Partial<Record<SoundId, number>> = {
   'ninja-tornado-loop': 280,
   'cole-storm-loop': 400,
   'death-sweep-loop': 300,
+  'rope-spray-loop': 280,
 };
 
 /**
@@ -114,6 +115,13 @@ export function synthesize(ctx: AudioContext, dest: AudioNode, id: SoundId): voi
       playRecipe(ctx, dest, [
         { kind: 'triangle', freq: 90, duration: 0.12, gain: 0.2 },
         { kind: 'noise', freq: 0, duration: 0.05, gain: 0.07 },
+      ]);
+      return;
+    case 'ui-select-rope':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: 520, endFreq: 240, duration: 0.07, gain: 0.11 },
+        { kind: 'triangle', freq: 880, endFreq: 420, duration: 0.08, gain: 0.08, delay: 0.03 },
+        { kind: 'noise', freq: 0, duration: 0.04, gain: 0.05 },
       ]);
       return;
     case 'ui-match-start':
@@ -271,6 +279,93 @@ export function synthesize(ctx: AudioContext, dest: AudioNode, id: SoundId): voi
       playRecipe(ctx, dest, [
         { kind: 'triangle', freq: v(95, 10), duration: 0.1, gain: 0.16 },
         { kind: 'noise', freq: 0, duration: 0.06, gain: 0.07 },
+      ]);
+      return;
+
+    case 'rope-light':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: v(2100, 140), endFreq: v(780, 40), duration: 0.045, gain: 0.12 },
+        { kind: 'noise', freq: 0, duration: 0.03, gain: 0.045 },
+      ]);
+      return;
+    case 'rope-dash-fire':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: 900, endFreq: 340, duration: 0.08, gain: 0.13 },
+        { kind: 'noise', freq: 0, duration: 0.06, gain: 0.06 },
+      ]);
+      return;
+    case 'rope-dash-snap':
+      playRecipe(ctx, dest, [
+        { kind: 'square', freq: 180, duration: 0.05, gain: 0.16 },
+        { kind: 'sawtooth', freq: 1400, endFreq: 400, duration: 0.06, gain: 0.1, delay: 0.02 },
+      ]);
+      return;
+    case 'rope-dash-zip':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: 240, endFreq: 720, duration: 0.1, gain: 0.13 },
+        { kind: 'noise', freq: 0, duration: 0.07, gain: 0.05 },
+      ]);
+      return;
+    case 'rope-dash-whoosh':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: 420, endFreq: 140, duration: 0.12, gain: 0.11 },
+        { kind: 'noise', freq: 0, duration: 0.08, gain: 0.05 },
+      ]);
+      return;
+    case 'rope-grab-fire':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: 760, endFreq: 280, duration: 0.09, gain: 0.14 },
+        { kind: 'noise', freq: 0, duration: 0.05, gain: 0.05 },
+      ]);
+      return;
+    case 'rope-grab-catch':
+      playRecipe(ctx, dest, [
+        { kind: 'square', freq: 150, duration: 0.06, gain: 0.16 },
+        { kind: 'triangle', freq: 90, duration: 0.08, gain: 0.12, delay: 0.02 },
+      ]);
+      return;
+    case 'rope-grab-zip':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: 200, endFreq: 860, duration: 0.12, gain: 0.14 },
+        { kind: 'noise', freq: 0, duration: 0.08, gain: 0.06 },
+      ]);
+      return;
+    case 'rope-grab-impact':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: 110, duration: 0.11, gain: 0.22 },
+        { kind: 'noise', freq: 0, duration: 0.08, gain: 0.1 },
+        { kind: 'sawtooth', freq: 520, endFreq: 180, duration: 0.07, gain: 0.08 },
+      ]);
+      return;
+    case 'rope-punch-jump':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 180, endFreq: 320, duration: 0.1, gain: 0.12 },
+        { kind: 'sawtooth', freq: 90, endFreq: 160, duration: 0.12, gain: 0.08 },
+      ]);
+      return;
+    case 'rope-punch-impact':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: 70, duration: 0.14, gain: 0.24 },
+        { kind: 'square', freq: 140, endFreq: 50, duration: 0.1, gain: 0.14 },
+        { kind: 'noise', freq: 0, duration: 0.09, gain: 0.11 },
+      ]);
+      return;
+    case 'rope-spray-whip':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: v(1900, 180), endFreq: v(620, 50), duration: 0.05, gain: 0.09 },
+        { kind: 'noise', freq: 0, duration: 0.03, gain: 0.04 },
+      ]);
+      return;
+    case 'rope-spray-loop':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: 140, duration: 0.26, gain: 0.06 },
+        { kind: 'noise', freq: 0, duration: 0.24, gain: 0.04 },
+      ]);
+      return;
+    case 'rope-wrap':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: 220, endFreq: 90, duration: 0.14, gain: 0.13 },
+        { kind: 'sawtooth', freq: 480, endFreq: 160, duration: 0.1, gain: 0.08 },
       ]);
       return;
 

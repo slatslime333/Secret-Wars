@@ -57,6 +57,8 @@ export type AbilityContext = {
 export type ActiveAbility = {
   readonly id: string;
   readonly control: AbilityControlFlags;
+  /** When `deferCooldown` is set, false skips the cooldown (missed Rope Grab). */
+  consumeDeferred?: boolean;
   update(ctx: AbilityContext): boolean;
   destroy(): void;
 };

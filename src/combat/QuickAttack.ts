@@ -2,9 +2,11 @@ import Phaser from 'phaser';
 import { COMBAT, ComboStep, comboStepOf, lightAttackStaminaCost } from '../config/combat';
 import { COLE_ATTACK, COLE_SHOCKWAVE } from '../heroes/abilities/cole/tunables';
 import { DEATH_ATTACK } from '../heroes/abilities/death/tunables';
+import { ROPE_SHOT } from '../heroes/abilities/rope/tunables';
 import { sweepKnockback, swingSignFor } from '../heroes/abilities/death/sweep';
 import { deathIdleBatAngle } from '../heroes/drawDeath';
 import { facingFromAim } from '../heroes/drawNinja';
+import { ropeArmOrigin } from '../heroes/drawRope';
 import { ComboTracker } from './ComboTracker';
 import { HitMarker } from './HitMarker';
 import { NinjaBody } from '../heroes/NinjaBody';
@@ -16,6 +18,7 @@ import { resolveAbilityHit } from '../heroes/abilities/resolveAbilityHit';
 import { isInAttackArc } from './hitDetection';
 import { playLightAttack } from '../audio';
 import { BlockController } from './BlockController';
+import { Projectile } from './projectile';
 
 type PendingImpact = {
   at: number;
@@ -39,6 +42,8 @@ export class QuickAttack {
   lastSwingAt = -9999;
   lastSwingStep: ComboStep = 1;
   private deathPairLockUntil = 0;
+  private ropeArm: -1 | 1 = -1;
+  private readonly ropeShots: Projectile[] = [];
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -49,10 +54,19 @@ export class QuickAttack {
     return this.combo.step;
   }
 
+  get nextRopeArm(): -1 | 1 {
+    return this.ropeArm;
+  }
+
   interrupt(now: number): void {
     this.combo.interrupt(now);
     this.pendingTaps = 0;
     this.pendingImpact = undefined;
+    this.clearRopeShots();
+  }
+
+  destroy(): void {
+    this.clearRopeShots();
   }
 
   update(
@@ -63,6 +77,7 @@ export class QuickAttack {
     enemies: NinjaBody[],
     defenderBlock?: BlockController,
   ): void {
+    this.tickRopeShots(now, attacker, enemies, defenderBlock);
     this.resolveImpactIfReady(now, attacker, enemies, defenderBlock);
 
     const tapQueued = this.pendingTaps > 0;
@@ -104,13 +119,15 @@ export class QuickAttack {
     if (this.pendingTaps > 0) {
       this.combo.tap(now, COMBAT.comboWindowMs);
       this.pendingTaps -= 1;
-      spawnCombatCallout(
-        this.scene,
-        attacker.x,
-        attacker.y,
-        step === 3 ? 'FINISHER' : `HIT ${step}`,
-        step === 3 ? COLORS.yellow : COLORS.orange,
-      );
+      if (attacker.heroId !== 'rope') {
+        spawnCombatCallout(
+          this.scene,
+          attacker.x,
+          attacker.y,
+          step === 3 ? 'FINISHER' : `HIT ${step}`,
+          step === 3 ? COLORS.yellow : COLORS.orange,
+        );
+      }
     } else {
       this.combo.reset();
     }
@@ -143,14 +160,21 @@ export class QuickAttack {
       if (step === 2) {
         this.deathPairLockUntil = now + DEATH_ATTACK.pairDelayMs;
       }
+    } else if (attacker.heroId === 'rope') {
+      this.fireRopeLight(now, attacker);
     } else {
       attacker.playAttackAnimation(now, step);
       this.spawnWhiteLineSlice(attacker, step);
     }
-    this.pendingImpact = { at: now + profile.impactDelayMs, step };
+    if (attacker.heroId !== 'rope') {
+      this.pendingImpact = { at: now + profile.impactDelayMs, step };
+    }
   }
 
   private nextComboStep(now: number, attacker: NinjaBody): ComboStep {
+    if (attacker.heroId === 'rope') {
+      return 1;
+    }
     if (this.pendingTaps > 0) {
       return comboStepOf(this.combo.preview(now, COMBAT.comboWindowMs));
     }
@@ -158,6 +182,81 @@ export class QuickAttack {
       return 2;
     }
     return 1;
+  }
+
+  private fireRopeLight(now: number, attacker: NinjaBody): void {
+    const arm = this.ropeArm;
+    this.ropeArm = arm === -1 ? 1 : -1;
+    const aim = Math.atan2(attacker.aim.y, attacker.aim.x);
+    const origin = ropeArmOrigin(attacker.x, attacker.y, aim, arm, ROPE_SHOT.armReach);
+    const spread = (Math.random() - 0.5) * 2 * ROPE_SHOT.spreadRad;
+    const shotAngle = aim + arm * ROPE_SHOT.armOffsetRad + spread;
+    const sx = Math.cos(shotAngle);
+    const sy = Math.sin(shotAngle);
+    const shot = new Projectile(
+      this.scene,
+      origin.x + sx * 4,
+      origin.y + sy * 4,
+      sx * ROPE_SHOT.speed,
+      sy * ROPE_SHOT.speed,
+      ROPE_SHOT.radius,
+      ROPE_SHOT.lifetimeMs,
+      0xc4894a,
+      'rope',
+    );
+    this.ropeShots.push(shot);
+    attacker.playCustomAttack(now, 170, (frac) => ({
+      armLiftLeft: arm === -1 ? Math.sin(frac * Math.PI) : 0.08,
+      armLiftRight: arm === 1 ? Math.sin(frac * Math.PI) : 0.08,
+      jumpY: -Math.sin(frac * Math.PI) * 7,
+      swayX: attacker.aim.x * 3 * Math.sin(frac * Math.PI),
+    }));
+  }
+
+  private tickRopeShots(
+    now: number,
+    attacker: NinjaBody,
+    enemies: NinjaBody[],
+    defenderBlock?: BlockController,
+  ): void {
+    const dt = this.scene.game.loop.delta / 1000;
+    for (let i = this.ropeShots.length - 1; i >= 0; i -= 1) {
+      const shot = this.ropeShots[i];
+      const result = shot.update(now, dt, enemies);
+      if (!result) {
+        continue;
+      }
+      this.ropeShots.splice(i, 1);
+      if (result === 'dead') {
+        continue;
+      }
+      const dirX = result.target.x - attacker.x;
+      const dirY = result.target.y - attacker.y;
+      resolveAbilityHit(
+        this.scene,
+        now,
+        attacker,
+        result.target,
+        {
+          rawDamage: attacker.stats.attackDamage,
+          knockback: attacker.stats.knockbackPower * ROPE_SHOT.knockbackMul,
+          staminaDamage: ROPE_SHOT.staminaDamage,
+          dirX,
+          dirY,
+          step: 1,
+          heavy: false,
+          sourceKind: 'light',
+        },
+        defenderBlock,
+      );
+    }
+  }
+
+  private clearRopeShots(): void {
+    for (const shot of this.ropeShots) {
+      shot.destroy();
+    }
+    this.ropeShots.length = 0;
   }
 
   private resolveImpactIfReady(

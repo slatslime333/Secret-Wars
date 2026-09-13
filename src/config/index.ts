@@ -6,6 +6,7 @@ export { COMBAT, attackHalfArcRad, lightAttackStaminaCost } from './combat';
 export { NINJA } from './ninja';
 export { COLE } from './cole';
 export { DEATH } from './death';
+export { ROPE } from './rope';
 export { MINION, SWORD_MINION, RANGER_MINION } from './minion';
 export type { HeroCombatConfig, TeamId } from './hero';
 export { INPUT } from './input';

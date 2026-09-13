@@ -3,7 +3,7 @@ import { ARENA, LANES, type LaneId } from '../config/arena';
 import { MATCH } from '../config/match';
 import { DEV_CHEATS, resetDevCheats } from '../debug/devCheats';
 import { MinionWorld } from '../minions/MinionWorld';
-import { PLAYABLE_HEROES, getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { PLAYABLE_HEROES, HERO_IDS, getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
 import { HitMarker } from '../combat/HitMarker';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
@@ -11,6 +11,7 @@ import { COLE_BALL } from '../heroes/abilities/cole/tunables';
 import { DEATH_GUN, DEATH_SMASH } from '../heroes/abilities/death/tunables';
 import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
 import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
+import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT } from '../heroes/abilities/rope/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { onCombatDamage, onCombatBlocked, isHeroFighter } from '../combat/damageEvents';
 import { BattleInput } from '../input/BattleInput';
@@ -369,14 +370,6 @@ export class MatchScene extends Phaser.Scene {
       this.player.body.regenStamina(delta, now);
     }
     this.player.body.regenHealth(delta, now);
-    this.marker.sync(
-      this.player.body.x,
-      this.player.body.y,
-      this.player.body.aim.x,
-      this.player.body.aim.y,
-      this.player.body.stats.attackRange,
-      this.player.body.stats.attackArcDegrees,
-    );
     this.syncAimGuides(frame);
     this.player.block.sync(now, this.player.body);
 
@@ -451,7 +444,7 @@ export class MatchScene extends Phaser.Scene {
       lane: 'mid',
       isPlayer: true,
     });
-    const leftover = (['ninja', 'cole', 'death'] as HeroId[]).filter((id) => id !== this.startHeroId);
+    const leftover = HERO_IDS.filter((id) => id !== this.startHeroId);
     const allyLanes: LaneId[] = ['top', 'bottom'];
     leftover.forEach((heroId, index) => {
       const lane = allyLanes[index];
@@ -627,8 +620,24 @@ export class MatchScene extends Phaser.Scene {
     return this.abilityAim;
   }
 
-  private syncAimGuides(frame: { ability1Aiming: boolean; ability2Aiming: boolean }): void {
+  private syncAimGuides(frame: { ability1Aiming: boolean; ability2Aiming: boolean; attackHeld: boolean }): void {
     const ninja = this.player.body;
+    if (ninja.heroId === 'rope' && !frame.ability1Aiming && !frame.ability2Aiming) {
+      this.marker.syncRopeAim(
+        ninja.x,
+        ninja.y,
+        ninja.aim.x,
+        ninja.aim.y,
+        ninja.stats.attackRange * 1.25,
+        frame.attackHeld,
+        this.player.attacks.nextRopeArm,
+        ROPE_SHOT.armOffsetRad,
+      );
+    } else if (ninja.heroId === 'rope') {
+      this.marker.clearRange();
+    } else {
+      this.marker.sync(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, ninja.stats.attackRange, ninja.stats.attackArcDegrees);
+    }
     if (ninja.heroId === 'cole') {
       this.marker.syncBallAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, COLE_BALL.explodeRadius, frame.ability1Aiming);
     } else if (ninja.heroId === 'death' && frame.ability1Aiming && !this.player.abilities.isBusy()) {
@@ -645,6 +654,10 @@ export class MatchScene extends Phaser.Scene {
         true,
         NINJA_KICK.aimHalfWidth,
       );
+    } else if (ninja.heroId === 'rope' && frame.ability1Aiming && !this.player.abilities.isBusy()) {
+      this.marker.syncRopeGrabAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, ROPE_GRAB.range, true);
+    } else if (ninja.heroId === 'rope' && frame.ability2Aiming) {
+      this.marker.syncPunchAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, ROPE_PUNCH.radius, true);
     } else {
       this.marker.clearBallAim();
     }
