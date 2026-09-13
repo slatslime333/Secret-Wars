@@ -11,6 +11,7 @@ import { HitKind } from '../../combat/Hurtbox';
 import type { DamageSourceKind } from '../../combat/damageEvents';
 import { playAbilityConnect } from '../../audio';
 import { NinjaBody } from '../NinjaBody';
+import { emitWorldStrike } from '../../match/objectives/worldStrike';
 
 export type AbilityHitProfile = {
   rawDamage: number;
@@ -118,5 +119,12 @@ export const resolveAbilityHit = (
     attacker.status.applyHitStop(now, profile.hitStopMs ?? (profile.heavy ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs));
   }
   playAbilityConnect('hit', attacker, defender, { heavy: profile.heavy, sourceKind: profile.sourceKind });
+  emitWorldStrike({
+    attacker,
+    now,
+    damage: profile.rawDamage,
+    reach: attacker.stats.attackRange + COMBAT.hitForgiveness,
+    kind: 'ability',
+  });
   return 'hit';
 };

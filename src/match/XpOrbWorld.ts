@@ -18,6 +18,7 @@ type Orb = {
   team: TeamId;
   bornAt: number;
   wobble: number;
+  visual: boolean;
 };
 
 const TEAM_COLOR: Record<TeamId, number> = {
@@ -34,8 +35,15 @@ export class XpOrbWorld {
     private readonly onArrive: (grant: XpOrbGrant) => void,
   ) {}
 
-  spawn(x: number, y: number, target: NinjaBody, amount: number, team: TeamId): void {
-    if (amount <= 0) {
+  spawn(
+    x: number,
+    y: number,
+    target: NinjaBody,
+    amount: number,
+    team: TeamId,
+    options: { visual?: boolean } = {},
+  ): void {
+    if (amount <= 0 && !options.visual) {
       return;
     }
     const color = TEAM_COLOR[team];
@@ -51,6 +59,7 @@ export class XpOrbWorld {
       team,
       bornAt: this.scene.time.now,
       wobble: Math.random() * Math.PI * 2,
+      visual: Boolean(options.visual),
     });
   }
 
@@ -68,7 +77,9 @@ export class XpOrbWorld {
       const dy = orb.target.y - 10 - orb.view.y;
       const dist = Math.hypot(dx, dy);
       if (dist <= MATCH.orbs.arriveRadius) {
-        this.onArrive({ target: orb.target, amount: orb.amount, team: orb.team });
+        if (!orb.visual && orb.amount > 0) {
+          this.onArrive({ target: orb.target, amount: orb.amount, team: orb.team });
+        }
         orb.view.destroy();
         this.orbs.splice(i, 1);
         continue;

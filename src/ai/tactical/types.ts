@@ -1,6 +1,7 @@
 import type { TeamId } from '../../config/hero';
 import type { HeroRole } from '../../heroes/HeroDefinition';
 import type { NinjaBody } from '../../heroes/NinjaBody';
+import type { ObjectiveHint } from '../../match/objectives/types';
 
 /** High-level choices. Combat execution stays on the existing kits. */
 export type TacticalAction =
@@ -22,7 +23,8 @@ export type TacticalAction =
   | 'intercept'
   | 'recover'
   | 'farm_minions'
-  | 'regroup';
+  | 'regroup'
+  | 'contest_objective';
 
 export type StrategicState =
   | 'opening'
@@ -123,7 +125,6 @@ export type GamePlan = {
   regrouping: boolean;
 };
 
-/** Phaser-free snapshot of one combatant for scoring. */
 export type CombatantView = {
   id: number;
   x: number;
@@ -181,6 +182,7 @@ export type Situation = {
   visibleHeroes?: number;
   allyHeroCount?: number;
   now?: number;
+  objective?: ObjectiveHint;
 };
 
 export type TacticalDebugInfo = {

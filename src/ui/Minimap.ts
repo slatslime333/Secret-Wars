@@ -11,6 +11,7 @@ type MinimapSource = {
   player: NinjaBody;
   heroes: NinjaBody[];
   minions: NinjaBody[];
+  objective?: { x: number; y: number; kind: string };
 };
 
 /**
@@ -96,6 +97,16 @@ export class Minimap {
       if (self) {
         this.art.lineStyle(1, COLORS.paper, 0.95);
         this.art.strokeCircle(p.x, p.y, 6);
+      }
+    }
+
+    if (source.objective) {
+      const p = this.project(source.objective.x, source.objective.y, player.x, player.y);
+      if (p) {
+        this.art.fillStyle(COLORS.yellow, 1);
+        this.art.fillCircle(p.x, p.y, 3.4);
+        this.art.lineStyle(1, COLORS.paper, 0.95);
+        this.art.strokeCircle(p.x, p.y, 5);
       }
     }
   }
