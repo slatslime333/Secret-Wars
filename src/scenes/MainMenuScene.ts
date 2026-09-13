@@ -182,7 +182,7 @@ export class MainMenuScene extends Phaser.Scene {
       x = (width - cardW) / 2;
       y = Math.min(175, height * 0.2);
     } else {
-      cardW = Math.min(412, width * 0.44);
+      cardW = Math.min(540, width * 0.56);
       cardH = Math.min(370, height - 40);
       x = Math.max(width * 0.5, width - cardW - 24);
       y = Math.max(12, (height - cardH) / 2);
@@ -255,7 +255,7 @@ export class MainMenuScene extends Phaser.Scene {
     });
 
     this.createTeamMarks(x + 28, y + 168);
-    this.createHeroPick(x + 28, y + 214);
+    this.createHeroPick(x + 16, y + 214, cardW - 32);
 
     this.add.text(x + 28, y + 265, 'COMMAND', {
       fontFamily: FONTS.body,
@@ -282,7 +282,7 @@ export class MainMenuScene extends Phaser.Scene {
     });
   }
 
-  private createHeroPick(x: number, y: number): void {
+  private createHeroPick(x: number, y: number, innerW = 360): void {
     this.add.text(x, y - 18, 'FIGHTER', {
       fontFamily: FONTS.body,
       fontSize: '11px',
@@ -290,12 +290,18 @@ export class MainMenuScene extends Phaser.Scene {
       color: hex(COLORS.muted),
       letterSpacing: 3,
     });
+    const n = HERO_IDS.length;
+    const gap = 5;
+    const bw = Math.min(78, Math.max(52, (innerW - gap * (n - 1)) / n));
+    const step = bw + gap;
     const make = (id: HeroId, ox: number) =>
-      new ActionButton(this, x + 28 + ox, y + 10, {
+      new ActionButton(this, x + bw / 2 + ox, y + 10, {
         label: id === 'rope' ? 'ROPE' : id.toUpperCase(),
-        width: 56,
+        width: bw,
         height: 34,
         compact: true,
+        fontSize: bw < 64 ? '11px' : '13px',
+        letterSpacing: 0,
         primary: getSelectedHeroId() === id,
         onPress: () => {
           audio.unlock();
@@ -304,7 +310,7 @@ export class MainMenuScene extends Phaser.Scene {
           this.scene.restart();
         },
       });
-    HERO_IDS.forEach((id, index) => make(id, index * 58));
+    HERO_IDS.forEach((id, index) => make(id, index * step));
   }
 
   private createTeamMarks(x: number, y: number): void {

@@ -139,8 +139,6 @@ const drawEast = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, lif
   g.fillStyle(p.skin);
   g.fillRoundedRect(-11, leftY, 3, 8, 2);
 
-  drawShadowArm(g, p, 7, rightY, 1, liftR);
-
   g.fillStyle(p.hairDark);
   g.fillEllipse(1, -15.5, 10, 11);
   g.fillStyle(p.hair);
@@ -157,6 +155,7 @@ const drawEast = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, lif
   g.fillRect(-5, -21, 12, 5);
 
   drawEye(g, p, 4, -13.2);
+  drawShadowArm(g, p, 8, rightY, 1, liftR);
 };
 
 const drawWest = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, liftR: number): void => {
@@ -189,8 +188,6 @@ const drawWest = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, lif
   g.fillStyle(p.band);
   g.fillRect(-7, -7, 14, 2);
 
-  drawShadowArm(g, p, -7, rightY, -1, liftR);
-
   g.fillStyle(p.skinDark);
   g.fillRoundedRect(8, leftY - 1, 4, 10, 2);
   g.fillStyle(p.skin);
@@ -212,6 +209,7 @@ const drawWest = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, lif
   g.fillRect(-7, -21, 12, 5);
 
   drawEye(g, p, -4, -13.2);
+  drawShadowArm(g, p, -8, rightY, -1, liftR);
 };
 
 const drawFront = (
@@ -247,9 +245,9 @@ const drawFront = (
 
   const leftY = 0 - liftL * 7;
   const rightY = 0 - liftR * 10;
+  const shadowDir = north ? 1 : -1;
   g.fillStyle(p.skin);
-  g.fillRoundedRect(-12, leftY, 4, 10, 2);
-  drawShadowArm(g, p, 8, rightY, 1, liftR);
+  g.fillRoundedRect(north ? -12 : 8, leftY, 4, 10, 2);
 
   g.fillStyle(p.hairDark);
   g.fillEllipse(0, -15.5, 10, 11);
@@ -270,6 +268,7 @@ const drawFront = (
     g.fillStyle(p.hair);
     g.fillEllipse(0, -15.5, 8.5, 9.5);
   }
+  drawShadowArm(g, p, north ? 8 : -8, rightY, shadowDir, liftR);
 };
 
 const drawEye = (g: Phaser.GameObjects.Graphics, p: Palette, x: number, y: number): void => {
@@ -287,23 +286,27 @@ const drawShadowArm = (
   dir: number,
   lift: number,
 ): void => {
-  const reach = 11 + lift * 6;
-  const hx = x + dir * (4 + lift * 3);
-  const hy = y - 2 - lift * 4;
-  g.fillStyle(p.shadow, 0.38);
-  g.fillEllipse(hx + dir * 2, hy + 2, 13, 16);
-  g.fillStyle(p.shadow, 0.72);
-  g.fillEllipse(hx, hy, 9, 13);
-  g.fillStyle(p.shadowLite, 0.55);
-  g.fillEllipse(hx - dir, hy - 3, 5, 7);
-  const clawY = hy + reach * 0.35;
-  const clawX = hx + dir * (reach * 0.45);
+  const reach = 16 + lift * 8;
+  const hx = x + dir * (5 + lift * 4);
+  const hy = y - 3 - lift * 5;
+  g.fillStyle(p.shadow, 0.22);
+  g.fillEllipse(hx + dir * 3, hy + 3, 22, 26);
+  g.fillStyle(p.shadow, 0.42);
+  g.fillEllipse(hx + dir * 2, hy + 1, 18, 22);
+  g.fillStyle(p.shadow, 0.78);
+  g.fillEllipse(hx, hy, 12, 17);
+  g.fillStyle(p.shadowLite, 0.5);
+  g.fillEllipse(hx - dir, hy - 4, 7, 9);
+  g.fillStyle(p.claw, 0.28);
+  g.fillEllipse(hx + dir * 2, hy - 2, 6, 8);
+  const clawY = hy + reach * 0.28;
+  const clawX = hx + dir * (reach * 0.42);
   for (let i = -1; i <= 1; i += 1) {
-    const ox = clawX + dir * 2;
-    const oy = clawY + i * 4;
-    g.fillStyle(p.shadow, 0.8);
-    g.fillTriangle(hx, hy + 4, ox + dir * 10, oy - 2, ox + dir * 4, oy + 3);
-    g.fillStyle(p.claw, 0.7);
-    g.fillTriangle(hx + dir, hy + 3, ox + dir * 9, oy - 1, ox + dir * 3, oy + 2);
+    const ox = clawX + dir * 3;
+    const oy = clawY + i * 5.5;
+    g.fillStyle(p.shadow, 0.82);
+    g.fillTriangle(hx, hy + 5, ox + dir * 14, oy - 3, ox + dir * 5, oy + 4);
+    g.fillStyle(p.claw, 0.78);
+    g.fillTriangle(hx + dir, hy + 4, ox + dir * 13, oy - 2, ox + dir * 4, oy + 3);
   }
 };

@@ -765,7 +765,7 @@ export class NinjaBody {
     this.rageUntil = untilMs;
     this.rageCastUntil = castUntilMs;
     if (!this.rageGfx || !this.rageGfx.active) {
-      this.rageGfx = this.scene.add.graphics().setDepth(8);
+      this.rageGfx = this.scene.add.graphics().setDepth(12);
     }
   }
 

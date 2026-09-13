@@ -9,6 +9,8 @@ type ActionButtonOptions = {
   height?: number;
   primary?: boolean;
   compact?: boolean;
+  fontSize?: string;
+  letterSpacing?: number;
   /** When false, the caller adds this into a parent container. Default true. */
   attachToScene?: boolean;
   onPress: () => void;
@@ -34,9 +36,9 @@ export class ActionButton extends Phaser.GameObjects.Container {
     this.labelText = scene.add
       .text(0, -2, options.label, {
         fontFamily: FONTS.display,
-        fontSize: this.compact ? '15px' : this.primary ? '30px' : '23px',
+        fontSize: options.fontSize ?? (this.compact ? '15px' : this.primary ? '30px' : '23px'),
         color: hex(COLORS.paper),
-        letterSpacing: this.compact ? 1 : 4,
+        letterSpacing: options.letterSpacing ?? (this.compact ? 1 : 4),
         stroke: hex(COLORS.ink),
         strokeThickness: this.compact ? 3 : 5,
       })

@@ -24,15 +24,15 @@ export const spawnShadowSlash = (
       g.clear();
       const a0 = angle - half;
       const a1 = a0 + half * 2 * anim.t;
-      g.lineStyle(giant ? 16 : 10, 0x1a1028, 0.28 * anim.alpha);
+      g.lineStyle(giant ? 18 : 11, 0x120814, 0.42 * anim.alpha);
       g.beginPath();
       g.arc(0, 0, radius, a0, a1);
       g.strokePath();
-      g.lineStyle(giant ? 8 : 5, 0x3a2458, 0.7 * anim.alpha);
+      g.lineStyle(giant ? 10 : 6, 0x4a2870, 0.82 * anim.alpha);
       g.beginPath();
       g.arc(0, 0, radius, a0, a1);
       g.strokePath();
-      g.lineStyle(giant ? 3 : 2, 0x8a70b8, 0.85 * anim.alpha);
+      g.lineStyle(giant ? 4 : 2.4, 0xc8b0f0, 0.92 * anim.alpha);
       g.beginPath();
       g.arc(0, 0, radius - (giant ? 10 : 6), a0, a1);
       g.strokePath();
@@ -84,18 +84,18 @@ export const drawRageFire = (
 ): void => {
   g.clear();
   g.setPosition(x, y);
-  const t = now / 90;
+  const t = now / 70;
   const i = Phaser.Math.Clamp(intensity, 0.2, 1);
-  g.fillStyle(0x120814, 0.16 * i);
-  g.fillCircle(0, 2, 22 + Math.sin(t) * 2);
-  for (let n = 0; n < 6; n += 1) {
-    const a = t * (0.7 + n * 0.11) + n * 1.1;
-    const r = 10 + (n % 3) * 5 + Math.sin(t * 1.4 + n) * 3;
+  g.fillStyle(0x1a0824, 0.22 * i);
+  g.fillCircle(0, 2, 28 + Math.sin(t) * 3);
+  for (let n = 0; n < 10; n += 1) {
+    const a = t * (0.9 + n * 0.13) + n * 0.72;
+    const r = 14 + (n % 4) * 5 + Math.sin(t * 1.7 + n) * 4;
     const px = Math.cos(a) * r;
-    const py = Math.sin(a * 1.3) * r * 0.7 - 4;
-    g.fillStyle(n % 2 === 0 ? 0x2a1438 : 0x4a2870, (0.28 + n * 0.04) * i);
-    g.fillEllipse(px, py, 7 * i, 11 * i);
-    g.fillStyle(0x8a68c0, 0.18 * i);
-    g.fillEllipse(px, py - 3, 3.2 * i, 5 * i);
+    const py = Math.sin(a * 1.35) * r * 0.78 - 2;
+    g.fillStyle(n % 2 === 0 ? 0x2a1038 : 0x5a3090, (0.42 + n * 0.03) * i);
+    g.fillEllipse(px, py, 9 * i, 14 * i);
+    g.fillStyle(0xb898e8, 0.32 * i);
+    g.fillEllipse(px, py - 4, 4 * i, 7 * i);
   }
 };
