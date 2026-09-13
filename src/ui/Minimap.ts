@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { isTouchPrimary } from '../device';
-import { PC_COMBAT_HUD } from './pcCombatHud';
+import { layoutHudChrome } from './layout/hudChrome';
+import { measureViewport } from './layout/viewport';
 import { COLORS } from './theme';
 import type { MapLayout } from '../map/types';
 import type { NinjaBody } from '../heroes/NinjaBody';
@@ -26,23 +26,28 @@ export class Minimap {
   private readonly rangeY = 460;
 
   constructor(scene: Phaser.Scene) {
-    const pc = !isTouchPrimary();
-    this.width = pc ? PC_COMBAT_HUD.minimapWidth : 148;
-    this.height = pc ? PC_COMBAT_HUD.minimapHeight : 108;
-    const x = scene.scale.width - 12;
-    const y = 52;
-    this.root = scene.add.container(x, y).setScrollFactor(0).setDepth(108);
+    const frame = measureViewport(scene.scale.width, scene.scale.height);
+    const chrome = layoutHudChrome(frame);
+    this.width = chrome.minimap.width;
+    this.height = chrome.minimap.height;
+    this.root = scene.add.container(chrome.minimap.x, chrome.minimap.y).setScrollFactor(0).setDepth(108);
     this.frame = scene.add
       .rectangle(-this.width, 0, this.width, this.height, 0x0b100e, 0.72)
       .setOrigin(0, 0)
       .setStrokeStyle(2, COLORS.paper, 0.55);
     this.art = scene.add.graphics();
     this.root.add([this.frame, this.art]);
-    this.layout(scene.scale.width);
+    this.layout(scene.scale.width, scene.scale.height);
   }
 
-  layout(viewWidth: number): void {
-    this.root.setPosition(viewWidth - 12, 52);
+  layout(viewWidth: number, viewHeight = 0): void {
+    const chrome = layoutHudChrome(measureViewport(viewWidth, viewHeight || 1));
+    if (chrome.minimap.width !== this.width || chrome.minimap.height !== this.height) {
+      this.width = chrome.minimap.width;
+      this.height = chrome.minimap.height;
+      this.frame.setPosition(-this.width, 0).setSize(this.width, this.height);
+    }
+    this.root.setPosition(chrome.minimap.x, chrome.minimap.y);
   }
 
   setVisible(visible: boolean): void {

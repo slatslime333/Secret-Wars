@@ -7,6 +7,8 @@ import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
 import { audio, playHeroSelect } from '../audio';
 import { HERO_IDS, getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { clamp, measureViewport } from '../ui/layout/viewport';
+import { ScrollPanel } from '../ui/layout/ScrollPanel';
 
 export class MainMenuScene extends Phaser.Scene {
   private buttons: ActionButton[] = [];
@@ -22,9 +24,10 @@ export class MainMenuScene extends Phaser.Scene {
     createBackdrop(this, { accent: COLORS.cyan, embers: true });
     this.cameras.main.fadeIn(260, 7, 10, 18);
 
-    const width = this.scale.width;
-    const height = this.scale.height;
-    const isPortrait = width < height;
+    const frame = measureViewport(this.scale.width, this.scale.height);
+    const width = frame.width;
+    const height = frame.height;
+    const isPortrait = frame.isPortrait;
 
     this.createHeader(width, height, isPortrait);
     this.createMissionCard(width, height, isPortrait);
@@ -292,10 +295,11 @@ export class MainMenuScene extends Phaser.Scene {
     });
     const n = HERO_IDS.length;
     const gap = 5;
-    const bw = Math.min(78, Math.max(52, (innerW - gap * (n - 1)) / n));
+    const bw = Math.round(clamp((innerW - gap * (n - 1)) / n, 72, 88));
+    const total = n * bw + gap * (n - 1);
     const step = bw + gap;
-    const make = (id: HeroId, ox: number) =>
-      new ActionButton(this, x + bw / 2 + ox, y + 10, {
+    const make = (id: HeroId, ox: number, oy: number, parent?: ScrollPanel) => {
+      const button = new ActionButton(this, ox, oy, {
         label: id === 'rope' ? 'ROPE' : id.toUpperCase(),
         width: bw,
         height: 34,
@@ -303,6 +307,7 @@ export class MainMenuScene extends Phaser.Scene {
         fontSize: bw < 64 ? '11px' : '13px',
         letterSpacing: 0,
         primary: getSelectedHeroId() === id,
+        attachToScene: !parent,
         onPress: () => {
           audio.unlock();
           playHeroSelect(id);
@@ -310,7 +315,15 @@ export class MainMenuScene extends Phaser.Scene {
           this.scene.restart();
         },
       });
-    HERO_IDS.forEach((id, index) => make(id, index * step));
+      parent?.add(button);
+    };
+    if (total <= innerW) {
+      HERO_IDS.forEach((id, index) => make(id, x + bw / 2 + index * step, y + 10));
+      return;
+    }
+    const row = new ScrollPanel(this, x, y - 8, innerW, 44, { axis: 'x' });
+    HERO_IDS.forEach((id, index) => make(id, bw / 2 + index * step, 22, row));
+    row.setContentSize(total + 8, 44);
   }
 
   private createTeamMarks(x: number, y: number): void {

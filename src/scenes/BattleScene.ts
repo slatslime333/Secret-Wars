@@ -49,6 +49,7 @@ import { spawnStatusPopup } from '../ui/StatusPopup';
 import { isPcCombatHud, layoutPcCombatHud } from '../ui/pcCombatHud';
 import { cueAbilityReady } from '../audio/abilityReady';
 import { COLORS, FONTS, hex } from '../ui/theme';
+import { applyGameplayCamera, layoutHudChrome, measureViewport } from '../ui/layout';
 import { isTouchPrimary } from '../device';
 import { audio } from '../audio';
 import { fadeToScene } from './fadeToScene';
@@ -230,8 +231,7 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, ARENA.width, ARENA.height);
     this.cameras.main.startFollow(this.ninja.sprite, true, 0.16, 0.16);
     this.cameras.main.setRoundPixels(true);
-    this.cameras.main.setSize(this.scale.width, this.scale.height);
-    this.cameras.main.setZoom(1);
+    applyGameplayCamera(this.cameras.main, this.scale.width, this.scale.height);
     this.cameras.main.fadeIn(220, 7, 10, 18);
     audio.unlock();
     audio.play('ui-match-start');
@@ -670,14 +670,14 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private createChrome(): void {
-    const width = this.scale.width;
-    this.chromeBar = this.add.rectangle(width / 2, 22, width, 44, COLORS.ink, 0.78);
+    const chrome = layoutHudChrome(measureViewport(this.scale.width, this.scale.height));
+    this.chromeBar = this.add.rectangle(this.scale.width / 2, chrome.barY, this.scale.width, chrome.barH, COLORS.ink, 0.78);
     this.chromeBar.setStrokeStyle(2, COLORS.paper).setScrollFactor(0).setDepth(99);
 
     this.titleText = this.add
-      .text(22, 22, `PLAY TEST  //  ${this.ninja.stats.displayName.toUpperCase()}`, {
+      .text(chrome.titleX, chrome.titleY, `PLAY TEST  //  ${this.ninja.stats.displayName.toUpperCase()}`, {
         fontFamily: FONTS.display,
-        fontSize: '15px',
+        fontSize: `${chrome.titleSize}px`,
         color: hex(COLORS.paper),
         letterSpacing: 2,
         stroke: hex(COLORS.ink),
@@ -685,12 +685,14 @@ export class BattleScene extends Phaser.Scene {
       })
       .setOrigin(0, 0.5)
       .setScrollFactor(0)
-      .setDepth(100);
+      .setDepth(100)
+      .setVisible(chrome.titleVisible);
 
-    this.menuButton = new ActionButton(this, width - 108, 22, {
+    this.menuButton = new ActionButton(this, chrome.menuX, chrome.menuY, {
       label: 'MENU',
-      width: 150,
-      height: 40,
+      width: chrome.menuW,
+      height: chrome.menuH,
+      compact: chrome.menuH < 40,
       onPress: () => this.openPauseMenu(),
     });
     this.menuButton.setScrollFactor(0).setDepth(120);
@@ -699,16 +701,16 @@ export class BattleScene extends Phaser.Scene {
   private onResize(gameSize: Phaser.Structs.Size): void {
     const width = gameSize.width;
     const height = gameSize.height;
-    this.chromeBar?.setPosition(width / 2, 22).setSize(width, 44);
-    this.titleText?.setPosition(22, 22).setScale(1);
-    this.menuButton?.setScale(1).setPosition(width - 108, 22);
+    const chrome = layoutHudChrome(measureViewport(width, height));
+    this.chromeBar?.setPosition(width / 2, chrome.barY).setSize(width, chrome.barH);
+    this.titleText?.setPosition(chrome.titleX, chrome.titleY).setVisible(chrome.titleVisible);
+    this.menuButton?.setPosition(chrome.menuX, chrome.menuY);
     this.hud?.layout(width, height);
     this.inputReader?.layout(width, height);
     this.layoutAbilityTray(width, height);
     this.devMenu?.layout(width, height);
-    this.minimap?.layout(width);
-    this.cameras.main.setSize(width, height);
-    this.cameras.main.setZoom(1);
+    this.minimap?.layout(width, height);
+    applyGameplayCamera(this.cameras.main, width, height);
     if (this.pauseOverlay?.isOpen) {
       this.pauseOverlay.show(this.sandboxStats.allLines());
     }

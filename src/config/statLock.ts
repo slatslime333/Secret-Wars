@@ -32,7 +32,7 @@ export const PINNED_GAMEPLAY: Record<'ninja' | 'cole' | 'death', PinnedStats> = 
   },
   cole: {
     maxHealth: 168,
-    maxStamina: 128,
+    maxStamina: 114,
     moveSpeed: 168,
     attackDamage: 14,
     defense: 28,

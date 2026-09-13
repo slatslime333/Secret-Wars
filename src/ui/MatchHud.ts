@@ -4,6 +4,8 @@ import { formatMatchClock } from '../match/MatchManager';
 import type { MatchSnapshot } from '../match/MatchManager';
 import type { TeamScore } from '../match/ScoreManager';
 import type { Progression } from '../match/Progression';
+import { layoutHudChrome } from './layout/hudChrome';
+import { measureViewport } from './layout/viewport';
 import { layoutPcCombatHud, PC_COMBAT_HUD } from './pcCombatHud';
 import { COLORS, FONTS, hex } from './theme';
 
@@ -16,6 +18,7 @@ export class MatchHud {
   private readonly xpFill: Phaser.GameObjects.Rectangle;
   private readonly xpText: Phaser.GameObjects.Text;
   private readonly xpTrack: Phaser.GameObjects.Rectangle;
+  private barWidth = 224;
 
   constructor(scene: Phaser.Scene) {
     const width = scene.scale.width;
@@ -97,13 +100,20 @@ export class MatchHud {
     this.phase.setX(width / 2);
     this.score.setX(width / 2);
     if (height <= 0 || isTouchPrimary()) {
-      this.xpTrack.setPosition(148, 84).setSize(224, 6);
-      this.xpFill.setPosition(36, 84);
-      this.level.setPosition(36, 92).setOrigin(0, 0);
-      this.xpText.setPosition(260, 92).setOrigin(1, 0);
+      const chrome = layoutHudChrome(measureViewport(width, Math.max(height, 1)));
+      this.barWidth = chrome.bars.width;
+      this.timer.setY(chrome.match.timerY).setFontSize(chrome.titleVisible ? 20 : 16);
+      this.phase.setY(chrome.match.phaseY).setFontSize(10);
+      this.score.setY(chrome.match.scoreY).setFontSize(chrome.titleVisible ? 16 : 13);
+      const cx = chrome.bars.x + chrome.bars.width / 2;
+      this.xpTrack.setPosition(cx, chrome.bars.xpY).setSize(chrome.bars.width, chrome.bars.xpH);
+      this.xpFill.setPosition(chrome.bars.x, chrome.bars.xpY).setSize(this.xpFill.width || chrome.bars.width, chrome.bars.xpH);
+      this.level.setPosition(chrome.bars.x, chrome.bars.xpY + 8).setOrigin(0, 0).setFontSize(10);
+      this.xpText.setPosition(chrome.bars.x + chrome.bars.width, chrome.bars.xpY + 8).setOrigin(1, 0).setFontSize(10);
       return;
     }
     const hud = layoutPcCombatHud(width, height);
+    this.barWidth = hud.barWidth;
     this.xpTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.xpY).setSize(hud.barWidth, PC_COMBAT_HUD.xpHeight);
     this.xpFill.setPosition(hud.barLeft, hud.xpY).setSize(this.xpFill.width || hud.barWidth, PC_COMBAT_HUD.xpHeight);
     this.level.setPosition(hud.barLeft, hud.xpY + 10).setOrigin(0, 0);
@@ -128,6 +138,6 @@ export class MatchHud {
     this.level.setText(`LV ${progression.level}`);
     const need = progression.xpToNext;
     this.xpText.setText(progression.atCap ? 'MAX' : `${Math.floor(progression.xp)} / ${need} XP`);
-    this.xpFill.width = (isTouchPrimary() ? 224 : PC_COMBAT_HUD.barWidth) * progression.xpRatio;
+    this.xpFill.width = this.barWidth * progression.xpRatio;
   }
 }

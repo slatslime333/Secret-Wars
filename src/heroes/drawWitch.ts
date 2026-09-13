@@ -84,8 +84,8 @@ const paletteFor = (rival: boolean, hitFlash: boolean): Palette => {
 };
 
 /**
- * Cole-sized witch: slim oval face, curvy feminine silhouette, crop top,
- * skirt, black hat, skull staff. Same chunky pixel language.
+ * Cole-sized witch: large oval face, tapered feminine torso, slim waist,
+ * flared skirt. Same chunky pixel language as the rest of the roster.
  */
 export const drawWitch = (
   graphics: Phaser.GameObjects.Graphics,
@@ -100,7 +100,7 @@ export const drawWitch = (
 
   graphics.clear();
   graphics.fillStyle(COLORS.ink, 0.45);
-  graphics.fillEllipse(facing === 'east' ? 1 : facing === 'west' ? -1 : 0, 16, 20, 7);
+  graphics.fillEllipse(facing === 'east' ? 1 : facing === 'west' ? -1 : 0, 16, 18, 6);
 
   if (facing === 'east') {
     drawEast(graphics, palette, liftL, liftR, staffRaise);
@@ -114,6 +114,42 @@ export const drawWitch = (
   drawFront(graphics, palette, facing === 'north', liftL, liftR, staffRaise);
 };
 
+const drawTorso = (g: Phaser.GameObjects.Graphics, p: Palette): void => {
+  g.fillStyle(p.skinDark);
+  g.fillRoundedRect(-7, 10, 5, 8, 2);
+  g.fillRoundedRect(2, 10, 5, 8, 2);
+  g.fillStyle(p.skin);
+  g.fillRect(-6, 10, 3.5, 6);
+  g.fillRect(2.5, 10, 3.5, 6);
+
+  g.fillStyle(p.skirtDark);
+  g.fillTriangle(-4, 3, 4, 3, -13, 12);
+  g.fillTriangle(-4, 3, 4, 3, 13, 12);
+  g.fillRoundedRect(-12, 6, 24, 7, 4);
+  g.fillStyle(p.skirt);
+  g.fillTriangle(-3, 3, 3, 3, -11, 11);
+  g.fillTriangle(-3, 3, 3, 3, 11, 11);
+  g.fillRoundedRect(-11, 5, 22, 6, 4);
+  g.fillStyle(p.sash);
+  g.fillRect(-5, 3, 10, 2);
+
+  g.fillStyle(p.skin);
+  g.fillRect(-3, 1, 6, 3);
+
+  g.fillStyle(p.topDark);
+  g.fillTriangle(-5, -9, 5, -9, -8, -1);
+  g.fillTriangle(-5, -9, 5, -9, 8, -1);
+  g.fillStyle(p.top);
+  g.fillTriangle(-4, -9, 4, -9, -6.5, 0);
+  g.fillTriangle(-4, -9, 4, -9, 6.5, 0);
+  g.fillEllipse(0, -4.2, 14, 8);
+  g.fillRoundedRect(-5, -3, 10, 5, 3);
+  g.fillStyle(p.sash);
+  g.fillRect(-5, 0, 10, 2);
+  g.fillStyle(p.band);
+  g.fillRect(-6, -9, 12, 3);
+};
+
 const drawEast = (
   g: Phaser.GameObjects.Graphics,
   p: Palette,
@@ -123,57 +159,16 @@ const drawEast = (
 ): void => {
   const leftY = 1 - liftL * 8;
   const rightY = 1 - liftR * 9 - staffRaise * 6;
+  drawTorso(g, p);
 
   g.fillStyle(p.skinDark);
-  g.fillRoundedRect(-9, 9, 6, 8, 2);
-  g.fillRoundedRect(2, 9, 6, 8, 2);
+  g.fillRoundedRect(-12, leftY - 1, 4, 11, 2);
   g.fillStyle(p.skin);
-  g.fillRect(-8, 9, 4, 6);
-  g.fillRect(3, 9, 4, 6);
+  g.fillRoundedRect(-11.5, leftY, 3, 9, 2);
 
-  g.fillStyle(p.skirtDark);
-  g.fillRoundedRect(-12, 5, 24, 8, 4);
-  g.fillStyle(p.skirt);
-  g.fillRoundedRect(-11, 4, 22, 7, 4);
-  g.fillStyle(p.sash);
-  g.fillRect(-8, 4, 16, 2);
-
-  g.fillStyle(p.skin);
-  g.fillRect(-5, 1, 10, 4);
-
-  g.fillStyle(p.topDark);
-  g.fillRoundedRect(-9, -8, 18, 11, 4);
-  g.fillStyle(p.top);
-  g.fillEllipse(0, -5, 17, 8);
-  g.fillRoundedRect(-7, -6, 14, 7, 3);
-  g.fillStyle(p.sash);
-  g.fillRect(-7, -1, 14, 2);
-  g.fillStyle(p.band);
-  g.fillRect(-8, -8, 16, 3);
-
-  g.fillStyle(p.skinDark);
-  g.fillRoundedRect(-13, leftY - 2, 5, 11, 2);
-  g.fillStyle(p.skin);
-  g.fillRoundedRect(-12, leftY - 1, 4, 9, 2);
-
-  g.fillStyle(p.hairDark);
-  g.fillCircle(1, -16, 11);
-  g.fillStyle(p.hair);
-  g.fillCircle(1, -16, 9);
-  g.fillRoundedRect(-8, -18, 16, 8, 4);
-
-  g.fillStyle(p.skinDark);
-  g.fillEllipse(2, -14.4, 6.2, 9.2);
-  g.fillStyle(p.skin);
-  g.fillEllipse(2, -14.4, 5.2, 8.2);
-
-  g.fillStyle(p.hair);
-  g.fillRect(-6, -22, 14, 6);
-  g.fillTriangle(-8, -16, -2, -16, -7, -8);
-  g.fillTriangle(8, -18, 12, -12, 6, -10);
-
-  drawEyes(g, p, 2, -14, 1);
-  drawHat(g, p, 1, -24);
+  drawHairAndHead(g, p, 2, 1);
+  drawEyes(g, p, 3, -16.2, 1);
+  drawHat(g, p, 1, -27);
   drawStaff(g, p, 11, rightY - 2, -1.15 - staffRaise * 0.7);
 };
 
@@ -186,57 +181,16 @@ const drawWest = (
 ): void => {
   const leftY = 1 - liftL * 9 - staffRaise * 6;
   const rightY = 1 - liftR * 8;
+  drawTorso(g, p);
 
   g.fillStyle(p.skinDark);
-  g.fillRoundedRect(-8, 9, 6, 8, 2);
-  g.fillRoundedRect(3, 9, 6, 8, 2);
+  g.fillRoundedRect(8, rightY - 1, 4, 11, 2);
   g.fillStyle(p.skin);
-  g.fillRect(-7, 9, 4, 6);
-  g.fillRect(4, 9, 4, 6);
+  g.fillRoundedRect(8.5, rightY, 3, 9, 2);
 
-  g.fillStyle(p.skirtDark);
-  g.fillRoundedRect(-12, 5, 24, 8, 4);
-  g.fillStyle(p.skirt);
-  g.fillRoundedRect(-11, 4, 22, 7, 4);
-  g.fillStyle(p.sash);
-  g.fillRect(-8, 4, 16, 2);
-
-  g.fillStyle(p.skin);
-  g.fillRect(-5, 1, 10, 4);
-
-  g.fillStyle(p.topDark);
-  g.fillRoundedRect(-9, -8, 18, 11, 4);
-  g.fillStyle(p.top);
-  g.fillEllipse(0, -5, 17, 8);
-  g.fillRoundedRect(-7, -6, 14, 7, 3);
-  g.fillStyle(p.sash);
-  g.fillRect(-7, -1, 14, 2);
-  g.fillStyle(p.band);
-  g.fillRect(-8, -8, 16, 3);
-
-  g.fillStyle(p.skinDark);
-  g.fillRoundedRect(8, rightY - 2, 5, 11, 2);
-  g.fillStyle(p.skin);
-  g.fillRoundedRect(8, rightY - 1, 4, 9, 2);
-
-  g.fillStyle(p.hairDark);
-  g.fillCircle(-1, -16, 11);
-  g.fillStyle(p.hair);
-  g.fillCircle(-1, -16, 9);
-  g.fillRoundedRect(-8, -18, 16, 8, 4);
-
-  g.fillStyle(p.skinDark);
-  g.fillEllipse(-2, -14.4, 6.2, 9.2);
-  g.fillStyle(p.skin);
-  g.fillEllipse(-2, -14.4, 5.2, 8.2);
-
-  g.fillStyle(p.hair);
-  g.fillRect(-8, -22, 14, 6);
-  g.fillTriangle(8, -16, 2, -16, 7, -8);
-  g.fillTriangle(-8, -18, -12, -12, -6, -10);
-
-  drawEyes(g, p, -2, -14, -1);
-  drawHat(g, p, -1, -24);
+  drawHairAndHead(g, p, -2, -1);
+  drawEyes(g, p, -3, -16.2, -1);
+  drawHat(g, p, -1, -27);
   drawStaff(g, p, -11, leftY - 2, -1.95 + staffRaise * 0.7);
 };
 
@@ -248,78 +202,72 @@ const drawFront = (
   liftR: number,
   staffRaise: number,
 ): void => {
-  g.fillStyle(p.skinDark);
-  g.fillRoundedRect(-8, 9, 6, 8, 2);
-  g.fillRoundedRect(2, 9, 6, 8, 2);
-  g.fillStyle(p.skin);
-  g.fillRect(-7, 9, 4, 6);
-  g.fillRect(3, 9, 4, 6);
-
-  g.fillStyle(p.skirtDark);
-  g.fillRoundedRect(-12, 5, 24, 8, 4);
-  g.fillStyle(p.skirt);
-  g.fillRoundedRect(-11, 4, 22, 7, 4);
-
-  g.fillStyle(p.skin);
-  g.fillRect(-4, 1, 8, 4);
-
-  g.fillStyle(p.topDark);
-  g.fillRoundedRect(-9, -8, 18, 11, 4);
-  g.fillStyle(p.top);
-  g.fillEllipse(0, -5, 17, 8);
-  g.fillRoundedRect(-7, -6, 14, 7, 3);
-  g.fillStyle(p.sash);
-  g.fillRect(-7, -1, 14, 2);
-  g.fillStyle(p.band);
-  g.fillRect(-8, -8, 16, 3);
-
+  drawTorso(g, p);
   const leftY = -1 - liftL * 8;
   const rightY = -1 - liftR * 8 - staffRaise * 5;
   g.fillStyle(p.skin);
-  g.fillRoundedRect(-13, leftY, 5, 12, 2);
-  g.fillRoundedRect(8, rightY, 5, 12, 2);
+  g.fillRoundedRect(-12, leftY, 4, 12, 2);
+  g.fillRoundedRect(8, rightY, 4, 12, 2);
 
   g.fillStyle(p.hairDark);
-  g.fillCircle(0, -16, 11);
+  g.fillEllipse(0, -18, 20, 18);
   g.fillStyle(p.hair);
-  g.fillCircle(0, -16, 9);
+  g.fillEllipse(0, -18, 17, 16);
 
   if (!north) {
     g.fillStyle(p.skinDark);
-    g.fillEllipse(0, -14.4, 6, 9);
+    g.fillEllipse(0, -16.4, 13.2, 17.2);
     g.fillStyle(p.skin);
-    g.fillEllipse(0, -14.4, 5, 8);
-    drawEyes(g, p, 0, -14.2, 0);
+    g.fillEllipse(0, -16.4, 11.6, 15.6);
+    drawEyes(g, p, 0, -16.2, 0);
     g.fillStyle(p.hair);
-    g.fillTriangle(-10, -16, -4, -16, -9, -7);
-    g.fillTriangle(10, -16, 4, -16, 9, -7);
+    g.fillTriangle(-11, -18, -3, -18, -10, -8);
+    g.fillTriangle(11, -18, 3, -18, 10, -8);
   } else {
     g.fillStyle(p.hair);
-    g.fillCircle(0, -16, 9);
+    g.fillEllipse(0, -18, 17, 16);
   }
 
-  drawHat(g, p, 0, -24);
+  drawHat(g, p, 0, -27);
   drawStaff(g, p, 12, rightY + 2, -1.2 - staffRaise * 0.55);
 };
 
+const drawHairAndHead = (g: Phaser.GameObjects.Graphics, p: Palette, faceX: number, dir: number): void => {
+  g.fillStyle(p.hairDark);
+  g.fillEllipse(dir, -18, 20, 18);
+  g.fillStyle(p.hair);
+  g.fillEllipse(dir, -18, 17, 16);
+  g.fillRoundedRect(-9 + dir, -20, 18, 9, 4);
+
+  g.fillStyle(p.skinDark);
+  g.fillEllipse(faceX, -16.4, 13.4, 17.4);
+  g.fillStyle(p.skin);
+  g.fillEllipse(faceX, -16.4, 11.8, 15.8);
+
+  g.fillStyle(p.hair);
+  g.fillRect(-7 + dir, -24, 15, 7);
+  g.fillTriangle(-9 * dir, -18, -2 * dir, -18, -8 * dir, -8);
+  g.fillTriangle(9 * dir, -20, 13 * dir, -13, 6 * dir, -11);
+};
+
 const drawEyes = (g: Phaser.GameObjects.Graphics, p: Palette, cx: number, cy: number, dir: number): void => {
-  const ox = dir * 2;
+  const ox = dir * 2.4;
   g.fillStyle(p.eyeDark);
-  g.fillTriangle(cx - 3.4 + ox, cy - 0.5, cx - 1.2 + ox, cy - 3.2, cx - 0.6 + ox, cy + 1.4);
-  g.fillTriangle(cx + 3.4 + ox, cy - 0.5, cx + 1.2 + ox, cy - 3.2, cx + 0.6 + ox, cy + 1.4);
+  g.fillTriangle(cx - 4.2 + ox, cy - 0.4, cx - 1.5 + ox, cy - 3.6, cx - 0.7 + ox, cy + 1.8);
+  g.fillTriangle(cx + 4.2 + ox, cy - 0.4, cx + 1.5 + ox, cy - 3.6, cx + 0.7 + ox, cy + 1.8);
   g.fillStyle(p.eye);
-  g.fillTriangle(cx - 3 + ox, cy - 0.4, cx - 1.4 + ox, cy - 2.6, cx - 0.9 + ox, cy + 0.9);
-  g.fillTriangle(cx + 3 + ox, cy - 0.4, cx + 1.4 + ox, cy - 2.6, cx + 0.9 + ox, cy + 0.9);
+  g.fillTriangle(cx - 3.7 + ox, cy - 0.3, cx - 1.7 + ox, cy - 3, cx - 1.1 + ox, cy + 1.2);
+  g.fillTriangle(cx + 3.7 + ox, cy - 0.3, cx + 1.7 + ox, cy - 3, cx + 1.1 + ox, cy + 1.2);
 };
 
 const drawHat = (g: Phaser.GameObjects.Graphics, p: Palette, x: number, y: number): void => {
   g.fillStyle(COLORS.ink);
-  g.fillEllipse(x, y + 6, 24, 7);
+  g.fillEllipse(x, y + 7, 28, 8);
   g.fillStyle(p.hat);
-  g.fillEllipse(x, y + 5.5, 22, 6);
-  g.fillTriangle(x - 7, y + 4, x + 7, y + 4, x + 1, y - 14);
+  g.fillEllipse(x, y + 6.4, 26, 7);
+  g.fillTriangle(x - 8, y + 5, x + 8, y + 5, x + 1, y - 16);
   g.fillStyle(p.hatBand);
-  g.fillRect(x - 6, y + 1, 13, 2);
+  g.fillRect(x - 7, y + 2, 15, 2);
 };
 
 const drawStaff = (g: Phaser.GameObjects.Graphics, p: Palette, x: number, y: number, angle: number): void => {

@@ -12,7 +12,7 @@ export type BlockAbsorbResult = {
 
 /**
  * Hold-to-block directional shield.
- * Stamina drains while held; a Perfect Shield is only the brief raise window.
+ * Holding does not drain stamina. A Perfect Shield is only the brief raise window.
  */
 export class BlockController {
   private holding = false;
@@ -39,11 +39,10 @@ export class BlockController {
     }
   }
 
-  tick(deltaMs: number, now: number, ninja: NinjaBody): void {
+  tick(_deltaMs: number, _now: number, ninja: NinjaBody): void {
     if (!this.holding) {
       return;
     }
-    ninja.drainStamina((COMBAT.blockDrainPerSecond * deltaMs) / 1000, now);
     if (ninja.stamina < COMBAT.blockMinStamina) {
       this.holding = false;
       spawnCombatCallout(this.shield.scene, ninja.x, ninja.y, 'SHIELD BREAK', COLORS.orange);

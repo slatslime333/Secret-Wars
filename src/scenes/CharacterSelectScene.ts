@@ -4,6 +4,8 @@ import { HERO_IDS, PLAYABLE_HEROES, setSelectedHeroId, type HeroId } from '../he
 import { heroSelectCopy } from '../heroes/selectCopy';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
+import { clamp, measureViewport } from '../ui/layout/viewport';
+import { ScrollPanel } from '../ui/layout/ScrollPanel';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { audio, playHeroSelect } from '../audio';
 import { fadeToScene } from './fadeToScene';
@@ -21,6 +23,8 @@ const HERO_ORDER = HERO_IDS;
 export class CharacterSelectScene extends Phaser.Scene {
   private leaving = false;
   private selected: HeroId = 'ninja';
+  private cardScroll?: ScrollPanel;
+  private detailScroll?: ScrollPanel;
 
   constructor() {
     super('CharacterSelect');
@@ -37,13 +41,16 @@ export class CharacterSelectScene extends Phaser.Scene {
     createBackdrop(this, { accent: COLORS.cyan, embers: true });
     this.cameras.main.fadeIn(220, 7, 10, 18);
 
-    const width = this.scale.width;
-    const height = this.scale.height;
+    const frame = measureViewport(this.scale.width, this.scale.height);
+    const width = frame.width;
+    const height = frame.height;
+    const inset = frame.contentInset;
+    const footerH = Math.max(frame.minTouch + 12, 56);
 
     this.add
-      .text(width / 2, 12, 'CHOOSE YOUR FIGHTER', {
+      .text(width / 2, inset.top, 'CHOOSE YOUR FIGHTER', {
         fontFamily: FONTS.display,
-        fontSize: '24px',
+        fontSize: frame.isPortrait ? '18px' : '24px',
         color: hex(COLORS.paper),
         letterSpacing: 3,
         stroke: hex(COLORS.ink),
@@ -52,7 +59,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
 
     this.add
-      .text(width / 2, 42, 'DRAFT MATCH  //  3:00  //  THREE LANES', {
+      .text(width / 2, inset.top + 28, 'DRAFT MATCH  //  3:00  //  THREE LANES', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
@@ -61,20 +68,23 @@ export class CharacterSelectScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
 
-    this.drawCards(width);
-    this.drawDetail(width, height);
+    const cardTop = inset.top + 52;
+    const cardH = 168;
+    const cardsBottom = this.drawCards(inset.left, cardTop, width - inset.left - inset.right, cardH);
+    this.drawDetail(inset.left, cardsBottom + 10, width - inset.left - inset.right, height - footerH - inset.bottom - cardsBottom - 18);
 
-    new ActionButton(this, 90, height - 32, {
+    const btnH = Math.max(40, Math.min(48, frame.minTouch));
+    new ActionButton(this, inset.left + 70, height - inset.bottom - btnH / 2, {
       label: 'BACK',
       width: 140,
-      height: 40,
+      height: btnH,
       compact: true,
       onPress: () => this.leaveTo('MainMenu'),
     });
-    new ActionButton(this, width - 120, height - 32, {
+    new ActionButton(this, width - inset.right - 100, height - inset.bottom - btnH / 2, {
       label: 'CONFIRM',
       width: 200,
-      height: 48,
+      height: Math.max(btnH, 48),
       primary: true,
       compact: true,
       onPress: () => this.confirm(),
@@ -92,37 +102,43 @@ export class CharacterSelectScene extends Phaser.Scene {
     };
     this.scale.on(Phaser.Scale.Events.RESIZE, onResize);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.cardScroll?.destroy();
+      this.detailScroll?.destroy();
       this.scale.off(Phaser.Scale.Events.RESIZE, onResize);
     });
   }
 
-  private drawCards(width: number): void {
+  private drawCards(x: number, y: number, viewW: number, cardH: number): number {
     const n = HERO_ORDER.length;
-    const gap = 10;
-    const cardW = Math.min(168, (width - 40 - gap * (n - 1)) / n);
+    const gap = 12;
+    const cardW = Math.round(clamp(viewW * 0.36, 148, 188));
     const total = cardW * n + gap * (n - 1);
-    const left = width / 2 - total / 2 + cardW / 2;
+    const host = total <= viewW ? this.add.container(x, y) : null;
+    if (total > viewW) {
+      this.cardScroll = new ScrollPanel(this, x, y, viewW, cardH + 8, { axis: 'x' });
+      this.cardScroll.setContentSize(total + 8, cardH + 8);
+    }
+
     HERO_ORDER.forEach((id, index) => {
       const copy = heroSelectCopy(id);
-      const x = left + index * (cardW + gap);
-      const y = 52;
+      const cx = (total <= viewW ? (viewW - total) / 2 : 0) + cardW / 2 + index * (cardW + gap);
       const selected = this.selected === id;
-      const panel = this.add.rectangle(x, y, cardW, 156, COLORS.panel, 0.96).setOrigin(0.5, 0);
+      const panel = this.add.rectangle(cx, 0, cardW, cardH, COLORS.panel, 0.96).setOrigin(0.5, 0);
       panel.setStrokeStyle(3, selected ? COLORS.yellow : COLORS.cyan);
       const art = this.add.graphics();
-      art.setPosition(x, y + 50);
+      art.setPosition(cx, 48);
       art.setScale(1.25);
       PLAYABLE_HEROES[id].draw(art, { facing: 'east', team: 'alpha' });
-      this.add
-        .text(x, y + 88, copy.name.toUpperCase(), {
+      const name = this.add
+        .text(cx, 86, copy.name.toUpperCase(), {
           fontFamily: FONTS.display,
           fontSize: '13px',
           color: hex(COLORS.paper),
           letterSpacing: 1,
         })
         .setOrigin(0.5, 0);
-      this.add
-        .text(x, y + 104, copy.role.toUpperCase(), {
+      const role = this.add
+        .text(cx, 104, copy.role.toUpperCase(), {
           fontFamily: FONTS.body,
           fontSize: copy.role.length > 12 ? '8px' : '10px',
           fontStyle: 'bold',
@@ -130,16 +146,16 @@ export class CharacterSelectScene extends Phaser.Scene {
           letterSpacing: 1,
         })
         .setOrigin(0.5, 0);
-      this.add
-        .text(x, y + 120, `OVR  ${copy.overall}`, {
+      const ovr = this.add
+        .text(cx, 122, `OVR  ${copy.overall}`, {
           fontFamily: FONTS.display,
           fontSize: '14px',
           color: hex(COLORS.yellow),
           letterSpacing: 1,
         })
         .setOrigin(0.5, 0);
-      this.add
-        .text(x, y + 136, `PWR  ${copy.power}`, {
+      const pwr = this.add
+        .text(cx, 140, `PWR  ${copy.power}`, {
           fontFamily: FONTS.body,
           fontSize: '10px',
           fontStyle: 'bold',
@@ -147,63 +163,77 @@ export class CharacterSelectScene extends Phaser.Scene {
           letterSpacing: 2,
         })
         .setOrigin(0.5, 0);
-      const hit = this.add.rectangle(x, y + 78, cardW, 156, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
-      hit.on(Phaser.Input.Events.POINTER_UP, () => this.select(id));
-      new ActionButton(this, x, y + 174, {
-        label: selected ? 'SELECTED' : 'SELECT',
-        width: cardW - 14,
-        height: 30,
-        compact: true,
-        primary: selected,
-        onPress: () => this.select(id),
+      const hit = this.add.rectangle(cx, cardH / 2, cardW, cardH, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      hit.on(Phaser.Input.Events.POINTER_UP, () => {
+        if (this.cardScroll?.wasDragged) {
+          return;
+        }
+        this.select(id);
       });
+      const bits = [panel, art, name, role, ovr, pwr, hit];
+      if (this.cardScroll) {
+        bits.forEach((bit) => this.cardScroll!.add(bit));
+      } else {
+        host?.add(bits);
+      }
     });
+
+    return y + cardH + 8;
   }
 
-  private drawDetail(width: number, height: number): void {
+  private drawDetail(x: number, y: number, boxW: number, boxH: number): void {
     const copy = heroSelectCopy(this.selected);
-    const top = 248;
-    const boxH = Math.max(180, height - top - 70);
-    const boxW = Math.min(860, width - 40);
-    const box = this.add.rectangle(width / 2, top, boxW, boxH, COLORS.ink, 0.82).setOrigin(0.5, 0);
+    const frame = measureViewport(this.scale.width, this.scale.height);
+    const box = this.add.rectangle(x, y, boxW, Math.max(120, boxH), COLORS.ink, 0.82).setOrigin(0, 0);
     box.setStrokeStyle(2, COLORS.cyan);
-    const left = width / 2 - boxW / 2 + 16;
-    const innerW = boxW - 32;
-    const statsW = Math.min(320, Math.max(230, innerW * 0.4));
-    const textW = innerW - statsW - 18;
 
-    this.add.text(left, top + 8, `${copy.name.toUpperCase()}  //  ${copy.role.toUpperCase()}`, {
+    this.detailScroll = new ScrollPanel(this, x + 8, y + 8, boxW - 16, Math.max(100, boxH - 16));
+    const inner = this.detailScroll.content;
+    const innerW = boxW - 32;
+    const stack = frame.isPortrait || boxW < 640;
+    const statsW = stack ? innerW : Math.min(320, Math.max(220, innerW * 0.38));
+    const textW = stack ? innerW : innerW - statsW - 18;
+
+    const title = this.add.text(0, 0, `${copy.name.toUpperCase()}  //  ${copy.role.toUpperCase()}`, {
       fontFamily: FONTS.display,
       fontSize: '16px',
       color: hex(COLORS.paper),
       letterSpacing: 2,
     });
-    this.add.text(left, top + 30, copy.description, {
+    const desc = this.add.text(0, 24, copy.description, {
       fontFamily: FONTS.body,
       fontSize: '13px',
       color: hex(COLORS.paper),
       wordWrap: { width: textW },
     });
+    inner.add([title, desc]);
     const lines = [
       `LIGHT  ${copy.light}`,
       `A1  ${copy.ability1.name} — ${copy.ability1.text}`,
       `A2  ${copy.ability2.name} — ${copy.ability2.text}`,
       `ULT  ${copy.ultimate.name} — ${copy.ultimate.text}`,
     ];
+    let textBottom = 54;
     lines.forEach((line, index) => {
-      this.add.text(left, top + 54 + index * 32, line, {
+      const body = this.add.text(0, textBottom, line, {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
         color: hex(index === 0 ? COLORS.orange : COLORS.cyan),
         wordWrap: { width: textW },
       });
+      inner.add(body);
+      textBottom += Math.max(28, body.height + 8);
     });
 
-    this.drawStatBlock(left + textW + 18, top + 10, statsW, copy);
+    const statsY = stack ? textBottom + 8 : 8;
+    const statsX = stack ? 0 : textW + 18;
+    this.drawStatBlock(inner, statsX, statsY, statsW, copy);
+    const contentH = Math.max(textBottom, statsY + 46 + CORE_STAT_ORDER.length * 18 + 8);
+    this.detailScroll.setContentSize(innerW, contentH + 12);
 
     this.add
-      .text(width / 2, height - 68, isTouchPrimary() ? 'TAP A FIGHTER, THEN CONFIRM' : '← → SELECT    ENTER CONFIRM', {
+      .text(this.scale.width / 2, y + boxH + 4, isTouchPrimary() ? 'TAP A FIGHTER, THEN CONFIRM' : '← → SELECT    ENTER CONFIRM', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         color: hex(COLORS.muted),
@@ -213,67 +243,81 @@ export class CharacterSelectScene extends Phaser.Scene {
   }
 
   private drawStatBlock(
+    parent: Phaser.GameObjects.Container,
     x: number,
     y: number,
     width: number,
     copy: { ratings: Record<CoreStatId, number>; overall: number; power: number },
   ): void {
-    this.add.text(x, y, 'OVERALL', {
-      fontFamily: FONTS.body,
-      fontSize: '11px',
-      fontStyle: 'bold',
-      color: hex(COLORS.muted),
-      letterSpacing: 1,
-    });
-    this.add
-      .text(x + width, y, formatRating(copy.overall), {
-        fontFamily: FONTS.display,
-        fontSize: '16px',
-        color: hex(COLORS.yellow),
-      })
-      .setOrigin(1, 0);
-    this.add.text(x, y + 20, 'POWER', {
-      fontFamily: FONTS.body,
-      fontSize: '11px',
-      fontStyle: 'bold',
-      color: hex(COLORS.muted),
-      letterSpacing: 1,
-    });
-    this.add
-      .text(x + width, y + 20, `${copy.power}`, {
-        fontFamily: FONTS.display,
-        fontSize: '16px',
-        color: hex(COLORS.orange),
-      })
-      .setOrigin(1, 0);
+    const add = (obj: Phaser.GameObjects.GameObject) => parent.add(obj);
+    add(
+      this.add.text(x, y, 'OVERALL', {
+        fontFamily: FONTS.body,
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: hex(COLORS.muted),
+        letterSpacing: 1,
+      }),
+    );
+    add(
+      this.add
+        .text(x + width, y, formatRating(copy.overall), {
+          fontFamily: FONTS.display,
+          fontSize: '16px',
+          color: hex(COLORS.yellow),
+        })
+        .setOrigin(1, 0),
+    );
+    add(
+      this.add.text(x, y + 20, 'POWER', {
+        fontFamily: FONTS.body,
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: hex(COLORS.muted),
+        letterSpacing: 1,
+      }),
+    );
+    add(
+      this.add
+        .text(x + width, y + 20, `${copy.power}`, {
+          fontFamily: FONTS.display,
+          fontSize: '16px',
+          color: hex(COLORS.orange),
+        })
+        .setOrigin(1, 0),
+    );
 
     const rowH = 18;
     const barsY = y + 46;
     CORE_STAT_ORDER.forEach((stat, index) => {
       const rowY = barsY + index * rowH;
       const value = copy.ratings[stat];
-      this.add.text(x, rowY, CORE_STAT_LABEL[stat].toUpperCase(), {
-        fontFamily: FONTS.body,
-        fontSize: '11px',
-        fontStyle: 'bold',
-        color: hex(COLORS.muted),
-        letterSpacing: 1,
-      });
-      const barX = x + 108;
-      const barW = Math.max(70, width - 158);
-      const barY = rowY + 5;
-      this.add.rectangle(barX, barY, barW, 8, COLORS.panel, 1).setOrigin(0, 0.5);
-      const fill = Math.max(2, (value / RATING_CAP) * barW);
-      const fillColor = value >= 70 ? COLORS.orange : value >= 50 ? COLORS.cyan : COLORS.muted;
-      this.add.rectangle(barX, barY, fill, 8, fillColor, 1).setOrigin(0, 0.5);
-      this.add
-        .text(barX + barW + 8, rowY, formatRating(value), {
+      add(
+        this.add.text(x, rowY, CORE_STAT_LABEL[stat].toUpperCase(), {
           fontFamily: FONTS.body,
           fontSize: '11px',
           fontStyle: 'bold',
-          color: hex(COLORS.paper),
-        })
-        .setOrigin(0, 0);
+          color: hex(COLORS.muted),
+          letterSpacing: 1,
+        }),
+      );
+      const barX = x + 108;
+      const barW = Math.max(70, width - 158);
+      const barY = rowY + 5;
+      add(this.add.rectangle(barX, barY, barW, 8, COLORS.panel, 1).setOrigin(0, 0.5));
+      const fill = Math.max(2, (value / RATING_CAP) * barW);
+      const fillColor = value >= 70 ? COLORS.orange : value >= 50 ? COLORS.cyan : COLORS.muted;
+      add(this.add.rectangle(barX, barY, fill, 8, fillColor, 1).setOrigin(0, 0.5));
+      add(
+        this.add
+          .text(barX + barW + 8, rowY, formatRating(value), {
+            fontFamily: FONTS.body,
+            fontSize: '11px',
+            fontStyle: 'bold',
+            color: hex(COLORS.paper),
+          })
+          .setOrigin(0, 0),
+      );
     });
   }
 
