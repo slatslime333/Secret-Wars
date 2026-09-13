@@ -100,16 +100,16 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
   const menuY = top + menuH / 2 + 2;
   const barWidth = Math.round(
     isTablet
-      ? clamp(isPortrait ? width * 0.22 : Math.min(width * 0.18, height * 0.32), 120, 160)
+      ? clamp(isPortrait ? width * 0.24 : Math.min(width * 0.2, height * 0.34), 132, 176)
       : isPortrait
-        ? clamp(width * 0.28, 96, 118)
-        : clamp(Math.min(width * 0.16, height * 0.28), 96, 120),
+        ? clamp(width * 0.32, 108, 128)
+        : clamp(Math.min(width * 0.18, height * 0.3), 108, 128),
   );
-  const hpH = isTablet ? 8 : 5;
-  const shieldH = isTablet ? 5 : 3;
-  const stamH = isTablet ? 5 : 3;
-  const xpH = isTablet ? 4 : 2;
-  const gap = isTablet ? 3 : 2;
+  const hpH = isTablet ? 10 : 7;
+  const shieldH = isTablet ? 6 : 4;
+  const stamH = isTablet ? 6 : 4;
+  const xpH = isTablet ? 5 : 3;
+  const gap = isTablet ? 4 : 3;
   const barsX = Math.round((width - barWidth) / 2);
   const floor = height - Math.max(safe.bottom, 8) - 6;
   const labelGap = isTablet ? 11 : 8;
@@ -148,12 +148,12 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
       scoreY,
       timerY,
       phaseY,
-      scoreSize: isTablet ? 12 : 10,
-      timerSize: isTablet ? 13 : 11,
+      scoreSize: isTablet ? 13 : 11,
+      timerSize: isTablet ? 14 : 12,
       phaseSize: isTablet ? 10 : 9,
       align: 'center',
     },
-    xpSize: isTablet ? 10 : 9,
+    xpSize: isTablet ? 11 : 10,
     minimap: {
       x: width - contentInset.right,
       y: miniY,

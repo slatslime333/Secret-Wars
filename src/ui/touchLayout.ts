@@ -52,7 +52,7 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
     clamp(radius * 0.58, tablet ? 30 : isPortrait ? 30 : 26, tablet ? 40 : isPortrait ? 36 : 34),
   );
   let ultimateRadius = Math.round(
-    clamp(radius * 0.62, tablet ? 32 : isPortrait ? 32 : 28, tablet ? 42 : isPortrait ? 38 : 36),
+    clamp(radius * 0.52, tablet ? 28 : isPortrait ? 26 : 24, tablet ? 36 : isPortrait ? 32 : 30),
   );
 
   const fits = (stickR: number, btnR: number, abilR: number, ultR: number): boolean => {
@@ -72,7 +72,7 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
     radius -= 1;
     buttonRadius = Math.round(clamp(radius * 0.56, 22, 32));
     abilityRadius = Math.round(clamp(radius * 0.58, 24, 34));
-    ultimateRadius = Math.round(clamp(radius * 0.62, 26, 36));
+    ultimateRadius = Math.round(clamp(radius * 0.52, 22, 32));
   }
 
   const packed = pack(radius, buttonRadius, abilityRadius, ultimateRadius, {
