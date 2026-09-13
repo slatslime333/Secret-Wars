@@ -34,11 +34,11 @@ export class BattleHud {
     this.hpText = scene.add
       .text(36, 42, '', {
         fontFamily: FONTS.body,
-        fontSize: '13px',
+        fontSize: '18px',
         fontStyle: 'bold',
         color: hex(COLORS.paper),
         stroke: hex(COLORS.ink),
-        strokeThickness: 4,
+        strokeThickness: 5,
       })
       .setOrigin(0, 0.5)
       .setScrollFactor(0)
@@ -106,12 +106,12 @@ export class BattleHud {
     }
     const hud = layoutPcCombatHud(width, height);
     this.barWidth = hud.barWidth;
-    this.hpTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.hpY).setSize(hud.barWidth, 18);
-    this.staminaTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.staminaY).setSize(hud.barWidth, 13);
-    this.ninjaFill.setPosition(hud.barLeft, hud.hpY).setSize(this.ninjaFill.width || hud.barWidth, 18);
-    this.staminaFill.setPosition(hud.barLeft, hud.staminaY).setSize(this.staminaFill.width || hud.barWidth, 13);
-    this.hpText.setVisible(true).setPosition(hud.barLeft, hud.hpY - 18).setOrigin(0, 0.5);
-    this.verbText.setPosition(width / 2, hud.hpY - 36).setOrigin(0.5, 1);
+    this.hpTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.hpY).setSize(hud.barWidth, hud.hpHeight);
+    this.staminaTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.staminaY).setSize(hud.barWidth, hud.staminaHeight);
+    this.ninjaFill.setPosition(hud.barLeft, hud.hpY).setSize(this.ninjaFill.width || hud.barWidth, hud.hpHeight);
+    this.staminaFill.setPosition(hud.barLeft, hud.staminaY).setSize(this.staminaFill.width || hud.barWidth, hud.staminaHeight);
+    this.hpText.setVisible(true).setPosition(hud.barLeft, hud.hpY - 22).setOrigin(0, 0.5);
+    this.verbText.setPosition(width / 2, hud.hpY - 42).setOrigin(0.5, 1);
   }
 
   placeCombo(x: number, y: number): void {

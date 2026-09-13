@@ -145,6 +145,7 @@ export class CombatStatus {
   shouldLockMovement(now: number): boolean {
     return (
       this.isHitReacting(now) ||
+      this.isStunned(now) ||
       this.isLunging(now) ||
       this.isBlockStunned(now) ||
       this.isHitStopping(now) ||
@@ -161,6 +162,8 @@ export class CombatStatus {
       this.isClashLocked(now) ||
       this.isControlLocked(now) ||
       this.isHitStopping(now) ||
+      this.isStunned(now) ||
+      this.isParalyzed(now) ||
       now < this.attackRecoveryUntil
     );
   }

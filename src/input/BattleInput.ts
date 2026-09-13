@@ -265,7 +265,7 @@ export class BattleInput {
     if (!pointer.leftButtonDown()) {
       return;
     }
-    if (this.scene.time.now - this.uiPointerAt < 120) {
+    if (this.scene.time.now - this.uiPointerAt < 250) {
       return;
     }
     if (this.pcAim === 'ability1') {
@@ -332,6 +332,7 @@ export class BattleInput {
     }
     this.pcAim = null;
     this.suppressAttack = true;
+    this.wasAttackHeld = true;
   }
 
   layout(width: number, height: number): void {
@@ -385,18 +386,20 @@ export class BattleInput {
     this.lastAim.copy(aim);
 
     const aimingAbility = this.pcAim !== null;
+    const pointerAttack = !this.touch && this.scene.input.activePointer.leftButtonDown();
+    if (this.suppressAttack && !pointerAttack) {
+      this.suppressAttack = false;
+    }
     const attackHeld =
       !aimingAbility &&
-      (rightActive ||
-        Boolean(this.keys?.attack.isDown) ||
-        (!this.touch && this.scene.input.activePointer.leftButtonDown()));
+      !this.suppressAttack &&
+      (rightActive || Boolean(this.keys?.attack.isDown) || pointerAttack);
     const attackPressed =
       !this.suppressAttack &&
       (this.consumeLatch('attackLatched') ||
         Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.attack)) ||
         (attackHeld && !this.wasAttackHeld));
-    this.wasAttackHeld = attackHeld;
-    this.suppressAttack = false;
+    this.wasAttackHeld = attackHeld || this.suppressAttack;
 
     const now = this.scene.time.now;
     const attackEdge = attackPressed && now - this.lastAttackPressAt >= 90;

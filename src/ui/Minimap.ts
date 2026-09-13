@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { isTouchPrimary } from '../device';
+import { PC_COMBAT_HUD } from './pcCombatHud';
 import { COLORS } from './theme';
 import type { MapLayout } from '../map/types';
 import type { NinjaBody } from '../heroes/NinjaBody';
@@ -26,8 +27,8 @@ export class Minimap {
 
   constructor(scene: Phaser.Scene) {
     const pc = !isTouchPrimary();
-    this.width = pc ? 214 : 148;
-    this.height = pc ? 156 : 108;
+    this.width = pc ? PC_COMBAT_HUD.minimapWidth : 148;
+    this.height = pc ? PC_COMBAT_HUD.minimapHeight : 108;
     const x = scene.scale.width - 12;
     const y = 52;
     this.root = scene.add.container(x, y).setScrollFactor(0).setDepth(108);

@@ -153,9 +153,8 @@ export function synthesize(ctx: AudioContext, dest: AudioNode, id: SoundId): voi
       playRecipe(ctx, dest, [
         { kind: 'sine', freq: 740, duration: 0.07, gain: 0.16 },
         { kind: 'triangle', freq: 1175, duration: 0.1, gain: 0.13, delay: 0.045 },
+        { kind: 'sine', freq: 1480, duration: 0.08, gain: 0.08, delay: 0.09 },
       ]);
-      return;
-      playRecipe(ctx, dest, [{ kind: 'sine', freq: 300, duration: 0.16, gain: 0.14 }]);
       return;
 
     case 'ninja-light':

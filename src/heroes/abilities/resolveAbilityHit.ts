@@ -20,6 +20,7 @@ export type AbilityHitProfile = {
   dirY: number;
   step?: ComboStep;
   hitReactionMs?: number;
+  stun?: boolean;
   heavy?: boolean;
   blockable?: boolean;
   spark?: 'slash' | 'kick' | 'default';
@@ -93,6 +94,7 @@ export const resolveAbilityHit = (
     staminaDamage: profile.staminaDamage,
     step,
     hitReactionMs: profile.hitReactionMs,
+    stun: profile.stun,
     hitStopMs: profile.hitStopMs,
     launchCap: profile.launchCap,
     receivedKnockbackMul: profile.receivedKnockbackMul,

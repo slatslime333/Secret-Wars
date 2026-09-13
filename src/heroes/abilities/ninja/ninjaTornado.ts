@@ -147,6 +147,7 @@ class NinjaTornadoAbility implements ActiveAbility {
           dirY: dirY || caster.aim.y,
           step: 1,
           hitReactionMs: NINJA_TORNADO.stunMs,
+          stun: true,
           heavy: true,
         },
         ctx.rivalBlock,

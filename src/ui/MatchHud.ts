@@ -104,8 +104,8 @@ export class MatchHud {
       return;
     }
     const hud = layoutPcCombatHud(width, height);
-    this.xpTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.xpY).setSize(hud.barWidth, 8);
-    this.xpFill.setPosition(hud.barLeft, hud.xpY).setSize(this.xpFill.width || hud.barWidth, 8);
+    this.xpTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.xpY).setSize(hud.barWidth, PC_COMBAT_HUD.xpHeight);
+    this.xpFill.setPosition(hud.barLeft, hud.xpY).setSize(this.xpFill.width || hud.barWidth, PC_COMBAT_HUD.xpHeight);
     this.level.setPosition(hud.barLeft, hud.xpY + 10).setOrigin(0, 0);
     this.xpText.setPosition(hud.barLeft + hud.barWidth, hud.xpY + 10).setOrigin(1, 0);
   }

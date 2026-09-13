@@ -208,10 +208,10 @@ export class NinjaBody {
     this.launch(options.dirX / length, options.dirY / length, power, options.launchCap ?? COMBAT.launchSpeedCap);
     if (minion) {
       this.status.applyStun(now, options.hitReactionMs ?? MINION.hitReactionMs);
-    } else if (options.hitReactionMs !== undefined) {
-      this.status.applyStun(now, options.hitReactionMs);
+    } else if (options.stun) {
+      this.status.applyStun(now, options.hitReactionMs ?? COMBAT.combo[options.step].hitReactionMs);
     } else {
-      this.status.applyHitReaction(now, options.step);
+      this.status.applyHitReaction(now, options.step, options.hitReactionMs);
     }
     if (hitStopMs > 0) {
       this.status.applyHitStop(now, hitStopMs);

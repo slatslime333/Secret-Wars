@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { audio } from '../audio';
 import { ABILITY_ICON } from '../heroes/abilities/icons';
 import { AbilitySlot, AbilitySlotState } from '../heroes/abilities/types';
+import { isPcCombatHud, PC_COMBAT_HUD } from './pcCombatHud';
 import { COLORS, FONTS, hex } from './theme';
 
 export type AbilityTrayHandlers = {
@@ -37,10 +38,10 @@ export class AbilityTray {
       const label = scene.add
         .text(0, 0, '', {
           fontFamily: FONTS.display,
-          fontSize: '12px',
+          fontSize: '16px',
           color: hex(COLORS.paper),
           stroke: hex(COLORS.ink),
-          strokeThickness: 4,
+          strokeThickness: 5,
         })
         .setOrigin(0.5)
         .setScrollFactor(0)
@@ -48,14 +49,14 @@ export class AbilityTray {
       const key = scene.add
         .text(0, 0, keyHints[i], {
           fontFamily: FONTS.body,
-          fontSize: '11px',
+          fontSize: '14px',
           fontStyle: 'bold',
           color: hex(COLORS.muted),
         })
         .setOrigin(0.5, 0)
         .setScrollFactor(0)
         .setDepth(115);
-      icon.setInteractive({ useHandCursor: true });
+      icon.setInteractive({ useHandCursor: true, cursor: 'pointer' });
       icon.on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
         pointer.event?.stopPropagation?.();
         audio.unlock();
@@ -84,8 +85,8 @@ export class AbilityTray {
   }
 
   sync(states: AbilitySlotState[]): void {
-    const gap = 52 * this.scale;
-    const radius = 18 * this.scale;
+    const gap = isPcCombatHud() ? PC_COMBAT_HUD.abilityGap : 52 * this.scale;
+    const radius = isPcCombatHud() ? PC_COMBAT_HUD.abilityRadius : 18 * this.scale;
     const aiming = this.handlers?.aimingSlot?.() ?? null;
     this.rings.clear();
     states.forEach((state, i) => {
@@ -94,9 +95,10 @@ export class AbilityTray {
       const icon = this.icons[i];
       icon.setTexture(state.def.iconKey).setVisible(true).setPosition(px, py);
       icon.setDisplaySize(radius * 2, radius * 2);
+      icon.setInteractive(new Phaser.Geom.Circle(icon.width / 2, icon.height / 2, Math.max(icon.width, icon.height) / 2 + 4), Phaser.Geom.Circle.Contains);
       icon.setAlpha(state.consumed ? 0.28 : state.ready ? 1 : 0.45);
-      this.keys[i].setPosition(px, py + radius + 4).setScale(this.scale);
-      this.labels[i].setPosition(px, py).setScale(this.scale);
+      this.keys[i].setPosition(px, py + radius + 6).setScale(isPcCombatHud() ? 1.15 : this.scale);
+      this.labels[i].setPosition(px, py).setScale(isPcCombatHud() ? 1.1 : this.scale);
       this.rings.fillStyle(COLORS.ink, 0.62);
       this.rings.fillCircle(px, py, radius + 4);
       const aimed = aiming === state.def.slot;

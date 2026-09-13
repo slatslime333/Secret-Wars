@@ -24,8 +24,10 @@ export type TakeHitOptions = {
   staminaDamage: number;
   step: ComboStep;
   clash?: boolean;
-  /** Ability hits can request a custom stun window instead of combo reaction. */
+  /** Custom hit-reaction window. Does not count as stun unless `stun` is set. */
   hitReactionMs?: number;
+  /** True crowd-control (bat smash, tornado). Triggers the STUNNED popup. */
+  stun?: boolean;
   /** Override the default connect freeze. `0` skips a second freeze after a shared impact pause. */
   hitStopMs?: number;
   /** Optional per-hit launch speed cap. Defaults to COMBAT.launchSpeedCap. */
