@@ -89,7 +89,7 @@ export class QuickAttack {
 
     const tapQueued = this.pendingTaps > 0;
     this.combo.expire(now, COMBAT.comboWindowMs, held || tapQueued || pressed);
-    if (pressed) {
+    if (pressed && attacker.heroId !== 'witch' && attacker.heroId !== 'rope') {
       this.pendingTaps = Math.min(3, this.pendingTaps + 1);
       this.lastPendingAt = now;
     }
