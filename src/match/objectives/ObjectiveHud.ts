@@ -137,8 +137,8 @@ export class ObjectiveHud {
       this.banner.setVisible(false);
     }
     const showArrow = this.active && now < this.hideArrowAt && Boolean(ui);
-    this.arrow.setVisible(showArrow);
     if (!showArrow) {
+      this.arrow.setVisible(false);
       if (!ui) {
         this.active = false;
       }
@@ -150,10 +150,16 @@ export class ObjectiveHud {
     const sy = (this.targetY - view.y) * zoom;
     const w = this.scene.scale.width;
     const h = this.scene.scale.height;
+    const inset = 72;
+    const onScreen = sx >= inset && sx <= w - inset && sy >= inset && sy <= h - inset;
+    if (onScreen) {
+      this.arrow.setVisible(false);
+      return;
+    }
     const edge = edgePoint(sx, sy, w, h, 32);
     const dx = this.targetX - (view.x + view.width / 2);
     const dy = this.targetY - (view.y + view.height / 2);
-    this.arrow.setPosition(edge.x, edge.y).setRotation(Math.atan2(dy, dx) + Math.PI / 2);
+    this.arrow.setVisible(true).setPosition(edge.x, edge.y).setRotation(Math.atan2(dy, dx) + Math.PI / 2);
   }
 
   layout(width: number, height: number): void {

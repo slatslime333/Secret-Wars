@@ -50,12 +50,12 @@ export class CaptureZoneObjective implements MatchObjective {
     this.fill = deps.scene.add.circle(this.x, this.y, this.radius, 0xf6f1de, 0.1).setDepth(5);
     this.ring = deps.scene.add.circle(this.x, this.y, this.radius, 0xf6f1de, 0).setDepth(6);
     this.ring.setStrokeStyle(3, COLORS.paper, 0.85);
-    this.barTrack = deps.scene.add.rectangle(0, 0, 92, 10, COLORS.ink, 0.82).setStrokeStyle(1.5, COLORS.paper, 0.8);
-    this.barFill = deps.scene.add.rectangle(-44, 0, 2, 6, COLORS.paper).setOrigin(0, 0.5);
+    this.barTrack = deps.scene.add.rectangle(0, 0, 118, 12, COLORS.ink, 0.86).setStrokeStyle(1.6, COLORS.paper, 0.85);
+    this.barFill = deps.scene.add.rectangle(-56, 0, 2, 8, COLORS.paper).setOrigin(0, 0.5);
     this.barLabel = deps.scene.add
-      .text(0, -16, 'NEUTRAL', {
+      .text(0, -18, 'NEUTRAL', {
         fontFamily: FONTS.display,
-        fontSize: '13px',
+        fontSize: '15px',
         color: hex(COLORS.paper),
         stroke: hex(COLORS.ink),
         strokeThickness: 5,
@@ -232,9 +232,9 @@ export class CaptureZoneObjective implements MatchObjective {
     this.gfx.clear();
     this.gfx.lineStyle(2, color, 0.35);
     this.gfx.strokeCircle(this.x, this.y, this.radius * 0.42);
-    const width = 88 * Math.max(0.02, progress);
+    const width = 112 * Math.max(0.02, progress);
     this.barFill.setFillStyle(phase === 'contested' ? COLORS.orange : color, 1);
-    this.barFill.setSize(width, 6);
+    this.barFill.setSize(width, 8);
     this.barFill.setAlpha(phase === 'decaying' ? 0.7 + Math.sin(this.pulse * 0.02) * 0.25 : 1);
     this.barLabel.setText(label).setColor(hex(phase === 'contested' ? COLORS.orange : color));
   }
