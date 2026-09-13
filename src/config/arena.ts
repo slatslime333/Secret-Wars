@@ -89,12 +89,18 @@ export const nearestLane = (y: number): LaneId => {
   return best;
 };
 
+/** Extra wall fill so a follow-cam past the arena still looks like stone, not void. */
+export const CAMERA_BLEED = 1200;
+export const ARENA_WALL_COLOR = 0x1a211e;
+
 export const ARENA = {
   width: WIDTH,
   height: HEIGHT,
   wallThickness: 40,
   spawnRadius: 40,
   edgeInset: EDGE_INSET,
+  cameraBleed: CAMERA_BLEED,
+  wallColor: ARENA_WALL_COLOR,
   laneY: ARENA_LANE_Y,
   teamSpawnX: ARENA_TEAM_SPAWN_X,
   minionSpawnX: ARENA_MINION_SPAWN_X,

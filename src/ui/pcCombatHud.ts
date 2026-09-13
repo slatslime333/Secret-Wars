@@ -4,6 +4,7 @@ import { isTouchPrimary } from '../device';
 export const PC_COMBAT_HUD = {
   barWidth: 440,
   hpHeight: 22,
+  shieldHeight: 12,
   staminaHeight: 15,
   xpHeight: 9,
   abilityRadius: 40,
@@ -20,8 +21,10 @@ export type PcCombatLayout = {
   barLeft: number;
   barWidth: number;
   hpHeight: number;
+  shieldHeight: number;
   staminaHeight: number;
   hpY: number;
+  shieldY: number;
   staminaY: number;
   xpY: number;
   abilityY: number;
@@ -39,7 +42,8 @@ export const layoutPcCombatHud = (width: number, height: number): PcCombatLayout
   const abilityY = height - hud.bottomMargin - hud.abilityRadius;
   const xpY = abilityY - hud.abilityRadius - hud.barToAbility;
   const staminaY = xpY - 18;
-  const hpY = staminaY - 24;
+  const shieldY = staminaY - 18;
+  const hpY = shieldY - 26;
   const barLeft = Math.round(width / 2 - hud.barWidth / 2);
   const mid = width / 2;
   return {
@@ -48,8 +52,10 @@ export const layoutPcCombatHud = (width: number, height: number): PcCombatLayout
     barLeft,
     barWidth: hud.barWidth,
     hpHeight: hud.hpHeight,
+    shieldHeight: hud.shieldHeight,
     staminaHeight: hud.staminaHeight,
     hpY,
+    shieldY,
     staminaY,
     xpY,
     abilityY,

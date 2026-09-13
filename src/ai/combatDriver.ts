@@ -115,7 +115,7 @@ export class CombatDriver {
     this.noticeShot(now, body, mind, dash, rng);
     this.resolvePending(now, body, mind, dash, world, scene, foes, rng);
 
-    const holding = now < this.blockUntil && body.stamina > 10 && !dash.isActive(now) && !abilities?.control.block;
+    const holding = now < this.blockUntil && body.canRaiseBlock() && !dash.isActive(now) && !abilities?.control.block;
     if (!holding) {
       this.blockUntil = 0;
     }

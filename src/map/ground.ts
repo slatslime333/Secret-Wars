@@ -135,8 +135,9 @@ const ensureGrassTexture = (scene: Phaser.Scene): void => {
 };
 
 const drawPerimeter = (graphics: Phaser.GameObjects.Graphics): void => {
-  const { width, height, wallThickness: wall } = ARENA;
-  graphics.fillStyle(0x1a211e);
+  const { width, height, wallThickness: wall, cameraBleed: bleed, wallColor } = ARENA;
+  graphics.fillStyle(wallColor);
+  graphics.fillRect(-bleed, -bleed, width + bleed * 2, height + bleed * 2);
   graphics.fillRect(0, 0, width, wall);
   graphics.fillRect(0, height - wall, width, wall);
   graphics.fillRect(0, 0, wall, height);

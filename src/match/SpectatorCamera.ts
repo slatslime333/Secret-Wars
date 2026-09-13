@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { MATCH } from '../config/match';
+import { lockCameraFollow } from '../ui/layout';
 import type { HeroRuntime } from './HeroRuntime';
 
 export type SpectatorMode = 'free' | 'lock';
@@ -46,7 +47,7 @@ export class SpectatorCamera {
     this.mode = unit ? 'lock' : 'free';
     const cam = this.scene.cameras.main;
     if (unit?.alive) {
-      cam.startFollow(unit.body.sprite, true, 0.16, 0.16);
+      lockCameraFollow(cam, unit.body.sprite);
     } else {
       cam.stopFollow();
     }

@@ -26,6 +26,7 @@ export class Minimap {
   private height: number;
   private readonly rangeX = 640;
   private readonly rangeY = 460;
+  private lastSyncAt = -1e9;
 
   constructor(scene: Phaser.Scene) {
     const frame = measureViewport(scene.scale.width, scene.scale.height);
@@ -49,6 +50,7 @@ export class Minimap {
       this.width = chrome.minimap.width;
       this.height = chrome.minimap.height;
       this.frame.setPosition(-this.width, 0).setSize(this.width, this.height);
+      this.lastSyncAt = -1e9;
     }
     this.root.setPosition(chrome.minimap.x, chrome.minimap.y);
   }
@@ -58,6 +60,11 @@ export class Minimap {
   }
 
   sync(source: MinimapSource): void {
+    const now = this.root.scene.time.now;
+    if (now - this.lastSyncAt < 90 && this.lastSyncAt > 0) {
+      return;
+    }
+    this.lastSyncAt = now;
     const { player, layout } = source;
     this.art.clear();
     const left = -this.width;

@@ -54,6 +54,7 @@ export class MinionWorld {
   private readonly units: MinionRecord[] = [];
   private readonly debug: Phaser.GameObjects.Graphics;
   private readonly labels: Phaser.GameObjects.Text[] = [];
+  private debugIdle = true;
   onKilled?: (event: MinionKillEvent) => void;
 
   constructor(private readonly scene: Phaser.Scene) {
@@ -209,11 +210,17 @@ export class MinionWorld {
   }
 
   drawDebug(showRanges: boolean, showAi: boolean, showHitboxes: boolean, now: number): void {
-    this.debug.clear();
-    this.clearLabels();
     if (!showRanges && !showAi && !showHitboxes) {
+      if (!this.debugIdle) {
+        this.debug.clear();
+        this.clearLabels();
+        this.debugIdle = true;
+      }
       return;
     }
+    this.debugIdle = false;
+    this.debug.clear();
+    this.clearLabels();
     for (const unit of this.units) {
       const { body, brain, kind } = unit;
       if (showHitboxes) {
