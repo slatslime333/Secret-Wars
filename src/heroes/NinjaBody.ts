@@ -5,13 +5,15 @@ import { NINJA } from '../config/ninja';
 import { COMBAT, ComboStep, comboStepOf, lightAttackStaminaCost } from '../config/combat';
 import { CombatStatus } from '../combat/CombatStatus';
 import { TakeHitOptions } from '../combat/Hurtbox';
-import { emitCombatDamage } from '../combat/damageEvents';
+import { emitCombatBlocked, emitCombatDamage } from '../combat/damageEvents';
 import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
 import { drawColeElectricity } from './drawCole';
 import type { HeroDrawFn } from './heroDraw';
 import { playDeath } from '../audio';
 import { drawRopeWrap } from './abilities/rope/ropeVisual';
+import { drawMagicVortex } from './abilities/witch/vortex';
+import { dismissWitchSkeletons, unregisterWitchSkeleton } from './abilities/witch/skeletonPack';
 import { DEV_CHEATS } from '../debug/devCheats';
 import { MATCH } from '../config/match';
 import { MINION } from '../config/minion';
@@ -58,6 +60,11 @@ export class NinjaBody {
   private armLiftRight = 0;
   private wrapGfx?: Phaser.GameObjects.Graphics;
   private wrapUntil = 0;
+  private vortexGfx?: Phaser.GameObjects.Graphics;
+  private vortexUntil = 0;
+  private vortexTint = 0x9b4dff;
+  private tempShield = 0;
+  private tempShieldUntil = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: FighterOptions = {}) {
     this.scene = scene;
@@ -137,6 +144,7 @@ export class NinjaBody {
     this.view.setPosition(this.sprite.x, this.sprite.y);
     this.redrawHandSparks();
     this.syncRopeWrap();
+    this.syncMagicVortex();
     const now = this.now();
     if (this.heroId === 'rope' && now >= this.attackingUntil && this.present && !this.down) {
       const hop = Math.abs(Math.sin(now / 130)) * 3.4;
@@ -184,14 +192,20 @@ export class NinjaBody {
     if (!body) {
       return;
     }
-    const applied = Math.min(this.health, options.damage);
-    this.health = Math.max(0, this.health - options.damage);
+    const incoming = options.damage;
+    const shielded = this.absorbShield(incoming, now);
+    const hpDamage = incoming - shielded;
+    const applied = Math.min(this.health, hpDamage);
+    this.health = Math.max(0, this.health - hpDamage);
     if (options.source?.attacker) {
       this.lastAttacker = options.source.attacker;
       this.lastAttackerAt = now;
-      if (applied > 0 && options.source.attacker.team !== this.team) {
+      if ((applied > 0 || shielded > 0) && options.source.attacker.team !== this.team) {
         this.lastEnemyHitAt = now;
       }
+    }
+    if (shielded > 0) {
+      emitCombatBlocked({ defender: this, amount: shielded, at: now });
     }
     if (applied > 0) {
       emitCombatDamage({
@@ -237,6 +251,9 @@ export class NinjaBody {
     });
     if (this.down) {
       this.stop();
+      this.clearTempShield();
+      this.clearMagicVortex();
+      dismissWitchSkeletons(this);
       if (applied > 0) {
         playDeath(this);
       }
@@ -407,6 +424,7 @@ export class NinjaBody {
       batScale?: number;
       batOnBack?: boolean;
       showUzi?: boolean;
+      staffRaise?: number;
     },
     ease: string = 'Sine.InOut',
   ): void {
@@ -438,6 +456,7 @@ export class NinjaBody {
           batScale: pose.batScale,
           batOnBack: pose.batOnBack,
           showUzi: pose.showUzi,
+          staffRaise: pose.staffRaise,
         });
         this.art.setPosition(pose.swayX ?? 0, pose.jumpY ?? 0);
       },
@@ -570,6 +589,8 @@ export class NinjaBody {
   healFull(): void {
     this.health = this.stats.maxHealth;
     this.stamina = this.stats.maxStamina;
+    this.clearTempShield();
+    this.clearMagicVortex();
   }
 
   heal(amount: number): void {
@@ -595,6 +616,9 @@ export class NinjaBody {
     if (!value) {
       this.stop();
       this.clearRopeWrap();
+      this.clearMagicVortex();
+      this.clearTempShield();
+      dismissWitchSkeletons(this);
     }
   }
 
@@ -609,6 +633,64 @@ export class NinjaBody {
     this.wrapUntil = 0;
     this.wrapGfx?.destroy();
     this.wrapGfx = undefined;
+  }
+
+  applyTempShield(now: number, amount: number, durationMs: number): void {
+    this.tempShield = Math.max(0, amount);
+    this.tempShieldUntil = now + durationMs;
+  }
+
+  clearTempShield(): void {
+    this.tempShield = 0;
+    this.tempShieldUntil = 0;
+  }
+
+  shieldAmount(now = this.now()): number {
+    if (now >= this.tempShieldUntil) {
+      this.tempShield = 0;
+      return 0;
+    }
+    return this.tempShield;
+  }
+
+  private absorbShield(amount: number, now: number): number {
+    const available = this.shieldAmount(now);
+    if (available <= 0 || amount <= 0) {
+      return 0;
+    }
+    const used = Math.min(available, amount);
+    this.tempShield = available - used;
+    if (this.tempShield <= 0) {
+      this.clearTempShield();
+    }
+    return used;
+  }
+
+  showMagicVortex(untilMs: number, tint = 0x9b4dff): void {
+    this.vortexUntil = untilMs;
+    this.vortexTint = tint;
+    if (!this.vortexGfx || !this.vortexGfx.active) {
+      this.vortexGfx = this.scene.add.graphics().setDepth(11);
+    }
+  }
+
+  clearMagicVortex(): void {
+    this.vortexUntil = 0;
+    this.vortexGfx?.destroy();
+    this.vortexGfx = undefined;
+  }
+
+  private syncMagicVortex(): void {
+    const gfx = this.vortexGfx;
+    if (!gfx) {
+      return;
+    }
+    const now = this.now();
+    if (!this.present || this.down || now >= this.vortexUntil) {
+      this.clearMagicVortex();
+      return;
+    }
+    drawMagicVortex(gfx, this.x, this.y, now, this.vortexTint);
   }
 
   private syncRopeWrap(): void {
@@ -743,6 +825,10 @@ export class NinjaBody {
     this.scene.tweens.killTweensOf(this.view);
     this.scene.tweens.killTweensOf(this.art);
     this.clearRopeWrap();
+    this.clearMagicVortex();
+    this.clearTempShield();
+    unregisterWitchSkeleton(this);
+    dismissWitchSkeletons(this);
     this.sprite.destroy();
     this.view.destroy();
   }

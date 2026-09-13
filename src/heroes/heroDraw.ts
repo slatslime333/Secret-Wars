@@ -17,6 +17,7 @@ export type HeroDrawOptions = {
   batScale?: number;
   batOnBack?: boolean;
   showUzi?: boolean;
+  staffRaise?: number;
 };
 
 export type HeroDrawFn = (graphics: Phaser.GameObjects.Graphics, options: HeroDrawOptions) => void;

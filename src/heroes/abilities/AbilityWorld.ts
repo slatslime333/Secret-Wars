@@ -1,5 +1,6 @@
 import { NinjaBody } from '../NinjaBody';
 import { distanceBetween } from './geometry';
+import type { MinionWorld } from '../../minions/MinionWorld';
 
 export type AreaModifier = {
   moveMul: number;
@@ -32,6 +33,7 @@ export class AbilityWorld {
   private nextId = 1;
   private readonly smokeZones: SmokeZone[] = [];
   private readonly tickers: WorldTicker[] = [];
+  minionWorld?: MinionWorld;
 
   addTicker(ticker: WorldTicker): void {
     this.tickers.push(ticker);

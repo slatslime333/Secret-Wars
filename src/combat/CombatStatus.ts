@@ -19,6 +19,13 @@ export class CombatStatus {
   private controlLockUntil = 0;
   private slowUntil = 0;
   private slowMul = 1;
+  private commitSlowUntil = 0;
+  private commitSlowMul = 1;
+  private hasteUntil = 0;
+  private hasteMoveMul = 1;
+  private hasteAttackMul = 1;
+  private asDebuffUntil = 0;
+  private asDebuffMul = 1;
   private paralyzeUntil = 0;
   private stunUntil = 0;
   private zone: AreaModifier = OPEN_ZONE;
@@ -94,6 +101,25 @@ export class CombatStatus {
     } else if (moveMul < this.slowMul) {
       this.slowMul = moveMul;
     }
+  }
+
+  /** Attack-animation commitment slow. Does not overwrite combat slows. */
+  applyCommitSlow(now: number, durationMs: number, moveMul: number): void {
+    this.commitSlowUntil = now + durationMs;
+    this.commitSlowMul = moveMul;
+  }
+
+  /** Temporary +move / +attack-speed buff. Refresh duration; do not stack. */
+  applyHasteBuff(now: number, durationMs: number, moveMul: number, attackSpeedMul: number): void {
+    this.hasteUntil = now + durationMs;
+    this.hasteMoveMul = moveMul;
+    this.hasteAttackMul = 1 / Math.max(0.2, attackSpeedMul);
+  }
+
+  /** Attack-speed reduction as a cooldown multiplier (1.3 = 30% slower). Does not stack. */
+  applyAttackSpeedSlow(now: number, durationMs: number, cooldownMul: number): void {
+    this.asDebuffUntil = now + durationMs;
+    this.asDebuffMul = cooldownMul;
   }
 
   applyParalyze(now: number, durationMs: number): void {
@@ -173,13 +199,15 @@ export class CombatStatus {
       return 0;
     }
     const slow = now < this.slowUntil ? this.slowMul : 1;
+    const commit = now < this.commitSlowUntil ? this.commitSlowMul : 1;
+    const haste = now < this.hasteUntil ? this.hasteMoveMul : 1;
     if (this.isBlockStunned(now) || this.isHitStopping(now)) {
-      return 0.2 * this.zone.moveMul * slow;
+      return 0.2 * this.zone.moveMul * slow * commit * haste;
     }
     if (this.isHitReacting(now)) {
-      return COMBAT.hitMoveMultiplier * this.zone.moveMul * slow;
+      return COMBAT.hitMoveMultiplier * this.zone.moveMul * slow * commit * haste;
     }
-    return this.zone.moveMul * slow;
+    return this.zone.moveMul * slow * commit * haste;
   }
 
   extraSwingDelay(now: number): number {
@@ -195,6 +223,8 @@ export class CombatStatus {
 
   attackSlowMultiplier(now: number): number {
     const hitSlow = now < this.attackSlowUntil ? COMBAT.hitAttackSlowMultiplier : 1;
-    return hitSlow / this.zone.attackSpeedMul;
+    const haste = now < this.hasteUntil ? this.hasteAttackMul : 1;
+    const debuff = now < this.asDebuffUntil ? this.asDebuffMul : 1;
+    return (hitSlow * haste * debuff) / this.zone.attackSpeedMul;
   }
 }

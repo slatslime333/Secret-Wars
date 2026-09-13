@@ -33,6 +33,7 @@ const HERO_SELECT: Record<string, SoundId> = {
   cole: 'ui-select-cole',
   death: 'ui-select-death',
   rope: 'ui-select-rope',
+  witch: 'ui-select-witch',
 };
 
 const LIGHT_ATTACK: Record<string, SoundId> = {
@@ -40,6 +41,7 @@ const LIGHT_ATTACK: Record<string, SoundId> = {
   cole: 'cole-light',
   death: 'death-light',
   rope: 'rope-light',
+  witch: 'witch-light',
 };
 
 export const abilityLoopKey = (abilityId: string, caster: Pick<AudioBody, 'heroId' | 'team'>): string =>

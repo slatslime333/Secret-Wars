@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { playWorld } from '../audio';
 import { atFarEdge } from '../config/arena';
 import { MINION, MinionKind, RANGER_MINION, SWORD_MINION, minionAdvanceX } from '../config/minion';
+import { WITCH_TOMBSTONE } from '../heroes/abilities/witch/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { resolveAbilityHit } from '../heroes/abilities/resolveAbilityHit';
 import { Projectile } from '../combat/projectile';
@@ -29,6 +30,12 @@ export type MinionDebugInfo = {
   targetScore: number;
 };
 
+export type MinionBrainOptions = {
+  guard?: NinjaBody;
+  windupMs?: number;
+  recoveryMs?: number;
+};
+
 /**
  * Advance the lane unless a nearby fight is actually worth taking.
  * Combat still uses the minion kit; targeting comes from TacticalMind.
@@ -43,11 +50,18 @@ export class MinionBrain {
   private attacking = false;
   private readonly steer = new Phaser.Math.Vector2();
   readonly mind: TacticalMind;
+  private readonly guard?: NinjaBody;
+  private readonly windupMs: number;
+  private readonly recoveryMs: number;
 
   constructor(
     readonly body: NinjaBody,
     readonly kind: MinionKind,
+    options: MinionBrainOptions = {},
   ) {
+    this.guard = options.guard;
+    this.windupMs = options.windupMs ?? (kind === 'ranger' ? RANGER_MINION.windupMs : SWORD_MINION.windupMs);
+    this.recoveryMs = options.recoveryMs ?? (kind === 'ranger' ? RANGER_MINION.recoveryMs : SWORD_MINION.recoveryMs);
     this.mind = new TacticalMind(
       'minion',
       `${body.team}:${kind}:${Math.round(body.x)}:${Math.round(body.y)}`,
@@ -86,8 +100,81 @@ export class MinionBrain {
       return;
     }
     this.mind.think(now, this.body, field, scene);
+    if (this.guard) {
+      this.actGuard(now, field, world, scene);
+      return;
+    }
     this.syncTarget();
     this.act(now, world, scene);
+  }
+
+  private actGuard(now: number, field: TacticalField, world: AbilityWorld, scene: Phaser.Scene): void {
+    const owner = this.guard;
+    if (!owner || owner.down || !owner.isPresent) {
+      this.body.health = 0;
+      return;
+    }
+    if (this.body.status.shouldLockMovement(now)) {
+      return;
+    }
+    const protect = WITCH_TOMBSTONE.protectRadius;
+    const leash = WITCH_TOMBSTONE.leashRadius;
+    const foes: NinjaBody[] = [];
+    field.fillEnemies(this.body, foes);
+    let nearest: NinjaBody | undefined;
+    let nearestDist = Number(protect);
+    for (const foe of foes) {
+      if (foe.down) {
+        continue;
+      }
+      const fromOwner = distanceBetween(owner.x, owner.y, foe.x, foe.y);
+      if (fromOwner > protect) {
+        continue;
+      }
+      const fromSelf = distanceBetween(this.body.x, this.body.y, foe.x, foe.y);
+      if (fromSelf < nearestDist) {
+        nearest = foe;
+        nearestDist = fromSelf;
+      }
+    }
+    this.target = nearest;
+    if (nearest) {
+      this.body.setAim(nearest.x - this.body.x, nearest.y - this.body.y);
+    } else {
+      this.body.setAim(owner.x - this.body.x, owner.y - this.body.y);
+    }
+    const homeDist = distanceBetween(this.body.x, this.body.y, owner.x, owner.y);
+    if (now < this.recoverUntil) {
+      this.body.stop();
+      this.state = 'recover';
+      return;
+    }
+    if (nearest) {
+      const range = this.body.stats.attackRange + nearest.stats.bodyRadius;
+      const inRange = distanceBetween(this.body.x, this.body.y, nearest.x, nearest.y) <= range;
+      if (inRange) {
+        this.body.stop();
+        this.tryAttack(now, nearest, world, scene);
+        return;
+      }
+    }
+    if (this.attacking) {
+      this.body.stop();
+      return;
+    }
+    const goalX = nearest && homeDist < leash ? nearest.x : owner.x;
+    const goalY = nearest && homeDist < leash ? nearest.y : owner.y;
+    let dx = goalX - this.body.x;
+    let dy = goalY - this.body.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const steered = battlefieldOf(scene)?.query.steer(this.body.x, this.body.y, dx / len, dy / len);
+    if (steered) {
+      this.steer.set(steered.x, steered.y);
+    } else {
+      this.steer.set(dx / len, dy / len);
+    }
+    this.body.applyMove(this.steer);
+    this.state = nearest ? 'attack' : 'push_lane';
   }
 
   private syncTarget(): void {
@@ -192,10 +279,10 @@ export class MinionBrain {
   }
 
   private swingSword(now: number, target: NinjaBody, scene: Phaser.Scene): void {
-    const spec = SWORD_MINION;
+    const spec = this.body.stats;
     this.body.playAttackAnimation(now, 1);
     playWorld('minion-attack', this.body);
-    scene.time.delayedCall(spec.windupMs, () => {
+    scene.time.delayedCall(this.windupMs, () => {
       this.attacking = false;
       if (this.body.down || target.down) {
         return;
@@ -211,7 +298,7 @@ export class MinionBrain {
         target,
         {
           rawDamage: spec.attackDamage,
-          knockback: vsMinion ? spec.vsMinionKnockback : spec.knockbackPower,
+          knockback: vsMinion && 'vsMinionKnockback' in spec ? SWORD_MINION.vsMinionKnockback : spec.knockbackPower,
           receivedKnockbackMul: vsMinion ? 1 : undefined,
           staminaDamage: 2,
           dirX: target.x - this.body.x,
@@ -223,7 +310,7 @@ export class MinionBrain {
         },
       );
       this.body.status.markSwing(scene.time.now, 1);
-      this.recoverUntil = scene.time.now + spec.recoveryMs;
+      this.recoverUntil = scene.time.now + this.recoveryMs;
       this.nextAttackAt = scene.time.now + spec.attackCooldownMs;
     });
   }

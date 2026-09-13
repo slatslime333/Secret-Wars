@@ -14,6 +14,9 @@ export const ABILITY_ICON = {
   ropeGrab: 'ability-icon-rope-grab',
   megaPunch: 'ability-icon-mega-punch',
   ropeSpray: 'ability-icon-rope-spray',
+  tombstone: 'ability-icon-tombstone',
+  hex: 'ability-icon-hex',
+  tombstoneUlt: 'ability-icon-tombstone-ult',
 } as const;
 
 const SIZE = 128;
@@ -33,6 +36,9 @@ export const ensureAbilityIcons = (scene: Phaser.Scene): void => {
   drawIfMissing(scene, ABILITY_ICON.ropeGrab, drawRopeGrab);
   drawIfMissing(scene, ABILITY_ICON.megaPunch, drawMegaPunch);
   drawIfMissing(scene, ABILITY_ICON.ropeSpray, drawRopeSpray);
+  drawIfMissing(scene, ABILITY_ICON.tombstone, drawTombstoneIcon);
+  drawIfMissing(scene, ABILITY_ICON.hex, drawHexIcon);
+  drawIfMissing(scene, ABILITY_ICON.tombstoneUlt, drawTombstoneUltIcon);
 };
 
 const drawIfMissing = (
@@ -492,6 +498,71 @@ const drawRopeSpray = (ctx: CanvasRenderingContext2D, size: number): void => {
   ctx.moveTo(c, c - 8);
   ctx.lineTo(c + 5, c + 2);
   ctx.lineTo(c - 5, c + 2);
+  ctx.fill();
+};
+
+const drawTombstoneIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2a2a32';
+  ctx.fillRect(c - 18, c - 8, 16, 28);
+  ctx.fillRect(c + 2, c - 8, 16, 28);
+  ctx.fillStyle = '#9b4dff';
+  ctx.beginPath();
+  ctx.arc(c - 10, c + 2, 3, 0, Math.PI * 2);
+  ctx.arc(c + 10, c + 2, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f0ead8';
+  ctx.beginPath();
+  ctx.arc(c - 22, c + 18, 7, 0, Math.PI * 2);
+  ctx.arc(c + 22, c + 18, 7, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+const drawHexIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#9b4dff';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(c, c, 28, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = '#c090ff';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(c, c, 18, 0.4, 4);
+  ctx.stroke();
+  ctx.fillStyle = '#3cdb5c';
+  ctx.beginPath();
+  ctx.arc(c, c, 8, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+const drawTombstoneUltIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#9b4dff';
+  ctx.globalAlpha = 0.35;
+  ctx.beginPath();
+  ctx.arc(c, c, 40, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#2a2a32';
+  ctx.fillRect(c - 10, c - 6, 20, 30);
+  ctx.fillStyle = '#f0ead8';
+  ctx.beginPath();
+  ctx.arc(c - 22, c + 16, 7, 0, Math.PI * 2);
+  ctx.arc(c, c + 22, 7, 0, Math.PI * 2);
+  ctx.arc(c + 22, c + 16, 7, 0, Math.PI * 2);
   ctx.fill();
 };
 

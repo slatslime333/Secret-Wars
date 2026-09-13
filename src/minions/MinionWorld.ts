@@ -11,6 +11,9 @@ import { MinionBrain, MinionDebugInfo } from './MinionBrain';
 import { MinionHpBar } from '../ui/world/MinionHpBar';
 import { battlefieldOf } from '../map';
 import type { TacticalField } from '../ai/tactical/field';
+import type { HeroCombatConfig } from '../config/hero';
+import type { HeroDrawFn } from '../heroes/heroDraw';
+import { unregisterWitchSkeleton } from '../heroes/abilities/witch/skeletonPack';
 
 export type MinionRecord = {
   body: NinjaBody;
@@ -26,6 +29,11 @@ export type MinionSpawnOptions = {
   y?: number;
   lane?: LaneId;
   waveId?: number;
+  stats?: HeroCombatConfig;
+  draw?: HeroDrawFn;
+  guard?: NinjaBody;
+  windupMs?: number;
+  recoveryMs?: number;
 };
 
 export type MinionKillEvent = {
@@ -87,12 +95,16 @@ export class MinionWorld {
     const body = new NinjaBody(this.scene, px, py, {
       team,
       rival: team === 'bravo',
-      stats: minionStatsOf(kind),
-      draw: kind === 'ranger' ? drawRangerMinion : drawSwordMinion,
+      stats: options.stats ?? minionStatsOf(kind),
+      draw: options.draw ?? (kind === 'ranger' ? drawRangerMinion : drawSwordMinion),
       handSparks: false,
     });
     body.setAim(pad.facingX, 0);
-    const brain = new MinionBrain(body, kind);
+    const brain = new MinionBrain(body, kind, {
+      guard: options.guard,
+      windupMs: options.windupMs,
+      recoveryMs: options.recoveryMs,
+    });
     const hpBar = new MinionHpBar(this.scene, body);
     const record: MinionRecord = {
       body,
@@ -153,6 +165,7 @@ export class MinionWorld {
   clear(): void {
     for (const unit of this.units) {
       unit.hpBar.destroy();
+      unregisterWitchSkeleton(unit.body);
       unit.body.destroy();
     }
     this.units.length = 0;
@@ -179,6 +192,7 @@ export class MinionWorld {
           y: unit.body.y,
         });
         unit.hpBar.destroy();
+        unregisterWitchSkeleton(unit.body);
         this.fadeOut(unit);
         this.units.splice(i, 1);
         continue;

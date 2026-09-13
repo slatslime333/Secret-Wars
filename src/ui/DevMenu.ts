@@ -115,11 +115,12 @@ export class DevMenu {
     add(() => 'HERO COLE', () => options.onSwapHero('cole'));
     add(() => 'HERO DEATH', () => options.onSwapHero('death'));
     add(() => 'HERO ROPE', () => options.onSwapHero('rope'));
+    add(() => 'HERO WITCH', () => options.onSwapHero('witch'));
 
     addHead('CPU');
     add(() => (options.cpuPresent() ? 'REMOVE CPU' : 'SPAWN CPU'), () => options.onToggleCpu());
     add(() => `CPU HERO  ${(options.cpuHeroId?.() ?? 'ninja').toUpperCase()}`, () => {
-      const order: HeroId[] = ['ninja', 'cole', 'death', 'rope'];
+      const order: HeroId[] = ['ninja', 'cole', 'death', 'rope', 'witch'];
       const current = options.cpuHeroId?.() ?? 'ninja';
       const next = order[(order.indexOf(current) + 1) % order.length];
       options.onSetCpuHero?.(next);

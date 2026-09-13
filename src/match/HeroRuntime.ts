@@ -81,6 +81,7 @@ export class HeroRuntime {
     enemies: NinjaBody[],
     world: AbilityWorld,
     aimOverride?: { x: number; y: number },
+    allies: NinjaBody[] = [],
   ): AbilityContext {
     return {
       scene: this.scene,
@@ -88,6 +89,7 @@ export class HeroRuntime {
       delta,
       caster: this.body,
       enemies,
+      allies,
       world,
       interruptCombat: () => {
         this.attacks.interrupt(now);

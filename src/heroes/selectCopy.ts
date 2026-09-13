@@ -23,6 +23,7 @@ export type HeroSelectCopy = {
 const ROLE_LABEL: Record<string, string> = {
   disruptor: 'Disruptor',
   support: 'Support',
+  'ranged-tank': 'Ranged Tank / Support',
   frontliner: 'Frontliner',
   assassin: 'Assassin',
   ranged: 'Ranged',
@@ -45,6 +46,9 @@ const ABILITY_TEXT: Record<string, string> = {
   'rope-grab': 'Click to aim, then left-click to fire a rope. A hit flings you in for a backflip kick. Misses cost nothing.',
   'rope-mega-punch': 'Jump into a close uppercut with strong knockback and a movement slow.',
   'rope-spray': 'Spin and spray ropes in random directions. Hits paralyze. Recharges after 45 seconds.',
+  'witch-tombstone': 'Raise your staff and summon two skeleton bodyguards. Blocked at four living skeletons.',
+  'witch-hex': 'Buff yourself and one nearby teammate with a green shield plus speed and attack speed.',
+  'witch-tombstone-ult': 'Summon skeletons up to the cap of four and pulse a slowing purple aura. Recharges after 45 seconds.',
 };
 
 const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
@@ -63,6 +67,10 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
   rope: {
     description: 'Mobile support who pokes from long range and disrupts movement with ropes.',
     light: 'Alternating rope shots every 0.4 seconds. Low damage, very long range.',
+  },
+  witch: {
+    description: 'Slow ranged tank/support who bombards with skulls, summons skeletons, and hexes the fight.',
+    light: 'Four-skull barrage every 0.4 seconds. Small hits add up. 20% slow on connect.',
   },
 };
 

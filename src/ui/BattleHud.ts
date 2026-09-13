@@ -8,11 +8,13 @@ import { COLORS, FONTS, hex } from './theme';
 
 export class BattleHud {
   private readonly ninjaFill: Phaser.GameObjects.Rectangle;
+  private readonly shieldFill: Phaser.GameObjects.Rectangle;
   private readonly staminaFill: Phaser.GameObjects.Rectangle;
   private readonly hpTrack: Phaser.GameObjects.Rectangle;
   private readonly staminaTrack: Phaser.GameObjects.Rectangle;
   private readonly hpText: Phaser.GameObjects.Text;
   private readonly foeFill: Phaser.GameObjects.Rectangle;
+  private readonly foeShieldFill: Phaser.GameObjects.Rectangle;
   private readonly foeStaminaFill: Phaser.GameObjects.Rectangle;
   private readonly foeBar: Phaser.GameObjects.Container;
   private readonly comboText: Phaser.GameObjects.Text;
@@ -27,8 +29,10 @@ export class BattleHud {
     const height = scene.scale.height;
     this.hpTrack = scene.add.rectangle(148, 56, 224, 10, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
     this.staminaTrack = scene.add.rectangle(148, 70, 224, 8, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
+    this.shieldFill = scene.add.rectangle(36, 56, 0, 10, COLORS.green).setOrigin(0, 0.5);
+    this.shieldFill.setScrollFactor(0).setDepth(102);
     this.ninjaFill = scene.add.rectangle(36, 56, 224, 10, COLORS.redBright).setOrigin(0, 0.5);
-    this.ninjaFill.setScrollFactor(0).setDepth(102);
+    this.ninjaFill.setScrollFactor(0).setDepth(103);
     this.staminaFill = scene.add.rectangle(36, 70, 224, 8, COLORS.cyan).setOrigin(0, 0.5);
     this.staminaFill.setScrollFactor(0).setDepth(102);
     this.hpText = scene.add
@@ -73,6 +77,7 @@ export class BattleHud {
     this.foeBar = scene.add.container(0, 0).setDepth(20);
     const track = scene.add.rectangle(0, 0, 72, 10, COLORS.ink, 1);
     track.setStrokeStyle(2, COLORS.redBright);
+    this.foeShieldFill = scene.add.rectangle(-36, 0, 0, 6, COLORS.green).setOrigin(0, 0.5);
     this.foeFill = scene.add.rectangle(-36, 0, 72, 6, COLORS.paper).setOrigin(0, 0.5);
     const foeStaminaTrack = scene.add.rectangle(0, 9, 72, 6, COLORS.ink, 1);
     foeStaminaTrack.setStrokeStyle(1, COLORS.cyanDark);
@@ -87,7 +92,7 @@ export class BattleHud {
         strokeThickness: 3,
       })
       .setOrigin(0.5, 1);
-    this.foeBar.add([track, this.foeFill, foeStaminaTrack, this.foeStaminaFill, this.foeCaption]);
+    this.foeBar.add([track, this.foeShieldFill, this.foeFill, foeStaminaTrack, this.foeStaminaFill, this.foeCaption]);
     this.foeBar.setVisible(false);
     this.layout(width, height);
   }
@@ -99,6 +104,7 @@ export class BattleHud {
       this.hpTrack.setPosition(148, 56).setSize(224, 10);
       this.staminaTrack.setPosition(148, 70).setSize(224, 8);
       this.ninjaFill.setPosition(36, 56).setSize(this.ninjaFill.width || 224, 10);
+      this.shieldFill.setPosition(36, 56).setSize(this.shieldFill.width || 0, 10);
       this.staminaFill.setPosition(36, 70).setSize(this.staminaFill.width || 224, 8);
       this.hpText.setVisible(false);
       this.verbText.setPosition(width - 30, 82).setOrigin(1, 0);
@@ -109,6 +115,7 @@ export class BattleHud {
     this.hpTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.hpY).setSize(hud.barWidth, hud.hpHeight);
     this.staminaTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.staminaY).setSize(hud.barWidth, hud.staminaHeight);
     this.ninjaFill.setPosition(hud.barLeft, hud.hpY).setSize(this.ninjaFill.width || hud.barWidth, hud.hpHeight);
+    this.shieldFill.setPosition(hud.barLeft, hud.hpY).setSize(this.shieldFill.width || 0, hud.hpHeight);
     this.staminaFill.setPosition(hud.barLeft, hud.staminaY).setSize(this.staminaFill.width || hud.barWidth, hud.staminaHeight);
     this.hpText.setVisible(true).setPosition(hud.barLeft, hud.hpY - 22).setOrigin(0, 0.5);
     this.verbText.setPosition(width / 2, hud.hpY - 42).setOrigin(0.5, 1);
@@ -122,6 +129,7 @@ export class BattleHud {
     this.hpTrack.setVisible(visible);
     this.staminaTrack.setVisible(visible);
     this.ninjaFill.setVisible(visible);
+    this.shieldFill.setVisible(visible);
     this.staminaFill.setVisible(visible);
     this.hpText.setVisible(visible && isPcCombatHud());
     this.comboText.setVisible(visible);
@@ -140,19 +148,46 @@ export class BattleHud {
     dash: DashController,
     spectator = false,
   ): void {
-    const hpRatio = ninja.health / ninja.stats.maxHealth;
-    const stamRatio = ninja.stamina / ninja.stats.maxStamina;
+    const maxHp = Math.max(1, ninja.stats.maxHealth);
+    const hpRatio = ninja.health / maxHp;
+    const shield = ninja.shieldAmount(now);
+    const shieldRatio = shield / maxHp;
     this.ninjaFill.width = this.barWidth * hpRatio;
+    if (hpRatio >= 0.999) {
+      this.shieldFill.x = this.ninjaFill.x;
+      this.shieldFill.width = this.barWidth + this.barWidth * shieldRatio;
+      this.shieldFill.height = this.ninjaFill.height;
+    } else {
+      this.shieldFill.x = this.ninjaFill.x + this.ninjaFill.width;
+      this.shieldFill.width = this.barWidth * Math.min(shieldRatio, 1 - hpRatio + shieldRatio);
+      this.shieldFill.height = this.ninjaFill.height;
+    }
+    this.shieldFill.setVisible(shield > 0);
+    const stamRatio = ninja.stamina / ninja.stats.maxStamina;
     this.staminaFill.width = this.barWidth * stamRatio;
     this.staminaFill.setFillStyle(ninja.staminaDeniedRecently(now) ? COLORS.orange : COLORS.cyan);
-    this.hpText.setText(`${Math.max(0, Math.ceil(ninja.health))} / ${ninja.stats.maxHealth}`);
+    const hpLabel = shield > 0
+      ? `${Math.max(0, Math.ceil(ninja.health))} +${Math.ceil(shield)} / ${ninja.stats.maxHealth}`
+      : `${Math.max(0, Math.ceil(ninja.health))} / ${ninja.stats.maxHealth}`;
+    this.hpText.setText(hpLabel);
 
     if (!rival) {
       this.foeBar.setVisible(false);
     } else {
       this.foeBar.setVisible(true);
       this.foeBar.setPosition(rival.x, rival.y - 44);
-      this.foeFill.width = Math.max(0, 72 * (rival.health / rival.stats.maxHealth));
+      const foeMax = Math.max(1, rival.stats.maxHealth);
+      const foeHp = rival.health / foeMax;
+      const foeShield = rival.shieldAmount(now) / foeMax;
+      this.foeFill.width = Math.max(0, 72 * foeHp);
+      if (foeHp >= 0.999 && foeShield > 0) {
+        this.foeShieldFill.x = -36;
+        this.foeShieldFill.width = 72 + 72 * foeShield;
+      } else {
+        this.foeShieldFill.x = -36 + this.foeFill.width;
+        this.foeShieldFill.width = Math.max(0, 72 * foeShield);
+      }
+      this.foeShieldFill.setVisible(foeShield > 0);
       this.foeStaminaFill.width = Math.max(0, 72 * (rival.stamina / rival.stats.maxStamina));
     }
 
