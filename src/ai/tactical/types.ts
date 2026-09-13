@@ -21,7 +21,40 @@ export type TacticalAction =
   | 'search_for_target'
   | 'intercept'
   | 'recover'
-  | 'farm_minions';
+  | 'farm_minions'
+  | 'regroup';
+
+export type StrategicState =
+  | 'opening'
+  | 'advance'
+  | 'hold'
+  | 'flank'
+  | 'engage'
+  | 'support'
+  | 'poke'
+  | 'regroup'
+  | 'retreat'
+  | 'recover'
+  | 'search'
+  | 'patrol'
+  | 'protect'
+  | 'finish'
+  | 'reposition';
+
+export type OpeningPlan =
+  | 'rush_center'
+  | 'controlled_advance'
+  | 'hold_near_spawn'
+  | 'advance_behind_minions'
+  | 'flank_left'
+  | 'flank_right'
+  | 'wide_rotation'
+  | 'defensive_hold'
+  | 'stay_back_poke'
+  | 'move_to_ally'
+  | 'scout_cautious'
+  | 'indirect_center'
+  | 'wait_for_team';
 
 export type ThreatLevel = 'low' | 'medium' | 'high' | 'extreme';
 
@@ -36,6 +69,58 @@ export type Personality = {
   flankTendency: number;
   bravery: number;
   thinkJitterMs: number;
+  patience: number;
+  teamwork: number;
+  independence: number;
+  riskTolerance: number;
+  preferredDistance: number;
+  retreatWillingness: number;
+  abilityConservation: number;
+  targetFixation: number;
+  protectionInstinct: number;
+  opportunism: number;
+  reactionQuality: number;
+};
+
+export type KitStance = 'melee' | 'skirmish' | 'ranged' | 'support';
+
+export type KitProfile = {
+  heroId: string;
+  stance: KitStance;
+  preferredRange: number;
+  comfortMin: number;
+  comfortMax: number;
+  wantsInitiate: boolean;
+  wantsPoke: boolean;
+  wantsFlank: boolean;
+  wantsProtect: boolean;
+  setupIds: readonly string[];
+  defensiveIds: readonly string[];
+  escapeIds: readonly string[];
+  ultSaveUntilFoes: number;
+};
+
+export type ProjectileThreat = {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  eta: number;
+  willHit: boolean;
+};
+
+export type GamePlan = {
+  state: StrategicState;
+  opening: OpeningPlan;
+  reason: string;
+  until: number;
+  anchorX: number;
+  anchorY: number;
+  preferredRange: number;
+  savedUlt: boolean;
+  reactingToShot: boolean;
+  regrouping: boolean;
 };
 
 /** Phaser-free snapshot of one combatant for scoring. */
@@ -50,6 +135,7 @@ export type CombatantView = {
   team: TeamId;
   kind: TacticalKind;
   role: HeroRole | string;
+  heroId: string;
   hpRatio: number;
   staminaRatio: number;
   attackRange: number;
@@ -87,6 +173,14 @@ export type Situation = {
   homeX: number;
   homeY: number;
   vision: number;
+  kit?: KitProfile;
+  plan?: GamePlan;
+  projectile?: ProjectileThreat;
+  isolated?: boolean;
+  lastSurvivor?: boolean;
+  visibleHeroes?: number;
+  allyHeroCount?: number;
+  now?: number;
 };
 
 export type TacticalDebugInfo = {
@@ -100,6 +194,12 @@ export type TacticalDebugInfo = {
   reason: string;
   flanking: boolean;
   assisting: boolean;
+  strategy: StrategicState;
+  opening: OpeningPlan;
+  preferredRange: number;
+  projectile: boolean;
+  regrouping: boolean;
+  savedUlt: boolean;
 };
 
 export const NEUTRAL_PERSONALITY: Personality = {
@@ -111,4 +211,15 @@ export const NEUTRAL_PERSONALITY: Personality = {
   flankTendency: 0.5,
   bravery: 0.5,
   thinkJitterMs: 80,
+  patience: 0.5,
+  teamwork: 0.5,
+  independence: 0.5,
+  riskTolerance: 0.5,
+  preferredDistance: 0.5,
+  retreatWillingness: 0.5,
+  abilityConservation: 0.5,
+  targetFixation: 0.5,
+  protectionInstinct: 0.5,
+  opportunism: 0.5,
+  reactionQuality: 0.5,
 };

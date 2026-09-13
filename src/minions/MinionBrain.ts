@@ -344,6 +344,7 @@ export class MinionBrain {
         spec.projectileColor,
         'arrow',
       );
+      shot.team = this.body.team;
       const caster = this.body;
       world.addTicker({
         update: (tickNow, delta, fighters) => {

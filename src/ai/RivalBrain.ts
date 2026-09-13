@@ -180,6 +180,7 @@ export class RivalBrain {
       this.mind.intent.flankSign,
       cpu.x,
       this.mind.goal,
+      this.mind.moveHint(),
     );
     if (goal.halt || this.block.isActive(now)) {
       cpu.stop();

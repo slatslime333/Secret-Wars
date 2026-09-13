@@ -214,6 +214,7 @@ export class QuickAttack {
       0xc4894a,
       'rope',
     );
+    shot.team = attacker.team;
     this.ropeShots.push(shot);
     attacker.playCustomAttack(now, 170, (frac) => ({
       armLiftLeft: arm === -1 ? Math.sin(frac * Math.PI) : 0.08,

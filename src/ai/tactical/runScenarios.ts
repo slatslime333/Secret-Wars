@@ -2,6 +2,9 @@ import { runTacticalScenarios } from './scenarios';
 import { moveGoal } from './move';
 import { smashBatHits, smashHitsTarget } from '../../heroes/abilities/death/smashHit';
 import { atFarEdge, roamHuntPoint } from '../../config/arena';
+import { kitProfileOf } from './kitProfile';
+import { personalityFromSeed } from './personality';
+import { pickOpeningForTest } from './strategy';
 
 const results = runTacticalScenarios();
 let failed = 0;
@@ -46,6 +49,32 @@ if (!huntOk) {
   console.log(`FAIL  far-edge roam  dest=(${hunt.x.toFixed(0)},${hunt.y.toFixed(0)}) halt=${hunt.halt}`);
 } else {
   console.log(`ok  far-edge roam  dest=(${hunt.x.toFixed(0)},${hunt.y.toFixed(0)}) halt=${hunt.halt}`);
+}
+
+const witch = kitProfileOf('witch', 'ranged-tank', 220);
+const ninja = kitProfileOf('ninja', 'disruptor', 123);
+const openings = new Set<string>();
+for (let i = 0; i < 8; i += 1) {
+  const seed = `cpu-${i}`;
+  openings.add(pickOpeningForTest(seed, i, witch, personalityFromSeed(seed)));
+  openings.add(pickOpeningForTest(seed, i, ninja, personalityFromSeed(`${seed}-n`)));
+}
+if (openings.size < 4) {
+  failed += 1;
+  console.log(`FAIL  opening variety  ${[...openings].join(',')}`);
+} else {
+  console.log(`ok  opening variety  ${openings.size} plans`);
+}
+const cautiousWitch = personalityFromSeed('cautious-witch');
+cautiousWitch.aggression = 0.28;
+cautiousWitch.caution = 0.82;
+cautiousWitch.patience = 0.8;
+const reckless = pickOpeningForTest('w1', 0, witch, cautiousWitch);
+if (reckless === 'rush_center') {
+  failed += 1;
+  console.log(`FAIL  cautious witch rush  ${reckless}`);
+} else {
+  console.log(`ok  cautious witch opening  ${reckless}`);
 }
 
 if (failed > 0) {

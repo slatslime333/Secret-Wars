@@ -136,6 +136,7 @@ export class WitchSkullBarrage {
         caster.stats.attackRange,
         { x: caster.x, y: caster.y },
       );
+      shot.team = caster.team;
       this.shots.push(shot);
     }
     if (this.hovers.every((hover) => hover.fired)) {

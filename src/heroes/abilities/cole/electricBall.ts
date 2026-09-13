@@ -38,6 +38,7 @@ export const electricBallDef: AbilityDef = {
       COLE_BALL.lifetimeMs,
       0x4aa8ff,
     );
+    shot.team = ctx.caster.team;
     spawnCombatCallout(ctx.scene, ctx.caster.x, ctx.caster.y, 'BALL', 0x7ecbff);
     const caster = ctx.caster;
     const block = ctx.rivalBlock;

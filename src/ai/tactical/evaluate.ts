@@ -1,7 +1,9 @@
 import { atFarEdge } from '../../config/arena';
 import { TACTIC } from './constants';
+import { isRangedLike } from './kitProfile';
 import type {
   CombatantView,
+  GamePlan,
   Personality,
   ScoredAction,
   Situation,
@@ -41,8 +43,8 @@ const effectivePower = (unit: CombatantView): number => {
   return unit.power * hp * stun * crit;
 };
 
-const isRangedOf = (unit: CombatantView): boolean =>
-  unit.role === 'ranged' || (unit.kind === 'minion' && unit.attackRange > 80);
+const isRangedOf = (unit: CombatantView, stance?: Situation['kit']): boolean =>
+  isRangedLike(unit.role, unit.attackRange, stance?.stance);
 
 const engageRange = (a: CombatantView, b: CombatantView): number =>
   Math.max(a.attackRange, b.attackRange, 72) + TACTIC.engagePad;
@@ -484,13 +486,20 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     }
   }
 
-  const ranged = isRangedOf(self);
+  const ranged = isRangedOf(self, situation.kit);
   const front = self.role === 'frontliner' || self.role === 'tank';
-  const support = self.role === 'support' || self.role === 'disruptor';
+  const support = self.role === 'support' || self.role === 'disruptor' || Boolean(situation.kit?.wantsProtect);
+  const kit = situation.kit;
+  const plan = situation.plan;
+  const visibleHeroes =
+    situation.visibleHeroes ?? enemies.filter((enemy) => enemy.kind === 'hero' && enemy.visible).length;
+  const allyHeroes = situation.allyHeroCount ?? allies.filter((ally) => ally.kind === 'hero').length;
   let count = 0;
 
   const persist = (enemy: CombatantView, score: number): number =>
-    enemy.id === situation.currentTargetId ? score + personality.persistence * 9 : score;
+    enemy.id === situation.currentTargetId
+      ? score + personality.persistence * 9 + personality.targetFixation * 4
+      : score + personality.opportunism * 2;
 
   const ghostMul = (enemy: CombatantView): number => (enemy.visible ? 1 : TACTIC.ghostScoreMul);
 
@@ -536,7 +545,11 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (support && d < range * 1.2) {
       attack -= 6;
     }
-    attack += (personality.aggression - 0.5) * 10;
+    attack += (personality.aggression - 0.5) * 14;
+    attack += (personality.riskTolerance - 0.5) * 6;
+    if (kit?.stance === 'ranged' && d < (kit.comfortMin || range * 0.55)) {
+      attack -= 14;
+    }
     if (kind === 'minion' && pile < 0.5) {
       attack += 4;
     }
@@ -586,7 +599,10 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         flank -= 14;
       }
       flank -= pile * 28;
-      flank += personality.flankTendency * 16;
+      flank += personality.flankTendency * 18;
+      if (kit?.wantsFlank) {
+        flank += 6;
+      }
       if (ranged) {
         flank -= 4;
       }
@@ -693,6 +709,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       assist += 12;
     }
     assist += (personality.assistTendency - 0.4) * 16;
+    assist += (personality.protectionInstinct - 0.5) * 10;
     if (support) {
       assist += 6;
     }
@@ -738,6 +755,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     disengage += 6;
   }
   disengage -= personality.aggression * 8;
+  disengage += (personality.retreatWillingness - 0.5) * 10;
   if ((self.role === 'tank' || self.role === 'frontliner') && self.hpRatio > 0.4) {
     disengage -= 14;
   }
@@ -829,7 +847,16 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
   const lane = kind === 'minion' ? 34 : 20;
   let push = lane + (farm ? 22 : 0);
   if (enemies.length === 0) {
-    push += 10;
+    push += kind === 'minion' ? 10 : 2;
+  }
+  if (kind === 'hero' && visibleHeroes === 0) {
+    push -= 26;
+    if (situation.lastSurvivor) {
+      push -= 12;
+    }
+  }
+  if (plan && plan.state === 'opening' && plan.opening !== 'rush_center' && plan.opening !== 'controlled_advance') {
+    push -= 14;
   }
   if (risk > 0.5) {
     push -= 8;
@@ -855,7 +882,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     );
   }
   if (enemies.length === 0) {
-    const hunt = 28 + (kind === 'hero' ? 6 : 0) + (stuckAtEdge ? 20 : 0);
+    const hunt = 28 + (kind === 'hero' ? 10 : 0) + (stuckAtEdge ? 20 : 0);
     count = write(
       out,
       count,
@@ -873,6 +900,90 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     );
   }
 
+  if (kind === 'hero' && situation.isolated && allyHeroes > 0 && !situation.lastSurvivor) {
+    let regroup = 20 + personality.teamwork * 16 + personality.caution * 8;
+    if (self.hpRatio < 0.5) {
+      regroup += 10;
+    }
+    if (visibleHeroes >= 2) {
+      regroup += 8;
+    }
+    const buddy = allies
+      .filter((ally) => ally.kind === 'hero')
+      .reduce((best, ally) => {
+        const d = dist(self, ally);
+        return !best || d < best.d ? { ally, d } : best;
+      }, undefined as { ally: CombatantView; d: number } | undefined);
+    count = write(out, count, 'regroup', regroup, 'find spacing with the team', -1, buddy?.ally.id ?? -1);
+  }
+
+  if (situation.lastSurvivor) {
+    count = write(out, count, 'recover', 22 + (1 - self.hpRatio) * 10, 'last alive, stall');
+    count = write(out, count, 'hold_position', 16 + personality.patience * 8, 'last alive, wait');
+  }
+
+  if (situation.projectile?.willHit) {
+    count = write(out, count, 'reposition', 40 + personality.reactionQuality * 8, 'dodge shot');
+    count = write(out, count, 'escape', 24 + (self.hpRatio < 0.35 ? 8 : 0), 'shot incoming');
+  }
+
+  if (plan && kind === 'hero') {
+    count = applyPlanBias(out, count, plan, visibleHeroes, personality);
+  }
+
+  return count;
+};
+
+const applyPlanBias = (
+  out: ScoredAction[],
+  count: number,
+  plan: GamePlan,
+  visibleHeroes: number,
+  personality: Personality,
+): number => {
+  const openingHold =
+    plan.opening === 'hold_near_spawn' ||
+    plan.opening === 'defensive_hold' ||
+    plan.opening === 'wait_for_team' ||
+    plan.opening === 'stay_back_poke';
+  const openingFlank =
+    plan.opening === 'flank_left' || plan.opening === 'flank_right' || plan.opening === 'wide_rotation';
+  const openingAlly = plan.opening === 'move_to_ally' || plan.opening === 'wait_for_team';
+  if (plan.state === 'opening' && visibleHeroes === 0) {
+    if (plan.opening === 'rush_center') {
+      count = write(out, count, 'advance', 18 + personality.aggression * 8, 'opening rush');
+    } else if (openingHold) {
+      count = write(out, count, 'hold_position', 24 + personality.patience * 8, 'opening hold');
+      count = write(out, count, 'search_for_target', 12, 'watch the field');
+    } else if (openingFlank) {
+      count = write(out, count, 'advance', 16 + personality.flankTendency * 8, 'opening flank path');
+    } else if (openingAlly) {
+      count = write(out, count, 'regroup', 22 + personality.teamwork * 10, 'opening with team');
+    } else if (plan.opening === 'advance_behind_minions') {
+      count = write(out, count, 'farm_minions', 16, 'opening behind minions');
+      count = write(out, count, 'advance', 12, 'opening with the wave');
+    } else {
+      count = write(out, count, 'search_for_target', 16, 'opening scout');
+      count = write(out, count, 'advance', 10, 'opening move');
+    }
+  }
+  if (plan.state === 'regroup') {
+    count = write(out, count, 'regroup', 26, plan.reason);
+  }
+  if (plan.state === 'patrol' || plan.state === 'search') {
+    count = write(out, count, 'search_for_target', 18, plan.reason);
+    count = write(out, count, 'hold_position', 10 + personality.patience * 6, 'hold a useful spot');
+  }
+  if (plan.state === 'poke' || plan.state === 'hold') {
+    count = write(out, count, 'hold_position', 14, 'plan hold');
+    count = write(out, count, 'reposition', 12, 'plan spacing');
+  }
+  if (plan.state === 'protect' || plan.state === 'support') {
+    count = write(out, count, 'protect_ally', 16 + personality.protectionInstinct * 8, plan.reason);
+  }
+  if (plan.state === 'reposition') {
+    count = write(out, count, 'reposition', 22, plan.reason);
+  }
   return count;
 };
 

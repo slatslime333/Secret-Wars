@@ -22,7 +22,7 @@ export const tombstoneDef: AbilityDef = {
   iconKey: ABILITY_ICON.tombstone,
   accent: 0x9b4dff,
   padLabel: 'TOMB',
-  tactics: { roles: ['defense', 'peel', 'space'], range: WITCH_TOMBSTONE.protectRadius },
+  tactics: { roles: ['setup', 'defense', 'peel', 'space'], range: WITCH_TOMBSTONE.protectRadius },
   canActivate: (ctx) => canSummonWitchSkeletons(ctx.caster) && canStartAbility(ctx),
   activate: (ctx) => new TombstoneAbility(ctx, WITCH_TOMBSTONE.summonCount, WITCH_TOMBSTONE.castMs, false),
 };

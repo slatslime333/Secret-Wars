@@ -165,6 +165,7 @@ export class HeroPilot {
       this.mind.intent.flankSign,
       body.x + body.y,
       this.mind.goal,
+      this.mind.moveHint(),
     );
     if (goal.halt) {
       body.stop();

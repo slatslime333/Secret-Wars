@@ -99,6 +99,24 @@ export class TacticalField {
     return n;
   }
 
+  fillAllies(body: NinjaBody, out: UnitFact[]): number {
+    let n = 0;
+    for (let i = 0; i < this.factCount; i += 1) {
+      const fact = this.facts[i];
+      if (fact.team !== body.team || fact.ref === body) {
+        continue;
+      }
+      if (n < out.length) {
+        out[n] = fact;
+      } else {
+        out.push(fact);
+      }
+      n += 1;
+    }
+    out.length = n;
+    return n;
+  }
+
   fillEnemies(body: NinjaBody, out: NinjaBody[]): number {
     let n = 0;
     for (let i = 0; i < this.factCount; i += 1) {
@@ -170,6 +188,7 @@ export class TacticalField {
       team: 'alpha',
       kind: 'hero',
       role: 'generalist',
+      heroId: '',
       hpRatio: 1,
       staminaRatio: 1,
       attackRange: 40,
@@ -203,6 +222,7 @@ export class TacticalField {
     fact.team = body.team;
     fact.kind = (body.stats.role === 'minion' ? 'minion' : 'hero') as TacticalKind;
     fact.role = body.stats.role;
+    fact.heroId = body.stats.id;
     fact.hpRatio = body.health / maxHp;
     fact.staminaRatio = body.stamina / maxStamina;
     fact.attackRange = body.stats.attackRange;
