@@ -18,7 +18,8 @@ export const SHADOW_CLAW = {
   cooldownMs: 15000,
   animMs: 420,
   impactAt: 180,
-  radius: SHADOW.attackRange * 2,
+  /** 35% shorter than the original double-range swipe. */
+  radius: Math.round(SHADOW.attackRange * 2 * 0.65),
   halfArc: 0.95,
   aimHalfWidth: SHADOW.bodyRadius * 2 + 10,
   damageRating: 64,

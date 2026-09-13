@@ -210,30 +210,34 @@ export class CharacterSelectScene extends Phaser.Scene {
       color: hex(COLORS.paper),
       letterSpacing: 2,
     });
-    const desc = this.add.text(0, 24, copy.description, {
-      fontFamily: FONTS.body,
-      fontSize: '13px',
-      color: hex(COLORS.paper),
-      wordWrap: { width: textW },
-    });
-    inner.add([title, desc]);
-    const lines = [
-      `LIGHT  ${copy.light}`,
-      `A1  ${copy.ability1.name} — ${copy.ability1.text}`,
-      `A2  ${copy.ability2.name} — ${copy.ability2.text}`,
-      `ULT  ${copy.ultimate.name} — ${copy.ultimate.text}`,
+    inner.add(title);
+
+    const sections: { heading: string; body: string; accent: number }[] = [
+      { heading: 'OVERVIEW', body: copy.description, accent: COLORS.paper },
+      { heading: 'LIGHT ATTACK', body: copy.light, accent: COLORS.orange },
+      { heading: copy.ability1.name.toUpperCase(), body: copy.ability1.text, accent: COLORS.cyan },
+      { heading: copy.ability2.name.toUpperCase(), body: copy.ability2.text, accent: COLORS.cyan },
+      { heading: `ULTIMATE  //  ${copy.ultimate.name.toUpperCase()}`, body: copy.ultimate.text, accent: COLORS.yellow },
     ];
-    let textBottom = 54;
-    lines.forEach((line, index) => {
-      const body = this.add.text(0, textBottom, line, {
+    let textBottom = 26;
+    sections.forEach((section) => {
+      const heading = this.add.text(0, textBottom, section.heading, {
         fontFamily: FONTS.body,
-        fontSize: '12px',
+        fontSize: '11px',
         fontStyle: 'bold',
-        color: hex(index === 0 ? COLORS.orange : COLORS.cyan),
+        color: hex(COLORS.muted),
+        letterSpacing: 2,
+      });
+      inner.add(heading);
+      textBottom += heading.height + 3;
+      const body = this.add.text(0, textBottom, section.body, {
+        fontFamily: FONTS.body,
+        fontSize: '13px',
+        color: hex(section.accent),
         wordWrap: { width: textW },
       });
       inner.add(body);
-      textBottom += Math.max(28, body.height + 8);
+      textBottom += body.height + 12;
     });
 
     const statsY = stack ? textBottom + 8 : 8;
