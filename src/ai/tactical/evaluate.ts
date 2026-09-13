@@ -1029,7 +1029,7 @@ const scoreObjective = (
     if (obj.contested && personality.caution > 0.65 && obj.occupyingEnemies > obj.occupyingAllies) {
       contest -= 10;
     }
-  } else {
+  } else if (obj.kind === 'golden_piggy') {
     if (obj.selfProgress >= 0.75 && self.hpRatio > 0.22) {
       contest += 16;
     }
@@ -1041,6 +1041,9 @@ const scoreObjective = (
     }
     if (ranged) {
       contest += 2;
+    }
+    if (obj.occupyingEnemies >= 2 && self.hpRatio < 0.4 && personality.caution > 0.55) {
+      contest -= 8;
     }
   }
   if (situation.lastSurvivor && obj.occupyingEnemies >= 2) {

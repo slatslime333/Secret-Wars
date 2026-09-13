@@ -8,7 +8,7 @@ import { isInAttackArc } from '../../combat/hitDetection';
 import type { HeroRuntime } from '../HeroRuntime';
 import type { NinjaBody } from '../../heroes/NinjaBody';
 import { onWorldStrike, type WorldStrikeEvent } from './worldStrike';
-import type { ObjectiveCompleteEvent, ObjectiveContext, ObjectiveHint, ObjectiveUiState } from './types';
+import type { MatchObjective, ObjectiveCompleteEvent, ObjectiveContext, ObjectiveHint, ObjectiveUiState } from './types';
 
 const GOLD = 0xffc928;
 const GOLD_DEEP = 0xc47a14;
@@ -19,7 +19,7 @@ export type PiggyDeps = {
   y: number;
 };
 
-export class GoldenPiggyBankObjective {
+export class GoldenPiggyBankObjective implements MatchObjective {
   readonly kind = 'golden_piggy' as const;
   readonly x: number;
   readonly y: number;
@@ -164,7 +164,7 @@ export class GoldenPiggyBankObjective {
       urgency = Math.max(urgency, 0.78);
     }
     return {
-      kind: this.kind as unknown as import('../../config/objective').ObjectiveKind,
+      kind: this.kind,
       x: this.x,
       y: this.y,
       radius: this.radius,
@@ -183,7 +183,7 @@ export class GoldenPiggyBankObjective {
 
   ui(): ObjectiveUiState {
     return {
-      kind: this.kind as unknown as import('../../config/objective').ObjectiveKind,
+      kind: this.kind,
       x: this.x,
       y: this.y,
       radius: this.radius,
@@ -292,7 +292,7 @@ export class GoldenPiggyBankObjective {
       duration: 360,
       onComplete: () => burst.destroy(),
     });
-    return { kind: this.kind as unknown as ObjectiveCompleteEvent['kind'], winner };
+    return { kind: this.kind, winner };
   }
 
   private occupancyNear(heroes: readonly HeroRuntime[], radius: number): { alpha: number; bravo: number } {

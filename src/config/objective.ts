@@ -12,12 +12,12 @@ export const OBJECTIVE = {
   cooldownMs: 60_000,
   announcementMs: 2_400,
   arrowMs: 2_600,
-  kinds: ['capture_zone'] as const,
+  kinds: ['capture_zone', 'golden_piggy'] as const,
   /** After the first event, prefer a different kind this often. */
   rerollSameKind: 0.72,
   capture: {
-    /** Same size as Cole's light-attack reach. */
-    radius: COLE.attackRange,
+    /** 80% of Cole's light-attack reach. */
+    radius: Math.round(COLE.attackRange * 0.8),
     captureMs: 20_000,
     graceMs: 5_000,
     /** Decay speed after grace. 1 = same rate as capturing. */
@@ -36,6 +36,7 @@ export type ObjectiveKind = (typeof OBJECTIVE.kinds)[number];
 
 export const OBJECTIVE_LABEL: Record<ObjectiveKind, string> = {
   capture_zone: 'CAPTURE ZONE!',
+  golden_piggy: 'GOLDEN PIGGY BANK!',
 };
 
 export const canStartObjective = (

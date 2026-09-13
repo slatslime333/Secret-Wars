@@ -984,7 +984,7 @@ export class MatchScene extends Phaser.Scene {
       giveLevel: () => this.player.progression.giveLevel(),
       scores: () => this.score.snapshot(),
       phase: () => this.match.snapshot(),
-      spawnObjective: (kind?: 'capture_zone') => this.objectives?.debugSpawn(kind),
+      spawnObjective: (kind?: 'capture_zone' | 'golden_piggy') => this.objectives?.debugSpawn(kind),
       toggleAi: () => {
         DEV_CHEATS.showAi = !DEV_CHEATS.showAi;
         return DEV_CHEATS.showAi;

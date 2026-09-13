@@ -1,4 +1,5 @@
 import { canStartObjective, OBJECTIVE, pickObjectiveKind, pickObjectiveStartAt } from '../../config/objective';
+import { COLE } from '../../config/cole';
 import { emptyCapture, tickCapture } from './captureLogic';
 
 export type CheckResult = { name: string; ok: boolean; detail: string };
@@ -50,8 +51,31 @@ const scenarioKindReroll = (): CheckResult => {
   const first = pickObjectiveKind(undefined, rngOf([0.1]));
   const same = pickObjectiveKind('capture_zone', rngOf([0.9, 0.1]));
   const other = pickObjectiveKind('capture_zone', rngOf([0.1, 0.1]));
-  const ok = first === 'capture_zone' && same === 'capture_zone' && other === 'capture_zone';
-  return { name: 'single capture-zone event kind', ok, detail: `first=${first} same=${same} other=${other}` };
+  const ok = Boolean(first) && same === 'capture_zone' && other === 'golden_piggy';
+  return { name: 'objective kind variety', ok, detail: `first=${first} same=${same} other=${other}` };
+};
+
+const scenarioCaptureRadius = (): CheckResult => {
+  const expected = Math.round(COLE.attackRange * 0.8);
+  const ok = OBJECTIVE.capture.radius === expected && expected < COLE.attackRange;
+  return {
+    name: 'capture zone radius is 80% of Cole reach',
+    ok,
+    detail: `radius=${OBJECTIVE.capture.radius} cole=${COLE.attackRange} expected=${expected}`,
+  };
+};
+
+const scenarioSecondEventWindow = (): CheckResult => {
+  const afterFirst = pickObjectiveStartAt(20_000 + 60_000, OBJECTIVE.latestStartMs, rngOf([0.5]));
+  const tooLateForSecond = pickObjectiveStartAt(140_000, OBJECTIVE.latestStartMs, rngOf([0.2]));
+  const coolBlocks = !canStartObjective(70_000, 80_000, false);
+  const afterCool = canStartObjective(80_000, 80_000, false);
+  const ok = afterFirst !== undefined && afterFirst >= 80_000 && tooLateForSecond === undefined && coolBlocks && afterCool;
+  return {
+    name: 'second event after 60s cooldown',
+    ok,
+    detail: `next=${afterFirst?.toFixed(0)} none=${tooLateForSecond} coolBlocks=${coolBlocks} afterCool=${afterCool}`,
+  };
 };
 
 const scenarioCaptureRules = (): CheckResult => {
@@ -101,5 +125,7 @@ export const runObjectiveChecks = (): CheckResult[] => [
   scenarioTimingWindow(),
   scenarioRandomStart(),
   scenarioKindReroll(),
+  scenarioCaptureRadius(),
+  scenarioSecondEventWindow(),
   scenarioCaptureRules(),
 ];

@@ -1,6 +1,7 @@
 import { NEUTRAL_PERSONALITY, type CombatantView, type ScoredAction, type Situation, type TacticalAction } from './types';
 import { ensureScoreBuffer, scoreSituation } from './evaluate';
 import { kitProfileOf } from './kitProfile';
+import { OBJECTIVE } from '../../config/objective';
 
 const buffer = ensureScoreBuffer();
 
@@ -299,7 +300,7 @@ const scenarioR = (): ScenarioResult => {
         kind: 'capture_zone',
         x: 980,
         y: 640,
-        radius: 191,
+        radius: OBJECTIVE.capture.radius,
         contested: false,
         decaying: false,
         owner: null,
@@ -331,7 +332,7 @@ const scenarioS = (): ScenarioResult => {
         kind: 'capture_zone',
         x: 1100,
         y: 640,
-        radius: 191,
+        radius: OBJECTIVE.capture.radius,
         contested: true,
         decaying: false,
         owner: 'bravo',
@@ -357,7 +358,7 @@ const scenarioT = (): ScenarioResult => {
         kind: 'capture_zone',
         x: 1020,
         y: 640,
-        radius: 191,
+        radius: OBJECTIVE.capture.radius,
         contested: true,
         decaying: false,
         owner: 'bravo',
@@ -375,6 +376,34 @@ const scenarioT = (): ScenarioResult => {
   const farm = scoreOf(rows, 'farm_minions');
   const ok = contest > 12 && contest >= farm && among(rows, ['contest_objective'], 3);
   return { name: 'T zone near capture is urgent', ok, detail: `best=${best(rows)} contest=${contest.toFixed(1)} farm=${farm.toFixed(1)}` };
+};
+
+const scenarioU = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 980, y: 640, hpRatio: 0.85, role: 'frontliner' });
+  const rows = rankActions(
+    situationOf(self, [], [], {
+      objective: {
+        kind: 'golden_piggy',
+        x: 1020,
+        y: 640,
+        radius: OBJECTIVE.piggy.radius,
+        contested: false,
+        decaying: false,
+        owner: 'bravo',
+        selfProgress: 0.4,
+        enemyProgress: 0.9,
+        occupyingAllies: 1,
+        occupyingEnemies: 1,
+        nearbyAllies: 1,
+        nearbyEnemies: 1,
+        urgency: 0.86,
+      },
+    }),
+  );
+  const contest = scoreOf(rows, 'contest_objective');
+  const farm = scoreOf(rows, 'farm_minions');
+  const ok = contest > 12 && contest >= farm && among(rows, ['contest_objective'], 3);
+  return { name: 'U piggy near break is urgent', ok, detail: `best=${best(rows)} contest=${contest.toFixed(1)} farm=${farm.toFixed(1)}` };
 };
 
 export const runTacticalScenarios = (): ScenarioResult[] => [
@@ -398,4 +427,5 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioR(),
   scenarioS(),
   scenarioT(),
+  scenarioU(),
 ];
