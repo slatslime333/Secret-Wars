@@ -4,8 +4,8 @@ import { COLORS } from '../ui/theme';
 import { SeededRNG } from './seed';
 import type { MapLayout } from './types';
 
-const GRASS_KEY = 'sw-pixel-grass-v1';
-const TILE = 256;
+const GRASS_KEY = 'sw-pixel-grass-v2';
+const TILE = 512;
 
 /** Muted medium/dark greens. Close together so the field stays readable. */
 const GRASS = {
@@ -82,44 +82,42 @@ const paintGrassTile = (ctx: CanvasRenderingContext2D): void => {
 
   for (let y = 0; y < TILE; y += 1) {
     for (let x = 0; x < TILE; x += 1) {
-      const mottled =
-        wrapNoise(x, y, 32, 0x51c3) * 0.5 + wrapNoise(x, y, 16, 0xa27b) * 0.35 + wrapNoise(x, y, 8, 0x0d15) * 0.15;
+      const bias = wrapNoise(x, y, 16, 0xa27b) * 0.55 + wrapNoise(x, y, 8, 0x0d15) * 0.45;
       const speck = hash01(x, y, 0xc0ff);
       let color: number = GRASS.base;
-      if (mottled < 0.34) {
+      if (speck < 0.11 + bias * 0.05) {
         color = GRASS.dark;
-      } else if (mottled > 0.72) {
-        color = GRASS.mid;
-      }
-      if (speck < 0.1) {
-        color = GRASS.dark;
-      } else if (speck > 0.93) {
+      } else if (speck > 0.94 - bias * 0.03) {
         color = GRASS.light;
-      } else if (speck > 0.88 && mottled < 0.4) {
-        color = GRASS.deep;
+      } else if (speck > 0.62 && speck < 0.68) {
+        color = GRASS.mid;
       }
       put(data, x, y, color);
     }
   }
 
-  for (let i = 0; i < 86; i += 1) {
+  for (let i = 0; i < 48; i += 1) {
+    const x = Math.floor(hash01(i, 7, 0x91) * TILE);
+    const y = Math.floor(hash01(i, 11, 0x92) * TILE);
+    put(data, x, y, GRASS.deep);
+    put(data, x + 1, y, GRASS.dark);
+    put(data, x, y + 1, GRASS.dark);
+  }
+
+  for (let i = 0; i < 120; i += 1) {
     const x = Math.floor(hash01(i, 19, 0x11) * TILE);
     const y = Math.floor(hash01(i, 23, 0x22) * TILE);
     const count = 2 + Math.floor(hash01(i, 29, 0x33) * 3);
     for (let n = 0; n < count; n += 1) {
       const ox = x + n * 2 - 1;
-      const h = 2 + Math.floor(hash01(i, n, 0x44) * 3);
+      const h = 2 + Math.floor(hash01(i, n, 0x44) * 2);
       blade(data, ox, y, h);
     }
   }
 
-  for (let i = 0; i < 140; i += 1) {
+  for (let i = 0; i < 180; i += 1) {
     const x = Math.floor(hash01(i, 41, 0x55) * TILE);
     const y = Math.floor(hash01(i, 43, 0x66) * TILE);
-    if (hash01(i, 47, 0x77) < 0.18) {
-      put(data, x, y, GRASS.deep);
-      continue;
-    }
     blade(data, x, y, 2 + Math.floor(hash01(i, 53, 0x88) * 2));
   }
 
@@ -197,6 +195,33 @@ const inKeepout = (layout: MapLayout, x: number, y: number): boolean => {
     }
   }
   return false;
+};
+
+const scatterWorldTufts = (graphics: Phaser.GameObjects.Graphics, layout: MapLayout): void => {
+  const rng = new SeededRNG(layout.seed ^ 0x4e11);
+  const step = 54;
+  const wall = ARENA.wallThickness + 8;
+  for (let y = wall; y < ARENA.height - wall; y += step) {
+    for (let x = wall; x < ARENA.width - wall; x += step) {
+      if (!rng.chance(0.38)) {
+        continue;
+      }
+      const px = x + rng.int(-18, 18);
+      const py = y + rng.int(-18, 18);
+      if (inKeepout(layout, px, py)) {
+        continue;
+      }
+      const blades = rng.int(2, 3);
+      graphics.fillStyle(GRASS.blade, 1);
+      for (let n = 0; n < blades; n += 1) {
+        const bx = px + n * 2;
+        const h = rng.int(2, 4);
+        graphics.fillRect(bx, py - h + 2, 1, h);
+      }
+      graphics.fillStyle(GRASS.bladeTip, 1);
+      graphics.fillRect(px, py - rng.int(1, 2), 1, 1);
+    }
+  }
 };
 
 const scatterFlowers = (graphics: Phaser.GameObjects.Graphics, layout: MapLayout): void => {
@@ -297,6 +322,7 @@ export const createCalmGround = (scene: Phaser.Scene, layout: MapLayout): Ground
   const overlay = scene.add.graphics().setDepth(1);
   drawDecorations(overlay, layout);
   drawMidfieldDust(overlay, layout);
+  scatterWorldTufts(overlay, layout);
   scatterFlowers(overlay, layout);
   drawPerimeter(overlay);
 
