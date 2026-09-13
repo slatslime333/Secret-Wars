@@ -17,6 +17,8 @@ export {
   coreStatValue,
   formatRating,
   gameplayFromRatings,
+  displayedRatingsForHero,
+  ratingsFromGameplay,
   fromStatRating,
 } from './ratings';
 export type { CoreRatings, CoreStatId } from './ratings';

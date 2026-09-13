@@ -701,7 +701,7 @@ export class NinjaBody {
   }
 
   destroy(): void {
-    this.scene.physics.world.off('worldstep', this.containInArena, this);
+    this.scene.physics.world?.off('worldstep', this.containInArena, this);
     this.currentAttackTween?.stop();
     this.scene.tweens.killTweensOf(this.view);
     this.scene.tweens.killTweensOf(this.art);

@@ -40,6 +40,10 @@ export class Minimap {
     this.root.setPosition(viewWidth - 12, 52);
   }
 
+  setVisible(visible: boolean): void {
+    this.root.setVisible(visible);
+  }
+
   sync(source: MinimapSource): void {
     const { player, layout } = source;
     this.art.clear();

@@ -140,7 +140,7 @@ export class ActionButton extends Phaser.GameObjects.Container {
 
 const clickSoundFor = (label: string): SoundId => {
   const key = label.toUpperCase();
-  if (key.includes('PLAY') || key === 'CONFIRM' || key === 'REMATCH') {
+  if (key.includes('PLAY') || key === 'CONFIRM' || key === 'REMATCH' || key === 'CONTINUE' || key === 'DONE') {
     return 'ui-confirm';
   }
   if (key === 'BACK' || key === 'MENU' || key === 'EXIT') {

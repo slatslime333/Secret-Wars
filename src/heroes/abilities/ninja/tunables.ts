@@ -34,13 +34,14 @@ export const NINJA_KICK = {
   /** Dash-corridor half-width shown while aiming. Matches segmentHitsCircle. */
   aimHalfWidth: NINJA.bodyRadius + NINJA.bodyRadius + 8,
   damageRating: 51,
-  damage: abilityDamage(51),
+  /** 15% more than the converted kick so the connect actually rewards the dash. */
+  damage: abilityDamage(51) * 1.15,
   knockbackMul: 6.27,
   secondaryKnockbackMul: 4.68,
   /** Lets the kick exceed the shared launch cap without changing other heroes. */
   launchCap: 858,
   staminaDamage: 6,
-  hitStopMs: 400,
+  hitStopMs: 300,
   hitSlowMul: 0.5,
   hitSlowMs: 1500,
   backflipMs: 460,

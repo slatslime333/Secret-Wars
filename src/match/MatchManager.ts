@@ -52,10 +52,14 @@ export class MatchManager {
   }
 
   togglePause(): void {
+    this.setPaused(!this.paused);
+  }
+
+  setPaused(paused: boolean): void {
     if (this.finished) {
       return;
     }
-    this.paused = !this.paused;
+    this.paused = paused;
   }
 
   update(delta: number): void {

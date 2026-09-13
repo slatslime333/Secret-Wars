@@ -20,12 +20,16 @@ export const NINJA_RATINGS = {
   knockback: 50,
 } as const satisfies CoreRatings;
 
+const ninjaGameplay = gameplayFromRatings(NINJA_RATINGS);
+
 export const NINJA = {
   id: 'ninja',
   displayName: 'Ninja',
   role: 'disruptor' as const,
   ratings: NINJA_RATINGS,
-  ...gameplayFromRatings(NINJA_RATINGS),
+  ...ninjaGameplay,
+  /** 15% more light-attack reach than the converted 95px kit. */
+  attackRange: Math.round(ninjaGameplay.attackRange * 1.15),
   attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 14,
   /** Not a displayed core stat. Kept at the live regen rate. */

@@ -16,20 +16,21 @@ export class BattleHud {
   private readonly comboText: Phaser.GameObjects.Text;
   private readonly verbText: Phaser.GameObjects.Text;
   private readonly foeCaption: Phaser.GameObjects.Text;
+  private readonly tracks: Phaser.GameObjects.Rectangle[];
   private readonly touch: boolean;
 
   constructor(scene: Phaser.Scene) {
     this.touch = isTouchPrimary();
     const width = scene.scale.width;
-    scene.add.rectangle(148, 56, 224, 10, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
+    this.tracks = [
+      scene.add.rectangle(148, 56, 224, 10, COLORS.inkSoft).setScrollFactor(0).setDepth(101),
+      scene.add.rectangle(148, 70, 224, 8, COLORS.inkSoft).setScrollFactor(0).setDepth(101),
+      scene.add.rectangle(148, 84, 224, 6, COLORS.inkSoft).setScrollFactor(0).setDepth(101),
+    ];
     this.ninjaFill = scene.add.rectangle(36, 56, 224, 10, COLORS.redBright).setOrigin(0, 0.5);
     this.ninjaFill.setScrollFactor(0).setDepth(102);
-
-    scene.add.rectangle(148, 70, 224, 8, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
     this.staminaFill = scene.add.rectangle(36, 70, 224, 8, COLORS.cyan).setOrigin(0, 0.5);
     this.staminaFill.setScrollFactor(0).setDepth(102);
-
-    scene.add.rectangle(148, 84, 224, 6, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
     this.ammoFill = scene.add.rectangle(36, 84, 224, 6, COLORS.orange).setOrigin(0, 0.5);
     this.ammoFill.setScrollFactor(0).setDepth(102);
 
@@ -100,6 +101,19 @@ export class BattleHud {
 
   placeCombo(x: number, y: number): void {
     this.comboText.setPosition(x, y);
+  }
+
+  setVisible(visible: boolean): void {
+    this.tracks.forEach((track) => track.setVisible(visible));
+    this.ninjaFill.setVisible(visible);
+    this.staminaFill.setVisible(visible);
+    this.ammoFill.setVisible(visible);
+    this.ammoText.setVisible(visible);
+    this.comboText.setVisible(visible);
+    this.verbText.setVisible(visible);
+    if (!visible) {
+      this.foeBar.setVisible(false);
+    }
   }
 
   sync(

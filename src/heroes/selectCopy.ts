@@ -1,5 +1,5 @@
 import { PLAYABLE_HEROES, type HeroId, type PlayableHero } from './roster';
-import type { CoreRatings } from '../config/ratings';
+import { displayedRatingsForHero, type CoreRatings } from '../config/ratings';
 
 export type HeroSelectCopy = {
   id: HeroId;
@@ -40,7 +40,7 @@ const ABILITY_TEXT: Record<string, string> = {
 const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
   ninja: {
     description: 'Fast disruptor who blinds, kicks, and creates space for the team.',
-    light: 'Close 3-hit sword combo.',
+    light: 'Close 3-hit sword combo with extra reach.',
   },
   cole: {
     description: 'Frontliner who holds space with long punches and electric pressure.',
@@ -69,7 +69,7 @@ export const heroSelectCopy = (id: HeroId): HeroSelectCopy => {
     role: ROLE_LABEL[hero.stats.role] ?? hero.stats.role,
     description: flavor.description,
     light: flavor.light,
-    ratings: hero.stats.ratings,
+    ratings: displayedRatingsForHero(hero.stats),
     ability1: slotCopy(hero, 'ability1'),
     ability2: slotCopy(hero, 'ability2'),
     ultimate: slotCopy(hero, 'ultimate'),
