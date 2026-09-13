@@ -90,6 +90,7 @@ export class NinjaBody {
       this.view.add(this.sparks);
     }
     this.redrawIdle();
+    this.scene.physics.world.on('worldstep', this.containInArena, this);
   }
 
   get defense(): number {
@@ -700,6 +701,7 @@ export class NinjaBody {
   }
 
   destroy(): void {
+    this.scene.physics.world.off('worldstep', this.containInArena, this);
     this.currentAttackTween?.stop();
     this.scene.tweens.killTweensOf(this.view);
     this.scene.tweens.killTweensOf(this.art);
