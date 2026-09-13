@@ -153,6 +153,22 @@ export class CombatButton {
     this.label.setAlpha(dimmed ? 0.4 : 1);
   }
 
+  setVisible(visible: boolean): void {
+    this.art.setVisible(visible);
+    this.fill.setVisible(visible);
+    this.pips.setVisible(visible);
+    this.label.setVisible(visible);
+    this.zone.setVisible(visible);
+    if (visible) {
+      this.zone.setInteractive(
+        new Phaser.Geom.Circle(this.radius, this.radius, this.radius),
+        Phaser.Geom.Circle.Contains,
+      );
+    } else {
+      this.zone.disableInteractive();
+    }
+  }
+
   private redrawFill(): void {
     this.fill.clear();
     if (this.recovered >= 0.999) {

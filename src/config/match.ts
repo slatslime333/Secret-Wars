@@ -16,7 +16,7 @@ export const MATCH = {
   suddenDeathEnabled: true,
   respawnDelayMs: 8_000,
   respawnInvulnMs: 900,
-  /** Free-roam camera pan while waiting to respawn (left stick / WASD). */
+  /** Free-roam pan while spectating (left stick / WASD). [ ] / TAB lock onto heroes. */
   spectator: {
     panSpeed: 460,
   },

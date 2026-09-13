@@ -3,7 +3,7 @@ import { ARENA, LANES, type LaneId } from '../config/arena';
 import { MATCH } from '../config/match';
 import { DEV_CHEATS, resetDevCheats } from '../debug/devCheats';
 import { MinionWorld } from '../minions/MinionWorld';
-import { getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { PLAYABLE_HEROES, getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
 import { HitMarker } from '../combat/HitMarker';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
@@ -21,7 +21,7 @@ import { MatchHud } from '../ui/MatchHud';
 import { PostMatchOverlay } from '../ui/PostMatchOverlay';
 import { PauseOverlay } from '../ui/PauseOverlay';
 import { spawnKillPopup } from '../ui/KillPopup';
-import { RespawnOverlay } from '../ui/RespawnOverlay';
+import { SpectatorOverlay } from '../ui/SpectatorOverlay';
 import { Minimap } from '../ui/Minimap';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { Battlefield, rememberPlayTestSeed, resolvePlayTestSeed } from '../map';
@@ -37,7 +37,12 @@ import { CombatStatsTracker } from '../match/CombatStatsTracker';
 import { WaveDirector } from '../match/WaveDirector';
 import { XpOrbWorld } from '../match/XpOrbWorld';
 import { buildMatchGameState, type MatchGameState } from '../match/MatchQuery';
-import { PLAYABLE_HEROES } from '../heroes/roster';
+import { SpectatorCamera } from '../match/SpectatorCamera';
+import {
+  DEFAULT_SIMULATOR_ROSTER,
+  cloneRoster,
+  type MatchRoster,
+} from '../match/rosterSetup';
 import { xpForMinion } from '../config/match';
 import { audio } from '../audio';
 import type { TeamId } from '../config/hero';
@@ -50,12 +55,16 @@ const ENEMY_BY_LANE: Record<LaneId, HeroId> = {
 
 export type MatchSceneData = {
   heroId?: HeroId;
+  simulator?: boolean;
+  roster?: MatchRoster;
 };
 
 /** Draft match. Allies fill the other two heroes; non-players use HeroPilot. */
 export class MatchScene extends Phaser.Scene {
   private returning = false;
   private startHeroId: HeroId = 'ninja';
+  private simulator = false;
+  private roster: MatchRoster = cloneRoster(DEFAULT_SIMULATOR_ROSTER);
   private player!: HeroRuntime;
   private heroes: HeroRuntime[] = [];
   private emptyAllySlots: { team: TeamId; lane: LaneId }[] = [];
@@ -72,7 +81,8 @@ export class MatchScene extends Phaser.Scene {
   private matchHud!: MatchHud;
   private results!: PostMatchOverlay;
   private pauseOverlay!: PauseOverlay;
-  private respawnOverlay!: RespawnOverlay;
+  private spectatorOverlay!: SpectatorOverlay;
+  private spectator!: SpectatorCamera;
   private chromeBar?: Phaser.GameObjects.Rectangle;
   private titleText?: Phaser.GameObjects.Text;
   private menuButton?: ActionButton;
@@ -93,6 +103,8 @@ export class MatchScene extends Phaser.Scene {
   }
 
   init(data: MatchSceneData = {}): void {
+    this.simulator = Boolean(data.simulator);
+    this.roster = cloneRoster(data.roster ?? DEFAULT_SIMULATOR_ROSTER);
     this.startHeroId = data.heroId ?? getSelectedHeroId();
   }
 
@@ -127,44 +139,10 @@ export class MatchScene extends Phaser.Scene {
 
     this.heroes = [];
     this.emptyAllySlots = [];
-    this.player = new HeroRuntime(this, {
-      instanceId: 'alpha-mid-player',
-      heroId: this.startHeroId,
-      team: 'alpha',
-      lane: 'mid',
-      isPlayer: true,
-    });
-    this.heroes.push(this.player);
-    this.stats.register(this.player.body, { instanceId: this.player.instanceId, player: true });
-
-    const leftover = (['ninja', 'cole', 'death'] as HeroId[]).filter((id) => id !== this.startHeroId);
-    const allyLanes: LaneId[] = ['top', 'bottom'];
-    leftover.forEach((heroId, index) => {
-      const lane = allyLanes[index];
-      if (!lane) {
-        return;
-      }
-      const ally = new HeroRuntime(this, {
-        instanceId: `alpha-${lane}`,
-        heroId,
-        team: 'alpha',
-        lane,
-        isPlayer: false,
-      });
-      this.heroes.push(ally);
-      this.stats.register(ally.body, { instanceId: ally.instanceId, player: false });
-    });
-
-    for (const lane of LANES) {
-      const runtime = new HeroRuntime(this, {
-        instanceId: `bravo-${lane}`,
-        heroId: ENEMY_BY_LANE[lane],
-        team: 'bravo',
-        lane,
-        isPlayer: false,
-      });
-      this.heroes.push(runtime);
-      this.stats.register(runtime.body, { instanceId: runtime.instanceId, player: false });
+    if (this.simulator) {
+      this.spawnSimulator();
+    } else {
+      this.spawnDraft();
     }
 
     this.heroGroup = this.physics.add.group(this.heroes.map((unit) => unit.body.sprite));
@@ -179,8 +157,15 @@ export class MatchScene extends Phaser.Scene {
 
     this.aiOverlay = new TacticalOverlay(this);
     this.marker = new HitMarker(this);
-    this.inputReader = new BattleInput(this, () => this.inputLocked(), hero.kit, hero.stats.dashMaxCharges);
-    if (!isTouchPrimary()) {
+    this.spectator = new SpectatorCamera(this, () => this.heroes);
+    this.inputReader = new BattleInput(
+      this,
+      () => this.inputLocked(),
+      this.simulator ? undefined : hero.kit,
+      this.simulator ? 3 : hero.stats.dashMaxCharges,
+      !this.simulator,
+    );
+    if (!isTouchPrimary() && !this.simulator) {
       this.abilityTray = new AbilityTray(this, 52, 148);
     }
     this.hud = new BattleHud(this);
@@ -195,10 +180,17 @@ export class MatchScene extends Phaser.Scene {
       onContinue: () => this.closePause(),
       onExit: () => this.returnToMenu(),
     });
-    this.respawnOverlay = new RespawnOverlay(this);
+    this.spectatorOverlay = new SpectatorOverlay(this, {
+      onPrev: () => this.spectator.cycle(-1),
+      onNext: () => this.spectator.cycle(1),
+    });
 
     this.cameras.main.setBounds(0, 0, ARENA.width, ARENA.height);
-    this.cameras.main.startFollow(this.player.body.sprite, true, 0.16, 0.16);
+    if (this.simulator) {
+      this.spectator.enable(this.player);
+    } else {
+      this.cameras.main.startFollow(this.player.body.sprite, true, 0.16, 0.16);
+    }
     this.cameras.main.setRoundPixels(true);
     this.cameras.main.setSize(this.scale.width, this.scale.height);
     this.cameras.main.setZoom(1);
@@ -227,7 +219,7 @@ export class MatchScene extends Phaser.Scene {
       this.orbs.destroy();
       this.abilityTray?.destroy();
       this.minimap?.destroy();
-      this.respawnOverlay?.destroy();
+      this.spectatorOverlay?.destroy();
       this.pauseOverlay?.destroy();
       this.battlefield?.destroy();
       for (const unit of this.heroes) {
@@ -253,7 +245,7 @@ export class MatchScene extends Phaser.Scene {
     if (this.match.finished) {
       this.freezeField();
       this.syncHud(now);
-      this.respawnOverlay.hide();
+      this.spectatorOverlay.hide();
       if (!this.results.isOpen) {
         this.results.show(this.match.winner, this.player.team, this.stats.allLines());
       }
@@ -268,31 +260,30 @@ export class MatchScene extends Phaser.Scene {
 
     for (const unit of this.heroes) {
       if (!unit.isPlayer) {
-        const block = unit.team !== this.player.team ? this.player.block : undefined;
-        this.pilots.get(unit)?.update(now, delta, unit, this.tactics, this, this.abilityWorld, block);
+        const target = this.pilots.get(unit)?.mind.target;
+        const rival = target ? this.heroes.find((hero) => hero.body === target) : undefined;
+        this.pilots.get(unit)?.update(now, delta, unit, this.tactics, this, this.abilityWorld, rival?.block);
       }
       if (unit.maybeRespawn(now) && unit.isPlayer) {
+        this.spectator.disable();
         this.cameras.main.startFollow(unit.body.sprite, true, 0.16, 0.16);
-        this.respawnOverlay.hide();
+        this.spectatorOverlay.hide();
+        this.inputReader.setCombatVisible(true);
+        this.abilityTray?.setVisible(true);
       }
     }
     this.drawAiDebug();
 
     this.resolveHeroDeaths(now);
 
-    if (!this.player.alive) {
+    if (this.simulator || !this.player.alive) {
       this.player.body.stop();
-      const frame = this.inputReader.sample(this.player.body.x, this.player.body.y);
-      this.panSpectator(frame, delta);
-      const cam = this.cameras.main;
-      audio.setListener(cam.worldView.centerX, cam.worldView.centerY);
-      this.marker.clear();
-      this.respawnOverlay.sync(this.player.respawnAt - now, this.scale.width, this.scale.height);
+      this.runSpectator(delta, now);
       this.syncHud(now);
       return;
     }
 
-    this.respawnOverlay.hide();
+    this.spectatorOverlay.hide();
     audio.setListener(this.player.body.x, this.player.body.y);
     const frame = this.inputReader.sample(this.player.body.x, this.player.body.y);
     if (frame.ability1AimActive) {
@@ -425,9 +416,11 @@ export class MatchScene extends Phaser.Scene {
       }
       unit.markDead(now);
       this.match.notifyHeroKill();
-      if (result.killer === this.player.body && result.killer.team !== unit.team) {
+      const popupHero =
+        this.spectator.enabled && this.spectator.target ? this.spectator.target : this.player;
+      if (result.killer === popupHero.body && result.killer.team !== unit.team) {
         spawnKillPopup(this, 'KILL', unit.body.stats.displayName);
-      } else if (result.assists.includes(this.player.body)) {
+      } else if (result.assists.includes(popupHero.body)) {
         spawnKillPopup(this, 'ASSIST', unit.body.stats.displayName);
       }
       if (unit.isPlayer) {
@@ -440,12 +433,144 @@ export class MatchScene extends Phaser.Scene {
     return this.match.finished || this.match.paused || this.results.isOpen;
   }
 
-  private panSpectator(frame: { move: Phaser.Math.Vector2 }, delta: number): void {
+  private spawnDraft(): void {
+    this.player = this.spawnHero({
+      instanceId: 'alpha-mid-player',
+      heroId: this.startHeroId,
+      team: 'alpha',
+      lane: 'mid',
+      isPlayer: true,
+    });
+    const leftover = (['ninja', 'cole', 'death'] as HeroId[]).filter((id) => id !== this.startHeroId);
+    const allyLanes: LaneId[] = ['top', 'bottom'];
+    leftover.forEach((heroId, index) => {
+      const lane = allyLanes[index];
+      if (!lane) {
+        return;
+      }
+      this.spawnHero({
+        instanceId: `alpha-${lane}`,
+        heroId,
+        team: 'alpha',
+        lane,
+        isPlayer: false,
+      });
+    });
+    for (const lane of LANES) {
+      this.spawnHero({
+        instanceId: `bravo-${lane}`,
+        heroId: ENEMY_BY_LANE[lane],
+        team: 'bravo',
+        lane,
+        isPlayer: false,
+      });
+    }
+  }
+
+  private spawnSimulator(): void {
+    for (const team of ['alpha', 'bravo'] as const) {
+      LANES.forEach((lane, index) => {
+        const unit = this.spawnHero({
+          instanceId: `${team}-${lane}`,
+          heroId: this.roster[team][index],
+          team,
+          lane,
+          isPlayer: false,
+        });
+        if (team === 'alpha' && lane === 'mid') {
+          this.player = unit;
+        }
+      });
+    }
+  }
+
+  private spawnHero(options: {
+    instanceId: string;
+    heroId: HeroId;
+    team: TeamId;
+    lane: LaneId;
+    isPlayer: boolean;
+  }): HeroRuntime {
+    const unit = new HeroRuntime(this, options);
+    this.heroes.push(unit);
+    this.stats.register(unit.body, { instanceId: unit.instanceId, player: options.isPlayer });
+    return unit;
+  }
+
+  private runSpectator(delta: number, now: number): void {
+    if (!this.spectator.enabled) {
+      this.enableSpectator(this.player);
+    }
+    const focus = this.hudFocus();
+    const frame = this.inputReader.sample(focus.body.x, focus.body.y);
+    this.spectator.tick(frame.move, delta, this.inputLocked());
     const cam = this.cameras.main;
-    const dt = delta / 1000;
-    const speed = MATCH.spectator.panSpeed;
-    cam.stopFollow();
-    cam.setScroll(cam.scrollX + frame.move.x * speed * dt, cam.scrollY + frame.move.y * speed * dt);
+    const locked = this.spectator.mode === 'lock' ? this.spectator.target : null;
+    if (locked?.alive) {
+      audio.setListener(locked.body.x, locked.body.y);
+    } else {
+      audio.setListener(cam.worldView.centerX, cam.worldView.centerY);
+    }
+    this.marker.clear();
+    const watching = locked?.alive ? locked : focus;
+    this.spectatorOverlay.sync(
+      {
+        remainingMs: this.simulator || this.player.alive ? 0 : this.player.respawnAt - now,
+        simulator: this.simulator,
+        mode: this.spectator.mode,
+        watchingName: watching.body.stats.displayName,
+        watchingSide: this.watchingSide(watching),
+      },
+      this.scale.width,
+      this.scale.height,
+    );
+  }
+
+  private enableSpectator(origin: HeroRuntime): void {
+    const living = this.heroes.filter((hero) => hero.alive);
+    const ally = living.find((hero) => hero.team === origin.team && hero !== origin);
+    const nearest = [...living].sort(
+      (a, b) =>
+        Math.hypot(a.body.x - origin.body.x, a.body.y - origin.body.y) -
+        Math.hypot(b.body.x - origin.body.x, b.body.y - origin.body.y),
+    )[0];
+    this.spectator.enable(this.simulator ? origin : (ally ?? nearest ?? null));
+    this.inputReader.setCombatVisible(false);
+    this.abilityTray?.setVisible(false);
+  }
+
+  private hudFocus(): HeroRuntime {
+    if (this.spectator.enabled && this.spectator.mode === 'lock' && this.spectator.target?.alive) {
+      return this.spectator.target;
+    }
+    if (this.spectator.enabled) {
+      const cam = this.cameras.main;
+      const cx = cam.worldView.centerX;
+      const cy = cam.worldView.centerY;
+      let best: HeroRuntime | undefined;
+      let bestD = Infinity;
+      for (const hero of this.heroes) {
+        if (!hero.alive) {
+          continue;
+        }
+        const d = Math.hypot(hero.body.x - cx, hero.body.y - cy);
+        if (d < bestD) {
+          bestD = d;
+          best = hero;
+        }
+      }
+      if (best) {
+        return best;
+      }
+    }
+    return this.player;
+  }
+
+  private watchingSide(unit: HeroRuntime): string {
+    if (this.simulator) {
+      return unit.team === 'alpha' ? 'ALPHA' : 'BRAVO';
+    }
+    return unit.team === this.player.team ? 'ALLY' : 'ENEMY';
   }
 
   private freezeField(): void {
@@ -514,22 +639,32 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private syncHud(now: number): void {
+    const focus = this.hudFocus();
+    const spectating = this.simulator || !this.player.alive;
     this.hud.sync(
-      this.player.body,
+      focus.body,
       undefined,
       now,
-      this.player.attacks.comboStep,
-      this.player.block,
-      this.player.dash,
+      focus.attacks.comboStep,
+      focus.block,
+      focus.dash,
+      spectating,
     );
-    this.matchHud.sync(this.match.snapshot(), this.score.snapshot(), this.player.progression);
+    this.matchHud.sync(this.match.snapshot(), this.score.snapshot(), focus.progression);
+    this.titleText?.setText(
+      `${this.simulator ? 'SIMULATOR' : 'SECRET WARS'}  //  ${focus.body.stats.displayName.toUpperCase()}`,
+    );
     if (this.battlefield && this.minimap) {
       this.minimap.sync({
         layout: this.battlefield.layout,
-        player: this.player.body,
+        player: focus.body,
         heroes: this.heroes.map((unit) => unit.body),
         minions: this.minions.allBodies(),
       });
+    }
+    if (spectating) {
+      this.abilityTray?.setVisible(false);
+      return;
     }
     this.inputReader.syncButtons({
       dashCharges: this.player.dash.chargeCount,
@@ -614,11 +749,20 @@ export class MatchScene extends Phaser.Scene {
     this.minimap?.layout(width);
     this.inputReader?.layout(width, height);
     this.abilityTray?.layout(52, 148, 1);
-    this.respawnOverlay?.sync(
-      this.player.alive ? 0 : this.player.respawnAt - this.time.now,
-      width,
-      height,
-    );
+    if ((this.simulator || (this.player && !this.player.alive)) && this.spectatorOverlay) {
+      const focus = this.hudFocus();
+      this.spectatorOverlay.sync(
+        {
+          remainingMs: this.simulator || this.player.alive ? 0 : this.player.respawnAt - this.time.now,
+          simulator: this.simulator,
+          mode: this.spectator.mode,
+          watchingName: focus.body.stats.displayName,
+          watchingSide: this.watchingSide(focus),
+        },
+        width,
+        height,
+      );
+    }
     this.cameras.main.setSize(width, height);
     if (this.pauseOverlay?.isOpen) {
       this.pauseOverlay.show(this.stats.allLines());
@@ -680,7 +824,11 @@ export class MatchScene extends Phaser.Scene {
     this.returning = true;
     this.time.paused = false;
     this.physics.world.resume();
-    this.scene.restart({ heroId: this.startHeroId });
+    this.scene.restart({
+      heroId: this.startHeroId,
+      simulator: this.simulator,
+      roster: this.roster,
+    });
   }
 
   private returnToMenu(): void {

@@ -153,4 +153,24 @@ export class VirtualThumbstick {
   destroy(): void {
     this.stopListening();
   }
+
+  setVisible(visible: boolean): void {
+    this.base.setVisible(visible);
+    this.knob.setVisible(visible);
+    this.label.setVisible(visible);
+    this.zone.setVisible(visible);
+    if (visible) {
+      const hit = this.radius * 2.4;
+      this.zone.setInteractive(
+        new Phaser.Geom.Circle(hit / 2, hit / 2, this.radius * 1.15),
+        Phaser.Geom.Circle.Contains,
+      );
+    } else {
+      this.pointerId = undefined;
+      this.vector.set(0, 0);
+      this.knob.setPosition(this.originX, this.originY);
+      this.stopListening();
+      this.zone.disableInteractive();
+    }
+  }
 }

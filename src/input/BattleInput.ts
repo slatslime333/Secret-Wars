@@ -88,6 +88,7 @@ export class BattleInput {
     isRoundLocked: () => boolean = () => false,
     kit?: HeroAbilityKit,
     dashMaxCharges: number = COMBAT.dashMaxCharges,
+    combatHud = true,
   ) {
     this.scene = scene;
     this.isRoundLocked = isRoundLocked;
@@ -102,12 +103,15 @@ export class BattleInput {
         accent: COLORS.cyan,
         radius: layout.leftStick.r,
       });
-      this.rightStick = new VirtualThumbstick(scene, layout.rightStick.x, layout.rightStick.y, {
-        label: 'AIM',
-        accent: COLORS.redBright,
-        radius: layout.rightStick.r,
-      });
+      if (combatHud) {
+        this.rightStick = new VirtualThumbstick(scene, layout.rightStick.x, layout.rightStick.y, {
+          label: 'AIM',
+          accent: COLORS.redBright,
+          radius: layout.rightStick.r,
+        });
+      }
 
+      if (combatHud) {
       this.blockPad = new VirtualAimPad(scene, layout.block.x, layout.block.y, {
         label: 'SHIELD',
         accent: COLORS.cyan,
@@ -194,10 +198,12 @@ export class BattleInput {
           { ultimate: true, onPress: () => { this.ultimateLatched = true; } },
         );
       }
+      }
     }
 
     const keyboard = scene.input.keyboard;
     if (keyboard) {
+      keyboard.addCapture(['SPACE', 'SHIFT']);
       this.cursors = keyboard.createCursorKeys();
       this.keys = {
         up: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
@@ -205,8 +211,8 @@ export class BattleInput {
         left: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
         right: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
         attack: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.J),
-        block: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
-        dash: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L),
+        block: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
+        dash: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT),
         ability1: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
         ability2: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
         ultimate: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F),
@@ -456,6 +462,17 @@ export class BattleInput {
     this.ability2Pad?.destroy();
     this.ultimateButton?.destroy();
     this.scene.input?.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
+  }
+
+  setCombatVisible(visible: boolean): void {
+    this.rightStick?.setVisible(visible);
+    this.blockPad?.setVisible(visible);
+    this.dashButton?.setVisible(visible);
+    this.ability1Button?.setVisible(visible);
+    this.ability1Pad?.setVisible(visible);
+    this.ability2Button?.setVisible(visible);
+    this.ability2Pad?.setVisible(visible);
+    this.ultimateButton?.setVisible(visible);
   }
 
   private readMove(): Phaser.Math.Vector2 {

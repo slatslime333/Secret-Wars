@@ -1,5 +1,10 @@
 import { PLAYABLE_HEROES, type HeroId, type PlayableHero } from './roster';
-import { displayedRatingsForHero, type CoreRatings } from '../config/ratings';
+import {
+  displayedRatingsForHero,
+  overallRating,
+  powerPoints,
+  type CoreRatings,
+} from '../config/ratings';
 
 export type HeroSelectCopy = {
   id: HeroId;
@@ -8,6 +13,8 @@ export type HeroSelectCopy = {
   description: string;
   light: string;
   ratings: CoreRatings;
+  overall: number;
+  power: number;
   ability1: { name: string; text: string };
   ability2: { name: string; text: string };
   ultimate: { name: string; text: string };
@@ -63,13 +70,16 @@ const slotCopy = (hero: PlayableHero, slot: 'ability1' | 'ability2' | 'ultimate'
 export const heroSelectCopy = (id: HeroId): HeroSelectCopy => {
   const hero = PLAYABLE_HEROES[id];
   const flavor = HERO_TEXT[id];
+  const ratings = displayedRatingsForHero(hero.stats);
   return {
     id,
     name: hero.stats.displayName,
     role: ROLE_LABEL[hero.stats.role] ?? hero.stats.role,
     description: flavor.description,
     light: flavor.light,
-    ratings: displayedRatingsForHero(hero.stats),
+    ratings,
+    overall: overallRating(ratings),
+    power: powerPoints(ratings),
     ability1: slotCopy(hero, 'ability1'),
     ability2: slotCopy(hero, 'ability2'),
     ultimate: slotCopy(hero, 'ultimate'),

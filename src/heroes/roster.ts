@@ -14,6 +14,13 @@ import type { CoreRatings } from '../config/ratings';
 
 export type HeroId = 'ninja' | 'cole' | 'death';
 
+export const HERO_IDS: HeroId[] = ['ninja', 'cole', 'death'];
+
+export const nextHeroId = (id: HeroId): HeroId => {
+  const index = HERO_IDS.indexOf(id);
+  return HERO_IDS[(index + 1) % HERO_IDS.length];
+};
+
 export type PlayableHero = {
   id: HeroId;
   stats: HeroCombatConfig & { ratings: CoreRatings };
