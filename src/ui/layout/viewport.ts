@@ -92,7 +92,9 @@ export const cameraZoomFor = (width: number, height: number, isMobile: boolean):
   const portrait = height > width;
   const desired = portrait ? clamp(width / 1080, 0.48, 0.7) : clamp(height / 780, 0.64, 0.88);
   const minFit = Math.max(width / ARENA.width, height / ARENA.height);
-  return Math.max(desired, minFit);
+  // Never zoom in past 1:1. A taller-than-arena phone should show extra
+  // empty space rather than enlarging the world and shoving the HUD off-screen.
+  return clamp(Math.max(desired, minFit), 0.01, 1);
 };
 
 export const measureViewport = (width?: number, height?: number): ViewportFrame => {

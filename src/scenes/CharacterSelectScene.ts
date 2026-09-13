@@ -274,7 +274,6 @@ export class CharacterSelectScene extends Phaser.Scene {
     root.add([left, label, right]);
     this.tweens.add({
       targets: [left, right],
-      x: { from: left.x, to: left.x },
       alpha: { from: 0.45, to: 1 },
       yoyo: true,
       repeat: -1,
@@ -421,7 +420,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     );
 
     const rowH = compact ? 16 : 18;
-    const barsY = y + (compact ? 22 : 46);
+    const barsY = y + (compact ? 28 : 46);
     CORE_STAT_ORDER.forEach((stat, index) => {
       const rowY = barsY + index * rowH;
       const value = copy.ratings[stat];

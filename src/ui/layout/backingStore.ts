@@ -89,8 +89,8 @@ export const applyBackingStore = (game: Phaser.Game): void => {
   const bufferW = Math.round(cssW * dpr);
   const bufferH = Math.round(cssH * dpr);
 
-  canvas.style.width = `${cssW}px`;
-  canvas.style.height = `${cssH}px`;
+  canvas.style.setProperty('width', `${cssW}px`, 'important');
+  canvas.style.setProperty('height', `${cssH}px`, 'important');
   canvas.style.imageRendering = 'pixelated';
 
   patchTextFactory();
