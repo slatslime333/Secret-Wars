@@ -33,7 +33,10 @@ export const NINJA = {
   attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 14,
   /** Not a displayed core stat. Kept at the live regen rate. */
+  /** Fastest practical regen on the roster. Costs stay efficient via attackStaminaMul. */
   staminaRegenPerSecond: 14 + (26 - 14) * (70 / 99),
+  /** Best light-attack stamina efficiency. Ammo 8 / 1500ms still forces a reload. */
+  attackStaminaMul: 0.85,
   ammoMax: 8,
   reloadMs: COMBAT.attackReloadMs,
   dashMaxCharges: COMBAT.dashMaxCharges,

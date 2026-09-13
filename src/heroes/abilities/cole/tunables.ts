@@ -46,7 +46,7 @@ export const COLE_DISCHARGE = {
   damageRating: 60,
   damage: abilityDamage(60),
   knockbackMul: 3.6,
-  paralyzeMs: 1700,
+  paralyzeMs: 1000,
   expandMs: 220,
 } as const;
 

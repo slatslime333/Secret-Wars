@@ -2,7 +2,7 @@ export { ARENA, LANES, nearestLane } from './arena';
 export { MATCH } from './match';
 export { AUDIO } from './audio';
 export { CHASER } from './chaser';
-export { COMBAT, attackHalfArcRad } from './combat';
+export { COMBAT, attackHalfArcRad, lightAttackStaminaCost } from './combat';
 export { NINJA } from './ninja';
 export { COLE } from './cole';
 export { DEATH } from './death';
