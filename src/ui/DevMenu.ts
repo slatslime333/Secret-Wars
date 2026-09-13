@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, FONTS, hex } from './theme';
+import { adoptHud } from './layout/hudCamera';
 import { DEV_CHEATS } from '../debug/devCheats';
 import type { HeroId } from '../heroes/roster';
 import type { MinionKind } from '../config/minion';
@@ -233,6 +234,14 @@ export class DevMenu {
       this.layout(scene.scale.width, scene.scale.height);
     });
     this.layout(width, scene.scale.height);
+    adoptHud(
+      scene,
+      this.toggle,
+      this.panel,
+      this.title,
+      this.maskShape,
+      ...this.rows.flatMap((row) => (row.text ? [row.text] : [])),
+    );
   }
 
   layout(width: number, height = 540): void {

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { TeamId } from '../../config/hero';
 import { OBJECTIVE, type ObjectiveKind } from '../../config/objective';
+import { adoptHud } from '../../ui/layout/hudCamera';
 import { COLORS, FONTS, hex } from '../../ui/theme';
 import type { ObjectiveUiState } from './types';
 
@@ -72,6 +73,7 @@ export class ObjectiveHud {
       .setScrollFactor(0)
       .setDepth(204)
       .setVisible(false);
+    adoptHud(scene, this.banner, this.arrow);
   }
 
   announce(kind: ObjectiveKind, x: number, y: number, now: number): void {
@@ -108,6 +110,7 @@ export class ObjectiveHud {
       .setScrollFactor(0)
       .setDepth(206)
       .setScale(1.12);
+    adoptHud(this.scene, label);
     this.scene.tweens.add({
       targets: label,
       scale: 1,

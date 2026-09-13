@@ -49,7 +49,7 @@ import { spawnStatusPopup } from '../ui/StatusPopup';
 import { isPcCombatHud, layoutPcCombatHud } from '../ui/pcCombatHud';
 import { cueAbilityReady } from '../audio/abilityReady';
 import { COLORS, FONTS, hex } from '../ui/theme';
-import { applyGameplayCamera, layoutHudChrome, measureViewport } from '../ui/layout';
+import { applyGameplayCamera, layoutHudChrome, measureViewport, installHudCamera, resizeHudCamera, adoptHud } from '../ui/layout';
 import { isTouchPrimary } from '../device';
 import { audio } from '../audio';
 import { fadeToScene } from './fadeToScene';
@@ -110,6 +110,9 @@ export class BattleScene extends Phaser.Scene {
     this.returning = false;
     resetDevCheats();
     ensureAbilityIcons(this);
+    if (isTouchPrimary()) {
+      installHudCamera(this);
+    }
     const hero = getSelectedHero();
     this.mapSeed = resolvePlayTestSeed();
     this.battlefield = Battlefield.install(this, { seed: this.mapSeed, log: true });
@@ -145,6 +148,7 @@ export class BattleScene extends Phaser.Scene {
       })
       .setScrollFactor(0)
       .setDepth(130);
+    adoptHud(this, this.debugText);
     this.spawnDebug = this.add.graphics().setDepth(3);
     this.marker = new HitMarker(this);
     this.attacks = new QuickAttack(this, this.marker);
@@ -698,6 +702,7 @@ export class BattleScene extends Phaser.Scene {
       onPress: () => this.openPauseMenu(),
     });
     this.menuButton.setScrollFactor(0).setDepth(220);
+    adoptHud(this, this.chromeBar, this.titleText, this.menuButton);
   }
 
   private onResize(gameSize: Phaser.Structs.Size): void {
@@ -713,6 +718,7 @@ export class BattleScene extends Phaser.Scene {
     this.layoutAbilityTray(width, height);
     this.devMenu?.layout(width, height);
     this.minimap?.layout(width, height);
+    resizeHudCamera(this, width, height);
     applyGameplayCamera(this.cameras.main, width, height);
     if (this.pauseOverlay?.isOpen) {
       this.pauseOverlay.show(this.sandboxStats.allLines());

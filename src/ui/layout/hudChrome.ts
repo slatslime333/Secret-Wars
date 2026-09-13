@@ -79,30 +79,30 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
     };
   }
 
-  const top = Math.max(safe.top, 8);
-  const barH = isPortrait ? 0 : 36;
-  const menuW = Math.round(clamp(frame.minTouch * 2.15, isPortrait ? 96 : 88, 118));
-  const menuH = Math.round(clamp(frame.minTouch * 0.72, 30, 36));
+  const top = Math.max(safe.top, 6);
+  const barH = 0;
+  const menuW = Math.round(clamp(frame.minTouch * 2.05, isPortrait ? 92 : 84, 112));
+  const menuH = Math.round(clamp(frame.minTouch * 0.7, 28, 34));
   const menuX = width - contentInset.right - menuW / 2;
-  const menuY = top + (isPortrait ? menuH / 2 + 2 : barH / 2);
+  const menuY = top + menuH / 2 + 2;
   const barsX = contentInset.left;
-  const menuLeft = menuX - menuW / 2;
   const barWidth = Math.round(
     isPortrait
-      ? clamp((menuLeft - barsX - frame.gap * 2) * 0.62, 104, 148)
-      : clamp(Math.min(width * 0.3, height * 0.55), 148, 210),
+      ? clamp(width * 0.34, 108, 148)
+      : clamp(Math.min(width * 0.26, height * 0.42), 120, 168),
   );
-  const hpH = isPortrait ? 8 : 9;
-  const stamH = isPortrait ? 6 : 7;
+  const hpH = isPortrait ? 8 : 8;
+  const stamH = 6;
   const xpH = 5;
-  const hpY = isPortrait ? top + 10 : top + barH + 8;
+  const hpY = top + 18;
   const staminaY = hpY + hpH + 5;
   const xpY = staminaY + stamH + 5;
-  const barsRight = barsX + barWidth;
-  const matchX = isPortrait ? (barsRight + menuLeft) / 2 : width / 2;
-  const miniW = Math.round(isPortrait ? clamp(width * 0.22, 84, 108) : clamp(height * 0.32, 108, 148));
-  const miniH = Math.round(miniW * (isPortrait ? 0.68 : 0.74));
-  const miniY = isPortrait ? Math.max(xpY + 20, menuY + menuH / 2 + 8) : top + barH + 6;
+  const scoreY = xpY + xpH + 12;
+  const timerY = scoreY + (isPortrait ? 16 : 14);
+  const phaseY = timerY + 14;
+  const miniW = Math.round(isPortrait ? clamp(width * 0.2, 80, 102) : clamp(Math.min(height * 0.28, width * 0.16), 88, 120));
+  const miniH = Math.round(miniW * 0.7);
+  const miniY = menuY + menuH / 2 + 8;
 
   return {
     barY: menuY,
@@ -115,13 +115,13 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
     menuY,
     menuW,
     menuH,
-    comboY: isPortrait ? xpY + 22 : menuY + barH / 2 + 14,
+    comboY: phaseY + 18,
     bars: { x: barsX, hpY, staminaY, xpY, width: barWidth, hpH, stamH, xpH },
     match: {
-      x: matchX,
-      scoreY: isPortrait ? top + 8 : menuY - 8,
-      timerY: isPortrait ? top + 24 : menuY + 9,
-      phaseY: isPortrait ? top + 42 : top + barH + 2,
+      x: barsX,
+      scoreY,
+      timerY,
+      phaseY,
     },
     minimap: {
       x: width - contentInset.right,

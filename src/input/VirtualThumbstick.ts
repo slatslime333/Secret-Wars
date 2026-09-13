@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { adoptHud, hudPointer } from '../ui/layout/hudCamera';
 import { COLORS } from '../ui/theme';
 
 type VirtualThumbstickOptions = {
@@ -54,14 +55,17 @@ export class VirtualThumbstick {
       .setScrollFactor(0)
       .setDepth(112);
 
-    const hit = this.radius * 2.4;
+    const hit = this.radius * 2.6;
     this.zone = scene.add
       .zone(x, y, hit, hit)
-      .setInteractive(new Phaser.Geom.Circle(hit / 2, hit / 2, this.radius * 1.15), Phaser.Geom.Circle.Contains)
+      .setOrigin(0.5, 0.5)
+      .setInteractive(new Phaser.Geom.Circle(hit / 2, hit / 2, this.radius * 1.35), Phaser.Geom.Circle.Contains)
       .setScrollFactor(0)
       .setDepth(113);
 
     this.zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this.onDown, this);
+    scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onSceneDown, this);
+    adoptHud(scene, this.base, this.knob, this.label, this.zone);
   }
 
   private drawBase(): void {
@@ -80,10 +84,10 @@ export class VirtualThumbstick {
     this.radius = radius;
     this.knob.setRadius(radius * 0.4);
     this.label.setFontSize(Math.max(9, Math.round(11 * (radius / 68))));
-    const hit = radius * 2.4;
+    const hit = radius * 2.6;
     this.zone.setSize(hit, hit);
     this.zone.setInteractive(
-      new Phaser.Geom.Circle(hit / 2, hit / 2, radius * 1.15),
+      new Phaser.Geom.Circle(hit / 2, hit / 2, radius * 1.35),
       Phaser.Geom.Circle.Contains,
     );
     this.drawBase();
@@ -107,6 +111,16 @@ export class VirtualThumbstick {
 
   getValue(): Phaser.Math.Vector2 {
     return this.vector.clone();
+  }
+
+  private onSceneDown(pointer: Phaser.Input.Pointer): void {
+    if (this.pointerId !== undefined || !this.zone.visible || !this.zone.input) {
+      return;
+    }
+    const point = hudPointer(this.scene, pointer);
+    if (Math.hypot(point.x - this.originX, point.y - this.originY) <= this.radius * 1.35) {
+      this.onDown(pointer);
+    }
   }
 
   private onDown(pointer: Phaser.Input.Pointer): void {
@@ -142,7 +156,8 @@ export class VirtualThumbstick {
   }
 
   private updateVector(pointer: Phaser.Input.Pointer): void {
-    this.vector.set(pointer.x - this.originX, pointer.y - this.originY);
+    const point = hudPointer(this.scene, pointer);
+    this.vector.set(point.x - this.originX, point.y - this.originY);
     if (this.vector.length() > this.radius) {
       this.vector.setLength(this.radius);
     }
@@ -152,6 +167,11 @@ export class VirtualThumbstick {
 
   destroy(): void {
     this.stopListening();
+    this.scene.input?.off(Phaser.Input.Events.POINTER_DOWN, this.onSceneDown, this);
+    this.base.destroy();
+    this.knob.destroy();
+    this.label.destroy();
+    this.zone.destroy();
   }
 
   setVisible(visible: boolean): void {
@@ -160,9 +180,9 @@ export class VirtualThumbstick {
     this.label.setVisible(visible);
     this.zone.setVisible(visible);
     if (visible) {
-      const hit = this.radius * 2.4;
+      const hit = this.radius * 2.6;
       this.zone.setInteractive(
-        new Phaser.Geom.Circle(hit / 2, hit / 2, this.radius * 1.15),
+        new Phaser.Geom.Circle(hit / 2, hit / 2, this.radius * 1.35),
         Phaser.Geom.Circle.Contains,
       );
     } else {

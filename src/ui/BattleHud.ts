@@ -4,6 +4,7 @@ import { DashController } from '../combat/DashController';
 import { isTouchPrimary } from '../device';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { layoutHudChrome } from './layout/hudChrome';
+import { adoptHud } from './layout/hudCamera';
 import { measureViewport } from './layout/viewport';
 import { isPcCombatHud, layoutPcCombatHud } from './pcCombatHud';
 import { COLORS, FONTS, hex } from './theme';
@@ -114,6 +115,7 @@ export class BattleHud {
       this.comboText.setY(chrome.comboY).setFontSize(chrome.titleVisible ? 18 : 15);
       this.verbText.setVisible(chrome.verbVisible);
       this.verbText.setPosition(width - 30, chrome.bars.xpY).setOrigin(1, 0);
+      adoptHud(this.hpTrack.scene, this.hpTrack, this.staminaTrack, this.ninjaFill, this.shieldFill, this.staminaFill, this.hpText, this.comboText, this.verbText);
       return;
     }
     const hud = layoutPcCombatHud(width, height);

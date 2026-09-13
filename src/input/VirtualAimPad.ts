@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { INPUT } from '../config/input';
+import { adoptHud, hudPointer } from '../ui/layout/hudCamera';
 import { COLORS, FONTS, hex } from '../ui/theme';
 
 export type VirtualAimPadOptions = {
@@ -71,14 +72,17 @@ export class VirtualAimPad {
       .setDepth(117);
 
     this.zone = scene.add
-      .zone(x, y, this.radius * 2, this.radius * 2)
+      .zone(x, y, this.radius * 2.4, this.radius * 2.4)
+      .setOrigin(0.5, 0.5)
       .setInteractive(
-        new Phaser.Geom.Circle(this.radius, this.radius, this.radius),
+        new Phaser.Geom.Circle(this.radius * 1.2, this.radius * 1.2, this.radius * 1.2),
         Phaser.Geom.Circle.Contains,
       )
       .setScrollFactor(0)
       .setDepth(118);
     this.zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this.onDown, this);
+    scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onSceneDown, this);
+    adoptHud(scene, this.art, this.fill, this.knob, this.label, this.zone);
   }
 
   get active(): boolean {
@@ -97,9 +101,9 @@ export class VirtualAimPad {
     this.radius = radius;
     this.label.setFontSize(Math.max(9, Math.round(12 * (radius / 30))));
     this.knob.setRadius(radius * 0.32);
-    this.zone.setSize(radius * 2, radius * 2);
+    this.zone.setSize(radius * 2.4, radius * 2.4);
     this.zone.setInteractive(
-      new Phaser.Geom.Circle(radius, radius, radius),
+      new Phaser.Geom.Circle(radius * 1.2, radius * 1.2, radius * 1.2),
       Phaser.Geom.Circle.Contains,
     );
     this.drawArt();
@@ -147,19 +151,30 @@ export class VirtualAimPad {
       return;
     }
     this.zone.setInteractive(
-      new Phaser.Geom.Circle(this.radius, this.radius, this.radius),
+      new Phaser.Geom.Circle(this.radius * 1.2, this.radius * 1.2, this.radius * 1.2),
       Phaser.Geom.Circle.Contains,
     );
   }
 
   destroy(): void {
     this.stopListening();
+    this.scene.input?.off(Phaser.Input.Events.POINTER_DOWN, this.onSceneDown, this);
     this.zone.off(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this.onDown, this);
     this.art.destroy();
     this.fill.destroy();
     this.knob.destroy();
     this.label.destroy();
     this.zone.destroy();
+  }
+
+  private onSceneDown(pointer: Phaser.Input.Pointer): void {
+    if (this.dimmed || this.pointerId !== undefined || !this.zone.visible || !this.zone.input) {
+      return;
+    }
+    const point = hudPointer(this.scene, pointer);
+    if (Math.hypot(point.x - this.x, point.y - this.y) <= this.radius * 1.2) {
+      this.onDown(pointer);
+    }
   }
 
   private onDown(pointer: Phaser.Input.Pointer): void {
@@ -205,7 +220,8 @@ export class VirtualAimPad {
   }
 
   private updateVector(pointer: Phaser.Input.Pointer): void {
-    this.pixel.set(pointer.x - this.x, pointer.y - this.y);
+    const point = hudPointer(this.scene, pointer);
+    this.pixel.set(point.x - this.x, point.y - this.y);
     if (this.pixel.length() > this.radius) {
       this.pixel.setLength(this.radius);
     }

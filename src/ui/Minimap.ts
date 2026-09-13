@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { layoutHudChrome } from './layout/hudChrome';
+import { adoptHud } from './layout/hudCamera';
 import { measureViewport } from './layout/viewport';
 import { COLORS } from './theme';
 import type { MapLayout } from '../map/types';
@@ -38,6 +39,7 @@ export class Minimap {
       .setStrokeStyle(2, COLORS.paper, 0.55);
     this.art = scene.add.graphics();
     this.root.add([this.frame, this.art]);
+    adoptHud(scene, this.root);
     this.layout(scene.scale.width, scene.scale.height);
   }
 
