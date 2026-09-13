@@ -59,6 +59,7 @@ const seconds = (ms: number): string => {
 
 const slower = (mul: number): string => `${Math.round((1 - mul) * 100)}% slower`;
 const faster = (mul: number): string => `${Math.round((mul - 1) * 100)}% faster`;
+const more = (mul: number): string => `${Math.round((mul - 1) * 100)}% more`;
 const cooldownSlower = (mul: number): string => `${Math.round((mul - 1) * 100)}% slower`;
 
 const ninjaHit = (step: 1 | 2 | 3): number => hit(NINJA.attackDamage * COMBAT.combo[step].damageMultiplier);
@@ -76,7 +77,7 @@ const rageStamina = Math.round(SHADOW.maxStamina * SHADOW_RAGE.staminaPoolMul);
 
 const ABILITY_TEXT: Record<string, string> = {
   'ninja-smoke-bomb':
-    `Ninja tosses a smoke cloud a step ahead, then blasts ${NINJA_SMOKE.blastDistance} pixels backward. Enemies in the cloud move ${slower(NINJA_SMOKE.moveMul)} and attack ${slower(NINJA_SMOKE.attackSpeedMul)} for ${seconds(NINJA_SMOKE.durationMs)}.`,
+    `Ninja tosses a smoke cloud a step ahead, then blasts backward out of it. Enemies in the cloud move ${slower(NINJA_SMOKE.moveMul)} and attack ${slower(NINJA_SMOKE.attackSpeedMul)} for ${seconds(NINJA_SMOKE.durationMs)}.`,
   'ninja-backflip-kick':
     `A dash-kick through the aimed line. Hits deal ${hit(NINJA_KICK.damage)} damage, launch with heavy knockback, and slow movement by 50% for ${seconds(NINJA_KICK.hitSlowMs)}. Two charges.`,
   'ninja-tornado':
@@ -110,7 +111,7 @@ const ABILITY_TEXT: Record<string, string> = {
   'shadow-dash':
     `Shadow dashes through the aimed line, dealing ${hit(SHADOW_DASH.damage)} damage. Enemies are knocked sideways, move ${slower(SHADOW_DASH.slowMul)}, and attack ${cooldownSlower(SHADOW_DASH.attackSlowMul)} for ${seconds(SHADOW_DASH.slowMs)}.`,
   'shadow-rage':
-    `Shadow locks in place for ${seconds(SHADOW_RAGE.castMs)} to transform, then fights harder for ${seconds(SHADOW_RAGE.durationMs)}: ${faster(SHADOW_RAGE.moveMul)} movement, ${faster(SHADOW_RAGE.attackSpeedMul)} attacks, +${rageStamina} max stamina, ${faster(SHADOW_RAGE.staminaRegenMul)} stamina recovery, and ${faster(SHADOW_RAGE.defenseMul)} defense.`,
+    `Shadow locks in place for ${seconds(SHADOW_RAGE.castMs)} to transform, then fights harder for ${seconds(SHADOW_RAGE.durationMs)}: ${faster(SHADOW_RAGE.moveMul)} movement, ${faster(SHADOW_RAGE.attackSpeedMul)} attacks, +${rageStamina} max stamina, ${faster(SHADOW_RAGE.staminaRegenMul)} stamina recovery, and ${more(SHADOW_RAGE.defenseMul)} defense.`,
 };
 
 const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
