@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { isTouchPrimary } from '../device';
-import { PLAYABLE_HEROES, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { HERO_IDS, PLAYABLE_HEROES, setSelectedHeroId, type HeroId } from '../heroes/roster';
 import { heroSelectCopy } from '../heroes/selectCopy';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
@@ -15,7 +15,7 @@ import {
   type CoreStatId,
 } from '../config/ratings';
 
-const HERO_ORDER: HeroId[] = ['ninja', 'cole', 'death'];
+const HERO_ORDER = HERO_IDS;
 
 /** Functional draft picker. Confirm starts the real match. */
 export class CharacterSelectScene extends Phaser.Scene {
@@ -106,14 +106,14 @@ export class CharacterSelectScene extends Phaser.Scene {
       const x = left + index * (cardW + gap);
       const y = 64;
       const selected = this.selected === id;
-      const panel = this.add.rectangle(x, y, cardW, 148, COLORS.panel, 0.96).setOrigin(0.5, 0);
+      const panel = this.add.rectangle(x, y, cardW, 168, COLORS.panel, 0.96).setOrigin(0.5, 0);
       panel.setStrokeStyle(3, selected ? COLORS.yellow : COLORS.cyan);
       const art = this.add.graphics();
-      art.setPosition(x, y + 62);
-      art.setScale(1.4);
+      art.setPosition(x, y + 56);
+      art.setScale(1.35);
       PLAYABLE_HEROES[id].draw(art, { facing: 'east', team: 'alpha' });
       this.add
-        .text(x, y + 104, copy.name.toUpperCase(), {
+        .text(x, y + 96, copy.name.toUpperCase(), {
           fontFamily: FONTS.display,
           fontSize: '15px',
           color: hex(COLORS.paper),
@@ -121,7 +121,7 @@ export class CharacterSelectScene extends Phaser.Scene {
         })
         .setOrigin(0.5, 0);
       this.add
-        .text(x, y + 124, copy.role.toUpperCase(), {
+        .text(x, y + 114, copy.role.toUpperCase(), {
           fontFamily: FONTS.body,
           fontSize: '11px',
           fontStyle: 'bold',
@@ -129,9 +129,26 @@ export class CharacterSelectScene extends Phaser.Scene {
           letterSpacing: 2,
         })
         .setOrigin(0.5, 0);
-      const hit = this.add.rectangle(x, y + 74, cardW, 148, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      this.add
+        .text(x, y + 132, `OVR  ${copy.overall}`, {
+          fontFamily: FONTS.display,
+          fontSize: '16px',
+          color: hex(COLORS.yellow),
+          letterSpacing: 1,
+        })
+        .setOrigin(0.5, 0);
+      this.add
+        .text(x, y + 150, `PWR  ${copy.power}`, {
+          fontFamily: FONTS.body,
+          fontSize: '11px',
+          fontStyle: 'bold',
+          color: hex(COLORS.orange),
+          letterSpacing: 2,
+        })
+        .setOrigin(0.5, 0);
+      const hit = this.add.rectangle(x, y + 84, cardW, 168, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
       hit.on(Phaser.Input.Events.POINTER_UP, () => this.select(id));
-      new ActionButton(this, x, y + 166, {
+      new ActionButton(this, x, y + 186, {
         label: selected ? 'SELECTED' : 'SELECT',
         width: cardW - 18,
         height: 32,
@@ -144,7 +161,7 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   private drawDetail(width: number, height: number): void {
     const copy = heroSelectCopy(this.selected);
-    const top = 248;
+    const top = 268;
     const boxH = Math.max(180, height - top - 70);
     const boxW = Math.min(860, width - 40);
     const box = this.add.rectangle(width / 2, top, boxW, boxH, COLORS.ink, 0.82).setOrigin(0.5, 0);
@@ -182,7 +199,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       });
     });
 
-    this.drawStatBlock(left + textW + 18, top + 10, statsW, copy.ratings);
+    this.drawStatBlock(left + textW + 18, top + 10, statsW, copy);
 
     this.add
       .text(width / 2, height - 68, isTouchPrimary() ? 'TAP A FIGHTER, THEN CONFIRM' : '← → SELECT    ENTER CONFIRM', {
@@ -194,11 +211,46 @@ export class CharacterSelectScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
   }
 
-  private drawStatBlock(x: number, y: number, width: number, ratings: Record<CoreStatId, number>): void {
-    const rowH = 20;
+  private drawStatBlock(
+    x: number,
+    y: number,
+    width: number,
+    copy: { ratings: Record<CoreStatId, number>; overall: number; power: number },
+  ): void {
+    this.add.text(x, y, 'OVERALL', {
+      fontFamily: FONTS.body,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: hex(COLORS.muted),
+      letterSpacing: 1,
+    });
+    this.add
+      .text(x + width, y, formatRating(copy.overall), {
+        fontFamily: FONTS.display,
+        fontSize: '16px',
+        color: hex(COLORS.yellow),
+      })
+      .setOrigin(1, 0);
+    this.add.text(x, y + 20, 'POWER', {
+      fontFamily: FONTS.body,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: hex(COLORS.muted),
+      letterSpacing: 1,
+    });
+    this.add
+      .text(x + width, y + 20, `${copy.power}`, {
+        fontFamily: FONTS.display,
+        fontSize: '16px',
+        color: hex(COLORS.orange),
+      })
+      .setOrigin(1, 0);
+
+    const rowH = 18;
+    const barsY = y + 46;
     CORE_STAT_ORDER.forEach((stat, index) => {
-      const rowY = y + index * rowH;
-      const value = ratings[stat];
+      const rowY = barsY + index * rowH;
+      const value = copy.ratings[stat];
       this.add.text(x, rowY, CORE_STAT_LABEL[stat].toUpperCase(), {
         fontFamily: FONTS.body,
         fontSize: '11px',

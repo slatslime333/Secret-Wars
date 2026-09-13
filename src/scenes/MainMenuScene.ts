@@ -92,76 +92,74 @@ export class MainMenuScene extends Phaser.Scene {
   private createNavigation(width: number, height: number, isPortrait: boolean): void {
     if (isPortrait) {
       const showExit = !isTouchPrimary();
-      const playH = Math.min(58, height * 0.07);
-      const gap = 8;
-      const extra = showExit ? 2 : 1;
-      const stackH = playH + (playH - 6) + 48 + extra * (gap + 42);
-      const startY = height - 22 - stackH + playH / 2;
-      const btnW = Math.min(340, width - 60);
-      this.buttons = [
-        new ActionButton(this, width / 2, startY, {
-          label: 'PLAY',
-          width: btnW,
-          height: playH,
-          primary: true,
-          onPress: () => this.openPlay(),
-        }),
-        new ActionButton(this, width / 2, startY + playH + gap, {
-          label: 'PLAY TEST',
-          width: btnW - 10,
-          height: playH - 4,
-          onPress: () => this.openPlayTest(),
-        }),
-        new ActionButton(this, width / 2, startY + playH * 2 + gap * 2, {
-          label: 'SETTINGS',
-          width: btnW - 30,
-          height: 48,
-          onPress: () => this.openSettings(),
-        }),
-      ];
-
+      const playH = Math.min(50, height * 0.06);
+      const gap = 7;
+      const heights = [playH, playH - 4, playH - 4, 44];
       if (showExit) {
-        this.buttons.push(
-          new ActionButton(this, width / 2, startY + playH * 2 + gap * 3 + 48, {
-            label: 'EXIT',
-            width: btnW - 60,
-            height: 42,
-            onPress: () => this.exitGame(),
-          }),
-        );
+        heights.push(40);
+      }
+      const stackH = heights.reduce((sum, h) => sum + h, 0) + gap * (heights.length - 1);
+      const startY = height - 22 - stackH + heights[0] / 2;
+      const btnW = Math.min(340, width - 60);
+      let y = startY;
+      const place = (label: string, h: number, widthScale: number, primary: boolean, onPress: () => void) => {
+        const button = new ActionButton(this, width / 2, y, {
+          label,
+          width: btnW - widthScale,
+          height: h,
+          primary,
+          onPress,
+        });
+        y += h + gap;
+        return button;
+      };
+      this.buttons = [
+        place('PLAY', heights[0], 0, true, () => this.openPlay()),
+        place('SIMULATOR', heights[1], 10, false, () => this.openSimulator()),
+        place('PLAY TEST', heights[2], 10, false, () => this.openPlayTest()),
+        place('SETTINGS', heights[3], 30, false, () => this.openSettings()),
+      ];
+      if (showExit) {
+        this.buttons.push(place('EXIT', heights[4], 60, false, () => this.exitGame()));
       }
     } else {
       const leftCenterX = Math.max(185, Math.min(220, width * 0.22));
-      const playY = height * 0.46;
-      const step = Math.min(62, height * 0.105);
+      const playY = height * 0.42;
+      const step = Math.min(52, height * 0.088);
       this.buttons = [
         new ActionButton(this, leftCenterX + 25, playY, {
           label: 'PLAY',
           width: Math.min(330, width * 0.36),
-          height: Math.min(64, height * 0.12),
+          height: Math.min(58, height * 0.1),
           primary: true,
           onPress: () => this.openPlay(),
         }),
-        new ActionButton(this, leftCenterX + 21, playY + step, {
+        new ActionButton(this, leftCenterX + 23, playY + step, {
+          label: 'SIMULATOR',
+          width: Math.min(320, width * 0.35),
+          height: Math.min(50, height * 0.09),
+          onPress: () => this.openSimulator(),
+        }),
+        new ActionButton(this, leftCenterX + 21, playY + step * 2, {
           label: 'PLAY TEST',
           width: Math.min(310, width * 0.34),
-          height: Math.min(52, height * 0.1),
+          height: Math.min(48, height * 0.085),
           onPress: () => this.openPlayTest(),
         }),
-        new ActionButton(this, leftCenterX + 17, playY + step * 2, {
+        new ActionButton(this, leftCenterX + 17, playY + step * 3, {
           label: 'SETTINGS',
           width: Math.min(290, width * 0.32),
-          height: Math.min(48, height * 0.09),
+          height: Math.min(44, height * 0.08),
           onPress: () => this.openSettings(),
         }),
       ];
 
       if (!isTouchPrimary()) {
         this.buttons.push(
-          new ActionButton(this, leftCenterX + 9, playY + step * 3, {
+          new ActionButton(this, leftCenterX + 9, playY + step * 4, {
             label: 'EXIT',
             width: Math.min(250, width * 0.28),
-            height: Math.min(42, height * 0.08),
+            height: Math.min(40, height * 0.07),
             onPress: () => this.exitGame(),
           }),
         );
@@ -272,7 +270,12 @@ export class MainMenuScene extends Phaser.Scene {
       fontStyle: 'bold',
       color: hex(COLORS.paper),
     });
-    this.add.text(x + 28, y + 312, 'PLAY TEST keeps the combat sandbox.', {
+    this.add.text(x + 28, y + 312, 'SIMULATOR watches a CPU 3v3.', {
+      fontFamily: FONTS.body,
+      fontSize: '13px',
+      color: hex(COLORS.muted),
+    });
+    this.add.text(x + 28, y + 332, 'PLAY TEST keeps the combat sandbox.', {
       fontFamily: FONTS.body,
       fontSize: '13px',
       color: hex(COLORS.muted),
@@ -387,6 +390,10 @@ export class MainMenuScene extends Phaser.Scene {
 
   private openPlay(): void {
     this.leaveTo('CharacterSelect');
+  }
+
+  private openSimulator(): void {
+    this.leaveTo('SimulatorSetup');
   }
 
   private openPlayTest(): void {

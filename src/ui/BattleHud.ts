@@ -62,7 +62,7 @@ export class BattleHud {
       .setDepth(102);
 
     this.verbText = scene.add
-      .text(width - 30, 82, this.touch ? 'HOLD SHIELD   DASH 3/3' : 'HOLD K SHIELD   L DASH   Q/E/F ABILITIES', {
+      .text(width - 30, 82, this.touch ? 'HOLD SHIELD   DASH 3/3' : 'HOLD SPACE SHIELD   SHIFT DASH   Q/E/F ABILITIES', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -123,6 +123,7 @@ export class BattleHud {
     comboStep: number,
     block: BlockController,
     dash: DashController,
+    spectator = false,
   ): void {
     this.ninjaFill.width = 224 * (ninja.health / ninja.stats.maxHealth);
     this.staminaFill.width = 224 * (ninja.stamina / ninja.stats.maxStamina);
@@ -145,13 +146,17 @@ export class BattleHud {
 
     this.comboText.setText(comboLabel(comboStep));
     this.comboText.setColor(hex(comboStep === 3 ? COLORS.yellow : COLORS.orange));
-    const idleShield = this.touch ? 'HOLD SHIELD' : 'HOLD K SHIELD';
+    if (spectator) {
+      this.verbText.setText('');
+      return;
+    }
+    const idleShield = this.touch ? 'HOLD SHIELD' : 'HOLD SPACE SHIELD';
     const shieldBit = block.isActive(now) ? (block.isPerfect(now) ? 'PERFECT' : 'SHIELD') : idleShield;
     const dashBit = dash.isActive(now)
       ? 'DASHING'
       : this.touch
         ? `DASH ${dash.chargeCount}/${dash.maxCharges}`
-        : `L DASH ${dash.chargeCount}/${dash.maxCharges}`;
+        : `SHIFT DASH ${dash.chargeCount}/${dash.maxCharges}`;
     const abilityBit = this.touch ? '' : '   Q E F';
     this.verbText.setText(`${shieldBit}   ${dashBit}${abilityBit}`);
   }

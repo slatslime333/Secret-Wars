@@ -20,5 +20,8 @@ export {
   displayedRatingsForHero,
   ratingsFromGameplay,
   fromStatRating,
+  overallRating,
+  powerPoints,
+  POWER_POINTS_MAX,
 } from './ratings';
 export type { CoreRatings, CoreStatId } from './ratings';

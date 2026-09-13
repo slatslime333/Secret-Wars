@@ -10,6 +10,7 @@ import { MainMenuScene } from './scenes/MainMenuScene';
 import { MatchScene } from './scenes/MatchScene';
 import { SettingsScene } from './scenes/SettingsScene';
 import { ControlLayoutScene } from './scenes/ControlLayoutScene';
+import { SimulatorSetupScene } from './scenes/SimulatorSetupScene';
 import { TitleScene } from './scenes/TitleScene';
 import { getGameSize } from './ui/theme';
 
@@ -59,7 +60,7 @@ const game = new Phaser.Game({
       debug: false,
     },
   },
-  scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, ControlLayoutScene, CharacterSelectScene, BattleScene, MatchScene],
+  scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, ControlLayoutScene, CharacterSelectScene, SimulatorSetupScene, BattleScene, MatchScene],
 });
 
 (window as Window & { secretWars?: Phaser.Game }).secretWars = game;

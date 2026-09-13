@@ -105,6 +105,22 @@ export class AbilityButton {
     this.drawOverlay(state);
   }
 
+  setVisible(visible: boolean): void {
+    this.art.setVisible(visible);
+    this.overlay.setVisible(visible);
+    this.icon.setVisible(visible);
+    this.timer.setVisible(visible);
+    this.zone.setVisible(visible);
+    if (visible) {
+      this.zone.setInteractive(
+        new Phaser.Geom.Circle(this.radius, this.radius, this.radius),
+        Phaser.Geom.Circle.Contains,
+      );
+    } else {
+      this.zone.disableInteractive();
+    }
+  }
+
   destroy(): void {
     this.art.destroy();
     this.overlay.destroy();

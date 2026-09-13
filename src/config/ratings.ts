@@ -176,3 +176,13 @@ export const displayedRatingsForHero = (
 };
 
 export const formatRating = (rating: number): string => `${clampRating(Math.round(rating))}/${RATING_CAP}`;
+
+/** Sum of the eight displayed core ratings. */
+export const powerPoints = (ratings: CoreRatings): number =>
+  CORE_STAT_ORDER.reduce((sum, id) => sum + Math.round(clampRating(ratings[id])), 0);
+
+/** Average of the eight displayed core ratings, still on the 0–99 scale. */
+export const overallRating = (ratings: CoreRatings): number =>
+  Math.round(powerPoints(ratings) / CORE_STAT_ORDER.length);
+
+export const POWER_POINTS_MAX = RATING_CAP * CORE_STAT_ORDER.length;

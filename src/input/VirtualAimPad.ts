@@ -136,6 +136,22 @@ export class VirtualAimPad {
     this.knob.setAlpha(dimmed ? 0.4 : 1);
   }
 
+  setVisible(visible: boolean): void {
+    this.art.setVisible(visible);
+    this.fill.setVisible(visible);
+    this.label.setVisible(visible);
+    this.zone.setVisible(visible);
+    if (!visible) {
+      this.knob.setVisible(false);
+      this.zone.disableInteractive();
+      return;
+    }
+    this.zone.setInteractive(
+      new Phaser.Geom.Circle(this.radius, this.radius, this.radius),
+      Phaser.Geom.Circle.Contains,
+    );
+  }
+
   destroy(): void {
     this.stopListening();
     this.zone.off(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this.onDown, this);
