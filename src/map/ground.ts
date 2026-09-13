@@ -4,50 +4,134 @@ import { COLORS } from '../ui/theme';
 import { SeededRNG } from './seed';
 import type { MapLayout } from './types';
 
-const GRASS_KEY = 'sw-calm-grass-v4';
-const TILE = 256;
+const GRASS_KEY = 'sw-pixel-grass-v3';
+const TILE = 512;
 
-const tone = (value: number): number => {
-  const t = Math.max(-1, Math.min(1, value));
-  const r = Math.round(54 + t * 6);
-  const g = Math.round(98 + t * 8);
-  const b = Math.round(50 + t * 5);
-  return (r << 16) | (g << 8) | b;
+/** Muted medium/dark greens. Close together so the field stays readable. */
+const GRASS = {
+  deep: 0x243e22,
+  dark: 0x2c4a29,
+  base: 0x365a32,
+  mid: 0x3c6337,
+  light: 0x466a3d,
+  blade: 0x2f522c,
+  bladeTip: 0x4a7040,
+} as const;
+
+const FLOWER_COLORS = [
+  0xe4dcc8, // white
+  0xd4c06a, // soft yellow
+  0xc49a9c, // muted pink
+  0xb4a4c6, // light purple
+  0x8eacc0, // light blue
+] as const;
+
+const unpack = (color: number): [number, number, number] => [
+  (color >> 16) & 255,
+  (color >> 8) & 255,
+  color & 255,
+];
+
+const hash01 = (ix: number, iy: number, salt: number): number => {
+  let n = Math.imul(ix + 374761393, 1597334677) ^ Math.imul(iy + 668265263, 3812015801) ^ salt;
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+};
+
+const wrapIndex = (v: number): number => ((v % TILE) + TILE) % TILE;
+
+const put = (data: Uint8ClampedArray, x: number, y: number, color: number): void => {
+  const i = (wrapIndex(y) * TILE + wrapIndex(x)) * 4;
+  const [r, g, b] = unpack(color);
+  data[i] = r;
+  data[i + 1] = g;
+  data[i + 2] = b;
+  data[i + 3] = 255;
+};
+
+const blade = (data: Uint8ClampedArray, x: number, y: number, h: number): void => {
+  put(data, x, y, GRASS.blade);
+  for (let i = 1; i < h; i += 1) {
+    put(data, x, y - i, i === h - 1 ? GRASS.bladeTip : GRASS.blade);
+  }
+};
+
+const paintGrassTile = (ctx: CanvasRenderingContext2D): void => {
+  ctx.imageSmoothingEnabled = false;
+  const image = ctx.createImageData(TILE, TILE);
+  const data = image.data;
+
+  // Even base with sparse 1–2px specks. No large noise continents, so the
+  // 512px tile does not read as a repeating camouflage pattern in-match.
+  for (let y = 0; y < TILE; y += 1) {
+    for (let x = 0; x < TILE; x += 1) {
+      const speck = hash01(x, y, 0xc0ff);
+      let color: number = GRASS.base;
+      if (speck < 0.045) {
+        color = GRASS.dark;
+      } else if (speck < 0.07) {
+        color = GRASS.mid;
+      } else if (speck > 0.975) {
+        color = GRASS.light;
+      }
+      put(data, x, y, color);
+    }
+  }
+
+  for (let y = 0; y < TILE; y += 1) {
+    for (let x = 0; x < TILE; x += 1) {
+      if (hash01(x, y, 0xc0ff) >= 0.045) {
+        continue;
+      }
+      if (hash01(x, y, 0x11a3) < 0.45) {
+        put(data, x + 1, y, GRASS.dark);
+      }
+      if (hash01(x, y, 0x22b4) < 0.28) {
+        put(data, x, y + 1, GRASS.deep);
+      }
+    }
+  }
+
+  for (let i = 0; i < 52; i += 1) {
+    const x = Math.floor(hash01(i, 7, 0x91) * TILE);
+    const y = Math.floor(hash01(i, 11, 0x92) * TILE);
+    put(data, x, y, GRASS.deep);
+    put(data, x + 1, y, GRASS.dark);
+    put(data, x, y + 1, GRASS.dark);
+  }
+
+  for (let i = 0; i < 168; i += 1) {
+    const x = Math.floor(hash01(i, 19, 0x11) * TILE);
+    const y = Math.floor(hash01(i, 23, 0x22) * TILE);
+    const count = 2 + Math.floor(hash01(i, 29, 0x33) * 3);
+    for (let n = 0; n < count; n += 1) {
+      const ox = x + n * 2 - 1;
+      const h = 2 + Math.floor(hash01(i, n, 0x44) * 3);
+      blade(data, ox, y, h);
+    }
+  }
+
+  for (let i = 0; i < 210; i += 1) {
+    const x = Math.floor(hash01(i, 41, 0x55) * TILE);
+    const y = Math.floor(hash01(i, 43, 0x66) * TILE);
+    blade(data, x, y, 2 + Math.floor(hash01(i, 53, 0x88) * 3));
+  }
+
+  ctx.putImageData(image, 0, 0);
 };
 
 const ensureGrassTexture = (scene: Phaser.Scene): void => {
   if (scene.textures.exists(GRASS_KEY)) {
-    scene.textures.remove(GRASS_KEY);
+    return;
   }
   const canvas = scene.textures.createCanvas(GRASS_KEY, TILE, TILE);
   const ctx = canvas?.getContext();
   if (!canvas || !ctx) {
     return;
   }
-  ctx.fillStyle = '#3a6234';
-  ctx.fillRect(0, 0, TILE, TILE);
-  const patch = 32;
-  for (let y = 0; y < TILE; y += patch) {
-    const stagger = ((y / patch) % 2) * 16;
-    for (let x = -stagger; x < TILE; x += patch) {
-      const u = (x / TILE) * Math.PI * 2;
-      const v = (y / TILE) * Math.PI * 2;
-      const wave = Math.sin(u * 0.8 + v * 0.45) * 0.75 + Math.sin(u * 0.35 - v * 0.7) * 0.25;
-      ctx.fillStyle = `#${tone(wave).toString(16).padStart(6, '0')}`;
-      ctx.fillRect(x, y, patch, patch);
-    }
-  }
-  for (let y = 8; y < TILE; y += 19) {
-    for (let x = 11; x < TILE; x += 23) {
-      const u = (x / TILE) * Math.PI * 2;
-      const v = (y / TILE) * Math.PI * 2;
-      if (Math.sin(u * 3 + v * 2) > 0.55) {
-        ctx.fillStyle = '#2f522c';
-        ctx.fillRect(x, y, 2, 2);
-      }
-    }
-  }
+  paintGrassTile(ctx);
   canvas.refresh();
+  scene.textures.get(GRASS_KEY).setFilter(Phaser.Textures.FilterMode.NEAREST);
 };
 
 const drawPerimeter = (graphics: Phaser.GameObjects.Graphics): void => {
@@ -78,31 +162,145 @@ const drawPerimeter = (graphics: Phaser.GameObjects.Graphics): void => {
   graphics.strokeRect(wall, wall, width - wall * 2, height - wall * 2);
 };
 
+const drawFlower = (graphics: Phaser.GameObjects.Graphics, x: number, y: number, color: number): void => {
+  graphics.fillStyle(GRASS.dark, 1);
+  graphics.fillRect(x, y + 2, 1, 2);
+  graphics.fillStyle(color, 1);
+  graphics.fillRect(x, y, 1, 1);
+  graphics.fillRect(x - 1, y + 1, 1, 1);
+  graphics.fillRect(x + 1, y + 1, 1, 1);
+  graphics.fillStyle(0xf2ead4, 1);
+  graphics.fillRect(x, y + 1, 1, 1);
+};
+
+const inKeepout = (layout: MapLayout, x: number, y: number): boolean => {
+  const wall = ARENA.wallThickness + 8;
+  if (x < wall || y < wall || x > ARENA.width - wall || y > ARENA.height - wall) {
+    return true;
+  }
+  for (const zone of layout.spawnZones) {
+    const pad = zone.role === 'hero' ? 36 : 20;
+    if (Math.hypot(x - zone.x, y - zone.y) < pad) {
+      return true;
+    }
+  }
+  for (const obs of layout.obstacles) {
+    const box = obs.collision;
+    if (x >= box.x - 8 && x <= box.x + box.w + 8 && y >= box.y - 8 && y <= box.y + box.h + 8) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const scatterWorldTufts = (graphics: Phaser.GameObjects.Graphics, layout: MapLayout): void => {
+  const rng = new SeededRNG(layout.seed ^ 0x4e11);
+  const step = 54;
+  const wall = ARENA.wallThickness + 8;
+  for (let y = wall; y < ARENA.height - wall; y += step) {
+    for (let x = wall; x < ARENA.width - wall; x += step) {
+      if (!rng.chance(0.38)) {
+        continue;
+      }
+      const px = x + rng.int(-18, 18);
+      const py = y + rng.int(-18, 18);
+      if (inKeepout(layout, px, py)) {
+        continue;
+      }
+      const blades = rng.int(2, 3);
+      graphics.fillStyle(GRASS.blade, 1);
+      for (let n = 0; n < blades; n += 1) {
+        const bx = px + n * 2;
+        const h = rng.int(2, 4);
+        graphics.fillRect(bx, py - h + 2, 1, h);
+      }
+      graphics.fillStyle(GRASS.bladeTip, 1);
+      graphics.fillRect(px, py - rng.int(1, 2), 1, 1);
+    }
+  }
+};
+
+const scatterFlowers = (graphics: Phaser.GameObjects.Graphics, layout: MapLayout): void => {
+  const rng = new SeededRNG(layout.seed ^ 0x7f11e);
+  const step = 78;
+  const wall = ARENA.wallThickness + 10;
+  for (let y = wall; y < ARENA.height - wall; y += step) {
+    for (let x = wall; x < ARENA.width - wall; x += step) {
+      const jitterX = x + rng.int(-22, 22);
+      const jitterY = y + rng.int(-22, 22);
+      if (!rng.chance(0.16) || inKeepout(layout, jitterX, jitterY)) {
+        continue;
+      }
+      const color = rng.pick(FLOWER_COLORS);
+      drawFlower(graphics, jitterX, jitterY, color);
+      if (rng.chance(0.22)) {
+        const extra = rng.int(1, 2);
+        for (let n = 0; n < extra; n += 1) {
+          const cx = jitterX + rng.int(-7, 7);
+          const cy = jitterY + rng.int(-5, 6);
+          if (inKeepout(layout, cx, cy)) {
+            continue;
+          }
+          drawFlower(graphics, cx, cy, rng.chance(0.55) ? color : rng.pick(FLOWER_COLORS));
+        }
+      }
+    }
+  }
+};
+
+const drawDirtSpeck = (graphics: Phaser.GameObjects.Graphics, x: number, y: number): void => {
+  graphics.fillStyle(0x5a4e38, 1);
+  graphics.fillRect(x, y, 1, 1);
+  graphics.fillStyle(0x4a4030, 1);
+  graphics.fillRect(x + 1, y, 1, 1);
+};
+
 const drawDecorations = (graphics: Phaser.GameObjects.Graphics, layout: MapLayout): void => {
   const rng = new SeededRNG(layout.seed ^ 0x51c3);
   for (const mark of layout.decorations) {
     if (mark.kind === 'dirt') {
-      graphics.fillStyle(0x6a5a3e, 0.18 + mark.variant * 0.04);
-      graphics.fillEllipse(mark.x, mark.y, 86 + mark.variant * 10, 36 + mark.variant * 6);
+      const w = 28 + mark.variant * 6;
+      const h = 12 + mark.variant * 3;
+      const count = 18 + mark.variant * 4;
+      for (let i = 0; i < count; i += 1) {
+        const px = Math.round(mark.x + rng.float(-w, w));
+        const py = Math.round(mark.y + rng.float(-h, h));
+        drawDirtSpeck(graphics, px, py);
+      }
       continue;
     }
     if (mark.kind === 'rock') {
-      graphics.fillStyle(0x5a5348, 0.9);
+      graphics.fillStyle(0x5a5348, 1);
       graphics.fillRect(mark.x - 3, mark.y - 2, 7 + mark.variant, 4);
-      graphics.fillStyle(0x2c2820, 0.8);
+      graphics.fillStyle(0x2c2820, 1);
       graphics.fillRect(mark.x - 2, mark.y + 2, 6, 1);
       continue;
     }
-    if (mark.kind === 'flower' && rng.chance(0.7)) {
-      graphics.fillStyle(mark.variant === 1 ? 0xd8c46a : 0xd8d2c0, 0.85);
-      graphics.fillRect(mark.x, mark.y, 2, 2);
+    if (mark.kind === 'tuft') {
+      graphics.fillStyle(GRASS.blade, 1);
+      graphics.fillRect(mark.x, mark.y, 1, 3);
+      graphics.fillRect(mark.x + 2, mark.y + 1, 1, 3);
+      graphics.fillStyle(GRASS.bladeTip, 1);
+      graphics.fillRect(mark.x, mark.y - 1, 1, 1);
+      graphics.fillRect(mark.x + 2, mark.y, 1, 1);
+    }
+  }
+};
+
+const drawMidfieldDust = (graphics: Phaser.GameObjects.Graphics, layout: MapLayout): void => {
+  const rng = new SeededRNG(layout.seed ^ 0x33aa);
+  const cx = ARENA.width / 2;
+  const cy = ARENA.height / 2;
+  for (let i = 0; i < 70; i += 1) {
+    const ang = rng.float(0, Math.PI * 2);
+    const rx = rng.float(0, 1) ** 0.6 * 190;
+    const ry = rng.float(0, 1) ** 0.6 * 78;
+    const x = Math.round(cx + Math.cos(ang) * rx);
+    const y = Math.round(cy + Math.sin(ang) * ry);
+    if (inKeepout(layout, x, y)) {
       continue;
     }
-    if (mark.kind === 'tuft') {
-      graphics.fillStyle(0x2f552c, 0.45);
-      graphics.fillRect(mark.x, mark.y, 2, 4);
-      graphics.fillRect(mark.x + 3, mark.y + 1, 2, 3);
-    }
+    drawDirtSpeck(graphics, x, y);
   }
 };
 
@@ -115,21 +313,19 @@ export const createCalmGround = (scene: Phaser.Scene, layout: MapLayout): Ground
   const tile = scene.add
     .tileSprite(ARENA.width / 2, ARENA.height / 2, ARENA.width, ARENA.height, GRASS_KEY)
     .setDepth(0);
-  const overlay = scene.add.graphics().setDepth(1);
-  overlay.fillStyle(0x0a140d);
-  overlay.fillRect(0, 0, ARENA.width, ARENA.wallThickness);
-  drawDecorations(overlay, layout);
-  drawPerimeter(overlay);
+  tile.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
 
-  const center = scene.add.graphics().setDepth(1);
-  center.fillStyle(0x6d5c3f, 0.16);
-  center.fillEllipse(ARENA.width / 2, ARENA.height / 2, 420, 190);
+  const overlay = scene.add.graphics().setDepth(1);
+  drawDecorations(overlay, layout);
+  drawMidfieldDust(overlay, layout);
+  scatterWorldTufts(overlay, layout);
+  scatterFlowers(overlay, layout);
+  drawPerimeter(overlay);
 
   return {
     destroy: () => {
       tile.destroy();
       overlay.destroy();
-      center.destroy();
     },
   };
 };
