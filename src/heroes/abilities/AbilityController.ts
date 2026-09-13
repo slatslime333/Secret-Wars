@@ -6,6 +6,7 @@ import {
   ActiveAbility,
   HeroAbilityKit,
   SLOT_ORDER,
+  canStartAbility,
   defForSlot,
 } from './types';
 import { moveAbilityAudio, startAbilityAudio, stopAbilityAudio } from '../../audio';
@@ -53,6 +54,9 @@ export class AbilityController {
 
   tryActivate(slot: AbilitySlot, ctx: AbilityContext): boolean {
     if (this.active?.control.abilities) {
+      return false;
+    }
+    if (!canStartAbility(ctx)) {
       return false;
     }
     const def = defForSlot(this.kit, slot);

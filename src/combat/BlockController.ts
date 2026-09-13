@@ -12,11 +12,13 @@ export type BlockAbsorbResult = {
 
 /**
  * Hold-to-block directional shield.
- * Holding does not drain stamina. A Perfect Shield is only the brief raise window.
+ * Holding drains the shared stamina pool. Blocked hits spend extra stamina.
+ * Walking remains allowed while the shield is up.
  */
 export class BlockController {
   private holding = false;
   private raisedAt = -9999;
+  private drainAcc = 0;
   private readonly shield: Phaser.GameObjects.Graphics;
 
   constructor(scene: Phaser.Scene) {
@@ -25,27 +27,40 @@ export class BlockController {
 
   setHeld(now: number, ninja: NinjaBody, held: boolean): void {
     if (!held || ninja.down || ninja.status.isBlockStunned(now)) {
-      this.holding = false;
+      this.drop(ninja);
       return;
     }
     if (ninja.stamina < COMBAT.blockMinStamina) {
-      this.holding = false;
+      this.drop(ninja);
       return;
     }
     if (!this.holding) {
       this.holding = true;
       this.raisedAt = now;
+      this.drainAcc = 0;
+      ninja.blocking = true;
       spawnCombatCallout(this.shield.scene, ninja.x, ninja.y, 'SHIELD', COLORS.cyan);
     }
   }
 
-  tick(_deltaMs: number, _now: number, ninja: NinjaBody): void {
+  tick(deltaMs: number, now: number, ninja: NinjaBody): void {
     if (!this.holding) {
+      ninja.blocking = false;
       return;
     }
+    if (ninja.down || ninja.status.isBlockStunned(now)) {
+      this.drop(ninja);
+      return;
+    }
+    this.drainAcc += COMBAT.blockDrainPerSecond * (deltaMs / 1000);
+    const spent = Math.floor(this.drainAcc);
+    if (spent > 0) {
+      this.drainAcc -= spent;
+      ninja.drainStamina(spent, now);
+    }
     if (ninja.stamina < COMBAT.blockMinStamina) {
-      this.holding = false;
       spawnCombatCallout(this.shield.scene, ninja.x, ninja.y, 'SHIELD BREAK', COLORS.orange);
+      this.drop(ninja);
     }
   }
 
@@ -89,5 +104,11 @@ export class BlockController {
     this.shield.beginPath();
     this.shield.arc(0, 0, 24, angle - 0.95, angle + 0.95);
     this.shield.strokePath();
+  }
+
+  private drop(ninja: NinjaBody): void {
+    this.holding = false;
+    this.drainAcc = 0;
+    ninja.blocking = false;
   }
 }

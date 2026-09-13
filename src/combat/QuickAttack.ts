@@ -22,6 +22,7 @@ import { Projectile } from './projectile';
 import { WitchSkullBarrage } from './WitchSkullBarrage';
 import { SHADOW_ATTACK } from '../heroes/abilities/shadow/tunables';
 import { spawnShadowSlash } from '../heroes/abilities/shadow/clawFx';
+import { emitWorldStrike } from '../match/objectives/worldStrike';
 
 type PendingImpact = {
   at: number;
@@ -357,6 +358,13 @@ export class QuickAttack {
     }
 
     attacker.applyLungeImpulse(now, pending.step);
+    emitWorldStrike({
+      attacker,
+      now,
+      damage: attacker.stats.attackDamage * profile.damageMultiplier,
+      reach: attacker.stats.attackRange + COMBAT.hitForgiveness,
+      kind: 'melee',
+    });
 
     if (attacker.heroId === 'cole') {
       this.resolveColeImpact(now, attacker, enemies, pending.step, defenderBlock);

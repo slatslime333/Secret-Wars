@@ -109,17 +109,22 @@ export type AbilitySlotState = {
 
 export const SLOT_ORDER: AbilitySlot[] = ['ability1', 'ability2', 'ultimate'];
 
-/** Abilities stay usable while taking damage unless paralyzed or animation-locked. */
+/** True when another fighter has locked this caster out of acting. */
+export const isEnemyActionLocked = (ctx: AbilityContext): boolean =>
+  ctx.caster.status.isEnemyActionLocked(ctx.now);
+
+/**
+ * Abilities stay usable while taking damage unless an enemy has locked the
+ * caster (stun / paralyze / hit reaction) or a control lock is active.
+ * Own attack recovery does not use this gate.
+ */
 export const canStartAbility = (ctx: AbilityContext): boolean => {
   const { caster, now } = ctx;
   return (
     !caster.down &&
     caster.isPresent &&
-    !caster.status.isParalyzed(now) &&
-    !caster.status.isStunned(now) &&
-    !caster.status.isControlLocked(now) &&
-    !caster.status.isBlockStunned(now) &&
-    !caster.status.isClashLocked(now)
+    !caster.status.isEnemyActionLocked(now) &&
+    !caster.status.isControlLocked(now)
   );
 };
 

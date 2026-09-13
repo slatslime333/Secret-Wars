@@ -10,6 +10,7 @@ import { battlefieldOf } from '../map';
 import { CombatDriver } from './combatDriver';
 import { TacticalField } from './tactical/field';
 import { TacticalMind } from './tactical/mind';
+import { MovementCommit } from './tactical/locomotion';
 import { moveGoal } from './tactical/move';
 import type { TacticalDebugInfo } from './tactical/types';
 
@@ -20,10 +21,13 @@ import type { TacticalDebugInfo } from './tactical/types';
 export class RivalBrain {
   private tapQueued = false;
   private holdUntil = 0;
+  private pauseUntil = 0;
+  private hitsIntoBlock = 0;
   private readonly chase = new Phaser.Math.Vector2();
   private readonly foes: NinjaBody[] = [];
   readonly mind: TacticalMind;
   private readonly combat = new CombatDriver();
+  private readonly loco: MovementCommit;
 
   constructor(
     private readonly attacks: QuickAttack,
@@ -36,6 +40,7 @@ export class RivalBrain {
   ) {
     const pad = ARENA.teamSpawns.bravo;
     this.mind = new TacticalMind('hero', seed, pad.x, pad.y);
+    this.loco = new MovementCommit(this.mind.personality);
   }
 
   debugInfo(cpu: NinjaBody): TacticalDebugInfo {
@@ -51,6 +56,9 @@ export class RivalBrain {
     field.fillEnemies(cpu, this.foes);
     const foes = this.foes;
     cpu.regenHealth(delta, now);
+    if (!this.block.isActive(now)) {
+      cpu.regenStamina(delta, now);
+    }
     this.mind.think(now, cpu, field, scene);
     const target = this.mind.target ?? foes[0];
     if (target) {
@@ -102,7 +110,7 @@ export class RivalBrain {
       return;
     }
 
-    if (cpu.status.shouldLockMovement(now) || this.block.isActive(now)) {
+    if (cpu.status.shouldLockMovement(now)) {
       if (
         !cpu.status.isHitReacting(now) &&
         !cpu.status.isLunging(now) &&
@@ -133,7 +141,7 @@ export class RivalBrain {
   }
 
   private queueSwing(now: number, cpu: NinjaBody, target: NinjaBody | undefined): void {
-    if (!target || !this.mind.wantsAttack() || !cpu.canAttack(now)) {
+    if (!target || !this.mind.wantsAttack() || !cpu.canAttack(now) || now < this.pauseUntil) {
       return;
     }
     const distance = Math.hypot(target.x - cpu.x, target.y - cpu.y);
@@ -142,6 +150,17 @@ export class RivalBrain {
     }
     if (now < this.holdUntil) {
       return;
+    }
+    if (target.blocking) {
+      this.hitsIntoBlock += 1;
+      const notice = 0.42 + this.mind.personality.reactionQuality * 0.38;
+      if (this.hitsIntoBlock >= 1 && Math.random() < notice) {
+        this.pauseUntil = now + 140 + Math.random() * 200;
+        this.holdUntil = this.pauseUntil;
+        return;
+      }
+    } else {
+      this.hitsIntoBlock = 0;
     }
     const roll = Math.random();
     if (target.status.isBlockStunned(now) && roll < 0.7) {
@@ -152,11 +171,12 @@ export class RivalBrain {
     if (this.mind.action === 'wait_for_opening' && !isOpening(now, cpu, target, distance)) {
       return;
     }
-    if (roll < 0.3 + this.mind.personality.caution * 0.12) {
+    if (roll < 0.22 + this.mind.personality.caution * 0.12 + (target.blocking ? 0.2 : 0)) {
+      this.pauseUntil = now + 70 + Math.random() * 130;
       return;
     }
-    this.tapQueued = roll > 0.72;
-    this.holdUntil = now + (this.tapQueued ? 90 : 160 + Math.random() * 140);
+    this.tapQueued = roll > 0.7;
+    this.holdUntil = now + (this.tapQueued ? 90 : 150 + Math.random() * 140);
   }
 
   private walk(now: number, cpu: NinjaBody, scene: Phaser.Scene): void {
@@ -182,7 +202,8 @@ export class RivalBrain {
       this.mind.goal,
       this.mind.moveHint(),
     );
-    if (goal.halt || this.block.isActive(now)) {
+    if (goal.halt) {
+      this.loco.reset();
       cpu.stop();
       return;
     }
@@ -194,11 +215,13 @@ export class RivalBrain {
       dy = dy * 0.35 + strafe.y * 80;
     }
     const len = Math.hypot(dx, dy) || 1;
-    if (len < 10) {
+    if (len < 12) {
+      this.loco.reset();
       cpu.stop();
       return;
     }
-    const steered = battlefieldOf(scene)?.query.steer(cpu.x, cpu.y, dx / len, dy / len) ?? { x: dx / len, y: dy / len };
+    const committed = this.loco.heading(now, dx / len, dy / len, this.mind.personality);
+    const steered = battlefieldOf(scene)?.query.steer(cpu.x, cpu.y, committed.x, committed.y) ?? committed;
     this.chase.set(steered.x, steered.y);
     cpu.applyMove(this.chase);
   }

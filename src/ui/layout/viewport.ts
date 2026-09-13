@@ -92,7 +92,9 @@ export const cameraZoomFor = (width: number, height: number, isMobile: boolean):
   const portrait = height > width;
   const desired = portrait ? clamp(width / 1080, 0.48, 0.7) : clamp(height / 780, 0.64, 0.88);
   const minFit = Math.max(width / ARENA.width, height / ARENA.height);
-  return Math.max(desired, minFit);
+  // Never zoom in past 1:1. A taller-than-arena phone should show extra
+  // empty space rather than enlarging the world and shoving the HUD off-screen.
+  return clamp(Math.max(desired, minFit), 0.01, 1);
 };
 
 export const measureViewport = (width?: number, height?: number): ViewportFrame => {
@@ -107,12 +109,12 @@ export const measureViewport = (width?: number, height?: number): ViewportFrame 
   const minTouch = Math.round(clamp(short * 0.09, 44, 56));
   const uiScale = isMobile ? clamp(Math.min(w / 960, h / 540), 0.72, 1.05) : 1;
   const contentInset = addInsets(safe, { top: pad, right: pad, bottom: pad, left: pad });
-  const hudReserve = isMobile ? (isPortrait ? 102 : 92) : 48;
+  const hudReserve = isMobile ? (isPortrait ? 128 : 96) : 48;
   const controlInset: Insets = {
     top: Math.max(contentInset.top, safe.top + hudReserve),
-    right: Math.max(contentInset.right, safe.right + 10),
-    bottom: Math.max(contentInset.bottom, safe.bottom + 10),
-    left: Math.max(contentInset.left, safe.left + 10),
+    right: Math.max(contentInset.right, safe.right + 12),
+    bottom: Math.max(contentInset.bottom, safe.bottom + (isPortrait ? 18 : 12)),
+    left: Math.max(contentInset.left, safe.left + 12),
   };
 
   return {

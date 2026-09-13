@@ -11,6 +11,7 @@ import { HitKind } from '../../combat/Hurtbox';
 import type { DamageSourceKind } from '../../combat/damageEvents';
 import { playAbilityConnect } from '../../audio';
 import { NinjaBody } from '../NinjaBody';
+import { emitWorldStrike } from '../../match/objectives/worldStrike';
 
 export type AbilityHitProfile = {
   rawDamage: number;
@@ -72,7 +73,13 @@ export const resolveAbilityHit = (
       playAbilityConnect('perfect-block', attacker, defender, { heavy: profile.heavy, sourceKind: profile.sourceKind });
       return 'perfect-block';
     }
-    defender.drainStamina(Math.max(4, Math.round(profile.staminaDamage * 1.4)), now);
+    defender.drainStamina(
+      Math.max(
+        COMBAT.abilityShieldStaminaMin,
+        Math.round(profile.staminaDamage * COMBAT.abilityShieldStaminaMul),
+      ),
+      now,
+    );
     attacker.applyRecoil(-attacker.aim.x, -attacker.aim.y, COMBAT.shieldHitRecoilLight);
     defender.applyRecoil(-defender.aim.x, -defender.aim.y, COMBAT.blockPushLight);
     playHitJuice(scene, defender.x, defender.y, {
@@ -118,5 +125,12 @@ export const resolveAbilityHit = (
     attacker.status.applyHitStop(now, profile.hitStopMs ?? (profile.heavy ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs));
   }
   playAbilityConnect('hit', attacker, defender, { heavy: profile.heavy, sourceKind: profile.sourceKind });
+  emitWorldStrike({
+    attacker,
+    now,
+    damage: profile.rawDamage,
+    reach: attacker.stats.attackRange + COMBAT.hitForgiveness,
+    kind: 'ability',
+  });
   return 'hit';
 };

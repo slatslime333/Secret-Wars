@@ -12,6 +12,7 @@ export const NINJA_BASE_RANGE = MELEE_BASE_RANGE;
 export const NINJA_RATINGS = {
   health: 48,
   stamina: 55,
+  staminaRegen: 76,
   damage: 45,
   defense: 45,
   speed: 80,
@@ -32,9 +33,8 @@ export const NINJA = {
   attackRange: Math.round(ninjaGameplay.attackRange * 1.15 * 1.13),
   attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 14,
-  /** Not a displayed core stat. Kept at the live regen rate. */
   /** Fastest practical regen on the roster. Costs stay efficient via attackStaminaMul. */
-  staminaRegenPerSecond: 14 + (26 - 14) * (70 / 99),
+  staminaRegenPerSecond: ninjaGameplay.staminaRegenPerSecond,
   /** Best light-attack stamina efficiency. */
   attackStaminaMul: 0.85,
   dashMaxCharges: 4,

@@ -43,6 +43,7 @@ import { ScoreManager } from '../match/ScoreManager';
 import { CombatStatsTracker } from '../match/CombatStatsTracker';
 import { WaveDirector } from '../match/WaveDirector';
 import { XpOrbWorld } from '../match/XpOrbWorld';
+import { ObjectiveManager } from '../match/objectives/ObjectiveManager';
 import { buildMatchGameState, type MatchGameState } from '../match/MatchQuery';
 import { SpectatorCamera } from '../match/SpectatorCamera';
 import {
@@ -103,6 +104,7 @@ export class MatchScene extends Phaser.Scene {
   private stats!: CombatStatsTracker;
   private waves!: WaveDirector;
   private orbs!: XpOrbWorld;
+  private objectives?: ObjectiveManager;
   private offDamage?: () => void;
   private offBlocked?: () => void;
   private heroGroup?: Phaser.Physics.Arcade.Group;
@@ -123,8 +125,9 @@ export class MatchScene extends Phaser.Scene {
     ensureAbilityIcons(this);
     setSelectedHeroId(this.startHeroId);
     const hero = PLAYABLE_HEROES[this.startHeroId];
-    this.battlefield = Battlefield.install(this, { seed: resolvePlayTestSeed(), log: true });
-    rememberPlayTestSeed(this.battlefield.result.seed);
+    const battlefield = Battlefield.install(this, { seed: resolvePlayTestSeed(), log: true });
+    this.battlefield = battlefield;
+    rememberPlayTestSeed(battlefield.result.seed);
     this.physics.world.setBounds(
       ARENA.wallThickness,
       ARENA.wallThickness,
@@ -140,6 +143,17 @@ export class MatchScene extends Phaser.Scene {
     this.abilityWorld.minionWorld = this.minions;
     this.waves = new WaveDirector(this.minions);
     this.orbs = new XpOrbWorld(this, (grant) => this.grantMinionReward(grant.target, grant.amount));
+    this.objectives = new ObjectiveManager({
+      scene: this,
+      match: this.match,
+      score: this.score,
+      query: battlefield.query,
+      orbs: this.orbs,
+      heroes: () => this.heroes,
+      grantLevel: (hero) => {
+        hero.progression.giveLevel();
+      },
+    });
     this.minions.onKilled = (event) => {
       if (!event.killer || !isHeroFighter(event.killer) || !event.killer.isPresent || event.killer.down) {
         return;
@@ -230,6 +244,8 @@ export class MatchScene extends Phaser.Scene {
       this.abilityWorld.destroy();
       this.minions.destroy();
       this.orbs.destroy();
+      this.objectives?.destroy();
+      this.objectives = undefined;
       this.abilityTray?.destroy();
       this.minimap?.destroy();
       this.spectatorOverlay?.destroy();
@@ -256,6 +272,7 @@ export class MatchScene extends Phaser.Scene {
     }
 
     if (this.match.finished) {
+      this.objectives?.endMatch();
       this.freezeField();
       this.syncHud(now);
       this.spectatorOverlay.hide();
@@ -266,6 +283,7 @@ export class MatchScene extends Phaser.Scene {
     }
 
     this.waves.update(now);
+    this.objectives?.update(now, delta);
     this.orbs.update(now, delta);
     this.abilityWorld.update(now, this.allCombatants(), delta);
     this.tactics.refresh(now, this.livingFighters());
@@ -300,6 +318,7 @@ export class MatchScene extends Phaser.Scene {
 
     this.spectatorOverlay.hide();
     audio.setListener(this.player.body.x, this.player.body.y);
+    this.inputReader.setAbilitiesLocked(this.player.body.status.isEnemyActionLocked(now));
     const frame = this.inputReader.sample(this.player.body.x, this.player.body.y);
     if (frame.ability1AimActive) {
       this.abilityAim = { x: frame.ability1Aim.x, y: frame.ability1Aim.y };
@@ -376,7 +395,6 @@ export class MatchScene extends Phaser.Scene {
       !control.move &&
       !this.player.dash.isActive(now) &&
       !this.player.body.status.shouldLockMovement(now) &&
-      !this.player.block.isActive(now) &&
       !this.player.body.down
     ) {
       this.player.body.applyMove(frame.move);
@@ -732,6 +750,7 @@ export class MatchScene extends Phaser.Scene {
         player: focus.body,
         heroes: this.heroes.map((unit) => unit.body),
         minions: this.minions.allBodies(),
+        objective: this.objectives?.worldPip(),
       });
     }
     if (spectating) {
@@ -862,6 +881,7 @@ export class MatchScene extends Phaser.Scene {
     this.hud?.placeCombo(width / 2, chrome.comboY);
     this.matchHud?.layout(width, height);
     this.minimap?.layout(width, height);
+    this.objectives?.layout(width, height);
     this.inputReader?.layout(width, height);
     this.layoutAbilityTray(width, height);
     if ((this.simulator || (this.player && !this.player.alive)) && this.spectatorOverlay) {
@@ -964,6 +984,7 @@ export class MatchScene extends Phaser.Scene {
       giveLevel: () => this.player.progression.giveLevel(),
       scores: () => this.score.snapshot(),
       phase: () => this.match.snapshot(),
+      spawnObjective: (kind?: 'capture_zone' | 'golden_piggy') => this.objectives?.debugSpawn(kind),
       toggleAi: () => {
         DEV_CHEATS.showAi = !DEV_CHEATS.showAi;
         return DEV_CHEATS.showAi;

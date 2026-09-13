@@ -34,6 +34,14 @@
         position: fixed;
         inset: 0;
       }
+
+      #game canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
     </style>
   </head>
   <body>
@@ -60,12 +68,12 @@
 
         const css = document.createElement('link');
         css.rel = 'stylesheet';
-        css.href = `${dir}assets/game.css?v=187543e3`;
+        css.href = `${dir}assets/game.css?v=1c357611`;
         document.head.appendChild(css);
 
         const bundle = document.createElement('script');
         bundle.type = 'module';
-        bundle.src = `${dir}assets/game.js?v=187543e3`;
+        bundle.src = `${dir}assets/game.js?v=1c357611`;
         document.body.appendChild(bundle);
       }
     </script>

@@ -5,8 +5,8 @@
  * Tunables live here so knockback, lunges, dash charges, hold-shield,
  * and perfect-shield timing stay out of fighter/attack files.
  *
- * Stamina is combat endurance: light attacks spend it. Raising the shield
- * does not drain the pool; it still drops if stamina hits zero.
+ * Stamina is combat endurance: light attacks spend it. Holding a shield
+ * drains the same pool over time, and blocked hits take extra stamina.
  */
 export const COMBAT = {
   attackArcDegrees: 78,
@@ -21,9 +21,13 @@ export const COMBAT = {
   /** Slightly slower than the converted cooldown so each swing can read. */
   attackCooldownMultiplier: 1.22,
 
-  /** Legacy hold-drain (disabled). Shield no longer spends stamina over time. */
-  blockDrainPerSecond: 0,
-  blockMinStamina: 1,
+  /** Holding the shield spends stamina. Hits on the shield spend extra. */
+  blockDrainPerSecond: 18,
+  /** Need at least this much stamina to raise or keep the shield. */
+  blockMinStamina: 10,
+  /** Ability hits on a raised shield spend this much extra vs HP stamina damage. */
+  abilityShieldStaminaMul: 1.4,
+  abilityShieldStaminaMin: 4,
   /** Raise window for Perfect Shield. Small on purpose — holding is not enough. */
   perfectShieldWindowMs: 110,
   perfectShieldStunMs: 280,

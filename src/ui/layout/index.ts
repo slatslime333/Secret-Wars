@@ -10,3 +10,4 @@ export {
   type Insets,
   type ViewportFrame,
 } from './viewport';
+export { applyBackingStore, displayPixelRatio, installBackingStore } from './backingStore';

@@ -1,6 +1,7 @@
 import type { TeamId } from '../../config/hero';
 import type { HeroRole } from '../../heroes/HeroDefinition';
 import type { NinjaBody } from '../../heroes/NinjaBody';
+import type { ObjectiveHint } from '../../match/objectives/types';
 
 /** High-level choices. Combat execution stays on the existing kits. */
 export type TacticalAction =
@@ -22,7 +23,8 @@ export type TacticalAction =
   | 'intercept'
   | 'recover'
   | 'farm_minions'
-  | 'regroup';
+  | 'regroup'
+  | 'contest_objective';
 
 export type StrategicState =
   | 'opening'
@@ -80,6 +82,9 @@ export type Personality = {
   protectionInstinct: number;
   opportunism: number;
   reactionQuality: number;
+  movementPrecision: number;
+  blockTendency: number;
+  decisionConfidence: number;
 };
 
 export type KitStance = 'melee' | 'skirmish' | 'ranged' | 'support';
@@ -123,7 +128,6 @@ export type GamePlan = {
   regrouping: boolean;
 };
 
-/** Phaser-free snapshot of one combatant for scoring. */
 export type CombatantView = {
   id: number;
   x: number;
@@ -148,6 +152,7 @@ export type CombatantView = {
   canAttack: boolean;
   lastAttackerId: number;
   visible: boolean;
+  blocking: boolean;
 };
 
 export type UnitFact = CombatantView & {
@@ -181,6 +186,7 @@ export type Situation = {
   visibleHeroes?: number;
   allyHeroCount?: number;
   now?: number;
+  objective?: ObjectiveHint;
 };
 
 export type TacticalDebugInfo = {
@@ -222,4 +228,7 @@ export const NEUTRAL_PERSONALITY: Personality = {
   protectionInstinct: 0.5,
   opportunism: 0.5,
   reactionQuality: 0.5,
+  movementPrecision: 0.5,
+  blockTendency: 0.5,
+  decisionConfidence: 0.5,
 };

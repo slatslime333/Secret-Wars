@@ -50,10 +50,11 @@ export const DEATH_SMASH = {
   damageRating: 66,
   damage: abilityDamage(66),
   /**
-   * Hard shove on bat contact. Launch speed, not a map-width send.
+   * Strong shove — heavier than a light, not a map-width launch.
+   * Global launchSpeedCap still applies as a hard ceiling.
    */
-  knockback: 980,
-  launchCap: 1040,
+  knockback: 460,
+  launchCap: 540,
   stunMs: 1300,
   batScale: 2.55,
   windupRad: 2.15,

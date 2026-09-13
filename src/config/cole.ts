@@ -9,6 +9,7 @@ import { gameplayFromRatings, type CoreRatings } from './ratings';
 export const COLE_RATINGS = {
   health: 60,
   stamina: 48,
+  staminaRegen: 54,
   damage: 57,
   defense: 50,
   speed: 48,
@@ -27,7 +28,7 @@ export const COLE = {
   attackArcDegrees: 65,
   bodyRadius: NINJA.bodyRadius,
   staminaRegenPerSecond: 17,
-  /** Baseline light-attack stamina cost. */
-  attackStaminaMul: 1,
+  /** ~6 step-1 punches to 85% of the pool. round(7 × 2.286) = 16. */
+  attackStaminaMul: 16 / 7,
   dashMaxCharges: 2,
 } as const satisfies HeroCombatConfig;

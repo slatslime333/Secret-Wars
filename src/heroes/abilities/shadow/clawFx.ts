@@ -11,39 +11,42 @@ export const spawnShadowSlash = (
 ): void => {
   const g = scene.add.graphics().setDepth(20);
   const angle = Math.atan2(dirY, dirX);
-  const half = giant ? 0.95 : 0.72;
+  const half = giant ? 1.05 : 0.78;
   const anim = { t: 0, alpha: 1 };
   g.setPosition(x, y);
   scene.tweens.add({
     targets: anim,
     t: 1,
     alpha: 0,
-    duration: giant ? 280 : 180,
+    duration: giant ? 520 : 260,
     ease: 'Cubic.Out',
     onUpdate: () => {
       g.clear();
       const a0 = angle - half;
-      const a1 = a0 + half * 2 * anim.t;
-      g.lineStyle(giant ? 18 : 11, 0x120814, 0.42 * anim.alpha);
+      const a1 = a0 + half * 2 * Math.min(1, anim.t * 1.15);
+      const persist = giant ? Math.min(1, anim.alpha * 1.35) : anim.alpha;
+      g.lineStyle(giant ? 22 : 12, 0x120814, 0.5 * persist);
       g.beginPath();
       g.arc(0, 0, radius, a0, a1);
       g.strokePath();
-      g.lineStyle(giant ? 10 : 6, 0x4a2870, 0.82 * anim.alpha);
+      g.lineStyle(giant ? 13 : 7, 0x4a2870, 0.88 * persist);
       g.beginPath();
       g.arc(0, 0, radius, a0, a1);
       g.strokePath();
-      g.lineStyle(giant ? 4 : 2.4, 0xc8b0f0, 0.92 * anim.alpha);
+      g.lineStyle(giant ? 5 : 2.6, 0xe8d8ff, 0.95 * persist);
       g.beginPath();
-      g.arc(0, 0, radius - (giant ? 10 : 6), a0, a1);
+      g.arc(0, 0, radius - (giant ? 12 : 6), a0, a1);
       g.strokePath();
       const claw = a1;
-      for (let i = -1; i <= 1; i += 1) {
-        const a = claw + i * 0.18;
-        const inner = radius * 0.45;
-        const outer = radius * (giant ? 1.08 : 1.02);
-        g.lineStyle(giant ? 4 : 2.4, 0x22102a, 0.5 * anim.alpha);
+      const marks = giant ? 5 : 3;
+      const spread = giant ? 0.2 : 0.18;
+      for (let i = 0; i < marks; i += 1) {
+        const a = claw + (i - (marks - 1) / 2) * spread;
+        const inner = radius * (giant ? 0.28 : 0.45);
+        const outer = radius * (giant ? 1.18 : 1.04);
+        g.lineStyle(giant ? 7 : 2.8, 0x1a0c22, 0.62 * persist);
         g.lineBetween(Math.cos(a) * inner, Math.sin(a) * inner, Math.cos(a) * outer, Math.sin(a) * outer);
-        g.lineStyle(giant ? 2 : 1.4, 0xb8a0e0, 0.8 * anim.alpha);
+        g.lineStyle(giant ? 3.4 : 1.6, 0xd8c4ff, 0.95 * persist);
         g.lineBetween(Math.cos(a) * inner, Math.sin(a) * inner, Math.cos(a) * outer, Math.sin(a) * outer);
       }
     },
@@ -54,25 +57,22 @@ export const spawnShadowSlash = (
 export const drawClawMark = (g: Phaser.GameObjects.Graphics, x: number, y: number, now: number): void => {
   g.clear();
   g.setPosition(x, y);
-  const pulse = 0.55 + Math.sin(now / 120) * 0.12;
-  g.lineStyle(3, 0x140818, 0.45 * pulse);
-  g.beginPath();
-  g.moveTo(-6, -8);
-  g.lineTo(-2, 6);
-  g.moveTo(0, -9);
-  g.lineTo(1, 7);
-  g.moveTo(6, -8);
-  g.lineTo(4, 6);
-  g.strokePath();
-  g.lineStyle(1.6, 0x6a48a0, 0.85 * pulse);
-  g.beginPath();
-  g.moveTo(-6, -8);
-  g.lineTo(-2, 6);
-  g.moveTo(0, -9);
-  g.lineTo(1, 7);
-  g.moveTo(6, -8);
-  g.lineTo(4, 6);
-  g.strokePath();
+  const pulse = 0.62 + Math.sin(now / 120) * 0.14;
+  const draw = (width: number, color: number, alpha: number): void => {
+    g.lineStyle(width, color, alpha * pulse);
+    g.beginPath();
+    g.moveTo(-10, -12);
+    g.lineTo(-4, 10);
+    g.moveTo(-2, -14);
+    g.lineTo(1, 12);
+    g.moveTo(6, -13);
+    g.lineTo(8, 10);
+    g.moveTo(12, -10);
+    g.lineTo(13, 8);
+    g.strokePath();
+  };
+  draw(4.2, 0x140818, 0.5);
+  draw(2.2, 0x8a62c8, 0.92);
 };
 
 export const drawRageFire = (

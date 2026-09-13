@@ -171,7 +171,9 @@ export class BattleHud {
     this.shieldFill.setVisible(shield > 0);
     const stamRatio = ninja.stamina / ninja.stats.maxStamina;
     this.staminaFill.width = this.barWidth * stamRatio;
-    this.staminaFill.setFillStyle(ninja.staminaDeniedRecently(now) ? COLORS.orange : COLORS.cyan);
+    this.staminaFill.setFillStyle(
+      block.isActive(now) ? COLORS.orange : ninja.staminaDeniedRecently(now) ? COLORS.orange : COLORS.cyan,
+    );
     const hpLabel = shield > 0
       ? `${Math.max(0, Math.ceil(ninja.health))} +${Math.ceil(shield)} / ${ninja.stats.maxHealth}`
       : `${Math.max(0, Math.ceil(ninja.health))} / ${ninja.stats.maxHealth}`;

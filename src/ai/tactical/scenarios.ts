@@ -1,6 +1,7 @@
 import { NEUTRAL_PERSONALITY, type CombatantView, type ScoredAction, type Situation, type TacticalAction } from './types';
 import { ensureScoreBuffer, scoreSituation } from './evaluate';
 import { kitProfileOf } from './kitProfile';
+import { OBJECTIVE } from '../../config/objective';
 
 const buffer = ensureScoreBuffer();
 
@@ -24,6 +25,7 @@ const unit = (partial: Partial<CombatantView> & Pick<CombatantView, 'id' | 'team
   canAttack: true,
   lastAttackerId: -1,
   visible: true,
+  blocking: false,
   ...partial,
 });
 
@@ -268,11 +270,11 @@ const scenarioP = (): ScenarioResult => {
     y: 750,
     role: 'ranged-tank',
     heroId: 'witch',
-    attackRange: 220,
+    attackRange: 275,
     hpRatio: 0.86,
   });
   const enemies = [unit({ id: 10, team: 'bravo', x: 430, y: 750, attackRange: 70, hpRatio: 0.9 })];
-  const kit = kitProfileOf('witch', 'ranged-tank', 220);
+  const kit = kitProfileOf('witch', 'ranged-tank', 275);
   const rows = rankActions(situationOf(self, [], enemies, { kit }));
   const ok = among(rows, ['reposition', 'hold_position', 'retreat', 'wait_for_opening', 'escape'], 3);
   return { name: 'P witch spacing', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
@@ -288,6 +290,120 @@ const scenarioQ = (): ScenarioResult => {
   const rows = rankActions(situationOf(self, allies, enemies, { isolated: true, allyHeroCount: 1 }));
   const ok = among(rows, ['regroup', 'retreat', 'escape', 'protect_ally'], 3);
   return { name: 'Q isolated regroup', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioR = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 900, y: 640, hpRatio: 0.9 });
+  const rows = rankActions(
+    situationOf(self, [], [], {
+      objective: {
+        kind: 'capture_zone',
+        x: 980,
+        y: 640,
+        radius: OBJECTIVE.capture.radius,
+        contested: false,
+        decaying: false,
+        owner: null,
+        selfProgress: 0,
+        enemyProgress: 0,
+        occupyingAllies: 0,
+        occupyingEnemies: 0,
+        nearbyAllies: 0,
+        nearbyEnemies: 0,
+        urgency: 0.4,
+      },
+    }),
+  );
+  const contest = scoreOf(rows, 'contest_objective');
+  const ok = contest > 8 && among(rows, ['contest_objective'], 5);
+  return { name: 'R zone is a real option', ok, detail: `best=${best(rows)} contest=${contest.toFixed(1)} top=${rows.slice(0, 4).map((row) => row.action).join(',')}` };
+};
+
+const scenarioS = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 640, hpRatio: 0.1 });
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 520, y: 640, hpRatio: 0.9 }),
+    unit({ id: 11, team: 'bravo', x: 560, y: 620, hpRatio: 0.85 }),
+    unit({ id: 12, team: 'bravo', x: 580, y: 660, hpRatio: 0.8 }),
+  ];
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      objective: {
+        kind: 'capture_zone',
+        x: 1100,
+        y: 640,
+        radius: OBJECTIVE.capture.radius,
+        contested: true,
+        decaying: false,
+        owner: 'bravo',
+        selfProgress: 0,
+        enemyProgress: 0.6,
+        occupyingAllies: 0,
+        occupyingEnemies: 2,
+        nearbyAllies: 0,
+        nearbyEnemies: 3,
+        urgency: 0.7,
+      },
+    }),
+  );
+  const ok = !['contest_objective', 'advance', 'attack'].includes(best(rows)) || among(rows, ['retreat', 'escape', 'recover'], 2);
+  return { name: 'S low HP does not suicide the zone', ok, detail: `best=${best(rows)} top=${rows.slice(0, 4).map((row) => row.action).join(',')}` };
+};
+
+const scenarioT = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 980, y: 640, hpRatio: 0.8, role: 'frontliner' });
+  const rows = rankActions(
+    situationOf(self, [], [], {
+      objective: {
+        kind: 'capture_zone',
+        x: 1020,
+        y: 640,
+        radius: OBJECTIVE.capture.radius,
+        contested: true,
+        decaying: false,
+        owner: 'bravo',
+        selfProgress: 0.2,
+        enemyProgress: 0.9,
+        occupyingAllies: 1,
+        occupyingEnemies: 1,
+        nearbyAllies: 1,
+        nearbyEnemies: 1,
+        urgency: 0.88,
+      },
+    }),
+  );
+  const contest = scoreOf(rows, 'contest_objective');
+  const farm = scoreOf(rows, 'farm_minions');
+  const ok = contest > 12 && contest >= farm && among(rows, ['contest_objective'], 3);
+  return { name: 'T zone near capture is urgent', ok, detail: `best=${best(rows)} contest=${contest.toFixed(1)} farm=${farm.toFixed(1)}` };
+};
+
+const scenarioU = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 980, y: 640, hpRatio: 0.85, role: 'frontliner' });
+  const rows = rankActions(
+    situationOf(self, [], [], {
+      objective: {
+        kind: 'golden_piggy',
+        x: 1020,
+        y: 640,
+        radius: OBJECTIVE.piggy.radius,
+        contested: false,
+        decaying: false,
+        owner: 'bravo',
+        selfProgress: 0.4,
+        enemyProgress: 0.9,
+        occupyingAllies: 1,
+        occupyingEnemies: 1,
+        nearbyAllies: 1,
+        nearbyEnemies: 1,
+        urgency: 0.86,
+      },
+    }),
+  );
+  const contest = scoreOf(rows, 'contest_objective');
+  const farm = scoreOf(rows, 'farm_minions');
+  const ok = contest > 12 && contest >= farm && among(rows, ['contest_objective'], 3);
+  return { name: 'U piggy near break is urgent', ok, detail: `best=${best(rows)} contest=${contest.toFixed(1)} farm=${farm.toFixed(1)}` };
 };
 
 export const runTacticalScenarios = (): ScenarioResult[] => [
@@ -308,4 +424,8 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioO(),
   scenarioP(),
   scenarioQ(),
+  scenarioR(),
+  scenarioS(),
+  scenarioT(),
+  scenarioU(),
 ];

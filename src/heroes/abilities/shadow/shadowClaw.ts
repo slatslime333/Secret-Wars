@@ -48,9 +48,9 @@ class ShadowClawAbility implements ActiveAbility {
     spawnCombatCallout(ctx.scene, caster.x, caster.y, 'CLAW', 0x6a48a0);
     playWorld('shadow-claw-charge', caster);
     caster.playCustomAttack(now, SHADOW_CLAW.animMs, (frac) => ({
-      armLiftRight: frac < 0.42 ? 0.2 + frac * 1.6 : Math.max(0.2, 1.3 - (frac - 0.42) * 1.8),
-      armLiftLeft: 0.15,
-      swayX: this.dirX * (frac < 0.45 ? -4 : 10) * Math.min(1, frac * 1.4),
+      armLiftRight: frac < 0.38 ? 0.15 + frac * 2.1 : Math.max(0.15, 1.45 - (frac - 0.38) * 2.2),
+      armLiftLeft: frac < 0.38 ? 0.08 : 0.22,
+      swayX: this.dirX * (frac < 0.4 ? -6 : 14) * Math.min(1, frac * 1.35),
     }));
   }
 

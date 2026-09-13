@@ -30,6 +30,12 @@ export type MoveHint = {
   preferredRange?: number;
   anchorX?: number;
   anchorY?: number;
+  objective?: {
+    kind: 'capture_zone' | 'golden_piggy';
+    x: number;
+    y: number;
+    radius: number;
+  };
 };
 
 const isRangedMove = (body: MoveBody, hint?: MoveHint): boolean => {
@@ -114,6 +120,45 @@ export const moveGoal = (
     return { x: dest.x, y: dest.y, halt: gap < 28, ...aim };
   }
 
+  if (action === 'contest_objective' && hint?.objective) {
+    const obj = hint.objective;
+    const ranged = isRangedMove(body, hint);
+    const support = hint.stance === 'support';
+    const aim = target ? aimTo(target.x, target.y) : aimTo(obj.x, obj.y);
+    if (obj.kind === 'capture_zone') {
+      if (ranged) {
+        const gx = obj.x + -flankSign * obj.radius * 0.72;
+        const gy = obj.y + (slot % 2 === 0 ? 1 : -1) * obj.radius * 0.28;
+        const gap = Math.hypot(gx - body.x, gy - body.y);
+        return { x: gx, y: gy, halt: gap < 28, ...aim };
+      }
+      if (support && ally) {
+        const gx = ally.x * 0.65 + obj.x * 0.35;
+        const gy = ally.y * 0.65 + obj.y * 0.35;
+        const gap = Math.hypot(gx - body.x, gy - body.y);
+        return { x: gx, y: gy, halt: gap < 24, ...aim };
+      }
+      const offset = 18 * flankSign;
+      const gx = obj.x + (ranged ? 0 : offset * 0.4);
+      const gy = obj.y + offset;
+      const gap = Math.hypot(gx - body.x, gy - body.y);
+      return { x: gx, y: gy, halt: gap < obj.radius * 0.28, ...aim };
+    }
+    const range = preferredRange(body, action, hint);
+    const toX = obj.x - body.x;
+    const toY = obj.y - body.y;
+    const gap = Math.hypot(toX, toY) || 1;
+    const nx = toX / gap;
+    const ny = toY / gap;
+    const stand = obj.radius + range * (ranged ? 0.85 : 0.55);
+    return {
+      x: obj.x - nx * stand + -ny * 22 * flankSign,
+      y: obj.y - ny * stand + nx * 22 * flankSign,
+      halt: Math.abs(gap - stand) < 16,
+      ...aim,
+    };
+  }
+
   if (!target) {
     const dest = idleAnchor(body, now, slot, hint);
     const gap = Math.hypot(dest.x - body.x, dest.y - body.y);
@@ -129,12 +174,14 @@ export const moveGoal = (
   const ranged = isRangedMove(body, hint);
 
   if (action === 'wait_for_opening' || action === 'hold_position') {
-    const t = now * 0.0032 + slot * 1.7;
-    const radius = range + 18;
-    const gx = target.x + Math.cos(t) * radius;
-    const gy = target.y + Math.sin(t) * radius;
+    const nx = toX / gap;
+    const ny = toY / gap;
+    const radius = range + 16;
+    const gx = target.x - nx * radius + -ny * 26 * flankSign;
+    const gy = target.y - ny * radius + nx * 26 * flankSign;
     const aim = aimTo(target.x, target.y);
-    const halt = action === 'hold_position' && Math.abs(gap - range) < 22;
+    const standGap = Math.hypot(gx - body.x, gy - body.y);
+    const halt = action === 'hold_position' && standGap < 22;
     return { x: gx, y: gy, halt, ...aim };
   }
 
@@ -178,7 +225,11 @@ export const moveGoal = (
 
   const nx = toX / gap;
   const ny = toY / gap;
-  if (ranged && gap < range - 12 && action !== 'chase' && action !== 'finish_target') {
+  const stand = range * (ranged ? 0.9 : 0.64);
+  const slop = range * 0.2;
+  const gx = target.x - nx * stand + -ny * 14 * flankSign;
+  const gy = target.y - ny * stand + nx * 14 * flankSign;
+  if (ranged && gap < range - slop && action !== 'chase' && action !== 'finish_target') {
     const side = flankSign >= 0 ? 1 : -1;
     return {
       x: target.x - nx * range + -ny * 32 * side,
@@ -188,10 +239,9 @@ export const moveGoal = (
       aimY: ny,
     };
   }
-  if (gap < range - 20 && action !== 'chase' && action !== 'finish_target') {
-    return { x: body.x, y: body.y, halt: true, aimX: nx, aimY: ny };
+  const toStand = Math.hypot(gx - body.x, gy - body.y);
+  if (toStand < 16 && action !== 'chase' && action !== 'finish_target') {
+    return { x: gx, y: gy, halt: true, aimX: nx, aimY: ny };
   }
-  const gx = target.x - nx * range * (ranged ? 0.92 : 0.62);
-  const gy = target.y - ny * range * (ranged ? 0.92 : 0.62);
   return { x: gx, y: gy, halt: false, aimX: nx, aimY: ny };
 };

@@ -109,6 +109,12 @@ export class AbilityButton {
     this.drawOverlay(state);
   }
 
+  setDimmed(dimmed: boolean): void {
+    if (dimmed) {
+      this.icon.setAlpha(Math.min(this.icon.alpha, 0.32));
+    }
+  }
+
   setVisible(visible: boolean): void {
     this.art.setVisible(visible);
     this.overlay.setVisible(visible);

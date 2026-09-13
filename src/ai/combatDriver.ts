@@ -4,7 +4,7 @@ import type { DashController } from '../combat/DashController';
 import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
 import type { AbilityController } from '../heroes/abilities/AbilityController';
 import type { AbilityContext, AbilitySlot } from '../heroes/abilities/types';
-import { SLOT_ORDER } from '../heroes/abilities/types';
+import { SLOT_ORDER, canStartAbility } from '../heroes/abilities/types';
 import type { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import type { NinjaBody } from '../heroes/NinjaBody';
 import { scoreKitSlot } from './tactical/kitTactics';
@@ -25,6 +25,28 @@ type PendingReact = {
   y: number;
 };
 
+type PatternMemory = {
+  foeId: number;
+  lights: number;
+  lastLightAt: number;
+  dirX: number;
+  dirY: number;
+  dirHits: number;
+  dashes: number;
+  lastDashAt: number;
+};
+
+const emptyPattern = (): PatternMemory => ({
+  foeId: -1,
+  lights: 0,
+  lastLightAt: -9999,
+  dirX: 0,
+  dirY: 0,
+  dirHits: 0,
+  dashes: 0,
+  lastDashAt: -9999,
+});
+
 /**
  * Shared CPU reflexes: imperfect dodge/block, kit-aware ability fire, counters.
  * Does not see hidden player intent — only visible swings, facing, and range.
@@ -40,6 +62,7 @@ export class CombatDriver {
   private deathDashIndex = 0;
   private readonly dashDir = new Phaser.Math.Vector2();
   readonly reactions = { block: 0, dash: 0, strafe: 0 };
+  private pattern = emptyPattern();
 
   tick(args: {
     now: number;
@@ -61,7 +84,13 @@ export class CombatDriver {
     if (abilities && abilityCtx) {
       abilities.update(abilityCtx);
       const busy = abilities.isBusy();
-      if (!busy && !abilities.control.abilities && now >= this.nextAbilityAt && mind.wantsAbilities()) {
+      if (
+        !busy &&
+        !abilities.control.abilities &&
+        now >= this.nextAbilityAt &&
+        mind.wantsAbilities() &&
+        canStartAbility(abilityCtx)
+      ) {
         usedAbility = this.tryAbility(now, body, mind, abilities, abilityCtx, rng);
       }
       if (busy && abilities.control.dash) {
@@ -108,6 +137,14 @@ export class CombatDriver {
   ): boolean {
     const situation = mind.situationView();
     if (!situation) {
+      return false;
+    }
+    if (ctx.caster.status.isEnemyActionLocked(now)) {
+      return false;
+    }
+    const p = situation.personality;
+    if (rng() < p.abilityConservation * 0.1) {
+      this.nextAbilityAt = now + 240 + rng() * 180;
       return false;
     }
     let bestSlot: AbilitySlot | undefined;
@@ -166,7 +203,7 @@ export class CombatDriver {
     if (p.aggression > 0.72 && hp > 0.55 && rng() < 0.38) {
       return;
     }
-    const delay = 40 + (1 - p.reactionQuality) * 140 + rng() * 80;
+    const delay = 45 + (1 - p.reactionQuality) * 150 + rng() * (50 + (1 - p.reactionQuality) * 90);
     const side = rng() < 0.5 ? 1 : -1;
     const dir = dodgeDirFor(mind.situationView().self, threat, side);
     let kind: PendingReact['kind'] = 'strafe';
@@ -224,19 +261,32 @@ export class CombatDriver {
     const dy = body.y - threat.y;
     const d = Math.hypot(dx, dy) || 1;
     this.lastSwingSeen = swingAt;
-    const delay = 70 + rng() * 150 + mind.personality.caution * 40;
+    this.noteLight(now, threat);
+    const p = mind.personality;
+    const delay = 55 + (1 - p.reactionQuality) * 150 + rng() * (60 + (1 - p.reactionQuality) * 90) + p.caution * 20;
     const disruptor = body.stats.role === 'disruptor' || body.stats.role === 'support';
-    const staminaOk = body.stamina > 16;
-    const roll = rng();
+    const staminaOk = body.stamina > 14;
+    const familiar = this.lightFamiliarity();
+    const dirFamiliar = this.dirFamiliarity(threat);
+    const hp = body.health / Math.max(1, body.stats.maxHealth);
+    const notice = 0.42 + p.reactionQuality * 0.4 + familiar * 0.12;
+    if (rng() > notice) {
+      return;
+    }
     const dodgeChance =
-      (0.22 + mind.personality.caution * 0.18 + (disruptor ? 0.16 : 0) + (staminaOk ? 0.08 : -0.08)) *
-      (this.reactions.dash + this.reactions.strafe > this.reactions.block ? 0.42 : 1);
+      (0.18 + p.caution * 0.16 + (disruptor ? 0.14 : 0) + (staminaOk ? 0.06 : -0.08)) *
+      (this.reactions.dash + this.reactions.strafe > this.reactions.block ? 0.5 : 1);
+    const blockChance = Math.min(
+      0.7,
+      0.16 + p.blockTendency * 0.28 + familiar * 0.2 + dirFamiliar * 0.12 + p.caution * 0.08 + (hp < 0.32 ? 0.1 : 0),
+    );
+    const roll = rng();
     let kind: PendingReact['kind'] = 'block';
-    if (roll < dodgeChance * 0.45 && dash.chargeCount > 0) {
+    if (roll < dodgeChance * 0.4 && dash.chargeCount > 0) {
       kind = 'dash';
     } else if (roll < dodgeChance) {
       kind = 'strafe';
-    } else if (roll < dodgeChance + 0.34 + mind.personality.caution * 0.16 && staminaOk) {
+    } else if (roll < dodgeChance + blockChance && staminaOk) {
       kind = 'block';
     } else {
       return;
@@ -286,6 +336,50 @@ export class CombatDriver {
     }
     this.strafe.set(pending.x, pending.y);
     this.strafeUntil = now + 180 + rng() * 90;
+  }
+
+  private noteLight(now: number, foe: NinjaBody): void {
+    if (foe !== this.patternFoe(now)) {
+      this.pattern = emptyPattern();
+      this.pattern.foeId = 1;
+      this.patternFoeRef = foe;
+    }
+    this.pattern.lights += 1;
+    this.pattern.lastLightAt = now;
+    const aligned = this.pattern.dirX * foe.aim.x + this.pattern.dirY * foe.aim.y;
+    if (aligned > 0.68) {
+      this.pattern.dirHits += 1;
+    } else {
+      this.pattern.dirHits = 1;
+      this.pattern.dirX = foe.aim.x;
+      this.pattern.dirY = foe.aim.y;
+    }
+    const speed = Math.hypot(foe.body?.velocity.x ?? 0, foe.body?.velocity.y ?? 0);
+    if (speed > 300) {
+      this.pattern.dashes += 1;
+      this.pattern.lastDashAt = now;
+    }
+  }
+
+  private patternFoeRef?: NinjaBody;
+
+  private patternFoe(now: number): NinjaBody | undefined {
+    if (now - this.pattern.lastLightAt > 2800) {
+      return undefined;
+    }
+    return this.patternFoeRef;
+  }
+
+  private lightFamiliarity(): number {
+    return Math.max(0, Math.min(1, (this.pattern.lights - 2) / 5));
+  }
+
+  private dirFamiliarity(foe: NinjaBody): number {
+    const aligned = this.pattern.dirX * foe.aim.x + this.pattern.dirY * foe.aim.y;
+    if (aligned < 0.55) {
+      return 0;
+    }
+    return Math.max(0, Math.min(1, (this.pattern.dirHits - 2) / 4));
   }
 
   private noteDeathDash(

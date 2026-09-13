@@ -11,7 +11,8 @@ import { gameplayFromRatings, type CoreRatings } from './ratings';
 export const SHADOW_RATINGS = {
   health: 70,
   stamina: 50,
-  damage: 50,
+  staminaRegen: 66,
+  damage: 56,
   defense: 40,
   speed: 39,
   attackSpeed: 39,
@@ -27,12 +28,16 @@ export const SHADOW = {
   role: 'frontliner' as const,
   ratings: SHADOW_RATINGS,
   ...shadowGameplay,
-  /** 25% shorter than Cole’s live attack radius. */
-  attackRange: Math.round(COLE.attackRange * 0.75),
+  /**
+   * Previous live Cole×0.75 (143px), then +25% on that light-attack radius.
+   * Claw radius is frozen separately so this bump does not grow the ability.
+   */
+  attackRange: Math.round(Math.round(COLE.attackRange * 0.75) * 1.25),
   attackArcDegrees: 68,
   bodyRadius: NINJA.bodyRadius,
-  staminaRegenPerSecond: 16,
-  /** 9 light attacks × ~9.3 stamina ≈ 84 of 116 — leftover for kit. */
-  attackStaminaMul: 1.33,
+  /** Moderately fast — quicker than Death’s 16/s, not Ninja-fast. Rage still multiplies this. */
+  staminaRegenPerSecond: 20,
+  /** ~8 step-1 swipes to 85% of the pool. round(7 × 1.714) = 12. */
+  attackStaminaMul: 12 / 7,
   dashMaxCharges: 2,
 } as const satisfies HeroCombatConfig;

@@ -305,6 +305,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    this.inputReader.setAbilitiesLocked(this.ninja.status.isEnemyActionLocked(now));
     const frame = this.inputReader.sample(this.ninja.x, this.ninja.y);
     if (frame.ability1AimActive) {
       this.abilityAim = { x: frame.ability1Aim.x, y: frame.ability1Aim.y };
@@ -377,7 +378,6 @@ export class BattleScene extends Phaser.Scene {
       !control.move &&
       !this.dash.isActive(now) &&
       !this.ninja.status.shouldLockMovement(now) &&
-      !this.block.isActive(now) &&
       !this.ninja.down
     ) {
       this.ninja.applyMove(frame.move);
