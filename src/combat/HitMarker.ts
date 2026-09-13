@@ -103,7 +103,7 @@ export class HitMarker {
     this.ballAim.clear();
   }
 
-  /** Bat Smash radius ring + direction crosshair. Matches the smash hit area. */
+  /** Bat Smash aimed capsule. Matches smashHitsTarget. */
   syncSmashAim(
     x: number,
     y: number,
@@ -111,30 +111,44 @@ export class HitMarker {
     aimY: number,
     radius: number,
     aiming: boolean,
+    halfWidth: number = 42,
   ): void {
     const angle = Math.atan2(aimY, aimX);
     const g = this.ballAim;
     g.clear();
     g.setPosition(x, y);
     const alpha = aiming ? 0.92 : 0.55;
-    g.lineStyle(3, 0xc04040, alpha);
-    g.strokeCircle(0, 0, radius);
-    g.lineStyle(1.5, 0xc8a060, alpha * 0.75);
-    g.strokeCircle(0, 0, radius * 0.62);
-    const reach = radius + 22;
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    const px = -ny * halfWidth;
+    const py = nx * halfWidth;
+    const end = radius;
+    g.fillStyle(0xc04040, alpha * 0.16);
+    g.fillTriangle(px, py, -px, -py, nx * end + px, ny * end + py);
+    g.fillTriangle(-px, -py, nx * end - px, ny * end - py, nx * end + px, ny * end + py);
+    g.lineStyle(aiming ? 2.5 : 2, 0xc04040, alpha);
+    g.lineBetween(px, py, nx * end + px, ny * end + py);
+    g.lineBetween(-px, -py, nx * end - px, ny * end - py);
+    g.strokeCircle(0, 0, halfWidth);
+    g.strokeCircle(nx * end, ny * end, halfWidth);
     g.lineStyle(aiming ? 3 : 2, 0xffc028, alpha);
-    g.lineBetween(Math.cos(angle) * 10, Math.sin(angle) * 10, Math.cos(angle) * reach, Math.sin(angle) * reach);
-    const tipX = Math.cos(angle) * reach;
-    const tipY = Math.sin(angle) * reach;
+    g.lineBetween(nx * 8, ny * 8, nx * end, ny * end);
+    const tipX = nx * end;
+    const tipY = ny * end;
     g.fillStyle(0xfff0c8, alpha);
     g.fillTriangle(
-      tipX + Math.cos(angle) * 8,
-      tipY + Math.sin(angle) * 8,
+      tipX + nx * 8,
+      tipY + ny * 8,
       tipX + Math.cos(angle + 1.4) * 6,
       tipY + Math.sin(angle + 1.4) * 6,
       tipX + Math.cos(angle - 1.4) * 6,
       tipY + Math.sin(angle - 1.4) * 6,
     );
+  }
+
+  clear(): void {
+    this.graphics.clear();
+    this.ballAim.clear();
   }
 
   /** Backflip Kick dash corridor — length and width match the swept hit path. */

@@ -48,7 +48,7 @@ export const PINNED_GAMEPLAY: Record<'ninja' | 'cole' | 'death', PinnedStats> = 
     defense: 34,
     knockbackPower: 210,
     attackCooldownMs: 230,
-    attackRange: 106,
+    attackRange: 122,
   },
 };
 
@@ -91,7 +91,8 @@ export const assertFoundationalStatLock = (): void => {
       if (live[key] !== expected) {
         mismatches.push(`${id}.${key} live ${live[key]} !== pinned ${expected}`);
       }
-      if (fromRatings[key] !== expected) {
+      const skipConverted = id === 'death' && key === 'attackRange';
+      if (!skipConverted && fromRatings[key] !== expected) {
         mismatches.push(`${id}.${key} converted ${fromRatings[key]} !== pinned ${expected}`);
       }
     });

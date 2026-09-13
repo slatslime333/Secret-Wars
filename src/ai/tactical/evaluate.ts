@@ -1,3 +1,4 @@
+import { atFarEdge } from '../../config/arena';
 import { TACTIC } from './constants';
 import type {
   CombatantView,
@@ -754,43 +755,45 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     count = write(out, count, 'recover', recover, closeHero ? 'need space first' : 'recover');
   }
 
-  if (kind === 'hero') {
-    let nearestMinion: CombatantView | undefined;
-    let minionGap = 1e9;
-    for (const enemy of enemies) {
-      if (enemy.kind !== 'minion' || !enemy.visible) {
-        continue;
-      }
-      const d = dist(self, enemy);
-      if (d < minionGap) {
-        nearestMinion = enemy;
-        minionGap = d;
-      }
+  const stuckAtEdge = atFarEdge(self.team, self.x);
+  let nearestMinion: CombatantView | undefined;
+  let minionGap = 1e9;
+  for (const enemy of enemies) {
+    if (enemy.kind !== 'minion' || !enemy.visible) {
+      continue;
     }
-    if (nearestMinion) {
-      const pack = nearestMinion;
-      const heroThreat = enemies.some(
-        (enemy) => enemy.kind === 'hero' && enemy.visible && dist(enemy, pack) < 210,
-      );
-      let farmScore = 12 + (handledNearby ? 8 : 0) - (minionGap / situation.vision) * 10;
-      if (self.hpRatio > 0.16 && self.hpRatio < 0.72 && !heroThreat) {
-        farmScore += 12;
-      }
-      if (heroThreat) {
-        farmScore -= 16;
-      }
-      if (self.hpRatio < 0.2) {
-        farmScore -= 8;
-      }
-      count = write(
-        out,
-        count,
-        'farm_minions',
-        farmScore,
-        heroThreat ? 'minions are hot' : 'farm and recover',
-        nearestMinion.id,
-      );
+    const d = dist(self, enemy);
+    if (d < minionGap) {
+      nearestMinion = enemy;
+      minionGap = d;
     }
+  }
+  if (nearestMinion && (kind === 'hero' || stuckAtEdge)) {
+    const pack = nearestMinion;
+    const heroThreat = enemies.some(
+      (enemy) => enemy.kind === 'hero' && enemy.visible && dist(enemy, pack) < 210,
+    );
+    let farmScore = 12 + (handledNearby ? 8 : 0) - (minionGap / situation.vision) * 10;
+    if (self.hpRatio > 0.16 && self.hpRatio < 0.72 && !heroThreat) {
+      farmScore += 12;
+    }
+    if (heroThreat) {
+      farmScore -= 16;
+    }
+    if (self.hpRatio < 0.2) {
+      farmScore -= 8;
+    }
+    if (stuckAtEdge) {
+      farmScore += 28;
+    }
+    count = write(
+      out,
+      count,
+      'farm_minions',
+      farmScore,
+      heroThreat ? 'minions are hot' : stuckAtEdge ? 'farm instead of the wall' : 'farm and recover',
+      nearestMinion.id,
+    );
   }
 
   const standEnemy = enemies.find((enemy) => standoff(self, enemy, allies, enemies) && dist(self, enemy) < self.attackRange * 2.1);
@@ -826,15 +829,43 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
   if (risk > 0.5) {
     push -= 8;
   }
+  if (stuckAtEdge) {
+    push -= 36;
+  }
   if (kind === 'minion') {
-    count = write(out, count, 'push_lane', push, farm ? 'lane is open' : 'keep pressure');
+    count = write(
+      out,
+      count,
+      'push_lane',
+      push,
+      stuckAtEdge ? 'already at the end' : farm ? 'lane is open' : 'keep pressure',
+    );
   } else {
-    count = write(out, count, 'advance', push - 2, farm ? 'look elsewhere' : 'move up');
+    count = write(
+      out,
+      count,
+      'advance',
+      push - 2,
+      stuckAtEdge ? 'already at the end' : farm ? 'look elsewhere' : 'move up',
+    );
   }
   if (enemies.length === 0) {
-    count = write(out, count, 'search_for_target', 28 + (kind === 'hero' ? 6 : 0), 'no one in sight');
+    const hunt = 28 + (kind === 'hero' ? 6 : 0) + (stuckAtEdge ? 20 : 0);
+    count = write(
+      out,
+      count,
+      'search_for_target',
+      hunt,
+      stuckAtEdge ? 'hunt another lane' : 'no one in sight',
+    );
   } else if (farm && kind === 'hero') {
-    count = write(out, count, 'search_for_target', 22, 'fight is handled');
+    count = write(
+      out,
+      count,
+      'search_for_target',
+      22 + (stuckAtEdge ? 10 : 0),
+      stuckAtEdge ? 'hunt another lane' : 'fight is handled',
+    );
   }
 
   return count;

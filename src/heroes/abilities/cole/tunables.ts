@@ -17,13 +17,15 @@ export const COLE_SHOCKWAVE = {
 } as const;
 
 export const COLE_BALL = {
-  cooldownMs: 7000,
+  cooldownMs: 6000,
   speed: 420,
   lifetimeMs: 2200,
   radius: 20,
   damageRating: 60,
   damage: abilityDamage(60),
-  knockbackMul: 3.85,
+  knockbackMul: 5.2,
+  /** Lets the ball exceed the shared launch cap so the extra mul actually reads. */
+  launchCap: 780,
   explodeRadius: 56,
   chainDamageRating: 14,
   chainDamage: abilityDamage(14),
@@ -36,8 +38,8 @@ export const COLE_BALL = {
 } as const;
 
 export const COLE_DISCHARGE = {
-  cooldownMs: 10000,
-  radius: NINJA_BASE_RANGE,
+  cooldownMs: 8000,
+  radius: Math.round(NINJA_BASE_RANGE * 1.4),
   damageRating: 60,
   damage: abilityDamage(60),
   knockbackMul: 3.6,

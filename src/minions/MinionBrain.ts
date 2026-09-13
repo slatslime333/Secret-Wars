@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { playWorld } from '../audio';
+import { atFarEdge } from '../config/arena';
 import { MINION, MinionKind, RANGER_MINION, SWORD_MINION, minionAdvanceX } from '../config/minion';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { resolveAbilityHit } from '../heroes/abilities/resolveAbilityHit';
@@ -159,7 +160,11 @@ export class MinionBrain {
     }
     let dx = goal.x - this.body.x;
     let dy = goal.y - this.body.y;
-    if (this.mind.action === 'push_lane' || this.mind.action === 'advance' || this.mind.action === 'search_for_target') {
+    const pushing =
+      this.mind.action === 'push_lane' ||
+      this.mind.action === 'advance' ||
+      this.mind.action === 'search_for_target';
+    if (pushing && !atFarEdge(this.body.team, this.body.x)) {
       dx = minionAdvanceX(this.body.team);
       dy = Phaser.Math.Clamp((this.mind.homeY - this.body.y) * 0.004, -0.35, 0.35);
     }

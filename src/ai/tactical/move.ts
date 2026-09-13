@@ -1,3 +1,4 @@
+import { ARENA, atFarEdge, nearestLane, pushLimitX, roamHuntPoint } from '../../config/arena';
 import type { TacticalAction } from './types';
 
 export type MoveSample = {
@@ -36,15 +37,7 @@ const preferredRange = (body: MoveBody, action: TacticalAction): number => {
   return body.attackRange * (ranged ? 0.78 : 0.7);
 };
 
-const laneY = (y: number): number => {
-  if (y < 500) {
-    return 300;
-  }
-  if (y > 1000) {
-    return 1200;
-  }
-  return 750;
-};
+const laneYOf = (y: number): number => ARENA.laneY[nearestLane(y)];
 
 /**
  * Turn a committed action into a walk point. Physics/steering stay on the body.
@@ -82,10 +75,17 @@ export const moveGoal = (
   }
 
   if (!target) {
-    const destX = body.team === 'alpha' ? 1880 : 320;
-    const destY = body.kind === 'minion' ? 750 : laneY(body.y);
+    if (atFarEdge(body.team, body.x)) {
+      const hunt = roamHuntPoint(body.team, body.y, Math.floor(now / 1800) + slot);
+      const gap = Math.hypot(hunt.x - body.x, hunt.y - body.y);
+      const aim = aimTo(hunt.x, hunt.y);
+      return { x: hunt.x, y: hunt.y, halt: gap < 52, ...aim };
+    }
+    const destX = pushLimitX(body.team);
+    const destY = laneYOf(body.y);
+    const gap = Math.hypot(destX - body.x, destY - body.y);
     const aim = aimTo(destX, destY);
-    return { x: destX, y: destY, halt: false, ...aim };
+    return { x: destX, y: destY, halt: gap < 36, ...aim };
   }
 
   const range = preferredRange(body, action);

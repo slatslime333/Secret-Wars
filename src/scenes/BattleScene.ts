@@ -395,6 +395,7 @@ export class BattleScene extends Phaser.Scene {
         this.ninja.aim.y,
         DEATH_SMASH.radius,
         true,
+        DEATH_SMASH.halfWidth,
       );
     } else if (this.ninja.heroId === 'ninja' && frame.ability2Aiming) {
       this.marker.syncKickAim(

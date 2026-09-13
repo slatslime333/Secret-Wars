@@ -12,18 +12,20 @@ export type SpawnPad = {
 };
 
 /**
- * Slightly longer left-to-right battlefield (2200x1500). Height stays
- * the same so north / center / south still read as distinct bands.
+ * Wide battlefield (2200×1280). Height is a bit shorter so lanes stay
+ * distinct without as much empty vertical space.
  */
 const WIDTH = 2200;
-const HEIGHT = 1500;
+const HEIGHT = 1280;
+/** Stay this far inside the walls when pushing a lane with nobody to fight. */
+const EDGE_INSET = 180;
 
 export const laneFacing = (team: TeamId): number => (team === 'alpha' ? 1 : -1);
 
 export const ARENA_LANE_Y = {
-  top: 300,
-  mid: 750,
-  bottom: 1200,
+  top: 250,
+  mid: 640,
+  bottom: 1030,
 } as const;
 
 export const ARENA_TEAM_SPAWN_X = {
@@ -92,6 +94,7 @@ export const ARENA = {
   height: HEIGHT,
   wallThickness: 40,
   spawnRadius: 40,
+  edgeInset: EDGE_INSET,
   laneY: ARENA_LANE_Y,
   teamSpawnX: ARENA_TEAM_SPAWN_X,
   minionSpawnX: ARENA_MINION_SPAWN_X,
@@ -101,3 +104,22 @@ export const ARENA = {
   playerSpawn: TEAM_SPAWNS.alpha,
   enemySpawn: TEAM_SPAWNS.bravo,
 } as const;
+
+/** Furthest X a unit should walk toward when the lane is empty. */
+export const pushLimitX = (team: TeamId): number =>
+  team === 'alpha' ? ARENA.width - ARENA.wallThickness - EDGE_INSET : ARENA.wallThickness + EDGE_INSET;
+
+/** True when this body is already at the far edge of its push. */
+export const atFarEdge = (team: TeamId, x: number, slack = 56): boolean => {
+  const limit = pushLimitX(team);
+  return team === 'alpha' ? x >= limit - slack : x <= limit + slack;
+};
+
+/** Mid-field point on another lane — hunt / farm instead of walking into the wall. */
+export const roamHuntPoint = (team: TeamId, y: number, salt = 0): { x: number; y: number } => {
+  const current = nearestLane(y);
+  const idx = LANES.indexOf(current);
+  const next = LANES[(idx + 1 + (salt & 1)) % LANES.length];
+  const midShift = team === 'alpha' ? 140 : -140;
+  return { x: ARENA.width / 2 + midShift, y: ARENA.laneY[next] };
+};
