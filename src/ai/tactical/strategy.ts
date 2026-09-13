@@ -94,7 +94,7 @@ const openingMenu = (
     { plan: 'move_to_ally', weight: ally },
     { plan: 'scout_cautious', weight: scout },
     { plan: 'indirect_center', weight: 0.08 + personality.independence * 0.08 },
-    { plan: 'wait_for_team', weight: wait * (lane === 2 ? 1.2 : 0.9) },
+    { plan: 'wait_for_team', weight: wait * 0.35 },
   ];
   return items;
 };
@@ -130,7 +130,7 @@ export const openingAnchor = (
   const forward = self.team === 'alpha' ? 1 : -1;
   switch (plan) {
     case 'rush_center':
-      return clampArena(midX - forward * 40, homeY);
+      return clampArena(third + forward * 70, homeY + (self.id % 3 - 1) * 36);
     case 'controlled_advance':
       return clampArena(third, self.y);
     case 'hold_near_spawn':
@@ -152,9 +152,9 @@ export const openingAnchor = (
     case 'scout_cautious':
       return clampArena(homeX + forward * 220, self.y + (self.id % 2 === 0 ? 50 : -50));
     case 'indirect_center':
-      return clampArena(midX, self.y < ARENA.laneY.mid ? ARENA.laneY.top : ARENA.laneY.bottom);
+      return clampArena(third + forward * 50, self.y < ARENA.laneY.mid ? ARENA.laneY.top : ARENA.laneY.bottom);
     case 'wait_for_team':
-      return clampArena(team.x + forward * spacing, team.y + 28);
+      return clampArena(third - forward * 40, team.y + 28);
     default:
       return clampArena(third, self.y);
   }
@@ -386,8 +386,7 @@ export class GamePlanController {
       return;
     }
     if (this.state === 'patrol' || this.state === 'search' || this.state === 'hold') {
-      const mid = ARENA.width / 2;
-      const holdX = kit.stance === 'ranged' ? ownThirdX(self.team) : mid - forward * 80;
+      const holdX = ownThirdX(self.team) + forward * (kit.stance === 'ranged' ? -40 : 50);
       this.anchorX = holdX;
       this.anchorY = clamp(self.y + offset.y, 140, ARENA.height - 140);
       return;

@@ -88,6 +88,7 @@ export class BattleInput {
   private ability2Latched = false;
   private ultimateLatched = false;
   private lastAttackPressAt = -999;
+  private abilitiesLocked = false;
 
   constructor(
     scene: Phaser.Scene,
@@ -148,13 +149,14 @@ export class BattleInput {
             accent: kit.ability1.accent,
             radius: layout.ability1.r,
             onPress: () => {
-              if (!this.ability1Ready) {
+              if (!this.ability1Ready || this.abilitiesLocked) {
                 return;
               }
               this.ability1AimingHeld = true;
             },
             onRelease: (aim) => {
-              if (!this.ability1AimingHeld) {
+              if (!this.ability1AimingHeld || this.abilitiesLocked) {
+                this.ability1AimingHeld = false;
                 return;
               }
               this.ability1AimingHeld = false;
@@ -162,7 +164,7 @@ export class BattleInput {
               if (this.ability1AimActive) {
                 this.ability1Aim.copy(aim).normalize();
               }
-              this.ability1Latched = true;
+              this.latchAbility('ability1');
             },
           });
         } else {
@@ -172,7 +174,7 @@ export class BattleInput {
             layout.ability1.y,
             layout.ability1.r,
             kit.ability1.iconKey,
-            { onPress: () => { this.ability1Latched = true; } },
+            { onPress: () => { this.latchAbility('ability1'); } },
           );
         }
         if (kit.ability2.aimOnRelease) {
@@ -181,13 +183,14 @@ export class BattleInput {
             accent: kit.ability2.accent,
             radius: layout.ability2.r,
             onPress: () => {
-              if (!this.ability2Ready) {
+              if (!this.ability2Ready || this.abilitiesLocked) {
                 return;
               }
               this.ability2AimingHeld = true;
             },
             onRelease: (aim) => {
-              if (!this.ability2AimingHeld) {
+              if (!this.ability2AimingHeld || this.abilitiesLocked) {
+                this.ability2AimingHeld = false;
                 return;
               }
               this.ability2AimingHeld = false;
@@ -195,7 +198,7 @@ export class BattleInput {
               if (this.ability2AimActive) {
                 this.ability2Aim.copy(aim).normalize();
               }
-              this.ability2Latched = true;
+              this.latchAbility('ability2');
             },
           });
         } else {
@@ -205,7 +208,7 @@ export class BattleInput {
             layout.ability2.y,
             layout.ability2.r,
             kit.ability2.iconKey,
-            { onPress: () => { this.ability2Latched = true; } },
+            { onPress: () => { this.latchAbility('ability2'); } },
           );
         }
         this.ultimateButton = new AbilityButton(
@@ -214,7 +217,7 @@ export class BattleInput {
           layout.ultimate.y,
           layout.ultimate.r,
           kit.ultimate.iconKey,
-          { ultimate: true, onPress: () => { this.ultimateLatched = true; } },
+          { ultimate: true, onPress: () => { this.latchAbility('ultimate'); } },
         );
       }
       }
@@ -252,7 +255,7 @@ export class BattleInput {
         this.handleAbilityKey('ability2');
       });
       this.keys.ultimate.on('down', () => {
-        this.ultimateLatched = true;
+        this.latchAbility('ultimate');
       });
       this.keys.ability1Alt.on('down', () => {
         this.handleAbilityKey('ability1');
@@ -261,7 +264,7 @@ export class BattleInput {
         this.handleAbilityKey('ability2');
       });
       this.keys.ultimateAlt.on('down', () => {
-        this.ultimateLatched = true;
+        this.latchAbility('ultimate');
       });
     }
 
@@ -303,8 +306,11 @@ export class BattleInput {
 
   togglePcAim(slot: AbilitySlot): void {
     this.noteUiPointer();
+    if (this.abilitiesLocked) {
+      return;
+    }
     if (slot === 'ultimate') {
-      this.ultimateLatched = true;
+      this.latchAbility('ultimate');
       this.pcAim = null;
       return;
     }
@@ -317,11 +323,7 @@ export class BattleInput {
     }
     const aimable = slot === 'ability1' ? this.ability1AimOnRelease : this.ability2AimOnRelease;
     if (!aimable || this.touch) {
-      if (slot === 'ability1') {
-        this.ability1Latched = true;
-      } else {
-        this.ability2Latched = true;
-      }
+      this.latchAbility(slot);
       this.pcAim = null;
       return;
     }
@@ -329,11 +331,14 @@ export class BattleInput {
   }
 
   private handleAbilityKey(slot: 'ability1' | 'ability2'): void {
+    if (this.abilitiesLocked) {
+      return;
+    }
     if (this.touch) {
       if (slot === 'ability1') {
-        this.ability1Latched = true;
+        this.latchAbility('ability1');
       } else if (!this.ability2AimOnRelease) {
-        this.ability2Latched = true;
+        this.latchAbility('ability2');
       }
       return;
     }
@@ -341,16 +346,19 @@ export class BattleInput {
   }
 
   private firePcAim(slot: 'ability1' | 'ability2'): void {
+    if (this.abilitiesLocked) {
+      this.pcAim = null;
+      return;
+    }
     const aim = this.lastAim.lengthSq() > 0.01 ? this.lastAim : new Phaser.Math.Vector2(1, 0);
     if (slot === 'ability1') {
       this.ability1Aim.copy(aim);
       this.ability1AimActive = true;
-      this.ability1Latched = true;
     } else {
       this.ability2Aim.copy(aim);
       this.ability2AimActive = true;
-      this.ability2Latched = true;
     }
+    this.latchAbility(slot);
     this.pcAim = null;
     this.suppressAttack = true;
     this.wasAttackHeld = true;
@@ -458,9 +466,12 @@ export class BattleInput {
     if (this.pcAim === 'ability1') {
       this.ability1Aim.copy(this.lastAim);
     }
-    const ability1 = this.consumeLatch('ability1Latched');
-    const ability2 = this.consumeLatch('ability2Latched');
-    const ultimate = this.consumeLatch('ultimateLatched');
+    if (this.abilitiesLocked) {
+      this.clearAbilityLatches();
+    }
+    const ability1 = this.abilitiesLocked ? false : this.consumeLatch('ability1Latched');
+    const ability2 = this.abilitiesLocked ? false : this.consumeLatch('ability2Latched');
+    const ultimate = this.abilitiesLocked ? false : this.consumeLatch('ultimateLatched');
     const ability1AimActive = ability1 && this.ability1AimActive;
     if (ability1) {
       this.ability1AimActive = false;
@@ -532,7 +543,8 @@ export class BattleInput {
       this.ability1Ready = states[0].ready;
       this.ability1Button?.sync(states[0]);
       this.ability1Pad?.setRecovered(states[0].ready ? 1 : 1 - states[0].cooldownRatio);
-      this.ability1Pad?.setDimmed(!states[0].ready || states[0].consumed);
+      this.ability1Button?.setDimmed(!states[0].ready || states[0].consumed || this.abilitiesLocked);
+      this.ability1Pad?.setDimmed(!states[0].ready || states[0].consumed || this.abilitiesLocked);
       if (!states[0].ready && this.pcAim === 'ability1') {
         this.pcAim = null;
       }
@@ -541,14 +553,49 @@ export class BattleInput {
       this.ability2Ready = states[1].ready;
       this.ability2Button?.sync(states[1]);
       this.ability2Pad?.setRecovered(states[1].ready ? 1 : 1 - states[1].cooldownRatio);
-      this.ability2Pad?.setDimmed(!states[1].ready || states[1].consumed);
+      this.ability2Pad?.setDimmed(!states[1].ready || states[1].consumed || this.abilitiesLocked);
+      this.ability2Button?.setDimmed(!states[1].ready || states[1].consumed || this.abilitiesLocked);
       if (!states[1].ready && this.pcAim === 'ability2') {
         this.pcAim = null;
       }
     }
     if (states[2]) {
       this.ultimateButton?.sync(states[2]);
+      this.ultimateButton?.setDimmed(!states[2].ready || states[2].consumed || this.abilitiesLocked);
     }
+  }
+
+  setAbilitiesLocked(locked: boolean): void {
+    this.abilitiesLocked = locked;
+    if (locked) {
+      this.clearAbilityLatches();
+    }
+  }
+
+  private latchAbility(slot: 'ability1' | 'ability2' | 'ultimate'): void {
+    if (this.abilitiesLocked) {
+      return;
+    }
+    if (slot === 'ability1') {
+      this.ability1Latched = true;
+      return;
+    }
+    if (slot === 'ability2') {
+      this.ability2Latched = true;
+      return;
+    }
+    this.ultimateLatched = true;
+  }
+
+  private clearAbilityLatches(): void {
+    this.ability1Latched = false;
+    this.ability2Latched = false;
+    this.ultimateLatched = false;
+    this.ability1AimingHeld = false;
+    this.ability2AimingHeld = false;
+    this.ability1AimActive = false;
+    this.ability2AimActive = false;
+    this.pcAim = null;
   }
 
   rebindHero(kit: HeroAbilityKit, dashMaxCharges: number = COMBAT.dashMaxCharges): void {

@@ -82,6 +82,9 @@ export type Personality = {
   protectionInstinct: number;
   opportunism: number;
   reactionQuality: number;
+  movementPrecision: number;
+  blockTendency: number;
+  decisionConfidence: number;
 };
 
 export type KitStance = 'melee' | 'skirmish' | 'ranged' | 'support';
@@ -149,6 +152,7 @@ export type CombatantView = {
   canAttack: boolean;
   lastAttackerId: number;
   visible: boolean;
+  blocking: boolean;
 };
 
 export type UnitFact = CombatantView & {
@@ -224,4 +228,7 @@ export const NEUTRAL_PERSONALITY: Personality = {
   protectionInstinct: 0.5,
   opportunism: 0.5,
   reactionQuality: 0.5,
+  movementPrecision: 0.5,
+  blockTendency: 0.5,
+  decisionConfidence: 0.5,
 };

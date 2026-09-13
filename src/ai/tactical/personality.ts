@@ -38,7 +38,10 @@ export const personalityFromSeed = (seed: string): Personality => {
     targetFixation: mix(0.28, 0.78, hash01(seed, 15)),
     protectionInstinct: mix(0.3, 0.86, hash01(seed, 16)),
     opportunism: mix(0.28, 0.82, hash01(seed, 17)),
-    reactionQuality: mix(0.28, 0.82, hash01(seed, 18)),
+    reactionQuality: mix(0.32, 0.86, hash01(seed, 18)),
+    movementPrecision: mix(0.3, 0.84, hash01(seed, 19)),
+    blockTendency: mix(0.28, 0.8, hash01(seed, 20)),
+    decisionConfidence: mix(0.34, 0.86, hash01(seed, 21)),
   };
 };
 

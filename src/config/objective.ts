@@ -12,7 +12,7 @@ export const OBJECTIVE = {
   cooldownMs: 60_000,
   announcementMs: 2_400,
   arrowMs: 2_600,
-  kinds: ['capture_zone', 'golden_piggy'] as const,
+  kinds: ['capture_zone'] as const,
   /** After the first event, prefer a different kind this often. */
   rerollSameKind: 0.72,
   capture: {
@@ -36,7 +36,6 @@ export type ObjectiveKind = (typeof OBJECTIVE.kinds)[number];
 
 export const OBJECTIVE_LABEL: Record<ObjectiveKind, string> = {
   capture_zone: 'CAPTURE ZONE!',
-  golden_piggy: 'GOLDEN PIGGY BANK!',
 };
 
 export const canStartObjective = (

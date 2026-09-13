@@ -50,8 +50,8 @@ const scenarioKindReroll = (): CheckResult => {
   const first = pickObjectiveKind(undefined, rngOf([0.1]));
   const same = pickObjectiveKind('capture_zone', rngOf([0.9, 0.1]));
   const other = pickObjectiveKind('capture_zone', rngOf([0.1, 0.1]));
-  const ok = Boolean(first) && same === 'capture_zone' && other === 'golden_piggy';
-  return { name: 'objective kind variety', ok, detail: `first=${first} same=${same} other=${other}` };
+  const ok = first === 'capture_zone' && same === 'capture_zone' && other === 'capture_zone';
+  return { name: 'single capture-zone event kind', ok, detail: `first=${first} same=${same} other=${other}` };
 };
 
 const scenarioCaptureRules = (): CheckResult => {

@@ -171,6 +171,17 @@ export class CombatStatus {
     return now < this.stunUntil;
   }
 
+  /** Enemy-caused lock: stun, paralyze, hit reaction, block-stun, clash. */
+  isEnemyActionLocked(now: number): boolean {
+    return (
+      this.isParalyzed(now) ||
+      this.isStunned(now) ||
+      this.isBlockStunned(now) ||
+      this.isClashLocked(now) ||
+      this.isHitReacting(now)
+    );
+  }
+
   isHitReacting(now: number): boolean {
     return now < this.hitReactionUntil;
   }

@@ -568,7 +568,14 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (d > range * 3.2) {
       attack -= 12;
     }
-    count = write(out, count, 'attack', persist(enemy, attack * vis), pile > 0.7 ? 'already handled' : victim ? 'press the threat' : 'take the fight', enemy.id);
+    if (enemy.blocking) {
+      attack -= 16 + personality.caution * 10;
+      attack += personality.aggression * 5;
+    }
+    if (self.staminaRatio < 0.22) {
+      attack -= 10 + personality.caution * 6;
+    }
+    count = write(out, count, 'attack', persist(enemy, attack * vis), pile > 0.7 ? 'already handled' : enemy.blocking ? 'shield up' : victim ? 'press the threat' : 'take the fight', enemy.id);
 
     if (enemy.hpRatio <= TACTIC.finishHp) {
       let finish = 26 + (TACTIC.finishHp - enemy.hpRatio) * 90 + iso * 18;
@@ -800,6 +807,9 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (self.hpRatio > 0.12 && self.hpRatio < 0.72 && !heroThreat) {
       farmScore += 16;
     }
+    if (self.staminaRatio < 0.3 && !heroThreat) {
+      farmScore += 10 + personality.caution * 6;
+    }
     if (heroThreat) {
       farmScore -= 16;
     }
@@ -830,7 +840,10 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       wait += 6;
     }
     wait -= personality.aggression * 8;
-    count = write(out, count, 'wait_for_opening', wait, 'size them up', standEnemy.id);
+    if (standEnemy.blocking) {
+      wait += 14 + personality.patience * 8;
+    }
+    count = write(out, count, 'wait_for_opening', wait, standEnemy.blocking ? 'wait out the shield' : 'size them up', standEnemy.id);
     count = write(out, count, 'hold_position', wait - 3, 'hold range', standEnemy.id);
     let repo = 16 + (ranged ? 8 : 0);
     if (d < self.attackRange * 0.5 && ranged) {
@@ -1044,13 +1057,7 @@ const scoreObjective = (
     count,
     'contest_objective',
     contest,
-    obj.kind === 'golden_piggy'
-      ? obj.enemyProgress >= 0.75
-        ? 'stop their piggy'
-        : 'damage race'
-      : obj.contested
-        ? 'contest the zone'
-        : 'play the zone',
+    obj.contested ? 'contest the zone' : 'play the zone',
     focus?.id ?? -1,
     ally?.id ?? -1,
   );

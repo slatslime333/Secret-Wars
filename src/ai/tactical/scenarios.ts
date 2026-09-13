@@ -24,6 +24,7 @@ const unit = (partial: Partial<CombatantView> & Pick<CombatantView, 'id' | 'team
   canAttack: true,
   lastAttackerId: -1,
   visible: true,
+  blocking: false,
   ...partial,
 });
 
@@ -353,11 +354,11 @@ const scenarioT = (): ScenarioResult => {
   const rows = rankActions(
     situationOf(self, [], [], {
       objective: {
-        kind: 'golden_piggy',
+        kind: 'capture_zone',
         x: 1020,
         y: 640,
-        radius: 58,
-        contested: false,
+        radius: 191,
+        contested: true,
         decaying: false,
         owner: 'bravo',
         selfProgress: 0.2,
@@ -373,7 +374,7 @@ const scenarioT = (): ScenarioResult => {
   const contest = scoreOf(rows, 'contest_objective');
   const farm = scoreOf(rows, 'farm_minions');
   const ok = contest > 12 && contest >= farm && among(rows, ['contest_objective'], 3);
-  return { name: 'T piggy near break is urgent', ok, detail: `best=${best(rows)} contest=${contest.toFixed(1)} farm=${farm.toFixed(1)}` };
+  return { name: 'T zone near capture is urgent', ok, detail: `best=${best(rows)} contest=${contest.toFixed(1)} farm=${farm.toFixed(1)}` };
 };
 
 export const runTacticalScenarios = (): ScenarioResult[] => [

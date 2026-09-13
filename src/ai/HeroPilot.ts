@@ -8,6 +8,7 @@ import type { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { CombatDriver } from './combatDriver';
 import { TacticalField } from './tactical/field';
 import { TacticalMind } from './tactical/mind';
+import { MovementCommit } from './tactical/locomotion';
 import { moveGoal } from './tactical/move';
 import type { TacticalDebugInfo } from './tactical/types';
 
@@ -18,14 +19,18 @@ import type { TacticalDebugInfo } from './tactical/types';
 export class HeroPilot {
   private tapQueued = false;
   private holdUntil = 0;
+  private pauseUntil = 0;
+  private hitsIntoBlock = 0;
   private readonly move = new Phaser.Math.Vector2();
   private readonly foes: NinjaBody[] = [];
   readonly mind: TacticalMind;
   private readonly combat = new CombatDriver();
+  private readonly loco: MovementCommit;
 
   constructor(unit: HeroRuntime) {
     const pad = laneSpawn(unit.team, unit.lane);
     this.mind = new TacticalMind('hero', unit.instanceId, pad.x, pad.y);
+    this.loco = new MovementCommit(this.mind.personality);
   }
 
   debugInfo(unit: HeroRuntime): TacticalDebugInfo {
@@ -89,7 +94,6 @@ export class HeroPilot {
     if (
       control.move ||
       body.status.shouldLockMovement(now) ||
-      unit.block.isActive(now) ||
       unit.dash.isActive(now)
     ) {
       if (
@@ -105,13 +109,9 @@ export class HeroPilot {
     }
 
     this.walk(now, body, scene);
-    const piggyInRange =
-      this.mind.action === 'contest_objective' &&
-      objective?.kind === 'golden_piggy' &&
-      Math.hypot(body.x - objective.x, body.y - objective.y) <= body.stats.attackRange + objective.radius * 0.85;
     this.queueSwing(now, body, target, objective);
 
-    const inRange = target ? distance(body, target) <= body.stats.attackRange * 1.08 : piggyInRange;
+    const inRange = target ? distance(body, target) <= body.stats.attackRange * 1.08 : false;
     const held = now < this.holdUntil && inRange && body.canAttack(now) && this.mind.wantsAttack();
     const pressed = this.tapQueued && body.canAttack(now) && this.mind.wantsAttack();
     this.tapQueued = false;
@@ -132,33 +132,41 @@ export class HeroPilot {
     now: number,
     body: NinjaBody,
     target: NinjaBody | undefined,
-    objective?: { kind: string; x: number; y: number; radius: number },
+    _objective?: { kind: string; x: number; y: number; radius: number },
   ): void {
-    if (!this.mind.wantsAttack() || !body.canAttack(now)) {
+    if (!this.mind.wantsAttack() || !body.canAttack(now) || now < this.pauseUntil) {
       return;
     }
-    const piggy =
-      this.mind.action === 'contest_objective' &&
-      objective?.kind === 'golden_piggy' &&
-      Math.hypot(body.x - objective.x, body.y - objective.y) <= body.stats.attackRange + objective.radius * 0.85;
-    if (!target && !piggy) {
+    if (!target) {
       return;
     }
-    if (target && distance(body, target) > body.stats.attackRange * 1.08 && !piggy) {
+    if (distance(body, target) > body.stats.attackRange * 1.08) {
       return;
     }
     if (now < this.holdUntil) {
       return;
     }
-    if (this.mind.action === 'wait_for_opening' && target && !isOpening(now, body, target)) {
+    if (target.blocking) {
+      this.hitsIntoBlock += 1;
+      const notice = 0.4 + this.mind.personality.reactionQuality * 0.4 + this.mind.personality.caution * 0.15;
+      if (this.hitsIntoBlock >= 1 && Math.random() < notice) {
+        this.pauseUntil = now + 160 + Math.random() * 220;
+        this.holdUntil = this.pauseUntil;
+        return;
+      }
+    } else {
+      this.hitsIntoBlock = 0;
+    }
+    if (this.mind.action === 'wait_for_opening' && !isOpening(now, body, target)) {
       return;
     }
     const roll = Math.random();
-    if (roll < 0.22 + this.mind.personality.caution * 0.12) {
+    if (roll < 0.16 + this.mind.personality.caution * 0.12 + (target.blocking ? 0.22 : 0)) {
+      this.pauseUntil = now + 80 + Math.random() * 140;
       return;
     }
-    this.tapQueued = roll > 0.62;
-    this.holdUntil = now + (this.tapQueued ? 90 : 150 + Math.random() * 120);
+    this.tapQueued = roll > 0.58 + this.mind.personality.aggression * 0.12;
+    this.holdUntil = now + (this.tapQueued ? 90 : 140 + Math.random() * 140 + this.mind.personality.patience * 40);
   }
 
   private walk(now: number, body: NinjaBody, scene: Phaser.Scene): void {
@@ -187,6 +195,7 @@ export class HeroPilot {
       this.mind.moveHint(),
     );
     if (goal.halt) {
+      this.loco.reset();
       body.stop();
       return;
     }
@@ -198,13 +207,15 @@ export class HeroPilot {
       dy = dy * 0.35 + strafe.y * 80;
     }
     const len = Math.hypot(dx, dy) || 1;
-    if (len < 10) {
+    if (len < 12) {
+      this.loco.reset();
       body.stop();
       return;
     }
     dx /= len;
     dy /= len;
-    const steered = battlefieldOf(scene)?.query.steer(body.x, body.y, dx, dy) ?? { x: dx, y: dy };
+    const committed = this.loco.heading(now, dx, dy, this.mind.personality);
+    const steered = battlefieldOf(scene)?.query.steer(body.x, body.y, committed.x, committed.y) ?? committed;
     if (steered.x === 0 && steered.y === 0) {
       body.stop();
       return;

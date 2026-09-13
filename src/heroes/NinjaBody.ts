@@ -39,6 +39,8 @@ export class NinjaBody {
   readonly stats: HeroCombatConfig;
   health: number;
   stamina: number;
+  /** Live shield flag. Set by BlockController so AI and HUD share one source. */
+  blocking = false;
   lastAttacker?: NinjaBody;
   lastAttackerAt = 0;
   /** Last time an enemy actually dealt HP damage. Minion heals / regen do not touch this. */

@@ -2,10 +2,14 @@ import { applyDefense } from '../combat/damage';
 import { COLE } from './cole';
 import { DEATH } from './death';
 import { NINJA, NINJA_BASE_RANGE } from './ninja';
-import { gameplayFromRatings } from './ratings';
+import { SHADOW } from './shadow';
+import { gameplayFromRatings, abilityDamage } from './ratings';
+import { lightAttackStaminaCost } from './combat';
 import { NINJA_KICK, NINJA_TORNADO } from '../heroes/abilities/ninja/tunables';
 import { COLE_BALL, COLE_DISCHARGE, COLE_STORM } from '../heroes/abilities/cole/tunables';
 import { DEATH_DASH, DEATH_GUN, DEATH_SMASH, DEATH_SWEEP } from '../heroes/abilities/death/tunables';
+import { SHADOW_CLAW, SHADOW_DASH } from '../heroes/abilities/shadow/tunables';
+import { backflipKickDef } from '../heroes/abilities/ninja/backflipKick';
 
 type PinnedStats = {
   maxHealth: number;
@@ -116,6 +120,41 @@ export const assertFoundationalStatLock = (): void => {
       mismatches.push(`${name} defense buckets drifted (${convertedDamage} vs ${previous})`);
     }
   });
+
+  if (SHADOW.ratings.damage !== 56) {
+    mismatches.push(`shadow damage rating ${SHADOW.ratings.damage} !== 56`);
+  }
+  if (SHADOW.attackDamage !== 14) {
+    mismatches.push(`shadow attackDamage ${SHADOW.attackDamage} !== 14`);
+  }
+  if (SHADOW.attackRange !== 179) {
+    mismatches.push(`shadow attackRange ${SHADOW.attackRange} !== 179`);
+  }
+  if (SHADOW_CLAW.radius !== 186) {
+    mismatches.push(`shadow claw radius ${SHADOW_CLAW.radius} !== 186`);
+  }
+  const clawWas = abilityDamage(64);
+  if (Math.abs(SHADOW_CLAW.damage - clawWas * 2.7) > 0.001) {
+    mismatches.push(`shadow claw damage ${SHADOW_CLAW.damage} !== ${clawWas * 2.7}`);
+  }
+  const dashWas = abilityDamage(44);
+  if (Math.abs(SHADOW_DASH.damage - dashWas * 1.35) > 0.001) {
+    mismatches.push(`shadow dash damage ${SHADOW_DASH.damage} !== ${dashWas * 1.35}`);
+  }
+  const shadowCost = lightAttackStaminaCost(1, SHADOW.attackStaminaMul);
+  const coleCost = lightAttackStaminaCost(1, COLE.attackStaminaMul);
+  if (Math.round((SHADOW.maxStamina * 0.85) / shadowCost) !== 8) {
+    mismatches.push(`shadow lights-to-recover ${Math.round((SHADOW.maxStamina * 0.85) / shadowCost)} !== 8 (cost ${shadowCost})`);
+  }
+  if (Math.round((COLE.maxStamina * 0.85) / coleCost) !== 6) {
+    mismatches.push(`cole lights-to-recover ${Math.round((COLE.maxStamina * 0.85) / coleCost)} !== 6 (cost ${coleCost})`);
+  }
+  if (backflipKickDef.maxCharges !== 1 || backflipKickDef.startingCharges !== 1) {
+    mismatches.push(`ninja kick charges ${backflipKickDef.maxCharges}/${backflipKickDef.startingCharges} !== 1`);
+  }
+  if (DEATH_SMASH.knockback > 600 || DEATH_SMASH.knockback < 350) {
+    mismatches.push(`death smash knockback ${DEATH_SMASH.knockback} is not a heavy shove`);
+  }
 
   if (mismatches.length > 0) {
     throw new Error(`Foundational stat lock failed:\n${mismatches.join('\n')}`);

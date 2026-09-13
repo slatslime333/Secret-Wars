@@ -14,7 +14,6 @@ import type { ScoreManager } from '../ScoreManager';
 import type { XpOrbWorld } from '../XpOrbWorld';
 import { setObjectiveWorld, type ObjectiveWorld } from './board';
 import { CaptureZoneObjective } from './CaptureZoneObjective';
-import { GoldenPiggyBankObjective } from './GoldenPiggyBankObjective';
 import { ObjectiveHud } from './ObjectiveHud';
 import { pickObjectiveLocation } from './pickLocation';
 import type { MatchObjective, ObjectiveCompleteEvent } from './types';
@@ -37,7 +36,6 @@ export type ObjectiveManagerDeps = {
 export class ObjectiveManager {
   private readonly scene: Phaser.Scene;
   private readonly match: MatchManager;
-  private readonly score: ScoreManager;
   private readonly query: MapQuery;
   private readonly orbs: XpOrbWorld;
   private readonly heroesOf: () => readonly HeroRuntime[];
@@ -49,11 +47,12 @@ export class ObjectiveManager {
   private cooldownUntil = 0;
   private lastKind?: ObjectiveKind;
   private closed = false;
+  private spawnedOnce = false;
 
   constructor(deps: ObjectiveManagerDeps) {
     this.scene = deps.scene;
     this.match = deps.match;
-    this.score = deps.score;
+    void deps.score;
     this.query = deps.query;
     this.orbs = deps.orbs;
     this.heroesOf = deps.heroes;
@@ -91,6 +90,9 @@ export class ObjectiveManager {
 
     this.publish(undefined);
     this.hud.sync(now, undefined, this.scene.cameras.main);
+    if (this.spawnedOnce) {
+      return;
+    }
     if (this.nextAt === undefined) {
       this.nextAt = pickObjectiveStartAt(Math.max(elapsed, this.cooldownUntil), OBJECTIVE.latestStartMs, this.rng);
     }
@@ -139,20 +141,19 @@ export class ObjectiveManager {
     if (this.active) {
       return;
     }
-    const clear = kind === 'capture_zone' ? 28 : OBJECTIVE.piggy.radius;
+    const clear = OBJECTIVE.capture.radius * 0.15;
     const loc = pickObjectiveLocation(this.query, clear, this.rng);
     const created = this.create(kind, loc.x, loc.y);
     this.active = created;
     created.spawn(now);
     this.hud.announce(kind, loc.x, loc.y, now);
     this.nextAt = undefined;
+    this.spawnedOnce = true;
     this.publish(this.heroesOf());
   }
 
   private create(kind: ObjectiveKind, x: number, y: number): MatchObjective {
-    if (kind === 'golden_piggy') {
-      return new GoldenPiggyBankObjective({ scene: this.scene, x, y });
-    }
+    void kind;
     return new CaptureZoneObjective({
       scene: this.scene,
       x,
@@ -163,19 +164,13 @@ export class ObjectiveManager {
   }
 
   private finish(event: ObjectiveCompleteEvent, elapsed: number): void {
-    if (event.kind === 'golden_piggy') {
-      this.score.addPoints(event.winner, OBJECTIVE.scoreReward);
-    }
-    const line =
-      event.kind === 'golden_piggy'
-        ? `${teamName(event.winner)} BREAKS THE BANK`
-        : `${teamName(event.winner)} SECURES THE ZONE`;
+    const line = `${teamName(event.winner)} SECURES THE ZONE`;
     this.hud.celebrate(event.winner, line);
     this.lastKind = event.kind;
     this.active?.cleanup();
     this.active = undefined;
     this.cooldownUntil = elapsed + OBJECTIVE.cooldownMs;
-    this.nextAt = pickObjectiveStartAt(this.cooldownUntil, OBJECTIVE.latestStartMs, this.rng);
+    this.nextAt = undefined;
     setObjectiveWorld(undefined);
   }
 

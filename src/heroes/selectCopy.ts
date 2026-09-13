@@ -79,7 +79,7 @@ const ABILITY_TEXT: Record<string, string> = {
   'ninja-smoke-bomb':
     `Ninja tosses a smoke cloud a step ahead, then blasts backward out of it. Enemies in the cloud move ${slower(NINJA_SMOKE.moveMul)} and attack ${slower(NINJA_SMOKE.attackSpeedMul)} for ${seconds(NINJA_SMOKE.durationMs)}.`,
   'ninja-backflip-kick':
-    `A dash-kick through the aimed line. Hits deal ${hit(NINJA_KICK.damage)} damage, launch with heavy knockback, and slow movement by 50% for ${seconds(NINJA_KICK.hitSlowMs)}. Two charges.`,
+    `A dash-kick through the aimed line. Hits deal ${hit(NINJA_KICK.damage)} damage, launch with heavy knockback, and slow movement by 50% for ${seconds(NINJA_KICK.hitSlowMs)}. One charge.`,
   'ninja-tornado':
     `Ninja becomes a bouncing whirlwind for ${seconds(NINJA_TORNADO.durationMs)}. Nearby enemies take ${hit(NINJA_TORNADO.damage)} damage per slash, a brief ${seconds(NINJA_TORNADO.stunMs)} stun, and light knockback.`,
   'cole-electric-ball':
@@ -91,7 +91,7 @@ const ABILITY_TEXT: Record<string, string> = {
   'death-gun-barrage':
     `Death sprays ${DEATH_GUN.bullets} SMG shots along his aim. Each shot deals ${hit(DEATH_GUN.damage)} damage with light knockback.`,
   'death-bat-smash':
-    `A heavy bat sweep through the aimed arc. Contact deals ${hit(DEATH_SMASH.damage)} damage, stuns for ${seconds(DEATH_SMASH.stunMs)}, and launches enemies with powerful knockback.`,
+    `A heavy bat sweep through the aimed arc. Contact deals ${hit(DEATH_SMASH.damage)} damage, stuns for ${seconds(DEATH_SMASH.stunMs)}, and knocks enemies backward with a heavy shove.`,
   'death-bat-sweep':
     `Death spins the bat in a wide damaging arc for ${seconds(DEATH_SWEEP.durationMs)}. Hits deal ${hit(DEATH_SWEEP.damage)} damage with strong knockback, and Death moves ${slower(DEATH_SWEEP.moveMul)} while sweeping.`,
   'rope-grab':

@@ -318,6 +318,7 @@ export class MatchScene extends Phaser.Scene {
 
     this.spectatorOverlay.hide();
     audio.setListener(this.player.body.x, this.player.body.y);
+    this.inputReader.setAbilitiesLocked(this.player.body.status.isEnemyActionLocked(now));
     const frame = this.inputReader.sample(this.player.body.x, this.player.body.y);
     if (frame.ability1AimActive) {
       this.abilityAim = { x: frame.ability1Aim.x, y: frame.ability1Aim.y };
@@ -394,7 +395,6 @@ export class MatchScene extends Phaser.Scene {
       !control.move &&
       !this.player.dash.isActive(now) &&
       !this.player.body.status.shouldLockMovement(now) &&
-      !this.player.block.isActive(now) &&
       !this.player.body.down
     ) {
       this.player.body.applyMove(frame.move);
@@ -984,7 +984,7 @@ export class MatchScene extends Phaser.Scene {
       giveLevel: () => this.player.progression.giveLevel(),
       scores: () => this.score.snapshot(),
       phase: () => this.match.snapshot(),
-      spawnObjective: (kind?: 'capture_zone' | 'golden_piggy') => this.objectives?.debugSpawn(kind),
+      spawnObjective: (kind?: 'capture_zone') => this.objectives?.debugSpawn(kind),
       toggleAi: () => {
         DEV_CHEATS.showAi = !DEV_CHEATS.showAi;
         return DEV_CHEATS.showAi;

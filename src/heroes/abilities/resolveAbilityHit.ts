@@ -73,7 +73,13 @@ export const resolveAbilityHit = (
       playAbilityConnect('perfect-block', attacker, defender, { heavy: profile.heavy, sourceKind: profile.sourceKind });
       return 'perfect-block';
     }
-    defender.drainStamina(Math.max(4, Math.round(profile.staminaDamage * 1.4)), now);
+    defender.drainStamina(
+      Math.max(
+        COMBAT.abilityShieldStaminaMin,
+        Math.round(profile.staminaDamage * COMBAT.abilityShieldStaminaMul),
+      ),
+      now,
+    );
     attacker.applyRecoil(-attacker.aim.x, -attacker.aim.y, COMBAT.shieldHitRecoilLight);
     defender.applyRecoil(-defender.aim.x, -defender.aim.y, COMBAT.blockPushLight);
     playHitJuice(scene, defender.x, defender.y, {

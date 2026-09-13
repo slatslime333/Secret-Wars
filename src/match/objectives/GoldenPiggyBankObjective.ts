@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { OBJECTIVE, OBJECTIVE_LABEL } from '../../config/objective';
+import { OBJECTIVE } from '../../config/objective';
 import type { TeamId } from '../../config/hero';
 import { COLORS, FONTS, hex } from '../../ui/theme';
 import { audio } from '../../audio';
@@ -8,7 +8,7 @@ import { isInAttackArc } from '../../combat/hitDetection';
 import type { HeroRuntime } from '../HeroRuntime';
 import type { NinjaBody } from '../../heroes/NinjaBody';
 import { onWorldStrike, type WorldStrikeEvent } from './worldStrike';
-import type { MatchObjective, ObjectiveCompleteEvent, ObjectiveContext, ObjectiveHint, ObjectiveUiState } from './types';
+import type { ObjectiveCompleteEvent, ObjectiveContext, ObjectiveHint, ObjectiveUiState } from './types';
 
 const GOLD = 0xffc928;
 const GOLD_DEEP = 0xc47a14;
@@ -19,7 +19,7 @@ export type PiggyDeps = {
   y: number;
 };
 
-export class GoldenPiggyBankObjective implements MatchObjective {
+export class GoldenPiggyBankObjective {
   readonly kind = 'golden_piggy' as const;
   readonly x: number;
   readonly y: number;
@@ -164,7 +164,7 @@ export class GoldenPiggyBankObjective implements MatchObjective {
       urgency = Math.max(urgency, 0.78);
     }
     return {
-      kind: this.kind,
+      kind: this.kind as unknown as import('../../config/objective').ObjectiveKind,
       x: this.x,
       y: this.y,
       radius: this.radius,
@@ -183,11 +183,11 @@ export class GoldenPiggyBankObjective implements MatchObjective {
 
   ui(): ObjectiveUiState {
     return {
-      kind: this.kind,
+      kind: this.kind as unknown as import('../../config/objective').ObjectiveKind,
       x: this.x,
       y: this.y,
       radius: this.radius,
-      label: OBJECTIVE_LABEL[this.kind],
+      label: 'GOLDEN PIGGY BANK!',
       owner: this.alpha === this.bravo ? null : this.alpha > this.bravo ? 'alpha' : 'bravo',
       contested: this.alpha > 0 && this.bravo > 0,
       decaying: false,
@@ -292,7 +292,7 @@ export class GoldenPiggyBankObjective implements MatchObjective {
       duration: 360,
       onComplete: () => burst.destroy(),
     });
-    return { kind: this.kind, winner };
+    return { kind: this.kind as unknown as ObjectiveCompleteEvent['kind'], winner };
   }
 
   private occupancyNear(heroes: readonly HeroRuntime[], radius: number): { alpha: number; bravo: number } {

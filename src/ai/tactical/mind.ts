@@ -158,7 +158,7 @@ export class TacticalMind {
     }
     return {
       stance: kit?.stance,
-      preferredRange: kit?.preferredRange,
+      preferredRange: (kit?.preferredRange ?? this.situation.self.attackRange) * (0.92 + this.personality.preferredDistance * 0.16),
       anchorX: director?.anchorX,
       anchorY: director?.anchorY,
       objective: this.situation.objective
@@ -225,14 +225,24 @@ export class TacticalMind {
 
     const nextTarget = this.resolve(picked.targetId, true);
     const nextAlly = this.resolve(picked.allyId, false);
+    const targetHeld =
+      Boolean(this.intent.target) &&
+      nextTarget !== this.intent.target &&
+      this.intent.target &&
+      !this.intent.target.down &&
+      now < this.intent.commitUntil + this.personality.targetFixation * 420 &&
+      picked.score < this.intent.score + 9 + this.personality.targetFixation * 12 &&
+      picked.action !== 'protect_ally' &&
+      picked.action !== 'escape' &&
+      picked.action !== 'retreat';
     const same =
       picked.action === this.intent.action &&
-      nextTarget === this.intent.target &&
+      (nextTarget === this.intent.target || targetHeld) &&
       now < this.intent.commitUntil &&
       !this.mustReconsider(now, self);
-    if (same) {
-      this.intent.score = picked.score;
-      this.intent.reason = picked.reason;
+    if (same || targetHeld) {
+      this.intent.score = Math.max(this.intent.score, picked.score);
+      this.intent.reason = targetHeld ? this.intent.reason : picked.reason;
       this.intent.threat = threat;
       return;
     }
@@ -465,25 +475,26 @@ export class TacticalMind {
   }
 
   private commitMs(action: TacticalAction): number {
+    const stick = this.personality.targetFixation * 180 + this.personality.decisionConfidence * 80;
     if (action === 'flank') {
-      return TACTIC.flankCommit + this.slot * 2;
+      return TACTIC.flankCommit + this.slot * 2 + stick;
     }
     if (action === 'wait_for_opening' || action === 'hold_position') {
-      return 640 + this.slot * 3;
+      return 640 + this.slot * 3 + stick * 0.4;
     }
     if (action === 'retreat' || action === 'escape') {
-      return 720;
+      return 720 + this.personality.retreatWillingness * 80;
     }
     if (action === 'recover') {
       return 1480 + this.slot * 4;
     }
     if (action === 'farm_minions') {
-      return 920;
+      return 920 + this.personality.patience * 120;
     }
     if (action === 'push_lane' || action === 'advance' || action === 'search_for_target' || action === 'regroup' || action === 'contest_objective') {
-      return 880;
+      return 880 + this.personality.independence * 80;
     }
-    return TACTIC.commitMin + (this.slot % TACTIC.commitSpan);
+    return TACTIC.commitMin + (this.slot % TACTIC.commitSpan) + stick;
   }
 
   private goalFor(action: TacticalAction, ally?: NinjaBody): RetreatGoal | undefined {
@@ -546,6 +557,7 @@ const blankView = (): CombatantView => ({
   canAttack: true,
   lastAttackerId: -1,
   visible: true,
+  blocking: false,
 });
 
 const copyView = (dest: CombatantView, src: CombatantView): void => {
@@ -572,6 +584,7 @@ const copyView = (dest: CombatantView, src: CombatantView): void => {
   dest.canAttack = src.canAttack;
   dest.lastAttackerId = src.lastAttackerId;
   dest.visible = src.visible;
+  dest.blocking = src.blocking;
 };
 
 const cloneView = (src: CombatantView): CombatantView => {

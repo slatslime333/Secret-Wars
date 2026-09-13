@@ -12,6 +12,7 @@ export const BASELINE_RATING = 50;
 export type CoreStatId =
   | 'health'
   | 'stamina'
+  | 'staminaRegen'
   | 'damage'
   | 'defense'
   | 'speed'
@@ -33,6 +34,7 @@ export type StatCurve = {
 export const CORE_STAT_ORDER: readonly CoreStatId[] = [
   'health',
   'stamina',
+  'staminaRegen',
   'damage',
   'defense',
   'speed',
@@ -44,6 +46,7 @@ export const CORE_STAT_ORDER: readonly CoreStatId[] = [
 export const CORE_STAT_LABEL: Record<CoreStatId, string> = {
   health: 'Health',
   stamina: 'Stamina',
+  staminaRegen: 'Stamina Recovery',
   damage: 'Damage',
   defense: 'Defense',
   speed: 'Speed',
@@ -62,6 +65,8 @@ export const CORE_STAT_LABEL: Record<CoreStatId, string> = {
 export const CORE_CURVES: Record<CoreStatId, StatCurve> = {
   health: { at0: 80, at50: 150, at99: 240 },
   stamina: { at0: 60, at50: 116, at99: 175 },
+  /** Stamina per second. 50 matches the previous shared 16/s baseline. */
+  staminaRegen: { at0: 8, at50: 16, at99: 28 },
   damage: { at0: 8, at50: 13, at99: 21 },
   defense: { at0: 10, at50: 28, at99: 50 },
   speed: { at0: 116, at50: 170, at99: 227 },
@@ -104,6 +109,7 @@ export const gameplayFromRatings = (ratings: CoreRatings) => ({
   knockbackPower: coreStatValue('knockback', ratings.knockback),
   attackCooldownMs: coreStatValue('attackSpeed', ratings.attackSpeed),
   attackRange: coreStatValue('attackRange', ratings.attackRange),
+  staminaRegenPerSecond: fromStatRating(ratings.staminaRegen, CORE_CURVES.staminaRegen),
 });
 
 export type GameplayCoreStats = ReturnType<typeof gameplayFromRatings>;
@@ -138,6 +144,7 @@ export const ratingFromStatValue = (value: number, curve: StatCurve): number => 
 export const ratingsFromGameplay = (stats: GameplayCoreStats): CoreRatings => ({
   health: ratingFromStatValue(stats.maxHealth, CORE_CURVES.health),
   stamina: ratingFromStatValue(stats.maxStamina, CORE_CURVES.stamina),
+  staminaRegen: ratingFromStatValue(stats.staminaRegenPerSecond, CORE_CURVES.staminaRegen),
   damage: ratingFromStatValue(stats.attackDamage, CORE_CURVES.damage),
   defense: ratingFromStatValue(stats.defense, CORE_CURVES.defense),
   speed: ratingFromStatValue(stats.moveSpeed, CORE_CURVES.speed),
@@ -149,6 +156,7 @@ export const ratingsFromGameplay = (stats: GameplayCoreStats): CoreRatings => ({
 const GAMEPLAY_BY_STAT: Record<CoreStatId, keyof GameplayCoreStats> = {
   health: 'maxHealth',
   stamina: 'maxStamina',
+  staminaRegen: 'staminaRegenPerSecond',
   damage: 'attackDamage',
   defense: 'defense',
   speed: 'moveSpeed',
@@ -177,11 +185,11 @@ export const displayedRatingsForHero = (
 
 export const formatRating = (rating: number): string => `${clampRating(Math.round(rating))}/${RATING_CAP}`;
 
-/** Sum of the eight displayed core ratings. */
+/** Sum of the displayed core ratings. */
 export const powerPoints = (ratings: CoreRatings): number =>
   CORE_STAT_ORDER.reduce((sum, id) => sum + Math.round(clampRating(ratings[id])), 0);
 
-/** Average of the eight displayed core ratings, still on the 0–99 scale. */
+/** Average of the displayed core ratings, still on the 0–99 scale. */
 export const overallRating = (ratings: CoreRatings): number =>
   Math.round(powerPoints(ratings) / CORE_STAT_ORDER.length);
 

@@ -419,22 +419,22 @@ export class CharacterSelectScene extends Phaser.Scene {
         .setOrigin(compact ? 0 : 1, 0),
     );
 
-    const rowH = compact ? 16 : 18;
-    const barsY = y + (compact ? 28 : 46);
+    const rowH = compact ? 14 : 16;
+    const barsY = y + (compact ? 26 : 44);
     CORE_STAT_ORDER.forEach((stat, index) => {
       const rowY = barsY + index * rowH;
       const value = copy.ratings[stat];
       add(
         this.add.text(x, rowY, CORE_STAT_LABEL[stat].toUpperCase(), {
           fontFamily: FONTS.body,
-          fontSize: compact ? '10px' : '11px',
+          fontSize: compact ? '9px' : '11px',
           fontStyle: 'bold',
           color: hex(COLORS.muted),
-          letterSpacing: 1,
+          letterSpacing: compact ? 0.4 : 1,
         }),
       );
-      const barX = x + (compact ? 96 : 108);
-      const barW = Math.max(64, width - (compact ? 140 : 158));
+      const barX = x + (compact ? 118 : 128);
+      const barW = Math.max(52, width - (compact ? 158 : 178));
       const barY = rowY + 5;
       add(this.add.rectangle(barX, barY, barW, compact ? 7 : 8, COLORS.panel, 1).setOrigin(0, 0.5));
       const fill = Math.max(2, (value / RATING_CAP) * barW);
