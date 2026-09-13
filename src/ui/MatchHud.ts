@@ -104,10 +104,18 @@ export class MatchHud {
     if (height <= 1 || isTouchPrimary()) {
       const chrome = layoutHudChrome(height > 1 ? measureViewport(width, height) : measureViewport(width));
       this.barWidth = chrome.bars.width;
-      const origin = chrome.match.align === 'center' ? 0.5 : 0;
+      const compact = chrome.match.align === 'center';
+      const origin = compact ? 0.5 : 0;
       this.timer.setOrigin(origin, 0).setX(chrome.match.x).setY(chrome.match.timerY).setFontSize(chrome.match.timerSize);
       this.phase.setOrigin(origin, 0).setX(chrome.match.x).setY(chrome.match.phaseY).setFontSize(chrome.match.phaseSize);
       this.score.setOrigin(origin, 0).setX(chrome.match.x).setY(chrome.match.scoreY).setFontSize(chrome.match.scoreSize);
+      if (compact) {
+        this.timer.setFontFamily(FONTS.body).setFontStyle('normal').setStroke(hex(COLORS.ink), 2).setLetterSpacing(0);
+        this.phase.setFontFamily(FONTS.body).setFontStyle('normal').setStroke(hex(COLORS.ink), 2).setLetterSpacing(1);
+        this.score.setFontFamily(FONTS.body).setFontStyle('normal').setStroke(hex(COLORS.ink), 2).setLetterSpacing(0);
+        this.level.setFontStyle('normal').setStroke(hex(COLORS.ink), 2).setLetterSpacing(0);
+        this.xpText.setFontStyle('normal').setStroke(hex(COLORS.ink), 2);
+      }
       const cx = chrome.bars.x + chrome.bars.width / 2;
       this.xpTrack.setPosition(cx, chrome.bars.xpY).setSize(chrome.bars.width, chrome.bars.xpH);
       this.xpFill.setPosition(chrome.bars.x, chrome.bars.xpY).setSize(this.xpFill.width || chrome.bars.width, chrome.bars.xpH);

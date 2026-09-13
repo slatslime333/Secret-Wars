@@ -100,26 +100,26 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
   const menuY = top + menuH / 2 + 2;
   const barWidth = Math.round(
     isTablet
-      ? clamp(isPortrait ? width * 0.36 : Math.min(width * 0.28, height * 0.48), 168, 240)
+      ? clamp(isPortrait ? width * 0.22 : Math.min(width * 0.18, height * 0.32), 120, 160)
       : isPortrait
-        ? clamp(width * 0.42, 136, 176)
-        : clamp(Math.min(width * 0.26, height * 0.42), 120, 168),
+        ? clamp(width * 0.28, 96, 118)
+        : clamp(Math.min(width * 0.16, height * 0.28), 96, 120),
   );
-  const hpH = isTablet ? 14 : enlargeChrome ? 12 : 8;
-  const shieldH = isTablet ? 10 : enlargeChrome ? 8 : 5;
-  const stamH = isTablet ? 10 : enlargeChrome ? 9 : 6;
-  const xpH = isTablet ? 8 : enlargeChrome ? 7 : 5;
-  const gap = enlargeChrome ? 6 : 5;
+  const hpH = isTablet ? 8 : 5;
+  const shieldH = isTablet ? 5 : 3;
+  const stamH = isTablet ? 5 : 3;
+  const xpH = isTablet ? 4 : 2;
+  const gap = isTablet ? 3 : 2;
   const barsX = Math.round((width - barWidth) / 2);
-  const floor = height - Math.max(safe.bottom, 8) - 8;
-  const labelGap = enlargeChrome ? 16 : 14;
+  const floor = height - Math.max(safe.bottom, 8) - 6;
+  const labelGap = isTablet ? 11 : 8;
   const xpY = floor - labelGap - xpH / 2;
   const staminaY = xpY - xpH / 2 - gap - stamH / 2;
   const shieldY = staminaY - stamH / 2 - gap - shieldH / 2;
   const hpY = shieldY - shieldH / 2 - gap - hpH / 2;
-  const scoreY = hpY - hpH / 2 - (enlargeChrome ? 24 : 18);
-  const timerY = scoreY - (enlargeChrome ? 20 : 16);
-  const phaseY = timerY - (enlargeChrome ? 16 : 14);
+  const scoreY = hpY - hpH / 2 - (isTablet ? 12 : 9);
+  const timerY = scoreY - (isTablet ? 13 : 11);
+  const phaseY = timerY - (isTablet ? 12 : 10);
   const miniW = Math.round(
     isTablet
       ? clamp(isPortrait ? width * 0.24 : Math.min(height * 0.34, width * 0.2), 140, 196)
@@ -148,12 +148,12 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
       scoreY,
       timerY,
       phaseY,
-      scoreSize: isTablet ? 18 : enlargeChrome ? 16 : 13,
-      timerSize: isTablet ? 20 : enlargeChrome ? 18 : 14,
-      phaseSize: isTablet ? 13 : enlargeChrome ? 12 : 10,
+      scoreSize: isTablet ? 12 : 10,
+      timerSize: isTablet ? 13 : 11,
+      phaseSize: isTablet ? 10 : 9,
       align: 'center',
     },
-    xpSize: isTablet ? 13 : enlargeChrome ? 12 : 10,
+    xpSize: isTablet ? 10 : 9,
     minimap: {
       x: width - contentInset.right,
       y: miniY,

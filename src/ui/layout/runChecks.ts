@@ -40,6 +40,13 @@ const checkSize = (label: string, width: number, height: number): Check[] => {
   const matchCentered = chrome.match.align === 'center' && Math.abs(chrome.match.x - width / 2) < 8;
   const menuRight = chrome.menuX > width * 0.7;
   const ultNotCenter = notCentered(layout.ultimate.x, width, 0.18) && notCentered(resolved.ultimate.x, width, 0.18);
+  const stickFloor = layout.leftStick.y + layout.radius;
+  const aimFloor = layout.rightStick.y + layout.radius;
+  const controlsAtBottom = stickFloor >= height - 48 && aimFloor >= height - 48;
+  const barRight = chrome.bars.x + chrome.bars.width;
+  const moveRight = layout.leftStick.x + layout.radius;
+  const aimLeft = layout.rightStick.x - layout.radius;
+  const barsInGap = chrome.bars.x >= moveRight + 4 && barRight <= aimLeft - 4;
   return [
     {
       name: `${label} no control overlap`,
@@ -67,6 +74,11 @@ const checkSize = (label: string, width: number, height: number): Check[] => {
         layout.radius >= (height > width ? 48 : height < 340 ? 38 : width >= 1000 ? 54 : 40) &&
         layout.buttonRadius >= (height < 340 ? 22 : 24),
       detail: `stick=${layout.radius} btn=${layout.buttonRadius} bars=${chrome.bars.width} mini=${chrome.minimap.width}`,
+    },
+    {
+      name: `${label} sticks stay in the corners`,
+      ok: controlsAtBottom && barsInGap,
+      detail: `stickFloor=${stickFloor.toFixed(0)} bars=${chrome.bars.x}-${barRight} gap=${moveRight.toFixed(0)}-${aimLeft.toFixed(0)}`,
     },
   ];
 };
