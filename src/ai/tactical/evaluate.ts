@@ -927,11 +927,133 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     count = write(out, count, 'escape', 24 + (self.hpRatio < 0.35 ? 8 : 0), 'shot incoming');
   }
 
+  if (kind === 'hero' && situation.objective) {
+    count = scoreObjective(out, count, situation, risk, ranged, front, support);
+  }
+
   if (plan && kind === 'hero') {
     count = applyPlanBias(out, count, plan, visibleHeroes, personality);
   }
 
   return count;
+};
+
+const scoreObjective = (
+  out: ScoredAction[],
+  count: number,
+  situation: Situation,
+  risk: number,
+  ranged: boolean,
+  front: boolean,
+  support: boolean,
+): number => {
+  const obj = situation.objective;
+  if (!obj) {
+    return count;
+  }
+  const { self, personality, allies, enemies } = situation;
+  const d = Math.hypot(obj.x - self.x, obj.y - self.y);
+  const between = enemies.filter((enemy) => {
+    if (enemy.kind !== 'hero' || !enemy.visible) {
+      return false;
+    }
+    const toObjX = obj.x - self.x;
+    const toObjY = obj.y - self.y;
+    const span = Math.hypot(toObjX, toObjY) || 1;
+    const t = ((enemy.x - self.x) * toObjX + (enemy.y - self.y) * toObjY) / (span * span);
+    if (t <= 0.08 || t >= 0.92) {
+      return false;
+    }
+    const px = self.x + toObjX * t;
+    const py = self.y + toObjY * t;
+    return Math.hypot(enemy.x - px, enemy.y - py) < 70;
+  }).length;
+  let contest = 16 + obj.urgency * 22 - (d / Math.max(180, situation.vision)) * 14;
+  contest += (personality.aggression - 0.5) * 12;
+  contest += (personality.opportunism - 0.5) * 8;
+  contest -= (personality.caution - 0.5) * 10;
+  contest -= risk * 26;
+  if (self.hpRatio < personality.retreatHp) {
+    contest -= 20;
+  }
+  if (self.hpRatio < TACTIC.criticalHp) {
+    contest -= 18;
+  }
+  if (situation.isolated && obj.occupyingAllies === 0) {
+    contest -= 10 + personality.caution * 8;
+  }
+  if (between >= 2 && self.hpRatio < 0.45) {
+    contest -= 16;
+  }
+  if (between >= 3 && self.hpRatio < 0.28) {
+    contest -= 22;
+  }
+  if (obj.occupyingEnemies >= obj.occupyingAllies + 2 && self.hpRatio < 0.55 && personality.caution > 0.55) {
+    contest -= 12;
+  }
+  if (obj.kind === 'capture_zone') {
+    if (front) {
+      contest += 8;
+    }
+    if (ranged) {
+      contest -= 3;
+      if (d < obj.radius * 0.35) {
+        contest -= 6;
+      }
+    }
+    if (support && obj.occupyingAllies > 0) {
+      contest += 8 + personality.protectionInstinct * 6;
+    }
+    if (obj.occupyingAllies === 0 && personality.teamwork > 0.6 && situation.allyHeroCount) {
+      contest -= 6;
+    }
+    if (obj.owner === self.team && obj.decaying) {
+      contest += 10;
+    }
+    if (obj.contested && personality.aggression > 0.6) {
+      contest += 8;
+    }
+    if (obj.contested && personality.caution > 0.65 && obj.occupyingEnemies > obj.occupyingAllies) {
+      contest -= 10;
+    }
+  } else {
+    if (obj.selfProgress >= 0.75 && self.hpRatio > 0.22) {
+      contest += 16;
+    }
+    if (obj.enemyProgress >= 0.75) {
+      contest += 14 + personality.aggression * 6;
+    }
+    if (obj.enemyProgress < 0.35 && obj.selfProgress < 0.2 && d > 380 && self.hpRatio < 0.5) {
+      contest -= 10;
+    }
+    if (ranged) {
+      contest += 2;
+    }
+  }
+  if (situation.lastSurvivor && obj.occupyingEnemies >= 2) {
+    contest -= 14;
+  }
+  const focus = enemies.find(
+    (enemy) => enemy.kind === 'hero' && enemy.visible && Math.hypot(enemy.x - obj.x, enemy.y - obj.y) < obj.radius + 80,
+  );
+  const ally = allies.find(
+    (friend) => friend.kind === 'hero' && Math.hypot(friend.x - obj.x, friend.y - obj.y) < obj.radius + 90,
+  );
+  return write(
+    out,
+    count,
+    'contest_objective',
+    contest,
+    obj.kind === 'golden_piggy'
+      ? obj.enemyProgress >= 0.75
+        ? 'stop their piggy'
+        : 'damage race'
+      : obj.contested
+        ? 'contest the zone'
+        : 'play the zone',
+    focus?.id ?? -1,
+    ally?.id ?? -1,
+  );
 };
 
 const applyPlanBias = (

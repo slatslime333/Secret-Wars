@@ -59,8 +59,11 @@ export class HeroPilot {
 
     this.mind.think(now, body, field, scene);
     const target = this.mind.target;
+    const objective = this.mind.situationView().objective;
     if (target) {
       body.setAim(target.x - body.x, target.y - body.y);
+    } else if (this.mind.action === 'contest_objective' && objective) {
+      body.setAim(objective.x - body.x, objective.y - body.y);
     } else {
       body.setAim(body.team === 'alpha' ? 1 : -1, 0);
     }
@@ -102,9 +105,13 @@ export class HeroPilot {
     }
 
     this.walk(now, body, scene);
-    this.queueSwing(now, body, target);
+    const piggyInRange =
+      this.mind.action === 'contest_objective' &&
+      objective?.kind === 'golden_piggy' &&
+      Math.hypot(body.x - objective.x, body.y - objective.y) <= body.stats.attackRange + objective.radius * 0.85;
+    this.queueSwing(now, body, target, objective);
 
-    const inRange = target ? distance(body, target) <= body.stats.attackRange * 1.08 : false;
+    const inRange = target ? distance(body, target) <= body.stats.attackRange * 1.08 : piggyInRange;
     const held = now < this.holdUntil && inRange && body.canAttack(now) && this.mind.wantsAttack();
     const pressed = this.tapQueued && body.canAttack(now) && this.mind.wantsAttack();
     this.tapQueued = false;
@@ -121,17 +128,29 @@ export class HeroPilot {
     }
   }
 
-  private queueSwing(now: number, body: NinjaBody, target: NinjaBody | undefined): void {
-    if (!target || !this.mind.wantsAttack() || !body.canAttack(now)) {
+  private queueSwing(
+    now: number,
+    body: NinjaBody,
+    target: NinjaBody | undefined,
+    objective?: { kind: string; x: number; y: number; radius: number },
+  ): void {
+    if (!this.mind.wantsAttack() || !body.canAttack(now)) {
       return;
     }
-    if (distance(body, target) > body.stats.attackRange * 1.08) {
+    const piggy =
+      this.mind.action === 'contest_objective' &&
+      objective?.kind === 'golden_piggy' &&
+      Math.hypot(body.x - objective.x, body.y - objective.y) <= body.stats.attackRange + objective.radius * 0.85;
+    if (!target && !piggy) {
+      return;
+    }
+    if (target && distance(body, target) > body.stats.attackRange * 1.08 && !piggy) {
       return;
     }
     if (now < this.holdUntil) {
       return;
     }
-    if (this.mind.action === 'wait_for_opening' && !isOpening(now, body, target)) {
+    if (this.mind.action === 'wait_for_opening' && target && !isOpening(now, body, target)) {
       return;
     }
     const roll = Math.random();

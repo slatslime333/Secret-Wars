@@ -30,6 +30,12 @@ export type MoveHint = {
   preferredRange?: number;
   anchorX?: number;
   anchorY?: number;
+  objective?: {
+    kind: 'capture_zone' | 'golden_piggy';
+    x: number;
+    y: number;
+    radius: number;
+  };
 };
 
 const isRangedMove = (body: MoveBody, hint?: MoveHint): boolean => {
@@ -112,6 +118,47 @@ export const moveGoal = (
     const gap = Math.hypot(dest.x - body.x, dest.y - body.y);
     const aim = target ? aimTo(target.x, target.y) : aimTo(dest.x, dest.y);
     return { x: dest.x, y: dest.y, halt: gap < 28, ...aim };
+  }
+
+  if (action === 'contest_objective' && hint?.objective) {
+    const obj = hint.objective;
+    const ranged = isRangedMove(body, hint);
+    const support = hint.stance === 'support';
+    const aim = target ? aimTo(target.x, target.y) : aimTo(obj.x, obj.y);
+    if (obj.kind === 'capture_zone') {
+      if (ranged) {
+        const t = now * 0.0026 + slot * 0.9;
+        const radius = obj.radius * 0.9;
+        const gx = obj.x + Math.cos(t) * radius;
+        const gy = obj.y + Math.sin(t) * radius;
+        const gap = Math.hypot(gx - body.x, gy - body.y);
+        return { x: gx, y: gy, halt: gap < 22, ...aim };
+      }
+      if (support && ally) {
+        const gx = ally.x * 0.65 + obj.x * 0.35;
+        const gy = ally.y * 0.65 + obj.y * 0.35;
+        const gap = Math.hypot(gx - body.x, gy - body.y);
+        return { x: gx, y: gy, halt: gap < 24, ...aim };
+      }
+      const offset = 18 * flankSign;
+      const gx = obj.x + (ranged ? 0 : offset * 0.4);
+      const gy = obj.y + offset;
+      const gap = Math.hypot(gx - body.x, gy - body.y);
+      return { x: gx, y: gy, halt: gap < obj.radius * 0.28, ...aim };
+    }
+    const range = preferredRange(body, action, hint);
+    const toX = obj.x - body.x;
+    const toY = obj.y - body.y;
+    const gap = Math.hypot(toX, toY) || 1;
+    const nx = toX / gap;
+    const ny = toY / gap;
+    const stand = obj.radius + range * (ranged ? 0.85 : 0.55);
+    return {
+      x: obj.x - nx * stand + -ny * 22 * flankSign,
+      y: obj.y - ny * stand + nx * 22 * flankSign,
+      halt: Math.abs(gap - stand) < 16,
+      ...aim,
+    };
   }
 
   if (!target) {

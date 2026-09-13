@@ -10,7 +10,15 @@ export class ScoreManager {
   readonly kills: TeamScore = { alpha: 0, bravo: 0 };
 
   addKill(team: TeamId): void {
-    this.kills[team] += 1;
+    this.addPoints(team, 1);
+  }
+
+  /** Objective score, hero kills, or any other team point award. */
+  addPoints(team: TeamId, amount: number): void {
+    if (amount <= 0) {
+      return;
+    }
+    this.kills[team] += amount;
   }
 
   snapshot(): TeamScore {

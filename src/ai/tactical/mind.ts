@@ -14,6 +14,7 @@ import { personalityFromSeed } from './personality';
 import { pickRetreatGoal, type RetreatGoal } from './retreat';
 import { scanProjectileThreat } from './shots';
 import { GamePlanController } from './strategy';
+import { objectiveHintFor } from '../../match/objectives/board';
 import type {
   CombatantView,
   GamePlan,
@@ -55,6 +56,7 @@ const AGGRESSIVE: ReadonlySet<TacticalAction> = new Set([
   'flank',
   'intercept',
   'assist_ally',
+  'contest_objective',
 ]);
 
 const labelOf = (unit?: NinjaBody): string => {
@@ -159,6 +161,14 @@ export class TacticalMind {
       preferredRange: kit?.preferredRange,
       anchorX: director?.anchorX,
       anchorY: director?.anchorY,
+      objective: this.situation.objective
+        ? {
+            kind: this.situation.objective.kind,
+            x: this.situation.objective.x,
+            y: this.situation.objective.y,
+            radius: this.situation.objective.radius,
+          }
+        : undefined,
     };
   }
 
@@ -277,6 +287,7 @@ export class TacticalMind {
       action === 'switch_target' ||
       action === 'wait_for_opening' ||
       action === 'farm_minions' ||
+      action === 'contest_objective' ||
       (action === 'recover' && this.intent.goal?.kind === 'minions')
     );
   }
@@ -384,6 +395,7 @@ export class TacticalMind {
       this.kind === 'hero' && allyHeroes.length > 0 && (nearestAlly?.d ?? 9999) > 280;
     this.situation.now = now;
     this.situation.projectile = scanProjectileThreat(this.situation.self, this.personality, selfFact.ref.stats.bodyRadius);
+    this.situation.objective = objectiveHintFor(selfFact.team);
     this.lastAllyCount = allyHeroes.length;
   }
 
@@ -443,6 +455,9 @@ export class TacticalMind {
     if (this.situation.projectile?.willHit && intent.action !== 'reposition' && intent.action !== 'escape') {
       return true;
     }
+    if (this.situation.objective && this.situation.objective.urgency >= 0.75 && (intent.action === 'farm_minions' || intent.action === 'advance' || intent.action === 'search_for_target')) {
+      return true;
+    }
     if (this.situation.lastSurvivor && AGGRESSIVE.has(intent.action) && intent.action !== 'finish_target') {
       return true;
     }
@@ -465,7 +480,7 @@ export class TacticalMind {
     if (action === 'farm_minions') {
       return 920;
     }
-    if (action === 'push_lane' || action === 'advance' || action === 'search_for_target' || action === 'regroup') {
+    if (action === 'push_lane' || action === 'advance' || action === 'search_for_target' || action === 'regroup' || action === 'contest_objective') {
       return 880;
     }
     return TACTIC.commitMin + (this.slot % TACTIC.commitSpan);
