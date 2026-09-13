@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { arenaInnerBounds } from '../config/arena';
 import { HeroCombatConfig, TeamId, teamOfRival } from '../config/hero';
 import { NINJA } from '../config/ninja';
 import { COMBAT, ComboStep, comboStepOf } from '../config/combat';
@@ -72,6 +73,7 @@ export class NinjaBody {
     this.sprite.setAlpha(0);
     this.sprite.setCircle(this.stats.bodyRadius);
     this.sprite.setCollideWorldBounds(true);
+    this.sprite.setBounce(0);
     this.sprite.setMaxVelocity(COMBAT.physicsMaxSpeed, COMBAT.physicsMaxSpeed);
     this.sprite.setDrag(0, 0);
     this.sprite.setDepth(this.rival ? 9 : 10);
@@ -133,6 +135,7 @@ export class NinjaBody {
     if (!this.view.active || !this.sprite.active) {
       return;
     }
+    this.containInArena();
     this.tickHitStop(this.now());
     this.view.setPosition(this.sprite.x, this.sprite.y);
     this.redrawHandSparks();
@@ -550,9 +553,51 @@ export class NinjaBody {
   }
 
   placeAt(x: number, y: number): void {
-    this.sprite.setPosition(x, y);
-    this.body?.reset(x, y);
-    this.view.setPosition(x, y);
+    const boxed = this.boxedPoint(x, y);
+    this.sprite.setPosition(boxed.x, boxed.y);
+    this.body?.reset(boxed.x, boxed.y);
+    this.view.setPosition(boxed.x, boxed.y);
+  }
+
+  private boxedPoint(x: number, y: number): { x: number; y: number } {
+    const box = arenaInnerBounds(this.stats.bodyRadius);
+    return {
+      x: Math.min(box.maxX, Math.max(box.minX, x)),
+      y: Math.min(box.maxY, Math.max(box.minY, y)),
+    };
+  }
+
+  /** Keep walk and knockback from leaving the wall strip. */
+  private containInArena(): void {
+    if (!this.present) {
+      return;
+    }
+    const box = arenaInnerBounds(this.stats.bodyRadius);
+    const x = Math.min(box.maxX, Math.max(box.minX, this.sprite.x));
+    const y = Math.min(box.maxY, Math.max(box.minY, this.sprite.y));
+    const body = this.body;
+    if (x !== this.sprite.x || y !== this.sprite.y) {
+      this.sprite.setPosition(x, y);
+      if (body) {
+        body.x = x - body.halfWidth;
+        body.y = y - body.halfHeight;
+      }
+    }
+    if (!body) {
+      return;
+    }
+    if (x <= box.minX && body.velocity.x < 0) {
+      body.setVelocityX(0);
+    }
+    if (x >= box.maxX && body.velocity.x > 0) {
+      body.setVelocityX(0);
+    }
+    if (y <= box.minY && body.velocity.y < 0) {
+      body.setVelocityY(0);
+    }
+    if (y >= box.maxY && body.velocity.y > 0) {
+      body.setVelocityY(0);
+    }
   }
 
   refillAmmo(): void {

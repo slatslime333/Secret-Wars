@@ -66,6 +66,7 @@ export const resolveMelee = (
     dirX?: number;
     dirY?: number;
     rangeMul?: number;
+    launchCap?: number;
   } = {},
 ): HitKind => {
   if (defender.down) {
@@ -144,6 +145,7 @@ export const resolveMelee = (
     knockback: attacker.stats.knockbackPower * profile.knockbackMultiplier * (options.knockbackMul ?? 1),
     staminaDamage: profile.staminaDamage,
     step,
+    launchCap: options.launchCap,
     source: { attacker, kind: 'light' },
   });
   spawnHitSpark(scene, defender.x + attacker.aim.x * 12, defender.y + attacker.aim.y * 12, {

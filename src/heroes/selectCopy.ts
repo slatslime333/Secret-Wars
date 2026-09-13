@@ -33,7 +33,7 @@ const ABILITY_TEXT: Record<string, string> = {
   'cole-discharge': 'Release a close electric burst around Cole.',
   'cole-thunderstorm': 'Call lightning strikes onto nearby enemies. Recharges after 45 seconds.',
   'death-gun-barrage': 'Hold to aim, then spray a burst of SMG fire.',
-  'death-bat-smash': 'Hold to aim, then slam the bat in that direction.',
+  'death-bat-smash': 'Hold to aim, then sweep the bat through that arc.',
   'death-bat-sweep': 'Sweep the bat in a wide damaging arc. Recharges after 45 seconds.',
 };
 

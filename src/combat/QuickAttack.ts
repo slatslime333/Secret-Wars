@@ -252,6 +252,7 @@ export class QuickAttack {
       const kind = resolveMelee(this.scene, now, attacker, enemy, step, defenderBlock, {
         alreadyClashed: connected,
         knockbackMul: COLE_ATTACK.knockbackMul,
+        launchCap: COLE_ATTACK.launchCap,
       });
       if (kind === 'hit') {
         enemy.status.applySlow(now, COLE_ATTACK.targetSlowMs, COLE_ATTACK.targetSlowMul);

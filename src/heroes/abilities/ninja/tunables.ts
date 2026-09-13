@@ -14,6 +14,8 @@ export const NINJA_SMOKE = {
   expandMs: 280,
   /** Attack radius * 1.15, then another 15% for the current smoke size. */
   radius: NINJA.attackRange * 1.15 * 1.15,
+  /** Drop the cloud a short step along aim, not on Ninja's feet. */
+  spawnAhead: 52,
   /** Twice the original 108px blast so the escape actually relocates Ninja. */
   blastDistance: 216,
   blastDurationMs: 170,
@@ -24,7 +26,7 @@ export const NINJA_SMOKE = {
 
 export const NINJA_KICK = {
   cooldownMs: 5700,
-  dashDistance: 112,
+  dashDistance: Math.round(112 * 1.2),
   dashDurationMs: 125,
   maxTargets: 4,
   /** Path width uses body radii plus a small contact slop. */
@@ -33,10 +35,10 @@ export const NINJA_KICK = {
   aimHalfWidth: NINJA.bodyRadius + NINJA.bodyRadius + 8,
   damageRating: 51,
   damage: abilityDamage(51),
-  knockbackMul: 5.7,
-  secondaryKnockbackMul: 4.25,
+  knockbackMul: 6.27,
+  secondaryKnockbackMul: 4.68,
   /** Lets the kick exceed the shared launch cap without changing other heroes. */
-  launchCap: 780,
+  launchCap: 858,
   staminaDamage: 6,
   hitStopMs: 400,
   hitSlowMul: 0.5,

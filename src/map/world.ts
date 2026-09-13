@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ARENA } from '../config/arena';
 import { MapQuery } from './query';
 import type { MapLayout } from './types';
 
@@ -18,6 +19,7 @@ export class MapWorld {
   ) {
     this.query = new MapQuery(layout);
     this.staticGroup = scene.physics.add.staticGroup();
+    this.addPerimeterWalls();
     for (const obs of layout.obstacles) {
       const { x, y, w, h } = obs.collision;
       const block = scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0x000000, 0);
@@ -34,6 +36,22 @@ export class MapWorld {
 
   attachGroup(group: Phaser.Physics.Arcade.Group): void {
     this.colliders.push(this.scene.physics.add.collider(group, this.staticGroup));
+  }
+
+  private addPerimeterWalls(): void {
+    const { width, height, wallThickness: wall } = ARENA;
+    const strips: Array<{ x: number; y: number; w: number; h: number }> = [
+      { x: width / 2, y: wall / 2, w: width, h: wall },
+      { x: width / 2, y: height - wall / 2, w: width, h: wall },
+      { x: wall / 2, y: height / 2, w: wall, h: height },
+      { x: width - wall / 2, y: height / 2, w: wall, h: height },
+    ];
+    for (const strip of strips) {
+      const block = this.scene.add.rectangle(strip.x, strip.y, strip.w, strip.h, 0x000000, 0);
+      this.scene.physics.add.existing(block, true);
+      this.staticGroup.add(block);
+      this.blockers.push(block);
+    }
   }
 
   destroy(): void {

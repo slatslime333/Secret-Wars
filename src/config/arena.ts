@@ -105,6 +105,17 @@ export const ARENA = {
   enemySpawn: TEAM_SPAWNS.bravo,
 } as const;
 
+/** Playable AABB inset by the wall strip and a body radius. */
+export const arenaInnerBounds = (bodyRadius: number): { minX: number; minY: number; maxX: number; maxY: number } => {
+  const wall = ARENA.wallThickness;
+  return {
+    minX: wall + bodyRadius,
+    minY: wall + bodyRadius,
+    maxX: ARENA.width - wall - bodyRadius,
+    maxY: ARENA.height - wall - bodyRadius,
+  };
+};
+
 /** Furthest X a unit should walk toward when the lane is empty. */
 export const pushLimitX = (team: TeamId): number =>
   team === 'alpha' ? ARENA.width - ARENA.wallThickness - EDGE_INSET : ARENA.wallThickness + EDGE_INSET;

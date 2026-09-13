@@ -5,9 +5,10 @@ import { DEATH_SMASH } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { COLORS } from '../../../ui/theme';
-import { smashHitsTarget } from './smashHit';
+import { smashBatHits, smashCrashOffsets, smashSwingAngle } from './smashHit';
 import { deathIdleBatAngle } from '../../drawDeath';
 import { facingFromAim } from '../../drawNinja';
+import { NinjaBody } from '../../NinjaBody';
 
 export const batSmashDef: AbilityDef = {
   id: 'death-bat-smash',
@@ -32,11 +33,14 @@ export const batSmashDef: AbilityDef = {
 class BatSmashAbility implements ActiveAbility {
   readonly id = batSmashDef.id;
   readonly control = { move: false, attack: true, dash: true, block: true, abilities: true };
+  private readonly startedAt: number;
   private readonly until: number;
   private readonly impactAt: number;
   private readonly dirX: number;
   private readonly dirY: number;
-  private struck = false;
+  private readonly aimAngle: number;
+  private burst = false;
+  private readonly hit = new Set<NinjaBody>();
   private readonly ring: ReturnType<AbilityContext['scene']['add']['graphics']>;
 
   constructor(ctx: AbilityContext) {
@@ -45,17 +49,18 @@ class BatSmashAbility implements ActiveAbility {
     const len = Math.hypot(aim.x, aim.y) || 1;
     this.dirX = aim.x / len;
     this.dirY = aim.y / len;
+    this.aimAngle = Math.atan2(this.dirY, this.dirX);
     caster.setAim(this.dirX, this.dirY);
     caster.stop();
+    this.startedAt = now;
     this.until = now + DEATH_SMASH.animMs;
     this.impactAt = now + DEATH_SMASH.impactAt;
     caster.status.applyControlLock(now, DEATH_SMASH.animMs);
     this.ring = scene.add.graphics().setDepth(12);
     spawnCombatCallout(scene, caster.x, caster.y, 'SMASH', COLORS.redBright);
-    const aimAngle = Math.atan2(this.dirY, this.dirX);
     const idle = deathIdleBatAngle(facingFromAim(this.dirX, this.dirY));
-    const start = aimAngle - DEATH_SMASH.windupRad;
-    const end = aimAngle + DEATH_SMASH.followRad;
+    const start = this.aimAngle - DEATH_SMASH.windupRad;
+    const end = this.aimAngle + DEATH_SMASH.followRad;
     caster.playCustomAttack(
       now,
       DEATH_SMASH.animMs,
@@ -76,13 +81,10 @@ class BatSmashAbility implements ActiveAbility {
   }
 
   update(ctx: AbilityContext): boolean {
-    if (!this.struck) {
-      ctx.caster.stop();
-    }
+    ctx.caster.stop();
     this.drawTelegraph(ctx);
-    if (!this.struck && ctx.now >= this.impactAt) {
-      this.struck = true;
-      this.impact(ctx);
+    if (ctx.now >= this.impactAt) {
+      this.sweep(ctx);
     }
     if (ctx.now >= this.until || ctx.caster.down) {
       this.ring.destroy();
@@ -93,60 +95,67 @@ class BatSmashAbility implements ActiveAbility {
 
   destroy(): void {
     this.ring.destroy();
+    this.hit.clear();
+  }
+
+  private frac(now: number): number {
+    return Math.min(1, Math.max(0, (now - this.startedAt) / DEATH_SMASH.animMs));
   }
 
   private drawTelegraph(ctx: AbilityContext): void {
-    const { caster } = ctx;
+    const { caster, now } = ctx;
     this.ring.clear();
-    const alpha = this.struck ? 0.12 : 0.5;
-    const hw = DEATH_SMASH.halfWidth;
-    const nx = this.dirX;
-    const ny = this.dirY;
-    const px = -ny * hw;
-    const py = nx * hw;
-    const end = DEATH_SMASH.radius;
-    this.ring.fillStyle(COLORS.redBright, alpha * 0.18);
-    this.ring.fillTriangle(
-      caster.x + px,
-      caster.y + py,
-      caster.x - px,
-      caster.y - py,
-      caster.x + nx * end + px,
-      caster.y + ny * end + py,
-    );
-    this.ring.fillTriangle(
-      caster.x - px,
-      caster.y - py,
-      caster.x + nx * end - px,
-      caster.y + ny * end - py,
-      caster.x + nx * end + px,
-      caster.y + ny * end + py,
-    );
+    const alpha = now >= this.impactAt ? 0.16 : 0.5;
+    const span = smashCrashOffsets();
+    const a0 = this.aimAngle + span.from;
+    const a1 = this.aimAngle + span.to;
+    this.ring.fillStyle(COLORS.redBright, alpha * 0.16);
+    this.ring.slice(caster.x, caster.y, DEATH_SMASH.radius, a0, a1, false);
+    this.ring.fillPath();
     this.ring.lineStyle(3, COLORS.redBright, alpha);
-    this.ring.lineBetween(caster.x + px, caster.y + py, caster.x + nx * end + px, caster.y + ny * end + py);
-    this.ring.lineBetween(caster.x - px, caster.y - py, caster.x + nx * end - px, caster.y + ny * end - py);
-    this.ring.strokeCircle(caster.x, caster.y, hw);
-    this.ring.strokeCircle(caster.x + nx * end, caster.y + ny * end, hw);
-    this.ring.lineStyle(2, 0xc8a060, this.struck ? 0.12 : 0.55);
+    this.ring.beginPath();
+    this.ring.arc(caster.x, caster.y, DEATH_SMASH.radius, a0, a1, false);
+    this.ring.strokePath();
     this.ring.lineBetween(
-      caster.x + nx * 12,
-      caster.y + ny * 12,
-      caster.x + nx * (end + 16),
-      caster.y + ny * (end + 16),
+      caster.x,
+      caster.y,
+      caster.x + Math.cos(a0) * DEATH_SMASH.radius,
+      caster.y + Math.sin(a0) * DEATH_SMASH.radius,
+    );
+    this.ring.lineBetween(
+      caster.x,
+      caster.y,
+      caster.x + Math.cos(a1) * DEATH_SMASH.radius,
+      caster.y + Math.sin(a1) * DEATH_SMASH.radius,
+    );
+    const angle = smashSwingAngle(this.aimAngle, this.frac(now));
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    this.ring.lineStyle(3, 0xc8a060, now >= this.impactAt ? 0.22 : 0.7);
+    this.ring.lineBetween(
+      caster.x + nx * 10,
+      caster.y + ny * 10,
+      caster.x + nx * DEATH_SMASH.radius,
+      caster.y + ny * DEATH_SMASH.radius,
     );
   }
 
-  private impact(ctx: AbilityContext): void {
+  private sweep(ctx: AbilityContext): void {
     const { caster, scene, now } = ctx;
-    spawnSmashBurst(scene, caster.x, caster.y, this.dirX, this.dirY);
-    playWorld('death-smash-impact', caster);
+    if (!this.burst) {
+      this.burst = true;
+      spawnSmashBurst(scene, caster.x, caster.y, this.aimAngle);
+      playWorld('death-smash-impact', caster);
+    }
+    const angle = smashSwingAngle(this.aimAngle, this.frac(now));
     for (const enemy of ctx.enemies) {
-      if (enemy.down) {
+      if (enemy.down || this.hit.has(enemy)) {
         continue;
       }
-      if (!smashHitsTarget(caster.x, caster.y, this.dirX, this.dirY, enemy.x, enemy.y, enemy.stats.bodyRadius)) {
+      if (!smashBatHits(caster.x, caster.y, angle, enemy.x, enemy.y, enemy.stats.bodyRadius)) {
         continue;
       }
+      this.hit.add(enemy);
       const kind = resolveAbilityHit(
         scene,
         now,
@@ -154,7 +163,7 @@ class BatSmashAbility implements ActiveAbility {
         enemy,
         {
           rawDamage: DEATH_SMASH.damage,
-          knockback: caster.stats.knockbackPower * DEATH_SMASH.knockbackMul,
+          knockback: DEATH_SMASH.knockback,
           staminaDamage: 8,
           dirX: this.dirX,
           dirY: this.dirY,
@@ -175,13 +184,13 @@ const spawnSmashBurst = (
   scene: AbilityContext['scene'],
   x: number,
   y: number,
-  dirX: number,
-  dirY: number,
+  aimAngle: number,
 ): void => {
   const graphics = scene.add.graphics().setDepth(16);
   const anim = { t: 0 };
-  const hw = DEATH_SMASH.halfWidth;
-  const end = DEATH_SMASH.radius;
+  const span = smashCrashOffsets();
+  const a0 = aimAngle + span.from;
+  const a1 = aimAngle + span.to;
   scene.tweens.add({
     targets: anim,
     t: 1,
@@ -189,16 +198,17 @@ const spawnSmashBurst = (
     ease: 'Cubic.Out',
     onUpdate: () => {
       const fade = 1 - anim.t;
-      const grow = 0.85 + anim.t * 0.35;
-      const px = -dirY * hw * grow;
-      const py = dirX * hw * grow;
+      const grow = 0.88 + anim.t * 0.2;
       graphics.clear();
-      graphics.lineStyle(10 * fade, COLORS.redBright, 0.7 * fade);
-      graphics.lineBetween(x + px, y + py, x + dirX * end + px, y + dirY * end + py);
-      graphics.lineBetween(x - px, y - py, x + dirX * end - px, y + dirY * end - py);
-      graphics.strokeCircle(x + dirX * end, y + dirY * end, hw * grow);
+      graphics.fillStyle(COLORS.redBright, 0.22 * fade);
+      graphics.slice(x, y, DEATH_SMASH.radius * grow, a0, a1, false);
+      graphics.fillPath();
+      graphics.lineStyle(8 * fade, COLORS.redBright, 0.7 * fade);
+      graphics.beginPath();
+      graphics.arc(x, y, DEATH_SMASH.radius * grow, a0, a1, false);
+      graphics.strokePath();
       graphics.lineStyle(4, 0xc8a060, 0.85 * fade);
-      graphics.lineBetween(x + dirX * 10, y + dirY * 10, x + dirX * end, y + dirY * end);
+      graphics.lineBetween(x, y, x + Math.cos(aimAngle) * DEATH_SMASH.radius, y + Math.sin(aimAngle) * DEATH_SMASH.radius);
     },
     onComplete: () => graphics.destroy(),
   });
