@@ -693,9 +693,11 @@ export class BattleScene extends Phaser.Scene {
       width: chrome.menuW,
       height: chrome.menuH,
       compact: chrome.menuH < 40,
+      fontSize: chrome.menuH < 36 ? '13px' : undefined,
+      letterSpacing: 1,
       onPress: () => this.openPauseMenu(),
     });
-    this.menuButton.setScrollFactor(0).setDepth(120);
+    this.menuButton.setScrollFactor(0).setDepth(220);
   }
 
   private onResize(gameSize: Phaser.Structs.Size): void {
