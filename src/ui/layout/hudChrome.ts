@@ -80,7 +80,7 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
 
   const top = Math.max(safe.top, 4);
   const barH = isPortrait ? 0 : 36;
-  const menuW = Math.round(clamp(frame.minTouch * 2.05, 88, 118));
+  const menuW = Math.round(clamp(frame.minTouch * 2.15, isPortrait ? 96 : 88, 118));
   const menuH = Math.round(clamp(frame.minTouch * 0.72, 30, 36));
   const menuX = width - contentInset.right - menuW / 2;
   const menuY = top + (isPortrait ? menuH / 2 + 4 : barH / 2);
@@ -119,7 +119,7 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
     },
     minimap: {
       x: width - contentInset.right,
-      y: isPortrait ? menuBottom + 6 : top + barH + 6,
+      y: isPortrait ? xpY + 16 : top + barH + 6,
       width: miniW,
       height: miniH,
     },
