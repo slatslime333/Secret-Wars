@@ -398,7 +398,7 @@ export class BattleScene extends Phaser.Scene {
         COLE_BALL.explodeRadius,
         frame.ability1Aiming,
       );
-    } else if (this.ninja.heroId === 'death' && frame.ability1Aiming) {
+    } else if (this.ninja.heroId === 'death' && frame.ability1Aiming && !this.abilities.isBusy()) {
       this.marker.syncGunAim(
         this.ninja.x,
         this.ninja.y,

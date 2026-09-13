@@ -622,7 +622,7 @@ export class MatchScene extends Phaser.Scene {
     const ninja = this.player.body;
     if (ninja.heroId === 'cole') {
       this.marker.syncBallAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, COLE_BALL.explodeRadius, frame.ability1Aiming);
-    } else if (ninja.heroId === 'death' && frame.ability1Aiming) {
+    } else if (ninja.heroId === 'death' && frame.ability1Aiming && !this.player.abilities.isBusy()) {
       this.marker.syncGunAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, DEATH_GUN.laserLength, true);
     } else if (ninja.heroId === 'death' && frame.ability2Aiming) {
       this.marker.syncSmashAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, DEATH_SMASH.radius, true, DEATH_SMASH.halfWidth);

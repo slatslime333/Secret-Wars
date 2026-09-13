@@ -223,6 +223,10 @@ class AudioManager {
     this.musicEl = new Audio(new URL(AUDIO.musicSrc, document.baseURI).href);
     this.musicEl.loop = true;
     this.musicEl.preload = 'auto';
+    this.musicEl.crossOrigin = 'anonymous';
+    this.musicEl.setAttribute('data-secret-wars-music', 'bed');
+    this.musicEl.style.display = 'none';
+    document.body.appendChild(this.musicEl);
     this.musicGain = ctx.createGain();
     this.musicGain.gain.value = AUDIO.musicPeakGain * audioSettings.getMusicVolume();
     const source = ctx.createMediaElementSource(this.musicEl);
