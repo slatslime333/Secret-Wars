@@ -172,7 +172,6 @@ export class TacticalField {
       role: 'generalist',
       hpRatio: 1,
       staminaRatio: 1,
-      ammoRatio: 1,
       attackRange: 40,
       moveSpeed: 140,
       defense: 10,
@@ -193,7 +192,6 @@ export class TacticalField {
     const physics = body.body;
     const maxHp = Math.max(1, body.stats.maxHealth);
     const maxStamina = Math.max(1, body.stats.maxStamina);
-    const maxAmmo = Math.max(1, body.stats.ammoMax);
     fact.id = id;
     fact.ref = body;
     fact.x = body.x;
@@ -207,7 +205,6 @@ export class TacticalField {
     fact.role = body.stats.role;
     fact.hpRatio = body.health / maxHp;
     fact.staminaRatio = body.stamina / maxStamina;
-    fact.ammoRatio = body.ammo / maxAmmo;
     fact.attackRange = body.stats.attackRange;
     fact.moveSpeed = body.stats.moveSpeed;
     fact.defense = body.stats.defense;

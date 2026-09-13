@@ -34,7 +34,6 @@ export class NinjaBody {
   readonly stats: HeroCombatConfig;
   health: number;
   stamina: number;
-  ammo: number;
   lastAttacker?: NinjaBody;
   lastAttackerAt = 0;
   /** Last time an enemy actually dealt HP damage. Minion heals / regen do not touch this. */
@@ -50,7 +49,6 @@ export class NinjaBody {
   private staminaDeniedAt = 0;
   private invulnerableUntil = 0;
   private attackingUntil = 0;
-  private reloadEndsAt = 0;
   private currentAttackTween?: Phaser.Tweens.Tween;
   private lastDrawnFlash = false;
   private frozenUntil = 0;
@@ -67,7 +65,6 @@ export class NinjaBody {
     this.drawHero = options.draw ?? ((graphics, drawOptions) => drawNinja(graphics, drawOptions));
     this.health = this.stats.maxHealth;
     this.stamina = this.stats.maxStamina;
-    this.ammo = this.stats.ammoMax;
     ensureBodyTexture(scene);
     this.sprite = scene.physics.add.image(x, y, BODY_TEXTURE);
     this.sprite.setAlpha(0);
@@ -111,10 +108,6 @@ export class NinjaBody {
 
   get down(): boolean {
     return this.health <= 0;
-  }
-
-  get maxAmmo(): number {
-    return this.stats.ammoMax;
   }
 
   get body(): Phaser.Physics.Arcade.Body | undefined {
@@ -515,18 +508,9 @@ export class NinjaBody {
     });
   }
 
-  isReloading(now: number): boolean {
-    return this.ammo <= 0 && now < this.reloadEndsAt;
-  }
-
   canAttack(now: number): boolean {
     const minCost = lightAttackStaminaCost(1, this.stats.attackStaminaMul ?? 1);
-    return (
-      this.ammo > 0 &&
-      !this.isReloading(now) &&
-      !this.status.cannotAttack(now) &&
-      this.stamina >= minCost
-    );
+    return !this.status.cannotAttack(now) && this.stamina >= minCost;
   }
 
   healFull(): void {
@@ -605,53 +589,6 @@ export class NinjaBody {
     if (y >= box.maxY && body.velocity.y > 0) {
       body.setVelocityY(0);
     }
-  }
-
-  refillAmmo(): void {
-    this.ammo = this.stats.ammoMax;
-    this.reloadEndsAt = 0;
-  }
-
-  trySpendAmmo(now: number): boolean {
-    this.tickAmmo(now);
-    if (DEV_CHEATS.infiniteAmmo && this.stats.role !== 'minion') {
-      return true;
-    }
-    if (this.ammo <= 0 || now < this.reloadEndsAt) {
-      return false;
-    }
-    this.ammo -= 1;
-    if (this.ammo <= 0) {
-      this.reloadEndsAt = now + this.stats.reloadMs;
-    }
-    return true;
-  }
-
-  tickAmmo(now: number): void {
-    if (this.ammo <= 0 && this.reloadEndsAt > 0 && now >= this.reloadEndsAt) {
-      this.ammo = this.stats.ammoMax;
-      this.reloadEndsAt = 0;
-    }
-  }
-
-  ammoDisplay(now: number): { current: number; max: number; reloading: boolean; reloadRatio: number } {
-    this.tickAmmo(now);
-    if (this.isReloading(now)) {
-      const remaining = this.reloadEndsAt - now;
-      const recovered = 1 - remaining / this.stats.reloadMs;
-      return {
-        current: Math.min(this.stats.ammoMax, Math.floor(recovered * this.stats.ammoMax)),
-        max: this.stats.ammoMax,
-        reloading: true,
-        reloadRatio: Phaser.Math.Clamp(recovered, 0, 1),
-      };
-    }
-    return {
-      current: this.ammo,
-      max: this.stats.ammoMax,
-      reloading: false,
-      reloadRatio: 1,
-    };
   }
 
   hasAttackStamina(cost: number, now: number): boolean {

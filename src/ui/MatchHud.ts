@@ -57,12 +57,12 @@ export class MatchHud {
       .setScrollFactor(0)
       .setDepth(104);
 
-    this.xpTrack = scene.add.rectangle(148, 108, 224, 6, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
-    this.xpFill = scene.add.rectangle(36, 108, 224, 6, COLORS.yellow).setOrigin(0, 0.5);
+    this.xpTrack = scene.add.rectangle(148, 84, 224, 6, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
+    this.xpFill = scene.add.rectangle(36, 84, 224, 6, COLORS.yellow).setOrigin(0, 0.5);
     this.xpFill.setScrollFactor(0).setDepth(102);
 
     this.level = scene.add
-      .text(36, 116, 'LV 1', {
+      .text(36, 92, 'LV 1', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -76,7 +76,7 @@ export class MatchHud {
       .setDepth(102);
 
     this.xpText = scene.add
-      .text(260, 116, '0 / 70 XP', {
+      .text(260, 92, '0 / 70 XP', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',

@@ -12,7 +12,6 @@ export type DevMenuHandlers = {
   onSetCpuHero?: (id: HeroId) => void;
   onSwapHero: (id: HeroId) => void;
   onHeal: () => void;
-  onRefillAmmo: () => void;
   onResetPos: () => void;
   onResetCooldowns: () => void;
   onSpawnMinion: (kind: MinionKind, team: TeamId, count: number) => void;
@@ -110,7 +109,6 @@ export class DevMenu {
 
     addHead('PLAYER');
     add(() => 'HEAL FULL', () => options.onHeal());
-    add(() => 'REFILL AMMO', () => options.onRefillAmmo());
     add(() => 'RESET POSITION', () => options.onResetPos());
     add(() => 'RESET COOLDOWNS', () => options.onResetCooldowns());
     add(() => 'HERO NINJA', () => options.onSwapHero('ninja'));
@@ -187,10 +185,6 @@ export class DevMenu {
     });
     add(() => `NO CD  ${onOff(DEV_CHEATS.noCooldowns)}`, () => {
       DEV_CHEATS.noCooldowns = !DEV_CHEATS.noCooldowns;
-      options.onCheatsChanged();
-    });
-    add(() => `INF AMMO  ${onOff(DEV_CHEATS.infiniteAmmo)}`, () => {
-      DEV_CHEATS.infiniteAmmo = !DEV_CHEATS.infiniteAmmo;
       options.onCheatsChanged();
     });
     add(() => 'CLEAR FIELD', () => options.onClearBattlefield());

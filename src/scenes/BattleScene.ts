@@ -165,7 +165,6 @@ export class BattleScene extends Phaser.Scene {
       onSetCpuHero: (id) => this.setCpuHero(id),
       onSwapHero: (id) => this.swapHero(id),
       onHeal: () => this.ninja.healFull(),
-      onRefillAmmo: () => this.ninja.refillAmmo(),
       onResetPos: () => this.resetPlayerPos(),
       onResetCooldowns: () => this.abilities.resetCooldowns(),
       onSpawnMinion: (kind, team, count) => this.minions.spawnMany(kind, team, count),
@@ -377,7 +376,6 @@ export class BattleScene extends Phaser.Scene {
     } else {
       this.ninja.setAim(frame.aim);
     }
-    this.ninja.tickAmmo(now);
     if (!this.block.isActive(now)) {
       this.ninja.regenStamina(delta, now);
     }
@@ -428,7 +426,6 @@ export class BattleScene extends Phaser.Scene {
       this.brain.update(now, delta, this.rival, this.tactics, this);
     }
     this.drawRivalAi();
-    this.rival?.tickAmmo(now);
     if (this.rival && !this.rivalBlock?.isActive(now)) {
       this.rival.regenStamina(delta, now);
     }
@@ -772,7 +769,6 @@ export class BattleScene extends Phaser.Scene {
     this.minions.clear();
     this.removeCpu();
     this.ninja.healFull();
-    this.ninja.refillAmmo();
     this.abilities.resetCooldowns();
     this.resetPlayerPos();
   }

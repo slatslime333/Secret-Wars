@@ -27,9 +27,7 @@ export const COLE = {
   attackArcDegrees: 65,
   bodyRadius: NINJA.bodyRadius,
   staminaRegenPerSecond: 17,
-  /** Baseline light-attack stamina cost. 5 ammo / 2000ms is the cadence limiter. */
+  /** Baseline light-attack stamina cost. */
   attackStaminaMul: 1,
-  ammoMax: 5,
-  reloadMs: 2000,
   dashMaxCharges: 2,
 } as const satisfies HeroCombatConfig;
