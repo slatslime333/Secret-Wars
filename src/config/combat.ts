@@ -2,11 +2,11 @@
  * Shared combat rules. Hero-specific power comes from 0–99 ratings converted
  * in `src/config/ratings.ts` (50 = baseline).
  *
- * Tunables live here so knockback, lunges, ammo, dash charges, hold-shield,
+ * Tunables live here so knockback, lunges, dash charges, hold-shield,
  * and perfect-shield timing stay out of fighter/attack files.
  *
- * Ammo is short-term attack cadence (forced reload). Stamina is combat
- * endurance and is also drained by the shield. Light attacks spend both.
+ * Stamina is combat endurance: light attacks spend it, and the shield
+ * drains the same pool.
  */
 export const COMBAT = {
   attackArcDegrees: 78,
@@ -20,9 +20,6 @@ export const COMBAT = {
 
   /** Slightly slower than the converted cooldown so each swing can read. */
   attackCooldownMultiplier: 1.22,
-
-  attackAmmoMax: 7,
-  attackReloadMs: 1500,
 
   /** Hold-to-block. Stamina is the shield resource. */
   blockDrainPerSecond: 20,
@@ -136,6 +133,6 @@ export const comboStepOf = (step: number): ComboStep => {
   return 2;
 };
 
-/** Stamina spent to start a light attack. Ammo is a separate spend. */
+/** Stamina spent to start a light attack. */
 export const lightAttackStaminaCost = (step: ComboStep, staminaMul = 1): number =>
   Math.max(0, Math.round(COMBAT.attackStaminaCost * COMBAT.combo[step].staminaCostMultiplier * staminaMul));

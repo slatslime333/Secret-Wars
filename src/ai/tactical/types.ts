@@ -52,7 +52,6 @@ export type CombatantView = {
   role: HeroRole | string;
   hpRatio: number;
   staminaRatio: number;
-  ammoRatio: number;
   attackRange: number;
   moveSpeed: number;
   defense: number;

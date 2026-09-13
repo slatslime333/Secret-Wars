@@ -12,7 +12,6 @@ const unit = (partial: Partial<CombatantView> & Pick<CombatantView, 'id' | 'team
   role: 'frontliner',
   hpRatio: 1,
   staminaRatio: 1,
-  ammoRatio: 1,
   attackRange: 70,
   moveSpeed: 160,
   defense: 20,

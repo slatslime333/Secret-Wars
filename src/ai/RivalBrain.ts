@@ -50,7 +50,6 @@ export class RivalBrain {
 
     field.fillEnemies(cpu, this.foes);
     const foes = this.foes;
-    cpu.tickAmmo(now);
     cpu.regenHealth(delta, now);
     this.mind.think(now, cpu, field, scene);
     const target = this.mind.target ?? foes[0];

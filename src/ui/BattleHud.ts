@@ -8,8 +8,6 @@ import { COLORS, FONTS, hex } from './theme';
 export class BattleHud {
   private readonly ninjaFill: Phaser.GameObjects.Rectangle;
   private readonly staminaFill: Phaser.GameObjects.Rectangle;
-  private readonly ammoFill: Phaser.GameObjects.Rectangle;
-  private readonly ammoText: Phaser.GameObjects.Text;
   private readonly foeFill: Phaser.GameObjects.Rectangle;
   private readonly foeStaminaFill: Phaser.GameObjects.Rectangle;
   private readonly foeBar: Phaser.GameObjects.Container;
@@ -25,28 +23,11 @@ export class BattleHud {
     this.tracks = [
       scene.add.rectangle(148, 56, 224, 10, COLORS.inkSoft).setScrollFactor(0).setDepth(101),
       scene.add.rectangle(148, 70, 224, 8, COLORS.inkSoft).setScrollFactor(0).setDepth(101),
-      scene.add.rectangle(148, 84, 224, 6, COLORS.inkSoft).setScrollFactor(0).setDepth(101),
     ];
     this.ninjaFill = scene.add.rectangle(36, 56, 224, 10, COLORS.redBright).setOrigin(0, 0.5);
     this.ninjaFill.setScrollFactor(0).setDepth(102);
     this.staminaFill = scene.add.rectangle(36, 70, 224, 8, COLORS.cyan).setOrigin(0, 0.5);
     this.staminaFill.setScrollFactor(0).setDepth(102);
-    this.ammoFill = scene.add.rectangle(36, 84, 224, 6, COLORS.orange).setOrigin(0, 0.5);
-    this.ammoFill.setScrollFactor(0).setDepth(102);
-
-    this.ammoText = scene.add
-      .text(36, 94, 'ATTACK 7/7', {
-        fontFamily: FONTS.body,
-        fontSize: '11px',
-        fontStyle: 'bold',
-        color: hex(COLORS.paper),
-        letterSpacing: 2,
-        stroke: hex(COLORS.ink),
-        strokeThickness: 4,
-      })
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(102);
 
     this.comboText = scene.add
       .text(width / 2, 22, '', {
@@ -107,8 +88,6 @@ export class BattleHud {
     this.tracks.forEach((track) => track.setVisible(visible));
     this.ninjaFill.setVisible(visible);
     this.staminaFill.setVisible(visible);
-    this.ammoFill.setVisible(visible);
-    this.ammoText.setVisible(visible);
     this.comboText.setVisible(visible);
     this.verbText.setVisible(visible);
     if (!visible) {
@@ -128,12 +107,6 @@ export class BattleHud {
     this.ninjaFill.width = 224 * (ninja.health / ninja.stats.maxHealth);
     this.staminaFill.width = 224 * (ninja.stamina / ninja.stats.maxStamina);
     this.staminaFill.setFillStyle(ninja.staminaDeniedRecently(now) ? COLORS.orange : COLORS.cyan);
-
-    const ammo = ninja.ammoDisplay(now);
-    this.ammoFill.width = 224 * (ammo.reloading ? ammo.reloadRatio : ammo.current / ammo.max);
-    this.ammoFill.setFillStyle(ammo.reloading ? COLORS.yellow : COLORS.orange);
-    this.ammoText.setText(`ATTACK ${ammo.reloading ? 0 : ammo.current}/${ammo.max}`);
-    this.ammoText.setColor(hex(ammo.reloading ? COLORS.yellow : COLORS.paper));
 
     if (!rival) {
       this.foeBar.setVisible(false);

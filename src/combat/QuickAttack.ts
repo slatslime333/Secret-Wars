@@ -26,8 +26,8 @@ type PendingImpact = {
  * Hold = repeating light swings. Distinct taps within the combo window
  * step 1 → 2 → finisher. The third hit is the only heavier attack.
  *
- * Ammo and stamina are spent when the swing starts. Physical lunge + hit
- * resolve at impact. Ammo forces a reload window; stamina is endurance.
+ * Stamina is spent when the swing starts. Physical lunge + hit
+ * resolve at impact.
  */
 export class QuickAttack {
   private nextSwingAt = 0;
@@ -63,7 +63,6 @@ export class QuickAttack {
     enemies: NinjaBody[],
     defenderBlock?: BlockController,
   ): void {
-    attacker.tickAmmo(now);
     this.resolveImpactIfReady(now, attacker, enemies, defenderBlock);
 
     const tapQueued = this.pendingTaps > 0;
@@ -98,9 +97,6 @@ export class QuickAttack {
     }
     const staminaCost = lightAttackStaminaCost(step, attacker.stats.attackStaminaMul ?? 1);
     if (!attacker.hasAttackStamina(staminaCost, now)) {
-      return;
-    }
-    if (!attacker.trySpendAmmo(now)) {
       return;
     }
     attacker.trySpendStamina(staminaCost, now);

@@ -49,7 +49,6 @@ export class HeroPilot {
     const body = unit.body;
     field.fillEnemies(body, this.foes);
     const foes = this.foes;
-    body.tickAmmo(now);
     if (!unit.block.isActive(now)) {
       body.regenStamina(delta, now);
     }

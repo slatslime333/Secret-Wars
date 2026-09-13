@@ -124,7 +124,6 @@ export class HeroRuntime {
     this.body.setPresent(true);
     this.body.placeAt(pad.x, pad.y);
     this.body.healFull();
-    this.body.refillAmmo();
     this.body.setAim(pad.facingX, 0);
     this.body.grantInvulnerable(now + MATCH.respawnInvulnMs);
     this.dead = false;

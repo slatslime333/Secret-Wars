@@ -430,7 +430,6 @@ const blankView = (): CombatantView => ({
   role: 'generalist',
   hpRatio: 1,
   staminaRatio: 1,
-  ammoRatio: 1,
   attackRange: 40,
   moveSpeed: 140,
   defense: 10,
@@ -456,7 +455,6 @@ const copyView = (dest: CombatantView, src: CombatantView): void => {
   dest.role = src.role;
   dest.hpRatio = src.hpRatio;
   dest.staminaRatio = src.staminaRatio;
-  dest.ammoRatio = src.ammoRatio;
   dest.attackRange = src.attackRange;
   dest.moveSpeed = src.moveSpeed;
   dest.defense = src.defense;

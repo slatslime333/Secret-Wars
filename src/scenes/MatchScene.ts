@@ -354,7 +354,6 @@ export class MatchScene extends Phaser.Scene {
     }
 
     this.aimPlayer(frame);
-    this.player.body.tickAmmo(now);
     if (!this.player.block.isActive(now)) {
       this.player.body.regenStamina(delta, now);
     }
