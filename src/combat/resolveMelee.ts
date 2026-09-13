@@ -123,7 +123,10 @@ export const resolveMelee = (
       return 'perfect-block';
     }
 
-    defender.drainStamina(profile.shieldStaminaDamage, now);
+    defender.drainBlockShield(profile.shieldDamage, now);
+    if (defender.blockShield <= 0) {
+      defenderBlock?.breakShield(defender);
+    }
     attacker.applyRecoil(-attacker.aim.x, -attacker.aim.y, heavy ? COMBAT.shieldHitRecoilHeavy : COMBAT.shieldHitRecoilLight);
     defender.applyRecoil(-defender.aim.x, -defender.aim.y, heavy ? COMBAT.blockPushHeavy : COMBAT.blockPushLight);
     playHitJuice(scene, defender.x, defender.y, {

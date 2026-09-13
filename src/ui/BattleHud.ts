@@ -12,12 +12,15 @@ import { COLORS, FONTS, hex } from './theme';
 export class BattleHud {
   private readonly ninjaFill: Phaser.GameObjects.Rectangle;
   private readonly shieldFill: Phaser.GameObjects.Rectangle;
+  private readonly guardTrack: Phaser.GameObjects.Rectangle;
+  private readonly guardFill: Phaser.GameObjects.Rectangle;
   private readonly staminaFill: Phaser.GameObjects.Rectangle;
   private readonly hpTrack: Phaser.GameObjects.Rectangle;
   private readonly staminaTrack: Phaser.GameObjects.Rectangle;
   private readonly hpText: Phaser.GameObjects.Text;
   private readonly foeFill: Phaser.GameObjects.Rectangle;
   private readonly foeShieldFill: Phaser.GameObjects.Rectangle;
+  private readonly foeGuardFill: Phaser.GameObjects.Rectangle;
   private readonly foeStaminaFill: Phaser.GameObjects.Rectangle;
   private readonly foeBar: Phaser.GameObjects.Container;
   private readonly comboText: Phaser.GameObjects.Text;
@@ -31,12 +34,15 @@ export class BattleHud {
     const width = scene.scale.width;
     const height = scene.scale.height;
     this.hpTrack = scene.add.rectangle(148, 56, 224, 10, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
-    this.staminaTrack = scene.add.rectangle(148, 70, 224, 8, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
+    this.guardTrack = scene.add.rectangle(148, 68, 224, 6, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
+    this.staminaTrack = scene.add.rectangle(148, 80, 224, 8, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
     this.shieldFill = scene.add.rectangle(36, 56, 0, 10, COLORS.green).setOrigin(0, 0.5);
     this.shieldFill.setScrollFactor(0).setDepth(102);
     this.ninjaFill = scene.add.rectangle(36, 56, 224, 10, COLORS.redBright).setOrigin(0, 0.5);
     this.ninjaFill.setScrollFactor(0).setDepth(103);
-    this.staminaFill = scene.add.rectangle(36, 70, 224, 8, COLORS.cyan).setOrigin(0, 0.5);
+    this.guardFill = scene.add.rectangle(36, 68, 224, 6, COLORS.paper).setOrigin(0, 0.5);
+    this.guardFill.setScrollFactor(0).setDepth(102);
+    this.staminaFill = scene.add.rectangle(36, 80, 224, 8, COLORS.cyan).setOrigin(0, 0.5);
     this.staminaFill.setScrollFactor(0).setDepth(102);
     this.hpText = scene.add
       .text(36, 42, '', {
@@ -85,6 +91,9 @@ export class BattleHud {
     const foeStaminaTrack = scene.add.rectangle(0, 9, 72, 6, COLORS.ink, 1);
     foeStaminaTrack.setStrokeStyle(1, COLORS.cyanDark);
     this.foeStaminaFill = scene.add.rectangle(-36, 9, 72, 4, COLORS.cyan).setOrigin(0, 0.5);
+    const foeGuardTrack = scene.add.rectangle(0, 16, 72, 5, COLORS.ink, 1);
+    foeGuardTrack.setStrokeStyle(1, COLORS.paper);
+    this.foeGuardFill = scene.add.rectangle(-36, 16, 72, 3, COLORS.paper).setOrigin(0, 0.5);
     this.foeCaption = scene.add
       .text(0, -14, 'RIVAL', {
         fontFamily: FONTS.body,
@@ -95,7 +104,7 @@ export class BattleHud {
         strokeThickness: 3,
       })
       .setOrigin(0.5, 1);
-    this.foeBar.add([track, this.foeShieldFill, this.foeFill, foeStaminaTrack, this.foeStaminaFill, this.foeCaption]);
+    this.foeBar.add([track, this.foeShieldFill, this.foeFill, foeStaminaTrack, this.foeStaminaFill, foeGuardTrack, this.foeGuardFill, this.foeCaption]);
     this.foeBar.setVisible(false);
     this.layout(width, height);
   }
@@ -107,23 +116,27 @@ export class BattleHud {
       this.barWidth = chrome.bars.width;
       const cx = chrome.bars.x + chrome.bars.width / 2;
       this.hpTrack.setPosition(cx, chrome.bars.hpY).setSize(chrome.bars.width, chrome.bars.hpH);
+      this.guardTrack.setPosition(cx, chrome.bars.shieldY).setSize(chrome.bars.width, chrome.bars.shieldH);
       this.staminaTrack.setPosition(cx, chrome.bars.staminaY).setSize(chrome.bars.width, chrome.bars.stamH);
       this.ninjaFill.setPosition(chrome.bars.x, chrome.bars.hpY).setSize(this.ninjaFill.width || chrome.bars.width, chrome.bars.hpH);
       this.shieldFill.setPosition(chrome.bars.x, chrome.bars.hpY).setSize(this.shieldFill.width || 0, chrome.bars.hpH);
+      this.guardFill.setPosition(chrome.bars.x, chrome.bars.shieldY).setSize(this.guardFill.width || chrome.bars.width, chrome.bars.shieldH);
       this.staminaFill.setPosition(chrome.bars.x, chrome.bars.staminaY).setSize(this.staminaFill.width || chrome.bars.width, chrome.bars.stamH);
       this.hpText.setVisible(false);
       this.comboText.setY(chrome.comboY).setFontSize(chrome.titleVisible ? 18 : 15);
       this.verbText.setVisible(chrome.verbVisible);
       this.verbText.setPosition(width - 30, chrome.bars.xpY).setOrigin(1, 0);
-      adoptHud(this.hpTrack.scene, this.hpTrack, this.staminaTrack, this.ninjaFill, this.shieldFill, this.staminaFill, this.hpText, this.comboText, this.verbText);
+      adoptHud(this.hpTrack.scene, this.hpTrack, this.guardTrack, this.staminaTrack, this.ninjaFill, this.shieldFill, this.guardFill, this.staminaFill, this.hpText, this.comboText, this.verbText);
       return;
     }
     const hud = layoutPcCombatHud(width, height);
     this.barWidth = hud.barWidth;
     this.hpTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.hpY).setSize(hud.barWidth, hud.hpHeight);
+    this.guardTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.shieldY).setSize(hud.barWidth, hud.shieldHeight);
     this.staminaTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.staminaY).setSize(hud.barWidth, hud.staminaHeight);
     this.ninjaFill.setPosition(hud.barLeft, hud.hpY).setSize(this.ninjaFill.width || hud.barWidth, hud.hpHeight);
     this.shieldFill.setPosition(hud.barLeft, hud.hpY).setSize(this.shieldFill.width || 0, hud.hpHeight);
+    this.guardFill.setPosition(hud.barLeft, hud.shieldY).setSize(this.guardFill.width || hud.barWidth, hud.shieldHeight);
     this.staminaFill.setPosition(hud.barLeft, hud.staminaY).setSize(this.staminaFill.width || hud.barWidth, hud.staminaHeight);
     this.hpText.setVisible(true).setPosition(hud.barLeft, hud.hpY - 22).setOrigin(0, 0.5);
     this.verbText.setVisible(true).setPosition(width / 2, hud.hpY - 42).setOrigin(0.5, 1);
@@ -135,9 +148,11 @@ export class BattleHud {
 
   setVisible(visible: boolean): void {
     this.hpTrack.setVisible(visible);
+    this.guardTrack.setVisible(visible);
     this.staminaTrack.setVisible(visible);
     this.ninjaFill.setVisible(visible);
     this.shieldFill.setVisible(visible);
+    this.guardFill.setVisible(visible);
     this.staminaFill.setVisible(visible);
     this.hpText.setVisible(visible && isPcCombatHud());
     this.comboText.setVisible(visible);
@@ -171,11 +186,11 @@ export class BattleHud {
       this.shieldFill.height = this.ninjaFill.height;
     }
     this.shieldFill.setVisible(shield > 0);
+    const guardRatio = ninja.blockShield / Math.max(1, ninja.maxBlockShield);
+    this.guardFill.width = this.barWidth * guardRatio;
     const stamRatio = ninja.stamina / ninja.stats.maxStamina;
     this.staminaFill.width = this.barWidth * stamRatio;
-    this.staminaFill.setFillStyle(
-      block.isActive(now) ? COLORS.orange : ninja.staminaDeniedRecently(now) ? COLORS.orange : COLORS.cyan,
-    );
+    this.staminaFill.setFillStyle(ninja.staminaDeniedRecently(now) ? COLORS.orange : COLORS.cyan);
     const hpLabel = shield > 0
       ? `${Math.max(0, Math.ceil(ninja.health))} +${Math.ceil(shield)} / ${ninja.stats.maxHealth}`
       : `${Math.max(0, Math.ceil(ninja.health))} / ${ninja.stats.maxHealth}`;
@@ -199,6 +214,7 @@ export class BattleHud {
       }
       this.foeShieldFill.setVisible(foeShield > 0);
       this.foeStaminaFill.width = Math.max(0, 72 * (rival.stamina / rival.stats.maxStamina));
+      this.foeGuardFill.width = Math.max(0, 72 * (rival.blockShield / Math.max(1, rival.maxBlockShield)));
     }
 
     this.comboText.setText(comboLabel(comboStep));

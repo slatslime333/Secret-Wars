@@ -73,13 +73,16 @@ export const resolveAbilityHit = (
       playAbilityConnect('perfect-block', attacker, defender, { heavy: profile.heavy, sourceKind: profile.sourceKind });
       return 'perfect-block';
     }
-    defender.drainStamina(
+    defender.drainBlockShield(
       Math.max(
-        COMBAT.abilityShieldStaminaMin,
-        Math.round(profile.staminaDamage * COMBAT.abilityShieldStaminaMul),
+        COMBAT.abilityShieldDamageMin,
+        Math.round(profile.staminaDamage * COMBAT.abilityShieldDamageMul),
       ),
       now,
     );
+    if (defender.blockShield <= 0) {
+      defenderBlock?.breakShield(defender);
+    }
     attacker.applyRecoil(-attacker.aim.x, -attacker.aim.y, COMBAT.shieldHitRecoilLight);
     defender.applyRecoil(-defender.aim.x, -defender.aim.y, COMBAT.blockPushLight);
     playHitJuice(scene, defender.x, defender.y, {

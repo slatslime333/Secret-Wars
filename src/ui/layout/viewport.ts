@@ -2,6 +2,11 @@ import Phaser from 'phaser';
 import { ARENA } from '../../config/arena';
 import { getViewportSize, isTouchPrimary } from '../../device';
 
+/** iPad-class short side. Phones stay phones even in landscape. */
+export const TABLET_SHORT_EDGE = 600;
+/** Locked follow — player stays centered even in a corner. */
+export const CAMERA_FOLLOW_LERP = 1;
+
 export type Insets = {
   top: number;
   right: number;
@@ -24,6 +29,7 @@ export type ViewportFrame = {
   offsetTop: number;
   aspect: number;
   isMobile: boolean;
+  isTablet: boolean;
   isPortrait: boolean;
   isLandscape: boolean;
   safe: Insets;
@@ -107,16 +113,31 @@ export const measureViewport = (
   const h = Math.max(240, Math.round(height ?? raw.height));
   const isPortrait = h > w;
   const short = Math.min(w, h);
+  const isTablet = isMobile && short >= TABLET_SHORT_EDGE;
   const safe = readSafeAreaInsets();
   const pad = Math.round(clamp(short * 0.035, isMobile ? 10 : 16, 28));
-  const minTouch = Math.round(clamp(short * 0.09, 44, 56));
-  const uiScale = isMobile ? clamp(Math.min(w / 960, h / 540), 0.72, 1.05) : 1;
+  const minTouch = Math.round(
+    isTablet
+      ? clamp(short * 0.085, 56, 74)
+      : isMobile
+        ? clamp(short * (isPortrait ? 0.112 : 0.118), isPortrait ? 50 : 46, isPortrait ? 64 : 58)
+        : clamp(short * 0.09, 44, 56),
+  );
+  const uiScale = isMobile ? clamp(Math.min(w / 960, h / 540), 0.72, 1.15) : 1;
   const contentInset = addInsets(safe, { top: pad, right: pad, bottom: pad, left: pad });
-  const hudReserve = isMobile ? (isPortrait ? 128 : 96) : 48;
+  const hudReserve = !isMobile
+    ? 48
+    : isTablet
+      ? isPortrait
+        ? 196
+        : 148
+      : isPortrait
+        ? 168
+        : 110;
   const controlInset: Insets = {
     top: Math.max(contentInset.top, safe.top + hudReserve),
     right: Math.max(contentInset.right, safe.right + 12),
-    bottom: Math.max(contentInset.bottom, safe.bottom + (isPortrait ? 18 : 12)),
+    bottom: Math.max(contentInset.bottom, safe.bottom + (isPortrait ? 28 : 18)),
     left: Math.max(contentInset.left, safe.left + 12),
   };
 
@@ -127,6 +148,7 @@ export const measureViewport = (
     offsetTop: raw.offsetTop,
     aspect: w / h,
     isMobile,
+    isTablet,
     isPortrait,
     isLandscape: !isPortrait,
     safe,
@@ -155,6 +177,20 @@ export const applyGameplayCamera = (
   const frame = measureViewport(width, height);
   camera.setSize(width, height);
   camera.setZoom(frame.cameraZoom);
+  camera.removeBounds();
+  camera.setBackgroundColor(ARENA.wallColor);
+  camera.setDeadzone(0, 0);
+};
+
+/** Keep the followed fighter in the screen center, including past arena walls. */
+export const lockCameraFollow = (
+  camera: Phaser.Cameras.Scene2D.Camera,
+  target: Phaser.GameObjects.GameObject,
+): void => {
+  camera.removeBounds();
+  camera.setBackgroundColor(ARENA.wallColor);
+  camera.startFollow(target, true, CAMERA_FOLLOW_LERP, CAMERA_FOLLOW_LERP);
+  camera.setDeadzone(0, 0);
 };
 
 export const contentRect = (

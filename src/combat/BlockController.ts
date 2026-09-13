@@ -12,7 +12,7 @@ export type BlockAbsorbResult = {
 
 /**
  * Hold-to-block directional shield.
- * Holding drains the shared stamina pool. Blocked hits spend extra stamina.
+ * Holding and blocked hits drain the fighter's shield HP, not stamina.
  * Walking remains allowed while the shield is up.
  */
 export class BlockController {
@@ -20,6 +20,9 @@ export class BlockController {
   private raisedAt = -9999;
   private drainAcc = 0;
   private readonly shield: Phaser.GameObjects.Graphics;
+  private drawn = false;
+  private lastAngle = 999;
+  private lastPerfect = false;
 
   constructor(scene: Phaser.Scene) {
     this.shield = scene.add.graphics().setDepth(11);
@@ -30,7 +33,7 @@ export class BlockController {
       this.drop(ninja);
       return;
     }
-    if (ninja.stamina < COMBAT.blockMinStamina) {
+    if (!ninja.canRaiseBlock()) {
       this.drop(ninja);
       return;
     }
@@ -56,11 +59,10 @@ export class BlockController {
     const spent = Math.floor(this.drainAcc);
     if (spent > 0) {
       this.drainAcc -= spent;
-      ninja.drainStamina(spent, now);
+      ninja.drainBlockShield(spent, now);
     }
-    if (ninja.stamina < COMBAT.blockMinStamina) {
-      spawnCombatCallout(this.shield.scene, ninja.x, ninja.y, 'SHIELD BREAK', COLORS.orange);
-      this.drop(ninja);
+    if (!ninja.canRaiseBlock()) {
+      this.breakShield(ninja);
     }
   }
 
@@ -74,7 +76,7 @@ export class BlockController {
 
   /** True when the held shield is up and facing the attacker. */
   tryAbsorb(now: number, ninja: NinjaBody, fromX: number, fromY: number): BlockAbsorbResult {
-    if (!this.holding) {
+    if (!this.holding || ninja.blockShield <= 0) {
       return { absorbed: false, perfect: false };
     }
     const covered = isInAttackArc(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, fromX, fromY, 420, 0.95, 8);
@@ -84,18 +86,36 @@ export class BlockController {
     return { absorbed: true, perfect: this.isPerfect(now) };
   }
 
+  breakShield(ninja: NinjaBody): void {
+    if (!this.holding && !ninja.blocking) {
+      return;
+    }
+    spawnCombatCallout(this.shield.scene, ninja.x, ninja.y, 'SHIELD BREAK', COLORS.orange);
+    this.drop(ninja);
+  }
+
   destroy(): void {
     this.shield.destroy();
   }
 
   sync(now: number, ninja: NinjaBody): void {
-    this.shield.clear();
     if (!this.holding) {
+      if (this.drawn) {
+        this.shield.clear();
+        this.drawn = false;
+      }
       return;
     }
     const angle = Math.atan2(ninja.aim.y, ninja.aim.x);
     const perfect = this.isPerfect(now);
     this.shield.setPosition(ninja.x, ninja.y);
+    if (this.drawn && Math.abs(angle - this.lastAngle) < 0.03 && perfect === this.lastPerfect) {
+      return;
+    }
+    this.lastAngle = angle;
+    this.lastPerfect = perfect;
+    this.drawn = true;
+    this.shield.clear();
     this.shield.lineStyle(10, COLORS.paper, perfect ? 0.95 : 0.62);
     this.shield.beginPath();
     this.shield.arc(0, 0, 30, angle - 1.05, angle + 1.05);

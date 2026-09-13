@@ -37,10 +37,23 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
   const bottom = height - inset.bottom;
   const top = inset.top;
 
-  let radius = Math.round(clamp(short * (isPortrait ? 0.1 : 0.096), isPortrait ? 42 : 34, isPortrait ? 58 : 52));
-  let buttonRadius = Math.round(clamp(radius * 0.5, 22, 30));
-  let abilityRadius = Math.round(clamp(radius * 0.54, 24, 32));
-  let ultimateRadius = Math.round(clamp(radius * 0.58, 26, 34));
+  const tablet = frame.isTablet;
+  let radius = Math.round(
+    tablet
+      ? clamp(short * (isPortrait ? 0.092 : 0.1), 56, 78)
+      : isPortrait
+        ? clamp(short * 0.128, 50, 68)
+        : clamp(short * 0.122, 44, 58),
+  );
+  let buttonRadius = Math.round(
+    clamp(radius * 0.56, tablet ? 28 : isPortrait ? 28 : 24, tablet ? 38 : isPortrait ? 34 : 32),
+  );
+  let abilityRadius = Math.round(
+    clamp(radius * 0.58, tablet ? 30 : isPortrait ? 30 : 26, tablet ? 40 : isPortrait ? 36 : 34),
+  );
+  let ultimateRadius = Math.round(
+    clamp(radius * 0.62, tablet ? 32 : isPortrait ? 32 : 28, tablet ? 42 : isPortrait ? 38 : 36),
+  );
 
   const fits = (stickR: number, btnR: number, abilR: number, ultR: number): boolean => {
     const packed = pack(stickR, btnR, abilR, ultR, {
@@ -55,14 +68,11 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
     return !packOverlaps(packed) && packInBand(packed, rightMin, width, inset.left, top, rightEdge, bottom);
   };
 
-  while (
-    radius > 32 &&
-    !fits(radius, buttonRadius, abilityRadius, ultimateRadius)
-  ) {
+  while (radius > 36 && !fits(radius, buttonRadius, abilityRadius, ultimateRadius)) {
     radius -= 1;
-    buttonRadius = Math.round(clamp(radius * 0.5, 20, 30));
-    abilityRadius = Math.round(clamp(radius * 0.54, 22, 32));
-    ultimateRadius = Math.round(clamp(radius * 0.58, 24, 34));
+    buttonRadius = Math.round(clamp(radius * 0.56, 22, 32));
+    abilityRadius = Math.round(clamp(radius * 0.58, 24, 34));
+    ultimateRadius = Math.round(clamp(radius * 0.62, 26, 36));
   }
 
   const packed = pack(radius, buttonRadius, abilityRadius, ultimateRadius, {

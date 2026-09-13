@@ -5,8 +5,8 @@
  * Tunables live here so knockback, lunges, dash charges, hold-shield,
  * and perfect-shield timing stay out of fighter/attack files.
  *
- * Stamina is combat endurance: light attacks spend it. Holding a shield
- * drains the same pool over time, and blocked hits take extra stamina.
+ * Stamina is only for light attacks. The shield has its own health pool:
+ * holding drains it, and blocked hits chip it. Empty shield = break.
  */
 export const COMBAT = {
   attackArcDegrees: 78,
@@ -21,13 +21,17 @@ export const COMBAT = {
   /** Slightly slower than the converted cooldown so each swing can read. */
   attackCooldownMultiplier: 1.22,
 
-  /** Holding the shield spends stamina. Hits on the shield spend extra. */
-  blockDrainPerSecond: 18,
-  /** Need at least this much stamina to raise or keep the shield. */
-  blockMinStamina: 10,
-  /** Ability hits on a raised shield spend this much extra vs HP stamina damage. */
-  abilityShieldStaminaMul: 1.4,
-  abilityShieldStaminaMin: 4,
+  /** Holding the shield spends shield HP, not stamina. */
+  blockDrainPerSecond: 16,
+  /** Need at least this much shield HP to raise or keep the shield. */
+  blockMinShield: 8,
+  /** Block shield max is this fraction of max health. */
+  blockShieldRatio: 0.38,
+  blockShieldRegenDelayMs: 720,
+  blockShieldRegenPerSecond: 18,
+  /** Ability hits on a raised shield spend this much extra vs HP chip. */
+  abilityShieldDamageMul: 1.4,
+  abilityShieldDamageMin: 4,
   /** Raise window for Perfect Shield. Small on purpose — holding is not enough. */
   perfectShieldWindowMs: 110,
   perfectShieldStunMs: 280,
@@ -65,7 +69,7 @@ export const COMBAT = {
       staminaDamage: 4,
       hitReactionMs: 190,
       impactDelayMs: 70,
-      shieldStaminaDamage: 8,
+      shieldDamage: 8,
     },
     2: {
       damageMultiplier: 1.28,
@@ -78,7 +82,7 @@ export const COMBAT = {
       staminaDamage: 6,
       hitReactionMs: 250,
       impactDelayMs: 90,
-      shieldStaminaDamage: 13,
+      shieldDamage: 13,
     },
     3: {
       damageMultiplier: 2.15,
@@ -91,7 +95,7 @@ export const COMBAT = {
       staminaDamage: 10,
       hitReactionMs: 320,
       impactDelayMs: 110,
-      shieldStaminaDamage: 20,
+      shieldDamage: 20,
     },
   },
 
@@ -140,3 +144,7 @@ export const comboStepOf = (step: number): ComboStep => {
 /** Stamina spent to start a light attack. */
 export const lightAttackStaminaCost = (step: ComboStep, staminaMul = 1): number =>
   Math.max(0, Math.round(COMBAT.attackStaminaCost * COMBAT.combo[step].staminaCostMultiplier * staminaMul));
+
+/** Personal block-shield pool. Scales with the fighter's max health. */
+export const blockShieldMaxFor = (maxHealth: number): number =>
+  Math.max(24, Math.round(maxHealth * COMBAT.blockShieldRatio));

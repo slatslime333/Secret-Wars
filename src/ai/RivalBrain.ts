@@ -56,9 +56,8 @@ export class RivalBrain {
     field.fillEnemies(cpu, this.foes);
     const foes = this.foes;
     cpu.regenHealth(delta, now);
-    if (!this.block.isActive(now)) {
-      cpu.regenStamina(delta, now);
-    }
+    cpu.regenStamina(delta, now);
+    cpu.regenBlockShield(delta, now);
     this.mind.think(now, cpu, field, scene);
     const target = this.mind.target ?? foes[0];
     if (target) {

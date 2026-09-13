@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { arenaInnerBounds } from '../config/arena';
 import { HeroCombatConfig, TeamId, teamOfRival } from '../config/hero';
 import { NINJA } from '../config/ninja';
-import { COMBAT, ComboStep, comboStepOf, lightAttackStaminaCost } from '../config/combat';
+import { COMBAT, ComboStep, blockShieldMaxFor, comboStepOf, lightAttackStaminaCost } from '../config/combat';
 import { CombatStatus } from '../combat/CombatStatus';
 import { TakeHitOptions } from '../combat/Hurtbox';
 import { emitCombatBlocked, emitCombatDamage } from '../combat/damageEvents';
@@ -39,6 +39,9 @@ export class NinjaBody {
   readonly stats: HeroCombatConfig;
   health: number;
   stamina: number;
+  /** Hold-block shield HP. Separate from Witch hex (`shieldAmount`) and from stamina. */
+  blockShield: number;
+  maxBlockShield: number;
   /** Live shield flag. Set by BlockController so AI and HUD share one source. */
   blocking = false;
   lastAttacker?: NinjaBody;
@@ -54,6 +57,7 @@ export class NinjaBody {
   private readonly scene: Phaser.Scene;
   private staminaLockUntil = 0;
   private staminaDeniedAt = 0;
+  private blockShieldLockUntil = 0;
   private invulnerableUntil = 0;
   private attackingUntil = 0;
   private currentAttackTween?: Phaser.Tweens.Tween;
@@ -87,6 +91,8 @@ export class NinjaBody {
     this.drawHero = options.draw ?? ((graphics, drawOptions) => drawNinja(graphics, drawOptions));
     this.health = this.stats.maxHealth;
     this.stamina = this.stats.maxStamina;
+    this.maxBlockShield = blockShieldMaxFor(this.stats.maxHealth);
+    this.blockShield = this.maxBlockShield;
     this.baseMaxStamina = this.stats.maxStamina;
     ensureBodyTexture(scene);
     this.sprite = scene.physics.add.image(x, y, BODY_TEXTURE);
@@ -607,6 +613,8 @@ export class NinjaBody {
     this.clearRage();
     this.health = this.stats.maxHealth;
     this.stamina = this.stats.maxStamina;
+    this.maxBlockShield = blockShieldMaxFor(this.stats.maxHealth);
+    this.blockShield = this.maxBlockShield;
     this.clearTempShield();
     this.clearMagicVortex();
     this.clearClawMark();
@@ -931,6 +939,29 @@ export class NinjaBody {
     const scaled = amount * this.status.staminaDrainMultiplier();
     this.stamina = Math.max(0, this.stamina - scaled);
     this.staminaLockUntil = now + COMBAT.staminaRegenDelayMs;
+  }
+
+  canRaiseBlock(): boolean {
+    return this.blockShield >= COMBAT.blockMinShield;
+  }
+
+  drainBlockShield(amount: number, now: number): number {
+    if (amount <= 0) {
+      return this.blockShield;
+    }
+    this.blockShield = Math.max(0, this.blockShield - amount);
+    this.blockShieldLockUntil = now + COMBAT.blockShieldRegenDelayMs;
+    return this.blockShield;
+  }
+
+  regenBlockShield(deltaMs: number, now: number): void {
+    if (this.blocking || now < this.blockShieldLockUntil) {
+      return;
+    }
+    this.blockShield = Math.min(
+      this.maxBlockShield,
+      this.blockShield + COMBAT.blockShieldRegenPerSecond * (deltaMs / 1000),
+    );
   }
 
   staminaDeniedRecently(now: number): boolean {

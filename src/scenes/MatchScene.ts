@@ -30,7 +30,7 @@ import { PauseOverlay } from '../ui/PauseOverlay';
 import { SpectatorOverlay } from '../ui/SpectatorOverlay';
 import { Minimap } from '../ui/Minimap';
 import { COLORS, FONTS, hex } from '../ui/theme';
-import { applyGameplayCamera, layoutHudChrome, measureViewport, installHudCamera, resizeHudCamera, adoptHud } from '../ui/layout';
+import { applyGameplayCamera, layoutHudChrome, lockCameraFollow, measureViewport, installHudCamera, resizeHudCamera, adoptHud } from '../ui/layout';
 import { Battlefield, rememberPlayTestSeed, resolvePlayTestSeed } from '../map';
 import { HeroPilot } from '../ai/HeroPilot';
 import { TacticalField } from '../ai/tactical/field';
@@ -216,11 +216,12 @@ export class MatchScene extends Phaser.Scene {
       onNext: () => this.spectator.cycle(1),
     });
 
-    this.cameras.main.setBounds(0, 0, ARENA.width, ARENA.height);
+    this.cameras.main.removeBounds();
+    this.cameras.main.setBackgroundColor(ARENA.wallColor);
     if (this.simulator) {
       this.spectator.enable(this.player);
     } else {
-      this.cameras.main.startFollow(this.player.body.sprite, true, 0.16, 0.16);
+      lockCameraFollow(this.cameras.main, this.player.body.sprite);
     }
     this.cameras.main.setRoundPixels(true);
     applyGameplayCamera(this.cameras.main, this.scale.width, this.scale.height);
@@ -301,7 +302,7 @@ export class MatchScene extends Phaser.Scene {
       }
       if (unit.maybeRespawn(now) && unit.isPlayer) {
         this.spectator.disable();
-        this.cameras.main.startFollow(unit.body.sprite, true, 0.16, 0.16);
+        lockCameraFollow(this.cameras.main, unit.body.sprite);
         this.spectatorOverlay.hide();
         this.inputReader.setCombatVisible(true);
         this.abilityTray?.setVisible(true);
@@ -405,9 +406,8 @@ export class MatchScene extends Phaser.Scene {
     }
 
     this.aimPlayer(frame);
-    if (!this.player.block.isActive(now)) {
-      this.player.body.regenStamina(delta, now);
-    }
+    this.player.body.regenStamina(delta, now);
+    this.player.body.regenBlockShield(delta, now);
     this.player.body.regenHealth(delta, now);
     this.syncAimGuides(frame);
     this.player.block.sync(now, this.player.body);

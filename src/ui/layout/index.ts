@@ -5,8 +5,11 @@ export {
   cameraZoomFor,
   clamp,
   contentRect,
+  lockCameraFollow,
   measureViewport,
   readSafeAreaInsets,
+  CAMERA_FOLLOW_LERP,
+  TABLET_SHORT_EDGE,
   type Insets,
   type ViewportFrame,
 } from './viewport';

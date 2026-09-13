@@ -10,6 +10,8 @@ const SIZES: Array<[string, number, number]> = [
   ['iphone-landscape', 844, 390],
   ['tight-landscape', 740, 320],
   ['android-portrait', 360, 740],
+  ['tablet-portrait', 768, 1024],
+  ['tablet-landscape', 1024, 768],
 ];
 
 const notCentered = (x: number, width: number, band = 0.22): boolean => {
@@ -57,6 +59,13 @@ const checkSize = (label: string, width: number, height: number): Check[] => {
       name: `${label} hud chrome on the sides`,
       ok: hudLeft && menuRight,
       detail: `matchX=${chrome.match.x.toFixed(0)} barsX=${chrome.bars.x.toFixed(0)} menuX=${chrome.menuX.toFixed(0)}`,
+    },
+    {
+      name: `${label} control size`,
+      ok:
+        layout.radius >= (height > width ? 48 : height < 340 ? 38 : width >= 1000 ? 54 : 40) &&
+        layout.buttonRadius >= (height < 340 ? 22 : 24),
+      detail: `stick=${layout.radius} btn=${layout.buttonRadius} bars=${chrome.bars.width} mini=${chrome.minimap.width}`,
     },
   ];
 };

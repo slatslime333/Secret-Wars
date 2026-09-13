@@ -49,7 +49,7 @@ import { spawnStatusPopup } from '../ui/StatusPopup';
 import { isPcCombatHud, layoutPcCombatHud } from '../ui/pcCombatHud';
 import { cueAbilityReady } from '../audio/abilityReady';
 import { COLORS, FONTS, hex } from '../ui/theme';
-import { applyGameplayCamera, layoutHudChrome, measureViewport, installHudCamera, resizeHudCamera, adoptHud } from '../ui/layout';
+import { applyGameplayCamera, layoutHudChrome, lockCameraFollow, measureViewport, installHudCamera, resizeHudCamera, adoptHud } from '../ui/layout';
 import { isTouchPrimary } from '../device';
 import { audio } from '../audio';
 import { fadeToScene } from './fadeToScene';
@@ -232,8 +232,7 @@ export class BattleScene extends Phaser.Scene {
       },
     });
 
-    this.cameras.main.setBounds(0, 0, ARENA.width, ARENA.height);
-    this.cameras.main.startFollow(this.ninja.sprite, true, 0.16, 0.16);
+    lockCameraFollow(this.cameras.main, this.ninja.sprite);
     this.cameras.main.setRoundPixels(true);
     applyGameplayCamera(this.cameras.main, this.scale.width, this.scale.height);
     resizeHudCamera(this, this.scale.width, this.scale.height);
@@ -397,9 +396,8 @@ export class BattleScene extends Phaser.Scene {
     } else {
       this.ninja.setAim(frame.aim);
     }
-    if (!this.block.isActive(now)) {
-      this.ninja.regenStamina(delta, now);
-    }
+    this.ninja.regenStamina(delta, now);
+    this.ninja.regenBlockShield(delta, now);
     this.ninja.regenHealth(delta, now);
     if (this.ninja.heroId === 'rope' && !frame.ability1Aiming && !frame.ability2Aiming) {
       this.marker.syncRopeAim(
@@ -519,8 +517,9 @@ export class BattleScene extends Phaser.Scene {
       this.brain.update(now, delta, this.rival, this.tactics, this);
     }
     this.drawRivalAi();
-    if (this.rival && !this.rivalBlock?.isActive(now)) {
+    if (this.rival) {
       this.rival.regenStamina(delta, now);
+      this.rival.regenBlockShield(delta, now);
     }
     this.rival?.regenHealth(delta, now);
 
@@ -867,7 +866,7 @@ export class BattleScene extends Phaser.Scene {
     this.dash = new DashController(this, hero.stats.dashMaxCharges);
     this.attacks = new QuickAttack(this, this.marker);
     this.inputReader.rebindHero(hero.kit, hero.stats.dashMaxCharges);
-    this.cameras.main.startFollow(this.ninja.sprite, true, 0.16, 0.16);
+    lockCameraFollow(this.cameras.main, this.ninja.sprite);
     this.rivalCollider?.destroy();
     if (this.rival) {
       this.rivalCollider = this.physics.add.collider(this.ninja.sprite, this.rival.sprite);

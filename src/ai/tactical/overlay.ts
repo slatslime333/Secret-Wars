@@ -12,17 +12,24 @@ export type OverlaySubject = {
 export class TacticalOverlay {
   private readonly gfx: Phaser.GameObjects.Graphics;
   private readonly labels: Phaser.GameObjects.Text[] = [];
+  private idle = true;
 
   constructor(private readonly scene: Phaser.Scene) {
     this.gfx = scene.add.graphics().setDepth(26);
   }
 
   draw(subjects: OverlaySubject[], enabled: boolean): void {
-    this.gfx.clear();
-    this.clearLabels();
     if (!enabled) {
+      if (!this.idle) {
+        this.gfx.clear();
+        this.clearLabels();
+        this.idle = true;
+      }
       return;
     }
+    this.idle = false;
+    this.gfx.clear();
+    this.clearLabels();
     for (const subject of subjects) {
       const info = subject.debug;
       const lines = [
