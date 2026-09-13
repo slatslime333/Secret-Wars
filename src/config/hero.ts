@@ -21,6 +21,8 @@ export type HeroCombatConfig = {
   attackArcDegrees: number;
   bodyRadius: number;
   staminaRegenPerSecond: number;
+  /** Scales light-attack stamina cost. Omit for 1. Ammo/reload stay separate. */
+  attackStaminaMul?: number;
   ammoMax: number;
   reloadMs: number;
   dashMaxCharges: number;

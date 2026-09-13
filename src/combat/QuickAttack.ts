@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COMBAT, ComboStep, comboStepOf } from '../config/combat';
+import { COMBAT, ComboStep, comboStepOf, lightAttackStaminaCost } from '../config/combat';
 import { COLE_ATTACK, COLE_SHOCKWAVE } from '../heroes/abilities/cole/tunables';
 import { DEATH_ATTACK } from '../heroes/abilities/death/tunables';
 import { sweepKnockback, swingSignFor } from '../heroes/abilities/death/sweep';
@@ -26,7 +26,8 @@ type PendingImpact = {
  * Hold = repeating light swings. Distinct taps within the combo window
  * step 1 → 2 → finisher. The third hit is the only heavier attack.
  *
- * Ammo is spent when the swing starts. Physical lunge + hit resolve at impact.
+ * Ammo and stamina are spent when the swing starts. Physical lunge + hit
+ * resolve at impact. Ammo forces a reload window; stamina is endurance.
  */
 export class QuickAttack {
   private nextSwingAt = 0;
@@ -95,9 +96,14 @@ export class QuickAttack {
     if (attacker.heroId === 'death' && step === 1 && now < this.deathPairLockUntil) {
       return;
     }
+    const staminaCost = lightAttackStaminaCost(step, attacker.stats.attackStaminaMul ?? 1);
+    if (!attacker.hasAttackStamina(staminaCost, now)) {
+      return;
+    }
     if (!attacker.trySpendAmmo(now)) {
       return;
     }
+    attacker.trySpendStamina(staminaCost, now);
     const profile = COMBAT.combo[step];
     if (this.pendingTaps > 0) {
       this.combo.tap(now, COMBAT.comboWindowMs);

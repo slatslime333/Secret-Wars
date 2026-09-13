@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { arenaInnerBounds } from '../config/arena';
 import { HeroCombatConfig, TeamId, teamOfRival } from '../config/hero';
 import { NINJA } from '../config/ninja';
-import { COMBAT, ComboStep, comboStepOf } from '../config/combat';
+import { COMBAT, ComboStep, comboStepOf, lightAttackStaminaCost } from '../config/combat';
 import { CombatStatus } from '../combat/CombatStatus';
 import { TakeHitOptions } from '../combat/Hurtbox';
 import { emitCombatDamage } from '../combat/damageEvents';
@@ -520,7 +520,13 @@ export class NinjaBody {
   }
 
   canAttack(now: number): boolean {
-    return this.ammo > 0 && !this.isReloading(now) && !this.status.cannotAttack(now);
+    const minCost = lightAttackStaminaCost(1, this.stats.attackStaminaMul ?? 1);
+    return (
+      this.ammo > 0 &&
+      !this.isReloading(now) &&
+      !this.status.cannotAttack(now) &&
+      this.stamina >= minCost
+    );
   }
 
   healFull(): void {
@@ -646,6 +652,17 @@ export class NinjaBody {
       reloading: false,
       reloadRatio: 1,
     };
+  }
+
+  hasAttackStamina(cost: number, now: number): boolean {
+    if (cost <= 0) {
+      return true;
+    }
+    if (this.stamina >= cost) {
+      return true;
+    }
+    this.staminaDeniedAt = now;
+    return false;
   }
 
   trySpendStamina(cost: number, now: number): boolean {

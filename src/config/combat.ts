@@ -4,11 +4,14 @@
  *
  * Tunables live here so knockback, lunges, ammo, dash charges, hold-shield,
  * and perfect-shield timing stay out of fighter/attack files.
+ *
+ * Ammo is short-term attack cadence (forced reload). Stamina is combat
+ * endurance and is also drained by the shield. Light attacks spend both.
  */
 export const COMBAT = {
   attackArcDegrees: 78,
-  /** Attacks spend ammo, not stamina. Kept only as a fallback cost gate. */
-  attackStaminaCost: 0,
+  /** Base light-attack stamina cost. Combo steps scale this with staminaCostMultiplier. */
+  attackStaminaCost: 7,
   staminaRegenDelayMs: 650,
   /** Extra pixels so a body inside the visible wedge still counts. */
   hitForgiveness: 16,
@@ -41,7 +44,8 @@ export const COMBAT = {
 
   comboWindowMs: 720,
   comboFinisherDamageMultiplier: 2.15,
-  comboFinisherStaminaMultiplier: 2.2,
+  /** Step 3 uses combo[3].staminaCostMultiplier (14 stamina at the base cost). */
+  comboFinisherStaminaMultiplier: 2,
   comboFinisherKnockbackMultiplier: 1.55,
 
   /**
@@ -52,7 +56,7 @@ export const COMBAT = {
     1: {
       damageMultiplier: 1,
       knockbackMultiplier: 2.05,
-      staminaCostMultiplier: 0,
+      staminaCostMultiplier: 1,
       lungeDistance: 12,
       lungeImpulse: 210,
       lungeLockMs: 95,
@@ -65,7 +69,7 @@ export const COMBAT = {
     2: {
       damageMultiplier: 1.28,
       knockbackMultiplier: 2.35,
-      staminaCostMultiplier: 0,
+      staminaCostMultiplier: 9 / 7,
       lungeDistance: 18,
       lungeImpulse: 270,
       lungeLockMs: 110,
@@ -78,7 +82,7 @@ export const COMBAT = {
     3: {
       damageMultiplier: 2.15,
       knockbackMultiplier: 2.55,
-      staminaCostMultiplier: 0,
+      staminaCostMultiplier: 2,
       lungeDistance: 26,
       lungeImpulse: 340,
       lungeLockMs: 130,
@@ -131,3 +135,7 @@ export const comboStepOf = (step: number): ComboStep => {
   }
   return 2;
 };
+
+/** Stamina spent to start a light attack. Ammo is a separate spend. */
+export const lightAttackStaminaCost = (step: ComboStep, staminaMul = 1): number =>
+  Math.max(0, Math.round(COMBAT.attackStaminaCost * COMBAT.combo[step].staminaCostMultiplier * staminaMul));

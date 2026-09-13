@@ -33,6 +33,8 @@ export const DEATH = {
   attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 16,
   staminaRegenPerSecond: 16,
+  /** Heavier swings cost more stamina. 8 ammo / 1800ms still caps spam. */
+  attackStaminaMul: 1.1,
   ammoMax: 8,
   reloadMs: 1800,
   dashMaxCharges: 2,
