@@ -142,32 +142,32 @@ const drawTorso = (g: Phaser.GameObjects.Graphics, p: Palette): void => {
 
 const drawLongHair = (g: Phaser.GameObjects.Graphics, p: Palette, dir: number, north: boolean): void => {
   g.fillStyle(p.hairDark);
-  g.fillEllipse(dir * 0.5, -15, 26, 30);
-  g.fillEllipse(-11 + dir, 2, 11, 24);
-  g.fillEllipse(11 + dir, 2, 11, 24);
-  g.fillEllipse(-9 + dir * 2, 12, 9, 16);
-  g.fillEllipse(9 + dir * 2, 12, 9, 16);
+  g.fillEllipse(dir * 0.4, -15.5, 21.5, 24.5);
+  g.fillEllipse(-9.1 + dir, 1, 9, 19.8);
+  g.fillEllipse(9.1 + dir, 1, 9, 19.8);
+  g.fillEllipse(-7.4 + dir * 1.6, 9, 7.4, 13);
+  g.fillEllipse(7.4 + dir * 1.6, 9, 7.4, 13);
   g.fillStyle(p.hair);
-  g.fillEllipse(dir * 0.5, -15.5, 23, 27);
-  g.fillEllipse(-10 + dir, 2, 9, 22);
-  g.fillEllipse(10 + dir, 2, 9, 22);
-  g.fillEllipse(-8 + dir * 2, 12, 7.5, 14);
-  g.fillEllipse(8 + dir * 2, 12, 7.5, 14);
+  g.fillEllipse(dir * 0.4, -16, 19, 22);
+  g.fillEllipse(-8.2 + dir, 1, 7.5, 18);
+  g.fillEllipse(8.2 + dir, 1, 7.5, 18);
+  g.fillEllipse(-6.6 + dir * 1.6, 9, 6.2, 11.4);
+  g.fillEllipse(6.6 + dir * 1.6, 9, 6.2, 11.4);
   if (north) {
-    g.fillEllipse(0, -18, 22, 24);
-    g.fillRoundedRect(-12, -6, 24, 18, 8);
+    g.fillEllipse(0, -18, 18, 20);
+    g.fillRoundedRect(-10, -5, 20, 15, 7);
   }
 };
 
 const drawSwoopBangs = (g: Phaser.GameObjects.Graphics, p: Palette, dir: number): void => {
   g.fillStyle(p.hairDark);
-  g.fillEllipse(dir * 2, -22, 24, 14);
+  g.fillEllipse(dir * 1.6, -22.2, 20, 11.5);
   g.fillStyle(p.hair);
-  g.fillEllipse(dir * 2.2, -22.4, 22, 12);
-  g.fillTriangle(-12 + dir * 2, -24, 14 + dir * 3, -20, -4 + dir * 4, -6);
-  g.fillTriangle(-2 + dir * 2, -24, 13 + dir * 4, -18, 8 + dir * 3, -5);
-  g.fillEllipse(dir * 6, -16, 16, 12);
-  g.fillEllipse(dir * 3, -20, 18, 10);
+  g.fillEllipse(dir * 1.8, -22.6, 18.2, 10);
+  g.fillTriangle(-10 + dir * 1.6, -24, 11.6 + dir * 2.4, -20.5, -3.4 + dir * 3.2, -10);
+  g.fillTriangle(-1.6 + dir * 1.6, -24, 10.8 + dir * 3.2, -18.5, 6.6 + dir * 2.4, -9);
+  g.fillEllipse(dir * 5, -17.2, 13, 9.5);
+  g.fillEllipse(dir * 2.4, -20.4, 15, 8.2);
 };
 
 const drawEast = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, liftR: number): void => {
@@ -226,7 +226,7 @@ const drawFront = (
     drawSwoopBangs(g, p, 1);
   } else {
     g.fillStyle(p.hair);
-    g.fillEllipse(0, -17.2, 22, 24);
+    g.fillEllipse(0, -17.2, 18, 20);
   }
   drawShadowArm(g, p, north ? 8 : -8, rightY, shadowDir, liftR);
 };

@@ -107,12 +107,12 @@ export const measureViewport = (width?: number, height?: number): ViewportFrame 
   const minTouch = Math.round(clamp(short * 0.09, 44, 56));
   const uiScale = isMobile ? clamp(Math.min(w / 960, h / 540), 0.72, 1.05) : 1;
   const contentInset = addInsets(safe, { top: pad, right: pad, bottom: pad, left: pad });
-  const hudReserve = isMobile ? (isPortrait ? 102 : 92) : 48;
+  const hudReserve = isMobile ? (isPortrait ? 128 : 96) : 48;
   const controlInset: Insets = {
     top: Math.max(contentInset.top, safe.top + hudReserve),
-    right: Math.max(contentInset.right, safe.right + 10),
-    bottom: Math.max(contentInset.bottom, safe.bottom + 10),
-    left: Math.max(contentInset.left, safe.left + 10),
+    right: Math.max(contentInset.right, safe.right + 12),
+    bottom: Math.max(contentInset.bottom, safe.bottom + (isPortrait ? 18 : 12)),
+    left: Math.max(contentInset.left, safe.left + 12),
   };
 
   return {

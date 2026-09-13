@@ -268,11 +268,11 @@ const scenarioP = (): ScenarioResult => {
     y: 750,
     role: 'ranged-tank',
     heroId: 'witch',
-    attackRange: 220,
+    attackRange: 275,
     hpRatio: 0.86,
   });
   const enemies = [unit({ id: 10, team: 'bravo', x: 430, y: 750, attackRange: 70, hpRatio: 0.9 })];
-  const kit = kitProfileOf('witch', 'ranged-tank', 220);
+  const kit = kitProfileOf('witch', 'ranged-tank', 275);
   const rows = rankActions(situationOf(self, [], enemies, { kit }));
   const ok = among(rows, ['reposition', 'hold_position', 'retreat', 'wait_for_opening', 'escape'], 3);
   return { name: 'P witch spacing', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };

@@ -27,8 +27,11 @@ export const WITCH = {
   role: 'ranged-tank' as const,
   ratings: WITCH_RATINGS,
   ...witchGameplay,
-  /** 20% longer than Cole’s live attack radius. */
-  attackRange: Math.round(COLE.attackRange * 1.2),
+  /**
+   * Live light-attack range is Cole × 1.2, then another 20% on that live value.
+   * Skulls, Hex range, and the ult aura all read `WITCH.attackRange`.
+   */
+  attackRange: Math.round(Math.round(COLE.attackRange * 1.2) * 1.2),
   /** Grouping cadence is 20% slower than the converted 400ms barrage. */
   attackCooldownMs: Math.round(witchGameplay.attackCooldownMs * 1.2),
   attackArcDegrees: 22,

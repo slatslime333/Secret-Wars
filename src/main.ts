@@ -12,6 +12,7 @@ import { ControlLayoutScene } from './scenes/ControlLayoutScene';
 import { SimulatorSetupScene } from './scenes/SimulatorSetupScene';
 import { TitleScene } from './scenes/TitleScene';
 import { getGameSize } from './ui/theme';
+import { applyBackingStore, installBackingStore } from './ui/layout/backingStore';
 
 audioSettings.load();
 
@@ -59,7 +60,15 @@ const game = new Phaser.Game({
     },
   },
   scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, ControlLayoutScene, CharacterSelectScene, SimulatorSetupScene, BattleScene, MatchScene],
+  render: {
+    pixelArt: true,
+    antialias: false,
+    roundPixels: true,
+    powerPreference: 'high-performance',
+  },
 });
+
+installBackingStore(game);
 
 (window as Window & { secretWars?: Phaser.Game }).secretWars = game;
 
@@ -69,6 +78,7 @@ const onWindowResize = () => {
   if (game.scale.width !== next.width || game.scale.height !== next.height) {
     game.scale.resize(next.width, next.height);
   }
+  applyBackingStore(game);
 };
 
 window.addEventListener('resize', onWindowResize);
