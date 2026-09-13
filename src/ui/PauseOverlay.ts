@@ -3,9 +3,10 @@ import { audio, audioSettings } from '../audio';
 import type { HeroStatLine } from '../match/CombatStatsTracker';
 import { ActionButton } from './ActionButton';
 import { ScrollPanel } from './layout/ScrollPanel';
-import { measureViewport } from './layout/viewport';
+import { applyGameplayCamera, measureViewport } from './layout/viewport';
 import { adoptHud } from './layout/hudCamera';
 import { addScoreboardSized } from './ScoreboardView';
+import { cameraPrefs } from '../config/cameraPrefs';
 import { SettingSlider } from './SettingSlider';
 import { COLORS, FONTS, hex } from './theme';
 
@@ -40,7 +41,8 @@ export class PauseOverlay {
     const width = frame.width;
     const height = frame.height;
     const inset = frame.contentInset;
-    const footerH = 168;
+    const showFov = height >= 480;
+    const footerH = showFov ? 220 : 168;
     const headerH = 72;
 
     const veil = this.scene.add.rectangle(width / 2, height / 2, width, height, COLORS.ink, 0.92);
@@ -78,7 +80,7 @@ export class PauseOverlay {
     this.root.add(this.scroller.root);
 
     const sliderX = width / 2;
-    const sliderY = height - inset.bottom - 118;
+    const sliderY = height - inset.bottom - (showFov ? 170 : 118);
     const trackWidth = Math.min(320, width - inset.left - inset.right - 80);
     const music = new SettingSlider(this.scene, sliderX, sliderY, {
       label: 'MUSIC',
@@ -100,7 +102,22 @@ export class PauseOverlay {
       onRelease: () => audioSettings.playUiTick(),
     });
     sfx.setScrollFactor(0).setDepth(232);
-    this.root.add([music, sfx]);
+    const pauseSliders: Phaser.GameObjects.GameObject[] = [music, sfx];
+    if (showFov) {
+      const fov = new SettingSlider(this.scene, sliderX, sliderY + 104, {
+        label: 'CAMERA / FOV',
+        value: cameraPrefs.getFov(),
+        screenSpace: true,
+        trackWidth,
+        onChange: (value) => {
+          cameraPrefs.setFov(value);
+          applyGameplayCamera(this.scene.cameras.main, width, height);
+        },
+      });
+      fov.setScrollFactor(0).setDepth(232);
+      pauseSliders.push(fov);
+    }
+    this.root.add(pauseSliders);
 
     const btnW = Math.min(190, (width - inset.left - inset.right - 16) / 2);
     const btnY = height - inset.bottom - 28;

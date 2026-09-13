@@ -312,7 +312,7 @@ export class QuickAttack {
       }
       const dirX = result.target.x - attacker.x;
       const dirY = result.target.y - attacker.y;
-      resolveAbilityHit(
+      const kind = resolveAbilityHit(
         this.scene,
         now,
         attacker,
@@ -329,6 +329,14 @@ export class QuickAttack {
         },
         defenderBlock,
       );
+      if (kind === 'hit') {
+        result.target.status.applyStackedCripple(
+          now,
+          ROPE_SHOT.crippleMs,
+          ROPE_SHOT.cripplePerHit,
+          ROPE_SHOT.crippleCap,
+        );
+      }
     }
   }
 

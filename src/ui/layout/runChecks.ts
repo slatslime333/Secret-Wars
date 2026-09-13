@@ -36,7 +36,8 @@ const checkSize = (label: string, width: number, height: number): Check[] => {
     resolved.rightStick.x > rightBand &&
     resolved.ultimate.x > rightBand;
   const moveLeft = layout.leftStick.x < leftBand && resolved.leftStick.x < leftBand;
-  const hudLeft = chrome.match.x < width * 0.28 && chrome.bars.x < width * 0.2;
+  const barsCentered = Math.abs(chrome.bars.x + chrome.bars.width / 2 - width / 2) < width * 0.08;
+  const matchCentered = chrome.match.align === 'center' && Math.abs(chrome.match.x - width / 2) < 8;
   const menuRight = chrome.menuX > width * 0.7;
   const ultNotCenter = notCentered(layout.ultimate.x, width, 0.18) && notCentered(resolved.ultimate.x, width, 0.18);
   return [
@@ -56,8 +57,8 @@ const checkSize = (label: string, width: number, height: number): Check[] => {
       detail: `ult=${layout.ultimate.x.toFixed(0)} a1=${layout.ability1.x.toFixed(0)} block=${layout.block.x.toFixed(0)} dash=${layout.dash.x.toFixed(0)}`,
     },
     {
-      name: `${label} hud chrome on the sides`,
-      ok: hudLeft && menuRight,
+      name: `${label} info centered map on the right`,
+      ok: barsCentered && matchCentered && menuRight,
       detail: `matchX=${chrome.match.x.toFixed(0)} barsX=${chrome.bars.x.toFixed(0)} menuX=${chrome.menuX.toFixed(0)}`,
     },
     {

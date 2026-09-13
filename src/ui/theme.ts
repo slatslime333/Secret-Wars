@@ -54,4 +54,7 @@ export const FONTS = {
   body: 'Arial, sans-serif',
 } as const;
 
+/** Mobile sticks/buttons are this fraction of their previous fill/stroke alpha. */
+export const TOUCH_CONTROL_ALPHA = 0.65;
+
 export const hex = (color: number): string => `#${color.toString(16).padStart(6, '0')}`;

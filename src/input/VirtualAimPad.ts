@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { INPUT } from '../config/input';
 import { adoptHud, hudPointer } from '../ui/layout/hudCamera';
-import { COLORS, FONTS, hex } from '../ui/theme';
+import { COLORS, FONTS, hex, TOUCH_CONTROL_ALPHA } from '../ui/theme';
 
 export type VirtualAimPadOptions = {
   label: string;
@@ -236,13 +236,13 @@ export class VirtualAimPad {
   private drawArt(): void {
     const r = this.radius;
     this.art.clear();
-    this.art.fillStyle(COLORS.ink, 0.45);
+    this.art.fillStyle(COLORS.ink, 0.45 * TOUCH_CONTROL_ALPHA);
     this.art.fillCircle(this.x + 4, this.y + 5, r + 2);
-    this.art.fillStyle(this.held ? this.accent : COLORS.panel, this.held ? 0.28 : 0.58);
+    this.art.fillStyle(this.held ? this.accent : COLORS.panel, (this.held ? 0.28 : 0.58) * TOUCH_CONTROL_ALPHA);
     this.art.fillCircle(this.x, this.y, r);
-    this.art.lineStyle(3, this.accent);
+    this.art.lineStyle(3, this.accent, TOUCH_CONTROL_ALPHA);
     this.art.strokeCircle(this.x, this.y, r);
-    this.art.lineStyle(1, COLORS.paper, this.held ? 0.35 : 0.16);
+    this.art.lineStyle(1, COLORS.paper, (this.held ? 0.35 : 0.16) * TOUCH_CONTROL_ALPHA);
     this.art.lineBetween(this.x - r + 8, this.y, this.x + r - 8, this.y);
     this.art.lineBetween(this.x, this.y - r + 8, this.x, this.y + r - 8);
   }
@@ -253,7 +253,7 @@ export class VirtualAimPad {
       return;
     }
     const remaining = 1 - this.recovered;
-    this.fill.fillStyle(COLORS.ink, 0.62);
+    this.fill.fillStyle(COLORS.ink, 0.62 * TOUCH_CONTROL_ALPHA);
     this.fill.beginPath();
     this.fill.moveTo(this.x, this.y);
     this.fill.arc(

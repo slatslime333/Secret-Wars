@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { audio, audioSettings } from '../audio';
 import { INPUT } from '../config/input';
 import { isTouchPrimary } from '../device';
+import { cameraPrefs } from '../config/cameraPrefs';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
 import { SettingSlider } from '../ui/SettingSlider';
@@ -94,10 +95,25 @@ export class SettingsScene extends Phaser.Scene {
       onChange: (value) => audioSettings.setSfxVolume(value),
       onRelease: () => audioSettings.playUiTick(),
     });
+    const fov = new SettingSlider(this, sliderX, 176, {
+      label: 'CAMERA / FIELD OF VIEW',
+      value: cameraPrefs.getFov(),
+      trackWidth: Math.min(360, innerW - 80),
+      onChange: (value) => cameraPrefs.setFov(value),
+    });
+    const fovHint = this.add.text(sliderX, 214, 'LOW ZOOMS IN          HIGH ZOOMS OUT', {
+      fontFamily: FONTS.body,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: hex(COLORS.muted),
+      letterSpacing: 2,
+    }).setOrigin(0.5, 0);
     scroll.add(music);
     scroll.add(sfx);
+    scroll.add(fov);
+    scroll.add(fovHint);
 
-    let y = 160;
+    let y = 244;
     if (!isTouchPrimary() && !isPortrait) {
       const display = this.add.text(8, y, 'DISPLAY', {
         fontFamily: FONTS.body,

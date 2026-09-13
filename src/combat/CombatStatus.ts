@@ -26,6 +26,8 @@ export class CombatStatus {
   private hasteAttackMul = 1;
   private asDebuffUntil = 0;
   private asDebuffMul = 1;
+  private crippleUntil = 0;
+  private crippleAmount = 0;
   private paralyzeUntil = 0;
   private stunUntil = 0;
   private defenseUntil = 0;
@@ -124,6 +126,15 @@ export class CombatStatus {
   applyAttackSpeedSlow(now: number, durationMs: number, cooldownMul: number): void {
     this.asDebuffUntil = now + durationMs;
     this.asDebuffMul = cooldownMul;
+  }
+
+  /** Stacking move + attack-speed cut. Each hit adds `perHit` (0.06 = 6%) up to `cap`. */
+  applyStackedCripple(now: number, durationMs: number, perHit: number, cap: number): void {
+    if (now >= this.crippleUntil) {
+      this.crippleAmount = 0;
+    }
+    this.crippleAmount = Math.min(cap, this.crippleAmount + perHit);
+    this.crippleUntil = now + durationMs;
   }
 
   applyDefenseBuff(now: number, durationMs: number, mul: number): void {
@@ -244,13 +255,14 @@ export class CombatStatus {
     const slow = now < this.slowUntil ? this.slowMul : 1;
     const commit = now < this.commitSlowUntil ? this.commitSlowMul : 1;
     const haste = now < this.hasteUntil ? this.hasteMoveMul : 1;
+    const cripple = now < this.crippleUntil ? 1 - this.crippleAmount : 1;
     if (this.isBlockStunned(now) || this.isHitStopping(now)) {
-      return 0.2 * this.zone.moveMul * slow * commit * haste;
+      return 0.2 * this.zone.moveMul * slow * commit * haste * cripple;
     }
     if (this.isHitReacting(now)) {
-      return COMBAT.hitMoveMultiplier * this.zone.moveMul * slow * commit * haste;
+      return COMBAT.hitMoveMultiplier * this.zone.moveMul * slow * commit * haste * cripple;
     }
-    return this.zone.moveMul * slow * commit * haste;
+    return this.zone.moveMul * slow * commit * haste * cripple;
   }
 
   extraSwingDelay(now: number): number {
@@ -268,6 +280,7 @@ export class CombatStatus {
     const hitSlow = now < this.attackSlowUntil ? COMBAT.hitAttackSlowMultiplier : 1;
     const haste = now < this.hasteUntil ? this.hasteAttackMul : 1;
     const debuff = now < this.asDebuffUntil ? this.asDebuffMul : 1;
-    return (hitSlow * haste * debuff) / this.zone.attackSpeedMul;
+    const cripple = now < this.crippleUntil ? 1 + this.crippleAmount : 1;
+    return (hitSlow * haste * debuff * cripple) / this.zone.attackSpeedMul;
   }
 }

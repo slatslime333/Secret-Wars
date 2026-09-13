@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { audio } from '../audio';
 import { AbilitySlotState } from '../heroes/abilities/types';
 import { adoptHud, hudPointer } from './layout/hudCamera';
-import { COLORS, FONTS, hex } from './theme';
+import { COLORS, FONTS, hex, TOUCH_CONTROL_ALPHA } from './theme';
 
 type AbilityButtonOptions = {
   onPress: () => void;
@@ -49,10 +49,10 @@ export class AbilityButton {
     this.timer = scene.add
       .text(x, y + radius * 0.08, '', {
         fontFamily: FONTS.display,
-        fontSize: '11px',
+        fontSize: '20px',
         color: hex(COLORS.paper),
         stroke: hex(COLORS.ink),
-        strokeThickness: 4,
+        strokeThickness: 5,
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -99,7 +99,7 @@ export class AbilityButton {
     this.radius = radius;
     this.zone.setSize(radius * 2.4, radius * 2.4);
     this.zone.setInteractive(new Phaser.Geom.Circle(radius * 1.2, radius * 1.2, radius * 1.2), Phaser.Geom.Circle.Contains);
-    this.timer.setFontSize(Math.max(9, Math.round(11 * (radius / 30))));
+    this.timer.setFontSize(Math.max(14, Math.round(20 * (radius / 30))));
     this.drawArt();
     this.fitIcon();
   }
@@ -123,7 +123,7 @@ export class AbilityButton {
     } else if (state.maxCharges > 1 && state.ready) {
       this.timer.setText(`${state.charges}`);
     } else if (!state.ready && state.cooldownRemainingMs > 0) {
-      this.timer.setText((state.cooldownRemainingMs / 1000).toFixed(state.cooldownRemainingMs >= 10000 ? 0 : 1));
+      this.timer.setText(String(Math.max(1, Math.ceil(state.cooldownRemainingMs / 1000))));
     } else if (state.maxCharges > 1) {
       this.timer.setText(`${state.charges}`);
     } else {
@@ -180,10 +180,10 @@ export class AbilityButton {
   private drawArt(): void {
     const r = this.radius;
     this.art.clear();
-    this.art.fillStyle(COLORS.ink, 0.45);
+    this.art.fillStyle(COLORS.ink, 0.45 * TOUCH_CONTROL_ALPHA);
     this.art.fillCircle(this.x + 4, this.y + 5, r + 2);
     const fill = this.ultimate && this.ready && !this.consumed ? 0x3a2a12 : COLORS.panel;
-    this.art.fillStyle(fill, this.pressed ? 0.5 : 0.58);
+    this.art.fillStyle(fill, (this.pressed ? 0.5 : 0.58) * TOUCH_CONTROL_ALPHA);
     this.art.fillCircle(this.x, this.y, r);
     const ring = this.consumed
       ? COLORS.muted
@@ -194,7 +194,7 @@ export class AbilityButton {
         : this.ready
           ? COLORS.paper
           : COLORS.muted;
-    this.art.lineStyle(this.ultimate ? 4 : 3, ring, this.ready ? 1 : 0.55);
+    this.art.lineStyle(this.ultimate ? 4 : 3, ring, (this.ready ? 1 : 0.55) * TOUCH_CONTROL_ALPHA);
     this.art.strokeCircle(this.x, this.y, r);
     if (this.ultimate && this.ready && !this.consumed) {
       this.art.lineStyle(2, COLORS.orange, 0.85);
@@ -218,7 +218,7 @@ export class AbilityButton {
     if (state.cooldownRatio <= 0) {
       return;
     }
-    this.overlay.fillStyle(COLORS.ink, 0.62);
+    this.overlay.fillStyle(COLORS.ink, 0.62 * TOUCH_CONTROL_ALPHA);
     this.overlay.beginPath();
     this.overlay.moveTo(this.x, this.y);
     this.overlay.arc(

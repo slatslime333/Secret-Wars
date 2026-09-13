@@ -139,7 +139,7 @@ export class BattleHud {
     this.guardFill.setPosition(hud.barLeft, hud.shieldY).setSize(this.guardFill.width || hud.barWidth, hud.shieldHeight);
     this.staminaFill.setPosition(hud.barLeft, hud.staminaY).setSize(this.staminaFill.width || hud.barWidth, hud.staminaHeight);
     this.hpText.setVisible(true).setPosition(hud.barLeft, hud.hpY - 22).setOrigin(0, 0.5);
-    this.verbText.setVisible(true).setPosition(width / 2, hud.hpY - 42).setOrigin(0.5, 1);
+    this.verbText.setVisible(true).setPosition(width / 2, hud.hpY - hud.hpHeight / 2 - 78).setOrigin(0.5, 1);
   }
 
   placeCombo(x: number, y: number): void {
