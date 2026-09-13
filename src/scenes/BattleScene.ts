@@ -24,6 +24,7 @@ import { COLE_BALL } from '../heroes/abilities/cole/tunables';
 import { DEATH_GUN, DEATH_SMASH } from '../heroes/abilities/death/tunables';
 import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
 import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
+import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT } from '../heroes/abilities/rope/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
@@ -392,14 +393,29 @@ export class BattleScene extends Phaser.Scene {
       this.ninja.regenStamina(delta, now);
     }
     this.ninja.regenHealth(delta, now);
-    this.marker.sync(
-      this.ninja.x,
-      this.ninja.y,
-      this.ninja.aim.x,
-      this.ninja.aim.y,
-      this.ninja.stats.attackRange,
-      this.ninja.stats.attackArcDegrees,
-    );
+    if (this.ninja.heroId === 'rope' && !frame.ability1Aiming && !frame.ability2Aiming) {
+      this.marker.syncRopeAim(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        this.ninja.stats.attackRange * 1.25,
+        frame.attackHeld,
+        this.attacks.nextRopeArm,
+        ROPE_SHOT.armOffsetRad,
+      );
+    } else if (this.ninja.heroId === 'rope') {
+      this.marker.clearRange();
+    } else {
+      this.marker.sync(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        this.ninja.stats.attackRange,
+        this.ninja.stats.attackArcDegrees,
+      );
+    }
     if (this.ninja.heroId === 'cole') {
       this.marker.syncBallAim(
         this.ninja.x,
@@ -438,6 +454,24 @@ export class BattleScene extends Phaser.Scene {
         true,
         NINJA_KICK.aimHalfWidth,
       );
+    } else if (this.ninja.heroId === 'rope' && frame.ability1Aiming && !this.abilities.isBusy()) {
+      this.marker.syncRopeGrabAim(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        ROPE_GRAB.range,
+        true,
+      );
+    } else if (this.ninja.heroId === 'rope' && frame.ability2Aiming) {
+      this.marker.syncPunchAim(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        ROPE_PUNCH.radius,
+        true,
+      );
     } else {
       this.marker.clearBallAim();
     }
@@ -475,6 +509,10 @@ export class BattleScene extends Phaser.Scene {
     this.syncAbilityUi(now);
 
     if (this.ninja.down) {
+      this.abilities.interruptActive();
+      this.dash.cancel(this.ninja);
+      this.attacks.interrupt(now);
+      this.ninja.clearRopeWrap();
       this.devMenu?.close();
       this.round.lock('rival');
     } else if (this.rival?.down) {

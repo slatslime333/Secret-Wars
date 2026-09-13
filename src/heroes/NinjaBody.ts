@@ -11,6 +11,7 @@ import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
 import { drawColeElectricity } from './drawCole';
 import type { HeroDrawFn } from './heroDraw';
 import { playDeath } from '../audio';
+import { drawRopeWrap } from './abilities/rope/ropeVisual';
 import { DEV_CHEATS } from '../debug/devCheats';
 import { MATCH } from '../config/match';
 import { MINION } from '../config/minion';
@@ -55,6 +56,8 @@ export class NinjaBody {
   private pendingLaunch?: { x: number; y: number };
   private armLiftLeft = 0;
   private armLiftRight = 0;
+  private wrapGfx?: Phaser.GameObjects.Graphics;
+  private wrapUntil = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: FighterOptions = {}) {
     this.scene = scene;
@@ -133,7 +136,13 @@ export class NinjaBody {
     this.tickHitStop(this.now());
     this.view.setPosition(this.sprite.x, this.sprite.y);
     this.redrawHandSparks();
-    const flashing = this.status.isFlashingHit(this.now());
+    this.syncRopeWrap();
+    const now = this.now();
+    if (this.heroId === 'rope' && now >= this.attackingUntil && this.present && !this.down) {
+      const hop = Math.abs(Math.sin(now / 130)) * 3.4;
+      this.art.setY(-hop);
+    }
+    const flashing = this.status.isFlashingHit(now);
     if (flashing !== this.lastDrawnFlash && this.now() >= this.attackingUntil) {
       this.lastDrawnFlash = flashing;
       this.redrawIdle();
@@ -391,6 +400,7 @@ export class NinjaBody {
     durationMs: number,
     frame: (frac: number) => {
       swayX?: number;
+      jumpY?: number;
       armLiftLeft?: number;
       armLiftRight?: number;
       swordAngleOffset?: number;
@@ -429,7 +439,7 @@ export class NinjaBody {
           batOnBack: pose.batOnBack,
           showUzi: pose.showUzi,
         });
-        this.art.setPosition(pose.swayX ?? 0, 0);
+        this.art.setPosition(pose.swayX ?? 0, pose.jumpY ?? 0);
       },
       onComplete: () => {
         if (!this.present) {
@@ -459,6 +469,38 @@ export class NinjaBody {
       y: 0,
       duration: durationMs,
       ease: 'Quad.Out',
+    });
+  }
+
+  playFrontFlip(dirX: number, dirY: number, durationMs: number, jumpHeight = 28): void {
+    this.currentAttackTween?.stop();
+    this.scene.tweens.killTweensOf(this.art);
+    this.scene.tweens.killTweensOf(this.view);
+    this.attackingUntil = this.now() + durationMs;
+    const spin = { value: 0 };
+    const length = Math.hypot(dirX, dirY) || 1;
+    const nx = dirX / length;
+    const ny = dirY / length;
+    const sign = nx >= 0 ? 1 : -1;
+    this.currentAttackTween = this.scene.tweens.add({
+      targets: spin,
+      value: 1,
+      duration: durationMs,
+      ease: 'Sine.Out',
+      onUpdate: () => {
+        const lift = Math.sin(spin.value * Math.PI);
+        this.view.setRotation(sign * spin.value * Math.PI * 2);
+        this.art.setY(-jumpHeight * lift + ny * 4);
+        this.art.setX(nx * 8 * (1 - spin.value));
+        this.art.setScale(1 + lift * 0.1);
+      },
+      onComplete: () => {
+        this.view.setRotation(0);
+        this.art.setPosition(0, 0);
+        this.art.setRotation(0);
+        this.art.setScale(1);
+        this.redrawIdle();
+      },
     });
   }
 
@@ -552,7 +594,34 @@ export class NinjaBody {
     }
     if (!value) {
       this.stop();
+      this.clearRopeWrap();
     }
+  }
+
+  showRopeWrap(untilMs: number): void {
+    this.wrapUntil = untilMs;
+    if (!this.wrapGfx || !this.wrapGfx.active) {
+      this.wrapGfx = this.scene.add.graphics().setDepth(11);
+    }
+  }
+
+  clearRopeWrap(): void {
+    this.wrapUntil = 0;
+    this.wrapGfx?.destroy();
+    this.wrapGfx = undefined;
+  }
+
+  private syncRopeWrap(): void {
+    const gfx = this.wrapGfx;
+    if (!gfx) {
+      return;
+    }
+    const now = this.now();
+    if (!this.present || this.down || now >= this.wrapUntil || !this.status.isParalyzed(now)) {
+      this.clearRopeWrap();
+      return;
+    }
+    drawRopeWrap(gfx, this.x, this.y, now);
   }
 
   placeAt(x: number, y: number): void {
@@ -673,6 +742,7 @@ export class NinjaBody {
     this.currentAttackTween = undefined;
     this.scene.tweens.killTweensOf(this.view);
     this.scene.tweens.killTweensOf(this.art);
+    this.clearRopeWrap();
     this.sprite.destroy();
     this.view.destroy();
   }

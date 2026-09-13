@@ -6,6 +6,9 @@ type SettingSliderOptions = {
   value: number;
   onChange: (value: number) => void;
   onRelease?: (value: number) => void;
+  /** Pause HUD is camera-locked; use canvas X instead of world X. */
+  screenSpace?: boolean;
+  trackWidth?: number;
 };
 
 /**
@@ -15,7 +18,7 @@ type SettingSliderOptions = {
  * scene.input during scene shutdown (that crashed Settings → menu).
  */
 export class SettingSlider extends Phaser.GameObjects.Container {
-  private readonly trackWidth = 360;
+  private readonly trackWidth: number;
   private readonly fill: Phaser.GameObjects.Rectangle;
   private readonly handle: Phaser.GameObjects.Rectangle;
   private readonly valueText: Phaser.GameObjects.Text;
@@ -23,15 +26,18 @@ export class SettingSlider extends Phaser.GameObjects.Container {
   private dragging = false;
   private readonly onChange: (value: number) => void;
   private readonly onRelease?: (value: number) => void;
+  private readonly screenSpace: boolean;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: SettingSliderOptions) {
     super(scene, x, y);
+    this.trackWidth = options.trackWidth ?? 360;
+    this.screenSpace = Boolean(options.screenSpace);
     this.value = Phaser.Math.Clamp(options.value, 0, 1);
     this.onChange = options.onChange;
     this.onRelease = options.onRelease;
 
     const label = scene.add
-      .text(-230, -22, options.label, {
+      .text(-this.trackWidth / 2 - 8, -22, options.label, {
         fontFamily: FONTS.body,
         fontSize: '13px',
         fontStyle: 'bold',
@@ -51,7 +57,7 @@ export class SettingSlider extends Phaser.GameObjects.Container {
     this.handle.setStrokeStyle(3, COLORS.ink);
 
     this.valueText = scene.add
-      .text(210, 10, '0', {
+      .text(this.trackWidth / 2 + 16, 10, '0', {
         fontFamily: FONTS.display,
         fontSize: '20px',
         color: hex(COLORS.paper),
@@ -105,7 +111,8 @@ export class SettingSlider extends Phaser.GameObjects.Container {
   }
 
   private applyPointer(pointer: Phaser.Input.Pointer): void {
-    const localX = pointer.worldX - this.x;
+    const px = this.screenSpace ? pointer.x : pointer.worldX;
+    const localX = px - this.x;
     const ratio = (localX + this.trackWidth / 2) / this.trackWidth;
     const next = Phaser.Math.Clamp(ratio, 0, 1);
     if (Math.abs(next - this.value) < 0.001) {

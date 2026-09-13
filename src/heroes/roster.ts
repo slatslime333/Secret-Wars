@@ -1,20 +1,23 @@
 import { COLE } from '../config/cole';
 import { DEATH } from '../config/death';
 import { NINJA } from '../config/ninja';
+import { ROPE } from '../config/rope';
 import { HeroCombatConfig } from '../config/hero';
 import { HeroAbilityKit } from './abilities/types';
 import { NINJA_ABILITY_KIT } from './abilities/ninja/kit';
 import { COLE_ABILITY_KIT } from './abilities/cole/kit';
 import { DEATH_ABILITY_KIT } from './abilities/death/kit';
+import { ROPE_ABILITY_KIT } from './abilities/rope/kit';
 import { drawNinja } from './drawNinja';
 import { drawCole } from './drawCole';
 import { drawDeath } from './drawDeath';
+import { drawRope } from './drawRope';
 import { HeroDrawFn } from './heroDraw';
 import type { CoreRatings } from '../config/ratings';
 
-export type HeroId = 'ninja' | 'cole' | 'death';
+export type HeroId = 'ninja' | 'cole' | 'death' | 'rope';
 
-export const HERO_IDS: HeroId[] = ['ninja', 'cole', 'death'];
+export const HERO_IDS: HeroId[] = ['ninja', 'cole', 'death', 'rope'];
 
 export const nextHeroId = (id: HeroId): HeroId => {
   const index = HERO_IDS.indexOf(id);
@@ -49,6 +52,13 @@ export const PLAYABLE_HEROES: Record<HeroId, PlayableHero> = {
     stats: DEATH,
     kit: DEATH_ABILITY_KIT,
     draw: drawDeath,
+    handSparks: false,
+  },
+  rope: {
+    id: 'rope',
+    stats: ROPE,
+    kit: ROPE_ABILITY_KIT,
+    draw: drawRope,
     handSparks: false,
   },
 };

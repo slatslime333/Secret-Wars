@@ -111,7 +111,9 @@ export class HeroRuntime {
     this.dead = true;
     this.respawnAt = now + MATCH.respawnDelayMs;
     this.attacks.interrupt(now);
-    this.abilities.silence();
+    this.dash.cancel(this.body);
+    this.abilities.interruptActive();
+    this.body.clearRopeWrap();
     this.body.setPresent(false);
     this.plate.setVisible(false);
   }
@@ -140,7 +142,9 @@ export class HeroRuntime {
   }
 
   destroy(): void {
+    this.attacks.destroy();
     this.abilities.destroy();
+    this.dash.cancel(this.body);
     this.block.destroy();
     this.plate.destroy();
     this.body.destroy();

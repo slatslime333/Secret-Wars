@@ -42,6 +42,9 @@ const ABILITY_TEXT: Record<string, string> = {
   'death-gun-barrage': 'Click to aim along the laser, then left-click to spray a burst of SMG fire.',
   'death-bat-smash': 'Click to aim, then left-click to sweep the bat through that arc.',
   'death-bat-sweep': 'Sweep the bat in a wide damaging arc. Recharges after 45 seconds.',
+  'rope-grab': 'Click to aim, then left-click to fire a rope. A hit flings you in for a backflip kick. Misses cost nothing.',
+  'rope-mega-punch': 'Jump into a close uppercut with strong knockback and a movement slow.',
+  'rope-spray': 'Spin and spray ropes in random directions. Hits paralyze. Recharges after 45 seconds.',
 };
 
 const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
@@ -56,6 +59,10 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
   death: {
     description: 'Heavy tank who mixes SMG fire with bat slams and sweeps.',
     light: 'Heavy close-range swings.',
+  },
+  rope: {
+    description: 'Mobile support who pokes from long range and disrupts movement with ropes.',
+    light: 'Alternating rope shots every 0.4 seconds. Low damage, very long range.',
   },
 };
 

@@ -48,7 +48,7 @@ class AudioManager {
     this.startMusic();
   }
 
-  /** Loop the bed at 75% of the music slider so it sits under combat. */
+  /** Loop the bed. Peak loudness is AUDIO.musicPeakGain at a full slider. */
   startMusic(): void {
     const ctx = this.ensureContext();
     if (!ctx || !this.musicGain) {

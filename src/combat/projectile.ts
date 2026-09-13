@@ -20,7 +20,10 @@ export class Projectile {
   private alive = true;
   private readonly endsAt: number;
   private flicker = 0;
-  private readonly style: 'spark' | 'slug' | 'arrow';
+  private readonly style: 'spark' | 'slug' | 'arrow' | 'rope';
+  private readonly originX: number;
+  private readonly originY: number;
+  private readonly maxRange: number;
 
   constructor(
     scene: Phaser.Scene,
@@ -31,9 +34,13 @@ export class Projectile {
     private readonly radius: number,
     lifetimeMs: number,
     color: number,
-    style: 'spark' | 'slug' | 'arrow' = 'spark',
+    style: 'spark' | 'slug' | 'arrow' | 'rope' = 'spark',
+    maxRange = Number.POSITIVE_INFINITY,
   ) {
     this.style = style;
+    this.originX = x;
+    this.originY = y;
+    this.maxRange = maxRange;
     this.endsAt = scene.time.now + lifetimeMs;
     this.view = scene.add.container(x, y).setDepth(15);
     if (style === 'arrow') {
@@ -43,6 +50,9 @@ export class Projectile {
       shaft.setStrokeStyle(1, 0x3a2410, 0.9);
       shaft.setRotation(Math.atan2(vy, vx));
       this.view.add(shaft);
+    } else if (style === 'rope') {
+      this.body = scene.add.circle(0, 0, 2.2, 0xc4894a, 1);
+      this.body.setStrokeStyle(1.2, 0x5a3014, 1);
     } else {
       this.body = scene.add.circle(0, 0, radius, color, style === 'slug' ? 0.95 : 0.88);
       this.body.setStrokeStyle(2, style === 'slug' ? 0x2a2010 : 0xdff4ff, 1);
@@ -62,10 +72,14 @@ export class Projectile {
     this.flicker += 1;
     if (this.style === 'spark') {
       this.drawSparks();
+    } else if (this.style === 'rope') {
+      this.drawRope();
     }
+    const traveled = Math.hypot(this.x - this.originX, this.y - this.originY);
     const map = battlefieldOf(this.view.scene);
     if (
       now >= this.endsAt ||
+      traveled >= this.maxRange ||
       this.x < 0 ||
       this.y < 0 ||
       this.x > ARENA.width ||
@@ -94,6 +108,23 @@ export class Projectile {
     }
     this.alive = false;
     this.view.destroy();
+  }
+
+  private drawRope(): void {
+    const ang = Math.atan2(this.vy, this.vx);
+    const tx = Math.cos(ang);
+    const ty = Math.sin(ang);
+    const len = 20;
+    const g = this.sparks;
+    g.clear();
+    g.lineStyle(4, 0x5a3014, 1);
+    g.lineBetween(-tx * len, -ty * len, tx * 6, ty * 6);
+    g.lineStyle(2.2, 0xc4894a, 1);
+    g.lineBetween(-tx * (len - 1), -ty * (len - 1), tx * 4, ty * 4);
+    g.fillStyle(0x8a5228, 1);
+    g.fillCircle(0, 0, 2.4);
+    g.fillStyle(0xd4a06a, 0.9);
+    g.fillCircle(tx * 2, ty * 2, 1.4);
   }
 
   private drawSparks(): void {

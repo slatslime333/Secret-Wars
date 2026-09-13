@@ -11,6 +11,9 @@ export const ABILITY_ICON = {
   gunBarrage: 'ability-icon-gun-barrage',
   batSmash: 'ability-icon-bat-smash',
   batSweep: 'ability-icon-bat-sweep',
+  ropeGrab: 'ability-icon-rope-grab',
+  megaPunch: 'ability-icon-mega-punch',
+  ropeSpray: 'ability-icon-rope-spray',
 } as const;
 
 const SIZE = 128;
@@ -27,6 +30,9 @@ export const ensureAbilityIcons = (scene: Phaser.Scene): void => {
   drawIfMissing(scene, ABILITY_ICON.gunBarrage, drawGunBarrage);
   drawIfMissing(scene, ABILITY_ICON.batSmash, drawBatSmash);
   drawIfMissing(scene, ABILITY_ICON.batSweep, drawBatSweep);
+  drawIfMissing(scene, ABILITY_ICON.ropeGrab, drawRopeGrab);
+  drawIfMissing(scene, ABILITY_ICON.megaPunch, drawMegaPunch);
+  drawIfMissing(scene, ABILITY_ICON.ropeSpray, drawRopeSpray);
 };
 
 const drawIfMissing = (
@@ -403,3 +409,89 @@ const drawBatSweep = (ctx: CanvasRenderingContext2D, size: number): void => {
   ctx.lineTo(c + 8, c - 1);
   ctx.fill();
 };
+
+const drawRopeGrab = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#5a3014';
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(c - 28, c + 18);
+  ctx.quadraticCurveTo(c + 8, c - 36, c + 30, c - 8);
+  ctx.stroke();
+  ctx.strokeStyle = '#c4894a';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(c - 28, c + 18);
+  ctx.quadraticCurveTo(c + 8, c - 36, c + 30, c - 8);
+  ctx.stroke();
+  ctx.strokeStyle = orange;
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(c + 28, c - 8, 12, -0.4, 4.2);
+  ctx.stroke();
+  ctx.fillStyle = '#8a5228';
+  ctx.beginPath();
+  ctx.arc(c - 28, c + 18, 6, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+const drawMegaPunch = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#8a5228';
+  ctx.beginPath();
+  ctx.ellipse(c, c + 8, 22, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#c4894a';
+  ctx.beginPath();
+  ctx.ellipse(c, c + 4, 16, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = orange;
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(c - 6, c - 8);
+  ctx.lineTo(c + 4, c - 34);
+  ctx.lineTo(c + 14, c - 10);
+  ctx.stroke();
+  ctx.fillStyle = yellow;
+  ctx.beginPath();
+  ctx.moveTo(c - 2, c - 36);
+  ctx.lineTo(c + 18, c - 28);
+  ctx.lineTo(c + 6, c - 18);
+  ctx.fill();
+};
+
+const drawRopeSpray = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#8a5228';
+  ctx.beginPath();
+  ctx.arc(c, c, 12, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 8; i += 1) {
+    const a = (i / 8) * Math.PI * 2;
+    ctx.strokeStyle = i % 2 === 0 ? '#c4894a' : '#5a3014';
+    ctx.lineWidth = i % 2 === 0 ? 4 : 5;
+    ctx.beginPath();
+    ctx.moveTo(c + Math.cos(a) * 10, c + Math.sin(a) * 10);
+    ctx.lineTo(c + Math.cos(a) * 42, c + Math.sin(a) * 42);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#b428e0';
+  ctx.beginPath();
+  ctx.moveTo(c, c - 8);
+  ctx.lineTo(c + 5, c + 2);
+  ctx.lineTo(c - 5, c + 2);
+  ctx.fill();
+};
+

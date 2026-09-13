@@ -91,6 +91,10 @@ class GunBarrageAbility implements ActiveAbility {
 
   private drawLaser(ctx: AbilityContext): void {
     const { caster } = ctx;
+    if (!caster.playerControlled) {
+      this.laser.clear();
+      return;
+    }
     const aim = ctx.aimOverride ?? caster.aim;
     const length = Math.hypot(aim.x, aim.y) || 1;
     const nx = aim.x / length;

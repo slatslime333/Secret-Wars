@@ -36,8 +36,8 @@ export const NINJA_KICK = {
   damageRating: 51,
   /** 15% more than the converted kick so the connect actually rewards the dash. */
   damage: abilityDamage(51) * 1.15,
-  knockbackMul: 6.27,
-  secondaryKnockbackMul: 4.68,
+  knockbackMul: 6.9,
+  secondaryKnockbackMul: 5.15,
   /** Lets the kick exceed the shared launch cap without changing other heroes. */
   launchCap: 858,
   staminaDamage: 6,
