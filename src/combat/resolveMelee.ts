@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COMBAT, ComboStep } from '../config/combat';
 import { applyDefense } from './damage';
+import { emitCombatBlocked } from './damageEvents';
 import { isInAttackArc } from './hitDetection';
 import { playHitJuice } from '../effects/hitJuice';
 import { spawnHitSpark } from '../effects/hitSpark';
@@ -94,6 +95,11 @@ export const resolveMelee = (
   if (block?.absorbed) {
     const heavy = step === 3;
     const profile = COMBAT.combo[step];
+    const blockedDamage = applyDefense(
+      attacker.stats.attackDamage * (options.damageMul ?? profile.damageMultiplier),
+      defender.defense,
+    );
+    emitCombatBlocked({ defender, amount: blockedDamage, at: now });
     flashBlockShield(scene, defender, heavy, block.perfect);
     spawnHitSpark(scene, defender.x + defender.aim.x * 16, defender.y + defender.aim.y * 16, {
       blocked: true,

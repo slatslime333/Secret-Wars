@@ -12,13 +12,15 @@ import { DEATH_SMASH } from '../heroes/abilities/death/tunables';
 import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
 import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
-import { onCombatDamage, isHeroFighter } from '../combat/damageEvents';
+import { onCombatDamage, onCombatBlocked, isHeroFighter } from '../combat/damageEvents';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
 import { AbilityTray } from '../ui/AbilityTray';
 import { BattleHud } from '../ui/BattleHud';
 import { MatchHud } from '../ui/MatchHud';
 import { PostMatchOverlay } from '../ui/PostMatchOverlay';
+import { PauseOverlay } from '../ui/PauseOverlay';
+import { spawnKillPopup } from '../ui/KillPopup';
 import { RespawnOverlay } from '../ui/RespawnOverlay';
 import { Minimap } from '../ui/Minimap';
 import { COLORS, FONTS, hex } from '../ui/theme';
@@ -69,6 +71,7 @@ export class MatchScene extends Phaser.Scene {
   private hud!: BattleHud;
   private matchHud!: MatchHud;
   private results!: PostMatchOverlay;
+  private pauseOverlay!: PauseOverlay;
   private respawnOverlay!: RespawnOverlay;
   private chromeBar?: Phaser.GameObjects.Rectangle;
   private titleText?: Phaser.GameObjects.Text;
@@ -82,6 +85,7 @@ export class MatchScene extends Phaser.Scene {
   private waves!: WaveDirector;
   private orbs!: XpOrbWorld;
   private offDamage?: () => void;
+  private offBlocked?: () => void;
   private heroGroup?: Phaser.Physics.Arcade.Group;
 
   constructor() {
@@ -187,6 +191,10 @@ export class MatchScene extends Phaser.Scene {
       onRematch: () => this.restartMatch(),
       onMenu: () => this.returnToMenu(),
     });
+    this.pauseOverlay = new PauseOverlay(this, {
+      onContinue: () => this.closePause(),
+      onExit: () => this.returnToMenu(),
+    });
     this.respawnOverlay = new RespawnOverlay(this);
 
     this.cameras.main.setBounds(0, 0, ARENA.width, ARENA.height);
@@ -199,25 +207,28 @@ export class MatchScene extends Phaser.Scene {
     this.createChrome();
     this.waves.start(this.time.now);
     this.offDamage = onCombatDamage((event) => this.stats.recordDamage(event));
+    this.offBlocked = onCombatBlocked((event) => this.stats.recordBlocked(event.defender, event.amount));
     audio.unlock();
     audio.play('ui-match-start');
 
     this.game.canvas.setAttribute('tabindex', '0');
     this.game.canvas.focus();
     this.input.keyboard?.addCapture(['ESC']);
-    this.input.keyboard?.on('keydown-ESC', this.returnToMenu, this);
+    this.input.keyboard?.on('keydown-ESC', this.togglePauseMenu, this);
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.bindDebugApi();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
-      this.input.keyboard?.off('keydown-ESC', this.returnToMenu, this);
+      this.input.keyboard?.off('keydown-ESC', this.togglePauseMenu, this);
       this.offDamage?.();
+      this.offBlocked?.();
       this.abilityWorld.destroy();
       this.minions.destroy();
       this.orbs.destroy();
       this.abilityTray?.destroy();
       this.minimap?.destroy();
       this.respawnOverlay?.destroy();
+      this.pauseOverlay?.destroy();
       this.battlefield?.destroy();
       for (const unit of this.heroes) {
         unit.destroy();
@@ -415,6 +426,11 @@ export class MatchScene extends Phaser.Scene {
       }
       unit.markDead(now);
       this.match.notifyHeroKill();
+      if (result.killer === this.player.body) {
+        spawnKillPopup(this, 'KILL', unit.body.stats.displayName);
+      } else if (result.assists.includes(this.player.body)) {
+        spawnKillPopup(this, 'ASSIST', unit.body.stats.displayName);
+      }
       if (unit.isPlayer) {
         this.cameras.main.stopFollow();
       }
@@ -582,7 +598,7 @@ export class MatchScene extends Phaser.Scene {
       label: 'MENU',
       width: 150,
       height: 40,
-      onPress: () => this.returnToMenu(),
+      onPress: () => this.openPause(),
     });
     this.menuButton.setScrollFactor(0).setDepth(120);
   }
@@ -605,6 +621,38 @@ export class MatchScene extends Phaser.Scene {
       height,
     );
     this.cameras.main.setSize(width, height);
+    if (this.pauseOverlay?.isOpen) {
+      this.pauseOverlay.show(this.stats.allLines());
+    }
+  }
+
+  private togglePauseMenu = (): void => {
+    if (this.match.paused) {
+      this.closePause();
+    } else {
+      this.openPause();
+    }
+  };
+
+  private openPause(): void {
+    if (this.returning || this.match.finished || this.results.isOpen || this.match.paused) {
+      return;
+    }
+    this.match.setPaused(true);
+    this.physics.world.pause();
+    this.time.paused = true;
+    this.freezeField();
+    this.pauseOverlay.show(this.stats.allLines());
+  }
+
+  private closePause(): void {
+    if (!this.match.paused || this.returning) {
+      return;
+    }
+    this.match.setPaused(false);
+    this.physics.world.resume();
+    this.time.paused = false;
+    this.pauseOverlay.hide();
   }
 
   private restartMatch(): void {
@@ -612,6 +660,8 @@ export class MatchScene extends Phaser.Scene {
       return;
     }
     this.returning = true;
+    this.time.paused = false;
+    this.physics.world.resume();
     this.scene.restart({ heroId: this.startHeroId });
   }
 
@@ -620,6 +670,8 @@ export class MatchScene extends Phaser.Scene {
       return;
     }
     this.returning = true;
+    this.time.paused = false;
+    this.physics.world.resume();
     fadeToScene(this, 'MainMenu');
   }
 

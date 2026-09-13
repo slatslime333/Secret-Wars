@@ -19,6 +19,8 @@ export type HeroStatLine = {
   abilityDamage: number;
   lightDamage: number;
   minionDamage: number;
+  /** Incoming damage the shield prevented (after defense). */
+  blockedDamage: number;
 };
 
 type HeroKey = NinjaBody;
@@ -51,6 +53,7 @@ export class CombatStatsTracker {
       abilityDamage: 0,
       lightDamage: 0,
       minionDamage: 0,
+      blockedDamage: 0,
     };
     this.lines.set(body, line);
     return line;
@@ -87,6 +90,16 @@ export class CombatStatsTracker {
       const list = this.marks.get(victim) ?? [];
       list.push({ attacker, at: event.at });
       this.marks.set(victim, list);
+    }
+  }
+
+  recordBlocked(defender: NinjaBody, amount: number): void {
+    if (amount <= 0) {
+      return;
+    }
+    const line = this.lines.get(defender);
+    if (line) {
+      line.blockedDamage += amount;
     }
   }
 

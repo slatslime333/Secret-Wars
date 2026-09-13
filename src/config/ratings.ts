@@ -106,4 +106,44 @@ export const gameplayFromRatings = (ratings: CoreRatings) => ({
   attackRange: coreStatValue('attackRange', ratings.attackRange),
 });
 
+export type GameplayCoreStats = ReturnType<typeof gameplayFromRatings>;
+
+/**
+ * Inverse of `fromStatRating`. Select cards show these so live overrides
+ * (Death range, Ninja kick radius, etc.) match the bars the player reads.
+ */
+export const ratingFromStatValue = (value: number, curve: StatCurve): number => {
+  const lo = Math.min(curve.at0, curve.at99);
+  const hi = Math.max(curve.at0, curve.at99);
+  const clamped = Math.min(hi, Math.max(lo, value));
+  if (clamped === curve.at50) {
+    return BASELINE_RATING;
+  }
+  if ((curve.at50 >= curve.at0 && clamped <= curve.at50) || (curve.at50 <= curve.at0 && clamped >= curve.at50)) {
+    const span = curve.at50 - curve.at0;
+    if (span === 0) {
+      return BASELINE_RATING;
+    }
+    return clampRating(Math.round(BASELINE_RATING * ((clamped - curve.at0) / span)));
+  }
+  const span = curve.at99 - curve.at50;
+  if (span === 0) {
+    return RATING_CAP;
+  }
+  return clampRating(
+    Math.round(BASELINE_RATING + ((RATING_CAP - BASELINE_RATING) * (clamped - curve.at50)) / span),
+  );
+};
+
+export const ratingsFromGameplay = (stats: GameplayCoreStats): CoreRatings => ({
+  health: ratingFromStatValue(stats.maxHealth, CORE_CURVES.health),
+  stamina: ratingFromStatValue(stats.maxStamina, CORE_CURVES.stamina),
+  damage: ratingFromStatValue(stats.attackDamage, CORE_CURVES.damage),
+  defense: ratingFromStatValue(stats.defense, CORE_CURVES.defense),
+  speed: ratingFromStatValue(stats.moveSpeed, CORE_CURVES.speed),
+  attackSpeed: ratingFromStatValue(stats.attackCooldownMs, CORE_CURVES.attackSpeed),
+  attackRange: ratingFromStatValue(stats.attackRange, CORE_CURVES.attackRange),
+  knockback: ratingFromStatValue(stats.knockbackPower, CORE_CURVES.knockback),
+});
+
 export const formatRating = (rating: number): string => `${clampRating(Math.round(rating))}/${RATING_CAP}`;

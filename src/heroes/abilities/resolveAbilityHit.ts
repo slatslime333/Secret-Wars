@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COMBAT, ComboStep } from '../../config/combat';
 import { applyDefense } from '../../combat/damage';
+import { emitCombatBlocked } from '../../combat/damageEvents';
 import { playHitJuice } from '../../effects/hitJuice';
 import { spawnHitSpark } from '../../effects/hitSpark';
 import { spawnCombatCallout } from '../../effects/combatCallout';
@@ -50,6 +51,8 @@ export const resolveAbilityHit = (
   const blockable = profile.blockable !== false;
   const block = blockable ? defenderBlock?.tryAbsorb(now, defender, attacker.x, attacker.y) : undefined;
   if (block?.absorbed) {
+    const blockedDamage = applyDefense(profile.rawDamage, defender.defense);
+    emitCombatBlocked({ defender, amount: blockedDamage, at: now });
     spawnHitSpark(scene, defender.x + defender.aim.x * 16, defender.y + defender.aim.y * 16, {
       blocked: true,
       heavy: Boolean(profile.heavy) || block.perfect,

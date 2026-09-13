@@ -5,7 +5,8 @@ import { isTouchPrimary } from '../device';
 import { AbilitySlotState, HeroAbilityKit } from '../heroes/abilities/types';
 import { AbilityButton } from '../ui/AbilityButton';
 import { CombatButton } from '../ui/CombatButton';
-import { COLORS, getTouchControlLayout } from '../ui/theme';
+import { COLORS } from '../ui/theme';
+import { resolveControls } from '../ui/controlLayout';
 import { VirtualAimPad } from './VirtualAimPad';
 import { VirtualThumbstick } from './VirtualThumbstick';
 
@@ -94,23 +95,23 @@ export class BattleInput {
     this.ability2AimOnRelease = Boolean(kit?.ability2.aimOnRelease);
 
     if (this.touch) {
-      const layout = getTouchControlLayout(scene.scale.width, scene.scale.height);
+      const layout = resolveControls(scene.scale.width, scene.scale.height);
 
       this.leftStick = new VirtualThumbstick(scene, layout.leftStick.x, layout.leftStick.y, {
         label: 'MOVE',
         accent: COLORS.cyan,
-        radius: layout.radius,
+        radius: layout.leftStick.r,
       });
       this.rightStick = new VirtualThumbstick(scene, layout.rightStick.x, layout.rightStick.y, {
         label: 'AIM',
         accent: COLORS.redBright,
-        radius: layout.radius,
+        radius: layout.rightStick.r,
       });
 
       this.blockPad = new VirtualAimPad(scene, layout.block.x, layout.block.y, {
         label: 'SHIELD',
         accent: COLORS.cyan,
-        radius: layout.buttonRadius,
+        radius: layout.block.r,
         onPress: () => {
           this.blockHeldTouch = true;
         },
@@ -125,7 +126,7 @@ export class BattleInput {
           this.dashLatched = true;
         },
       });
-      this.dashButton.setRadius(layout.buttonRadius);
+      this.dashButton.setRadius(layout.dash.r);
       this.dashButton.setCharges(dashMaxCharges, dashMaxCharges);
       this.dashButton.setRecovered(1);
 
@@ -134,7 +135,7 @@ export class BattleInput {
           this.ability1Pad = new VirtualAimPad(scene, layout.ability1.x, layout.ability1.y, {
             label: kit.ability1.padLabel ?? 'AIM',
             accent: kit.ability1.accent,
-            radius: layout.abilityRadius,
+            radius: layout.ability1.r,
             onPress: () => {
               this.ability1AimingHeld = true;
             },
@@ -152,7 +153,7 @@ export class BattleInput {
             scene,
             layout.ability1.x,
             layout.ability1.y,
-            layout.abilityRadius,
+            layout.ability1.r,
             kit.ability1.iconKey,
             { onPress: () => { this.ability1Latched = true; } },
           );
@@ -161,7 +162,7 @@ export class BattleInput {
           this.ability2Pad = new VirtualAimPad(scene, layout.ability2.x, layout.ability2.y, {
             label: kit.ability2.padLabel ?? 'AIM',
             accent: kit.ability2.accent,
-            radius: layout.abilityRadius,
+            radius: layout.ability2.r,
             onPress: () => {
               this.ability2AimingHeld = true;
             },
@@ -179,7 +180,7 @@ export class BattleInput {
             scene,
             layout.ability2.x,
             layout.ability2.y,
-            layout.abilityRadius,
+            layout.ability2.r,
             kit.ability2.iconKey,
             { onPress: () => { this.ability2Latched = true; } },
           );
@@ -188,7 +189,7 @@ export class BattleInput {
           scene,
           layout.ultimate.x,
           layout.ultimate.y,
-          layout.ultimateRadius,
+          layout.ultimate.r,
           kit.ultimate.iconKey,
           { ultimate: true, onPress: () => { this.ultimateLatched = true; } },
         );
@@ -277,20 +278,20 @@ export class BattleInput {
     if (!this.touch) {
       return;
     }
-    const layout = getTouchControlLayout(width, height);
-    this.leftStick?.setRadius(layout.radius);
-    this.rightStick?.setRadius(layout.radius);
+    const layout = resolveControls(width, height);
+    this.leftStick?.setRadius(layout.leftStick.r);
+    this.rightStick?.setRadius(layout.rightStick.r);
     this.leftStick?.setPosition(layout.leftStick.x, layout.leftStick.y);
     this.rightStick?.setPosition(layout.rightStick.x, layout.rightStick.y);
-    this.blockPad?.setRadius(layout.buttonRadius);
-    this.dashButton?.setRadius(layout.buttonRadius);
+    this.blockPad?.setRadius(layout.block.r);
+    this.dashButton?.setRadius(layout.dash.r);
     this.blockPad?.setPosition(layout.block.x, layout.block.y);
     this.dashButton?.setPosition(layout.dash.x, layout.dash.y);
-    this.ability1Button?.setRadius(layout.abilityRadius);
-    this.ability1Pad?.setRadius(layout.abilityRadius);
-    this.ability2Button?.setRadius(layout.abilityRadius);
-    this.ability2Pad?.setRadius(layout.abilityRadius);
-    this.ultimateButton?.setRadius(layout.ultimateRadius);
+    this.ability1Button?.setRadius(layout.ability1.r);
+    this.ability1Pad?.setRadius(layout.ability1.r);
+    this.ability2Button?.setRadius(layout.ability2.r);
+    this.ability2Pad?.setRadius(layout.ability2.r);
+    this.ultimateButton?.setRadius(layout.ultimate.r);
     this.ability1Button?.setPosition(layout.ability1.x, layout.ability1.y);
     this.ability1Pad?.setPosition(layout.ability1.x, layout.ability1.y);
     this.ability2Button?.setPosition(layout.ability2.x, layout.ability2.y);

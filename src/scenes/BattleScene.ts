@@ -6,7 +6,7 @@ import { getSelectedHero, PLAYABLE_HEROES, setSelectedHeroId, type HeroId } from
 import { MATCH } from '../config/match';
 import { Progression } from '../match/Progression';
 import { CombatStatsTracker } from '../match/CombatStatsTracker';
-import { onCombatDamage } from '../combat/damageEvents';
+import { onCombatDamage, onCombatBlocked } from '../combat/damageEvents';
 import type { TeamId } from '../config/hero';
 import { RivalBrain } from '../ai/RivalBrain';
 import { TacticalField } from '../ai/tactical/field';
@@ -39,6 +39,8 @@ import {
   resolvePlayTestSeed,
 } from '../map';
 import { RoundOverlay } from '../ui/RoundOverlay';
+import { PauseOverlay } from '../ui/PauseOverlay';
+import { spawnKillPopup } from '../ui/KillPopup';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { isTouchPrimary } from '../device';
 import { audio } from '../audio';
@@ -56,6 +58,7 @@ export class BattleScene extends Phaser.Scene {
   private progression!: Progression;
   private sandboxStats = new CombatStatsTracker();
   private offDamage?: () => void;
+  private offBlocked?: () => void;
   private debugText?: Phaser.GameObjects.Text;
   private spawnDebug?: Phaser.GameObjects.Graphics;
   private rivalCollider?: Phaser.Physics.Arcade.Collider;
@@ -76,6 +79,7 @@ export class BattleScene extends Phaser.Scene {
   private aiOverlay?: TacticalOverlay;
   private hud!: BattleHud;
   private round!: RoundOverlay;
+  private pauseOverlay!: PauseOverlay;
   private devMenu?: DevMenu;
   private chromeBar?: Phaser.GameObjects.Rectangle;
   private titleText?: Phaser.GameObjects.Text;
@@ -118,6 +122,7 @@ export class BattleScene extends Phaser.Scene {
     this.sandboxStats = new CombatStatsTracker();
     this.sandboxStats.register(this.ninja, { instanceId: 'playtest-player', player: true });
     this.offDamage = onCombatDamage((event) => this.sandboxStats.recordDamage(event));
+    this.offBlocked = onCombatBlocked((event) => this.sandboxStats.recordBlocked(event.defender, event.amount));
     this.debugText = this.add
       .text(16, 128, '', {
         fontFamily: FONTS.body,
@@ -147,6 +152,10 @@ export class BattleScene extends Phaser.Scene {
       onRestart: () => this.restartBattle(),
       onMenu: () => this.returnToMenu(),
       playerName: hero.stats.displayName,
+    });
+    this.pauseOverlay = new PauseOverlay(this, {
+      onContinue: () => this.closePauseMenu(),
+      onExit: () => this.returnToMenu(),
     });
     this.devMenu = new DevMenu(this, {
       onToggleCpu: () => this.toggleCpu(),
@@ -218,7 +227,7 @@ export class BattleScene extends Phaser.Scene {
     this.game.canvas.setAttribute('tabindex', '0');
     this.game.canvas.focus();
     this.input.keyboard?.addCapture(['ESC', 'R']);
-    this.input.keyboard?.on('keydown-ESC', this.returnToMenu, this);
+    this.input.keyboard?.on('keydown-ESC', this.togglePauseMenu, this);
     this.input.keyboard?.on('keydown-R', this.onRestartKey, this);
     const onDomKey = (event: KeyboardEvent) => {
       if (event.repeat) {
@@ -230,7 +239,7 @@ export class BattleScene extends Phaser.Scene {
       }
       if (event.code === 'Escape') {
         event.preventDefault();
-        this.returnToMenu();
+        this.togglePauseMenu();
       }
     };
     window.addEventListener('keydown', onDomKey);
@@ -238,7 +247,7 @@ export class BattleScene extends Phaser.Scene {
     this.bindDebugApi();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
-      this.input.keyboard?.off('keydown-ESC', this.returnToMenu, this);
+      this.input.keyboard?.off('keydown-ESC', this.togglePauseMenu, this);
       this.input.keyboard?.off('keydown-R', this.onRestartKey, this);
       window.removeEventListener('keydown', onDomKey);
       this.abilities.destroy();
@@ -247,6 +256,8 @@ export class BattleScene extends Phaser.Scene {
       this.minions.destroy();
       this.abilityTray?.destroy();
       this.offDamage?.();
+      this.offBlocked?.();
+      this.pauseOverlay?.destroy();
       this.minimap?.destroy();
       this.aiOverlay?.destroy();
       this.battlefield?.destroy();
@@ -447,6 +458,12 @@ export class BattleScene extends Phaser.Scene {
       this.devMenu?.close();
       this.round.lock('rival');
     } else if (this.rival?.down) {
+      if (!this.round.isLocked) {
+        const result = this.sandboxStats.registerHeroDeath(this.rival, now);
+        if (result.killer === this.ninja) {
+          spawnKillPopup(this, 'KILL', this.rival.stats.displayName);
+        }
+      }
       this.devMenu?.close();
       this.round.lock('ninja');
     }
@@ -583,7 +600,7 @@ export class BattleScene extends Phaser.Scene {
       label: 'MENU',
       width: 150,
       height: 40,
-      onPress: () => this.returnToMenu(),
+      onPress: () => this.openPauseMenu(),
     });
     this.menuButton.setScrollFactor(0).setDepth(120);
   }
@@ -601,6 +618,9 @@ export class BattleScene extends Phaser.Scene {
     this.minimap?.layout(width);
     this.cameras.main.setSize(width, height);
     this.cameras.main.setZoom(1);
+    if (this.pauseOverlay?.isOpen) {
+      this.pauseOverlay.show(this.sandboxStats.allLines());
+    }
   }
 
   private liveAbilityAim(frame: {
@@ -791,8 +811,40 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     this.returning = true;
+    this.time.paused = false;
+    this.physics.world.resume();
     this.removeCpu();
     this.scene.restart();
+  }
+
+  private togglePauseMenu = (): void => {
+    if (this.pauseOverlay?.isOpen) {
+      this.closePauseMenu();
+    } else {
+      this.openPauseMenu();
+    }
+  };
+
+  private openPauseMenu(): void {
+    if (this.returning || this.round.isLocked || this.pauseOverlay.isOpen) {
+      return;
+    }
+    if (!this.sandboxPaused) {
+      this.toggleSandboxPause();
+    }
+    this.time.paused = true;
+    this.pauseOverlay.show(this.sandboxStats.allLines());
+  }
+
+  private closePauseMenu(): void {
+    if (!this.pauseOverlay.isOpen) {
+      return;
+    }
+    this.pauseOverlay.hide();
+    this.time.paused = false;
+    if (this.sandboxPaused) {
+      this.toggleSandboxPause();
+    }
   }
 
   private returnToMenu(): void {
@@ -800,6 +852,8 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     this.returning = true;
+    this.time.paused = false;
+    this.physics.world.resume();
     fadeToScene(this, 'MainMenu');
   }
 }

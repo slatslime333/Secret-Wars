@@ -185,6 +185,7 @@ export class SettingsScene extends Phaser.Scene {
           'DASH next to SHIELD',
           'Ability buttons around AIM',
           'Ultimate between the sticks',
+          'EDIT BUTTONS  move / resize',
         ]
       : [
           `${keyboard.up}${keyboard.left}${keyboard.down}${keyboard.right} / arrows  move`,
@@ -193,6 +194,7 @@ export class SettingsScene extends Phaser.Scene {
           `${keyboard.block}  hold shield    ${keyboard.dash}  dash`,
           `${keyboard.ability1} ability 1   ${keyboard.ability2} ability 2   ${keyboard.ultimate} ultimate`,
           'ESC  back / menu',
+          'EDIT BUTTONS  move / resize',
         ];
 
     this.add.text(x + 22, y + 48, lines.join('\n'), {
@@ -206,6 +208,20 @@ export class SettingsScene extends Phaser.Scene {
 
   private createBackButton(width: number, height: number, isPortrait: boolean): void {
     const btnX = isPortrait ? width / 2 : 140;
+    const editX = isPortrait ? width / 2 : 340;
+    const editY = isPortrait ? height - 100 : height - 48;
+    new ActionButton(this, editX, editY, {
+      label: 'EDIT BUTTONS',
+      width: isPortrait ? 220 : 200,
+      height: 52,
+      onPress: () => {
+        if (this.returning) {
+          return;
+        }
+        this.returning = true;
+        fadeToScene(this, 'ControlLayout');
+      },
+    });
     new ActionButton(this, btnX, height - 48, {
       label: 'BACK',
       width: 180,
