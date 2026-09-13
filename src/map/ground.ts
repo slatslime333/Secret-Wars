@@ -4,7 +4,7 @@ import { COLORS } from '../ui/theme';
 import { SeededRNG } from './seed';
 import type { MapLayout } from './types';
 
-const GRASS_KEY = 'sw-pixel-grass-v2';
+const GRASS_KEY = 'sw-pixel-grass-v3';
 const TILE = 512;
 
 /** Muted medium/dark greens. Close together so the field stays readable. */
@@ -38,25 +38,6 @@ const hash01 = (ix: number, iy: number, salt: number): number => {
   return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
 };
 
-const fade = (t: number): number => t * t * (3 - 2 * t);
-
-/** Seamless value noise. `cell` must divide TILE. */
-const wrapNoise = (x: number, y: number, cell: number, salt: number): number => {
-  const cells = TILE / cell;
-  const gx = x / cell;
-  const gy = y / cell;
-  const x0 = Math.floor(gx);
-  const y0 = Math.floor(gy);
-  const tx = fade(gx - x0);
-  const ty = fade(gy - y0);
-  const wrap = (v: number): number => ((v % cells) + cells) % cells;
-  const v00 = hash01(wrap(x0), wrap(y0), salt);
-  const v10 = hash01(wrap(x0 + 1), wrap(y0), salt);
-  const v01 = hash01(wrap(x0), wrap(y0 + 1), salt);
-  const v11 = hash01(wrap(x0 + 1), wrap(y0 + 1), salt);
-  return v00 + (v10 - v00) * tx + (v01 - v00) * ty + (v00 - v10 - v01 + v11) * tx * ty;
-};
-
 const wrapIndex = (v: number): number => ((v % TILE) + TILE) % TILE;
 
 const put = (data: Uint8ClampedArray, x: number, y: number, color: number): void => {
@@ -80,23 +61,38 @@ const paintGrassTile = (ctx: CanvasRenderingContext2D): void => {
   const image = ctx.createImageData(TILE, TILE);
   const data = image.data;
 
+  // Even base with sparse 1–2px specks. No large noise continents, so the
+  // 512px tile does not read as a repeating camouflage pattern in-match.
   for (let y = 0; y < TILE; y += 1) {
     for (let x = 0; x < TILE; x += 1) {
-      const bias = wrapNoise(x, y, 16, 0xa27b) * 0.55 + wrapNoise(x, y, 8, 0x0d15) * 0.45;
       const speck = hash01(x, y, 0xc0ff);
       let color: number = GRASS.base;
-      if (speck < 0.11 + bias * 0.05) {
+      if (speck < 0.045) {
         color = GRASS.dark;
-      } else if (speck > 0.94 - bias * 0.03) {
-        color = GRASS.light;
-      } else if (speck > 0.62 && speck < 0.68) {
+      } else if (speck < 0.07) {
         color = GRASS.mid;
+      } else if (speck > 0.975) {
+        color = GRASS.light;
       }
       put(data, x, y, color);
     }
   }
 
-  for (let i = 0; i < 48; i += 1) {
+  for (let y = 0; y < TILE; y += 1) {
+    for (let x = 0; x < TILE; x += 1) {
+      if (hash01(x, y, 0xc0ff) >= 0.045) {
+        continue;
+      }
+      if (hash01(x, y, 0x11a3) < 0.45) {
+        put(data, x + 1, y, GRASS.dark);
+      }
+      if (hash01(x, y, 0x22b4) < 0.28) {
+        put(data, x, y + 1, GRASS.deep);
+      }
+    }
+  }
+
+  for (let i = 0; i < 52; i += 1) {
     const x = Math.floor(hash01(i, 7, 0x91) * TILE);
     const y = Math.floor(hash01(i, 11, 0x92) * TILE);
     put(data, x, y, GRASS.deep);
@@ -104,21 +100,21 @@ const paintGrassTile = (ctx: CanvasRenderingContext2D): void => {
     put(data, x, y + 1, GRASS.dark);
   }
 
-  for (let i = 0; i < 120; i += 1) {
+  for (let i = 0; i < 168; i += 1) {
     const x = Math.floor(hash01(i, 19, 0x11) * TILE);
     const y = Math.floor(hash01(i, 23, 0x22) * TILE);
     const count = 2 + Math.floor(hash01(i, 29, 0x33) * 3);
     for (let n = 0; n < count; n += 1) {
       const ox = x + n * 2 - 1;
-      const h = 2 + Math.floor(hash01(i, n, 0x44) * 2);
+      const h = 2 + Math.floor(hash01(i, n, 0x44) * 3);
       blade(data, ox, y, h);
     }
   }
 
-  for (let i = 0; i < 180; i += 1) {
+  for (let i = 0; i < 210; i += 1) {
     const x = Math.floor(hash01(i, 41, 0x55) * TILE);
     const y = Math.floor(hash01(i, 43, 0x66) * TILE);
-    blade(data, x, y, 2 + Math.floor(hash01(i, 53, 0x88) * 2));
+    blade(data, x, y, 2 + Math.floor(hash01(i, 53, 0x88) * 3));
   }
 
   ctx.putImageData(image, 0, 0);
