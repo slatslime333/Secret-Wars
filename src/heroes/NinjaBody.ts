@@ -13,7 +13,7 @@ import type { HeroDrawFn } from './heroDraw';
 import { playDeath } from '../audio';
 import { drawRopeWrap } from './abilities/rope/ropeVisual';
 import { drawMagicVortex } from './abilities/witch/vortex';
-import { dismissWitchSkeletons } from './abilities/witch/skeletonPack';
+import { dismissWitchSkeletons, unregisterWitchSkeleton } from './abilities/witch/skeletonPack';
 import { DEV_CHEATS } from '../debug/devCheats';
 import { MATCH } from '../config/match';
 import { MINION } from '../config/minion';
@@ -825,6 +825,10 @@ export class NinjaBody {
     this.scene.tweens.killTweensOf(this.view);
     this.scene.tweens.killTweensOf(this.art);
     this.clearRopeWrap();
+    this.clearMagicVortex();
+    this.clearTempShield();
+    unregisterWitchSkeleton(this);
+    dismissWitchSkeletons(this);
     this.sprite.destroy();
     this.view.destroy();
   }

@@ -31,11 +31,11 @@ class TombstoneUltAbility implements ActiveAbility {
   readonly control = { move: true, attack: true, dash: true, block: true, abilities: true };
   private readonly inner: TombstoneAbility;
   private readonly aura: Phaser.GameObjects.Graphics;
-  private pulsed = false;
 
   constructor(ctx: AbilityContext) {
     this.inner = new TombstoneAbility(ctx, WITCH_ULT.summonCount, WITCH_ULT.castMs, true);
     this.aura = ctx.scene.add.graphics().setDepth(9);
+    pulseUltAura(ctx);
   }
 
   update(ctx: AbilityContext): boolean {
@@ -43,10 +43,6 @@ class TombstoneUltAbility implements ActiveAbility {
       return false;
     }
     this.drawAura(ctx);
-    if (!this.pulsed) {
-      this.pulsed = true;
-      pulseUltAura(ctx);
-    }
     return this.inner.update(ctx);
   }
 

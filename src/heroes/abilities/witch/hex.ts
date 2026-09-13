@@ -42,6 +42,7 @@ class HexAbility implements ActiveAbility {
     }));
     spawnCombatCallout(ctx.scene, ctx.caster.x, ctx.caster.y, 'HEX', 0x9b4dff);
     playWorld('witch-hex-cast', ctx.caster);
+    this.applyBuffs(ctx);
   }
 
   update(ctx: AbilityContext): boolean {
@@ -50,15 +51,20 @@ class HexAbility implements ActiveAbility {
       return false;
     }
     caster.stop();
-    if (!this.applied) {
-      this.applied = true;
-      applyHexBuff(ctx, caster);
-      const ally = nearestAllyHero(caster, ctx.allies ?? [], witchHexAllyRange());
-      if (ally) {
-        applyHexBuff(ctx, ally);
-      }
-    }
+    this.applyBuffs(ctx);
     return now < this.until;
+  }
+
+  private applyBuffs(ctx: AbilityContext): void {
+    if (this.applied) {
+      return;
+    }
+    this.applied = true;
+    applyHexBuff(ctx, ctx.caster);
+    const ally = nearestAllyHero(ctx.caster, ctx.allies ?? [], witchHexAllyRange());
+    if (ally) {
+      applyHexBuff(ctx, ally);
+    }
   }
 
   destroy(): void {}

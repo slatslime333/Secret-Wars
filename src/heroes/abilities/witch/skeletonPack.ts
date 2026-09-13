@@ -13,6 +13,9 @@ const packOf = (owner: NinjaBody): Set<NinjaBody> => {
   return pack;
 };
 
+const skeletonGone = (unit: NinjaBody): boolean =>
+  unit.down || !unit.isPresent || !unit.sprite?.active;
+
 export const livingWitchSkeletons = (owner: NinjaBody): NinjaBody[] => {
   const pack = packs.get(owner);
   if (!pack) {
@@ -20,7 +23,7 @@ export const livingWitchSkeletons = (owner: NinjaBody): NinjaBody[] => {
   }
   const living: NinjaBody[] = [];
   for (const unit of pack) {
-    if (unit.down || !unit.isPresent) {
+    if (skeletonGone(unit)) {
       pack.delete(unit);
       continue;
     }

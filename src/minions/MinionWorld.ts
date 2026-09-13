@@ -165,6 +165,7 @@ export class MinionWorld {
   clear(): void {
     for (const unit of this.units) {
       unit.hpBar.destroy();
+      unregisterWitchSkeleton(unit.body);
       unit.body.destroy();
     }
     this.units.length = 0;
