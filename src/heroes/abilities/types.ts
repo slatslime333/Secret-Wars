@@ -48,6 +48,7 @@ export type AbilityContext = {
   delta: number;
   caster: NinjaBody;
   enemies: NinjaBody[];
+  allies?: NinjaBody[];
   world: AbilityWorld;
   interruptCombat: () => void;
   rivalBlock?: BlockController;

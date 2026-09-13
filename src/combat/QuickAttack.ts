@@ -19,6 +19,7 @@ import { isInAttackArc } from './hitDetection';
 import { playLightAttack } from '../audio';
 import { BlockController } from './BlockController';
 import { Projectile } from './projectile';
+import { WitchSkullBarrage } from './WitchSkullBarrage';
 
 type PendingImpact = {
   at: number;
@@ -44,6 +45,7 @@ export class QuickAttack {
   private deathPairLockUntil = 0;
   private ropeArm: -1 | 1 = -1;
   private readonly ropeShots: Projectile[] = [];
+  private witchBarrage?: WitchSkullBarrage;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -63,10 +65,14 @@ export class QuickAttack {
     this.pendingTaps = 0;
     this.pendingImpact = undefined;
     this.clearRopeShots();
+    this.witchBarrage?.destroy();
+    this.witchBarrage = undefined;
   }
 
   destroy(): void {
     this.clearRopeShots();
+    this.witchBarrage?.destroy();
+    this.witchBarrage = undefined;
   }
 
   update(
@@ -78,6 +84,7 @@ export class QuickAttack {
     defenderBlock?: BlockController,
   ): void {
     this.tickRopeShots(now, attacker, enemies, defenderBlock);
+    this.tickWitchBarrage(now, attacker, enemies, defenderBlock);
     this.resolveImpactIfReady(now, attacker, enemies, defenderBlock);
 
     const tapQueued = this.pendingTaps > 0;
@@ -96,7 +103,7 @@ export class QuickAttack {
 
     this.marker?.setAttacking((held || this.pendingTaps > 0) && attacker.canAttack(now));
 
-    if (this.pendingImpact) {
+    if (this.pendingImpact || (this.witchBarrage && !this.witchBarrage.firingDone)) {
       return;
     }
     if (attacker.status.cannotAttack(now) || attacker.status.isHitReacting(now)) {
@@ -119,7 +126,7 @@ export class QuickAttack {
     if (this.pendingTaps > 0) {
       this.combo.tap(now, COMBAT.comboWindowMs);
       this.pendingTaps -= 1;
-      if (attacker.heroId !== 'rope') {
+      if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch') {
         spawnCombatCallout(
           this.scene,
           attacker.x,
@@ -162,17 +169,19 @@ export class QuickAttack {
       }
     } else if (attacker.heroId === 'rope') {
       this.fireRopeLight(now, attacker);
+    } else if (attacker.heroId === 'witch') {
+      this.fireWitchLight(now, attacker);
     } else {
       attacker.playAttackAnimation(now, step);
       this.spawnWhiteLineSlice(attacker, step);
     }
-    if (attacker.heroId !== 'rope') {
+    if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch') {
       this.pendingImpact = { at: now + profile.impactDelayMs, step };
     }
   }
 
   private nextComboStep(now: number, attacker: NinjaBody): ComboStep {
-    if (attacker.heroId === 'rope') {
+    if (attacker.heroId === 'rope' || attacker.heroId === 'witch') {
       return 1;
     }
     if (this.pendingTaps > 0) {
@@ -211,6 +220,26 @@ export class QuickAttack {
       jumpY: -Math.sin(frac * Math.PI) * 7,
       swayX: attacker.aim.x * 3 * Math.sin(frac * Math.PI),
     }));
+  }
+
+  private fireWitchLight(now: number, attacker: NinjaBody): void {
+    this.witchBarrage?.destroy();
+    this.witchBarrage = new WitchSkullBarrage(this.scene, attacker, now);
+  }
+
+  private tickWitchBarrage(
+    now: number,
+    attacker: NinjaBody,
+    enemies: NinjaBody[],
+    defenderBlock?: BlockController,
+  ): void {
+    if (!this.witchBarrage) {
+      return;
+    }
+    const keep = this.witchBarrage.update(now, this.scene.game.loop.delta / 1000, attacker, enemies, defenderBlock);
+    if (!keep) {
+      this.witchBarrage = undefined;
+    }
   }
 
   private tickRopeShots(

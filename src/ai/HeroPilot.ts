@@ -40,6 +40,7 @@ export class HeroPilot {
     scene: Phaser.Scene,
     world: AbilityWorld,
     foeBlock?: BlockController,
+    allies: NinjaBody[] = [],
   ): void {
     if (!unit.alive) {
       unit.body.stop();
@@ -64,7 +65,7 @@ export class HeroPilot {
       body.setAim(body.team === 'alpha' ? 1 : -1, 0);
     }
 
-    const abilityCtx = unit.abilityContext(now, delta, foes, world);
+    const abilityCtx = unit.abilityContext(now, delta, foes, world, undefined, allies);
     abilityCtx.rivalBlock = foeBlock;
     this.combat.tick({
       now,

@@ -12,14 +12,14 @@ import { gameplayFromRatings, type CoreRatings, MELEE_BASE_RANGE } from './ratin
  * that the live character does not have.
  */
 export const DEATH_RATINGS = {
-  health: 76,
+  health: 72,
   stamina: 70,
   damage: 72,
-  defense: 63,
+  defense: 68,
   speed: 30,
   attackSpeed: 77,
   attackRange: 54,
-  knockback: 52,
+  knockback: 60,
 } as const satisfies CoreRatings;
 
 export const DEATH = {

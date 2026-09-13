@@ -46,6 +46,7 @@ export const COLORS = {
   redBright: 0xf03b45,
   orange: 0xff7a1a,
   yellow: 0xffc928,
+  green: 0x3cdb5c,
 } as const;
 
 export const FONTS = {

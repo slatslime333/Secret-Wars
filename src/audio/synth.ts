@@ -124,6 +124,13 @@ export function synthesize(ctx: AudioContext, dest: AudioNode, id: SoundId): voi
         { kind: 'noise', freq: 0, duration: 0.04, gain: 0.05 },
       ]);
       return;
+    case 'ui-select-witch':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 220, duration: 0.1, gain: 0.14 },
+        { kind: 'triangle', freq: 660, endFreq: 330, duration: 0.12, gain: 0.1, delay: 0.04 },
+        { kind: 'sawtooth', freq: 90, duration: 0.1, gain: 0.06 },
+      ]);
+      return;
     case 'ui-match-start':
       playRecipe(ctx, dest, [
         { kind: 'sine', freq: 330, duration: 0.12, gain: 0.16 },
@@ -366,6 +373,81 @@ export function synthesize(ctx: AudioContext, dest: AudioNode, id: SoundId): voi
       playRecipe(ctx, dest, [
         { kind: 'triangle', freq: 220, endFreq: 90, duration: 0.14, gain: 0.13 },
         { kind: 'sawtooth', freq: 480, endFreq: 160, duration: 0.1, gain: 0.08 },
+      ]);
+      return;
+    case 'witch-light':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: v(180, 12), duration: 0.08, gain: 0.12 },
+        { kind: 'triangle', freq: v(520, 30), endFreq: 240, duration: 0.1, gain: 0.1 },
+        { kind: 'sawtooth', freq: 90, duration: 0.08, gain: 0.05 },
+      ]);
+      return;
+    case 'witch-skull-spawn':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: v(420, 40), duration: 0.05, gain: 0.08 },
+        { kind: 'triangle', freq: v(180, 16), duration: 0.06, gain: 0.07 },
+      ]);
+      return;
+    case 'witch-skull-fire':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: v(880, 80), endFreq: v(240, 20), duration: 0.06, gain: 0.1 },
+        { kind: 'noise', freq: 0, duration: 0.03, gain: 0.04 },
+      ]);
+      return;
+    case 'witch-skull-impact':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: v(140, 16), duration: 0.06, gain: 0.12 },
+        { kind: 'noise', freq: 0, duration: 0.04, gain: 0.05 },
+      ]);
+      return;
+    case 'witch-tombstone-cast':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 90, duration: 0.16, gain: 0.16 },
+        { kind: 'triangle', freq: 160, endFreq: 70, duration: 0.18, gain: 0.12 },
+        { kind: 'noise', freq: 0, duration: 0.1, gain: 0.06 },
+      ]);
+      return;
+    case 'witch-tombstone-rise':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: 70, endFreq: 140, duration: 0.16, gain: 0.14 },
+        { kind: 'noise', freq: 0, duration: 0.1, gain: 0.07 },
+      ]);
+      return;
+    case 'witch-skeleton-awaken':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: 80, endFreq: 160, duration: 0.12, gain: 0.12 },
+        { kind: 'triangle', freq: 220, duration: 0.08, gain: 0.08, delay: 0.04 },
+      ]);
+      return;
+    case 'witch-hex-cast':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 240, endFreq: 480, duration: 0.14, gain: 0.14 },
+        { kind: 'triangle', freq: 720, endFreq: 360, duration: 0.16, gain: 0.1, delay: 0.04 },
+      ]);
+      return;
+    case 'witch-hex-buff':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 520, duration: 0.08, gain: 0.11 },
+        { kind: 'sine', freq: 780, duration: 0.1, gain: 0.09, delay: 0.05 },
+      ]);
+      return;
+    case 'witch-ult-cast':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 70, duration: 0.2, gain: 0.18 },
+        { kind: 'sawtooth', freq: 110, endFreq: 50, duration: 0.22, gain: 0.1 },
+        { kind: 'triangle', freq: 330, duration: 0.14, gain: 0.1, delay: 0.06 },
+      ]);
+      return;
+    case 'witch-ult-aura':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 160, duration: 0.18, gain: 0.12 },
+        { kind: 'triangle', freq: 90, duration: 0.2, gain: 0.1 },
+      ]);
+      return;
+    case 'witch-ult-hex':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: 180, endFreq: 90, duration: 0.12, gain: 0.11 },
+        { kind: 'sine', freq: 420, duration: 0.08, gain: 0.07 },
       ]);
       return;
 

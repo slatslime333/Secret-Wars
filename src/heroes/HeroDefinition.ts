@@ -13,6 +13,7 @@ export type HeroRole =
   | 'ranged'
   | 'tank'
   | 'support'
+  | 'ranged-tank'
   | 'crowd-control'
   | 'hybrid'
   | 'minion';

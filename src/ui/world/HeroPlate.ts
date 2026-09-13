@@ -7,6 +7,7 @@ import { COLORS, FONTS, hex } from '../theme';
 export class HeroPlate {
   private readonly root: Phaser.GameObjects.Container;
   private readonly fill: Phaser.GameObjects.Rectangle;
+  private readonly shieldFill: Phaser.GameObjects.Rectangle;
   private readonly levelText: Phaser.GameObjects.Text;
 
   constructor(
@@ -18,6 +19,7 @@ export class HeroPlate {
     const accent = body.team === 'alpha' ? COLORS.cyan : COLORS.redBright;
     const track = scene.add.rectangle(0, 0, 78, 8, COLORS.ink, 0.92);
     track.setStrokeStyle(1.5, accent);
+    this.shieldFill = scene.add.rectangle(-39, 0, 0, 5, COLORS.green).setOrigin(0, 0.5);
     this.fill = scene.add.rectangle(-39, 0, 78, 5, player ? COLORS.redBright : COLORS.paper).setOrigin(0, 0.5);
     this.levelText = scene.add
       .text(0, -12, 'LV 1', {
@@ -29,7 +31,7 @@ export class HeroPlate {
         strokeThickness: 3,
       })
       .setOrigin(0.5, 1);
-    this.root = scene.add.container(body.x, body.y - 48, [track, this.fill, this.levelText]).setDepth(26);
+    this.root = scene.add.container(body.x, body.y - 48, [track, this.shieldFill, this.fill, this.levelText]).setDepth(26);
   }
 
   setVisible(value: boolean): void {
@@ -43,8 +45,18 @@ export class HeroPlate {
     }
     this.root.setVisible(true);
     this.root.setPosition(this.body.x, this.body.y - 48);
-    const ratio = this.body.stats.maxHealth > 0 ? this.body.health / this.body.stats.maxHealth : 0;
+    const maxHp = Math.max(1, this.body.stats.maxHealth);
+    const ratio = this.body.health / maxHp;
+    const shield = this.body.shieldAmount() / maxHp;
     this.fill.width = Math.max(0, 78 * ratio);
+    if (ratio >= 0.999 && shield > 0) {
+      this.shieldFill.x = -39;
+      this.shieldFill.width = 78 + 78 * shield;
+    } else {
+      this.shieldFill.x = -39 + this.fill.width;
+      this.shieldFill.width = Math.max(0, 78 * shield);
+    }
+    this.shieldFill.setVisible(shield > 0);
     this.levelText.setText(`LV ${this.progression.level}`);
   }
 

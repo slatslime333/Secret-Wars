@@ -134,6 +134,7 @@ export class MatchScene extends Phaser.Scene {
     this.stats = new CombatStatsTracker();
     this.abilityWorld = new AbilityWorld();
     this.minions = new MinionWorld(this);
+    this.abilityWorld.minionWorld = this.minions;
     this.waves = new WaveDirector(this.minions);
     this.orbs = new XpOrbWorld(this, (grant) => this.grantMinionReward(grant.target, grant.amount));
     this.minions.onKilled = (event) => {
@@ -272,7 +273,7 @@ export class MatchScene extends Phaser.Scene {
       if (!unit.isPlayer) {
         const target = this.pilots.get(unit)?.mind.target;
         const rival = target ? this.heroes.find((hero) => hero.body === target) : undefined;
-        this.pilots.get(unit)?.update(now, delta, unit, this.tactics, this, this.abilityWorld, rival?.block);
+        this.pilots.get(unit)?.update(now, delta, unit, this.tactics, this, this.abilityWorld, rival?.block, this.livingAlliesFor(unit.body));
       }
       if (unit.maybeRespawn(now) && unit.isPlayer) {
         this.spectator.disable();
@@ -304,7 +305,14 @@ export class MatchScene extends Phaser.Scene {
     if (frame.ability2AimActive) {
       this.abilityAim = { x: frame.ability2Aim.x, y: frame.ability2Aim.y };
     }
-    const ctx = this.player.abilityContext(now, delta, this.livingEnemies(), this.abilityWorld);
+    const ctx = this.player.abilityContext(
+      now,
+      delta,
+      this.livingEnemies(),
+      this.abilityWorld,
+      undefined,
+      this.livingAlliesFor(this.player.body),
+    );
     if (frame.ability1) {
       this.player.abilities.tryActivate('ability1', ctx);
       this.abilityAim = undefined;
@@ -318,7 +326,14 @@ export class MatchScene extends Phaser.Scene {
     }
     this.aimPlayer(frame);
     this.player.abilities.update(
-      this.player.abilityContext(now, delta, this.livingEnemies(), this.abilityWorld, this.liveAbilityAim(frame)),
+      this.player.abilityContext(
+        now,
+        delta,
+        this.livingEnemies(),
+        this.abilityWorld,
+        this.liveAbilityAim(frame),
+        this.livingAlliesFor(this.player.body),
+      ),
     );
 
     const control = this.player.abilities.control;
@@ -633,7 +648,9 @@ export class MatchScene extends Phaser.Scene {
         this.player.attacks.nextRopeArm,
         ROPE_SHOT.armOffsetRad,
       );
-    } else if (ninja.heroId === 'rope') {
+    } else if (ninja.heroId === 'witch' && !frame.ability1Aiming && !frame.ability2Aiming) {
+      this.marker.syncWitchAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, ninja.stats.attackRange, frame.attackHeld);
+    } else if (ninja.heroId === 'rope' || ninja.heroId === 'witch') {
       this.marker.clearRange();
     } else {
       this.marker.sync(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, ninja.stats.attackRange, ninja.stats.attackArcDegrees);
@@ -744,6 +761,12 @@ export class MatchScene extends Phaser.Scene {
 
   private livingEnemies(): NinjaBody[] {
     return this.livingFighters().filter((unit) => unit.team !== this.player.team);
+  }
+
+  private livingAlliesFor(body: NinjaBody): NinjaBody[] {
+    return this.heroes
+      .filter((hero) => hero.alive && hero.body !== body && hero.team === body.team)
+      .map((hero) => hero.body);
   }
 
   private drawAiDebug(): void {

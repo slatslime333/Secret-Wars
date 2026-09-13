@@ -20,7 +20,7 @@ export class Projectile {
   private alive = true;
   private readonly endsAt: number;
   private flicker = 0;
-  private readonly style: 'spark' | 'slug' | 'arrow' | 'rope';
+  private readonly style: 'spark' | 'slug' | 'arrow' | 'rope' | 'skull';
   private readonly originX: number;
   private readonly originY: number;
   private readonly maxRange: number;
@@ -34,12 +34,13 @@ export class Projectile {
     private readonly radius: number,
     lifetimeMs: number,
     color: number,
-    style: 'spark' | 'slug' | 'arrow' | 'rope' = 'spark',
+    style: 'spark' | 'slug' | 'arrow' | 'rope' | 'skull' = 'spark',
     maxRange = Number.POSITIVE_INFINITY,
+    rangeFrom?: { x: number; y: number },
   ) {
     this.style = style;
-    this.originX = x;
-    this.originY = y;
+    this.originX = rangeFrom?.x ?? x;
+    this.originY = rangeFrom?.y ?? y;
     this.maxRange = maxRange;
     this.endsAt = scene.time.now + lifetimeMs;
     this.view = scene.add.container(x, y).setDepth(15);
@@ -53,6 +54,9 @@ export class Projectile {
     } else if (style === 'rope') {
       this.body = scene.add.circle(0, 0, 2.2, 0xc4894a, 1);
       this.body.setStrokeStyle(1.2, 0x5a3014, 1);
+    } else if (style === 'skull') {
+      this.body = scene.add.circle(0, 0, radius, 0xf0ead8, 1);
+      this.body.setStrokeStyle(1.4, 0x3a2430, 1);
     } else {
       this.body = scene.add.circle(0, 0, radius, color, style === 'slug' ? 0.95 : 0.88);
       this.body.setStrokeStyle(2, style === 'slug' ? 0x2a2010 : 0xdff4ff, 1);
@@ -74,6 +78,8 @@ export class Projectile {
       this.drawSparks();
     } else if (this.style === 'rope') {
       this.drawRope();
+    } else if (this.style === 'skull') {
+      this.drawSkull();
     }
     const traveled = Math.hypot(this.x - this.originX, this.y - this.originY);
     const map = battlefieldOf(this.view.scene);
@@ -108,6 +114,22 @@ export class Projectile {
     }
     this.alive = false;
     this.view.destroy();
+  }
+
+  private drawSkull(): void {
+    const g = this.sparks;
+    g.clear();
+    g.fillStyle(0x9b4dff, 0.28);
+    g.fillCircle(0, 0, this.radius + 3);
+    g.fillStyle(0xf0ead8, 1);
+    g.fillCircle(0, 0, this.radius);
+    g.fillStyle(0x1a1014, 1);
+    g.fillCircle(-1.6, -0.6, 1.2);
+    g.fillCircle(1.6, -0.6, 1.2);
+    g.fillRect(-1.1, 1.4, 2.2, 1.1);
+    g.fillStyle(0x9b4dff, 0.9);
+    g.fillCircle(-1.6, -0.6, 0.55);
+    g.fillCircle(1.6, -0.6, 0.55);
   }
 
   private drawRope(): void {

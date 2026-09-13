@@ -6,7 +6,7 @@ import { createLogo } from '../ui/createLogo';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
 import { audio, playHeroSelect } from '../audio';
-import { getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { HERO_IDS, getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
 
 export class MainMenuScene extends Phaser.Scene {
   private buttons: ActionButton[] = [];
@@ -291,10 +291,10 @@ export class MainMenuScene extends Phaser.Scene {
       letterSpacing: 3,
     });
     const make = (id: HeroId, ox: number) =>
-      new ActionButton(this, x + 56 + ox, y + 10, {
+      new ActionButton(this, x + 40 + ox, y + 10, {
         label: id === 'rope' ? 'ROPE' : id.toUpperCase(),
-        width: 86,
-        height: 36,
+        width: 64,
+        height: 34,
         compact: true,
         primary: getSelectedHeroId() === id,
         onPress: () => {
@@ -304,10 +304,7 @@ export class MainMenuScene extends Phaser.Scene {
           this.scene.restart();
         },
       });
-    make('ninja', 0);
-    make('cole', 92);
-    make('death', 184);
-    make('rope', 276);
+    HERO_IDS.forEach((id, index) => make(id, index * 70));
   }
 
   private createTeamMarks(x: number, y: number): void {

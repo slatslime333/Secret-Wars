@@ -124,10 +124,10 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.add
         .text(x, y + 104, copy.role.toUpperCase(), {
           fontFamily: FONTS.body,
-          fontSize: '10px',
+          fontSize: copy.role.length > 12 ? '8px' : '10px',
           fontStyle: 'bold',
           color: hex(COLORS.cyan),
-          letterSpacing: 2,
+          letterSpacing: 1,
         })
         .setOrigin(0.5, 0);
       this.add

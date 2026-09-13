@@ -158,6 +158,30 @@ export class HitMarker {
     g.fillCircle(nx * length, ny * length, 3);
   }
 
+  /** Thin purple aim line for Witch's skull barrage. */
+  syncWitchAim(
+    x: number,
+    y: number,
+    aimX: number,
+    aimY: number,
+    length: number,
+    aiming: boolean,
+  ): void {
+    const angle = Math.atan2(aimY, aimX);
+    const g = this.graphics;
+    g.clear();
+    g.setPosition(x, y);
+    const alpha = aiming ? 0.84 : 0.5;
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    g.lineStyle(3.5, 0x4a1a6a, alpha * 0.22);
+    g.lineBetween(nx * 10, ny * 10, nx * length, ny * length);
+    g.lineStyle(aiming ? 1.8 : 1.4, 0xc090ff, alpha);
+    g.lineBetween(nx * 10, ny * 10, nx * length, ny * length);
+    g.fillStyle(0x4cff6a, alpha);
+    g.fillCircle(nx * length, ny * length, 3);
+  }
+
   /** Rope Grab travel line. */
   syncRopeGrabAim(
     x: number,

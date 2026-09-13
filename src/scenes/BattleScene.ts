@@ -149,6 +149,7 @@ export class BattleScene extends Phaser.Scene {
     this.dash = new DashController(this, hero.stats.dashMaxCharges);
     this.abilityWorld = new AbilityWorld();
     this.minions = new MinionWorld(this);
+    this.abilityWorld.minionWorld = this.minions;
     this.aiOverlay = new TacticalOverlay(this);
     this.abilities = new AbilityController(hero.kit);
     this.inputReader = new BattleInput(this, () => this.round.isLocked, hero.kit, hero.stats.dashMaxCharges);
@@ -404,7 +405,16 @@ export class BattleScene extends Phaser.Scene {
         this.attacks.nextRopeArm,
         ROPE_SHOT.armOffsetRad,
       );
-    } else if (this.ninja.heroId === 'rope') {
+    } else if (this.ninja.heroId === 'witch' && !frame.ability1Aiming && !frame.ability2Aiming) {
+      this.marker.syncWitchAim(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        this.ninja.stats.attackRange,
+        frame.attackHeld,
+      );
+    } else if (this.ninja.heroId === 'rope' || this.ninja.heroId === 'witch') {
       this.marker.clearRange();
     } else {
       this.marker.sync(
@@ -707,6 +717,7 @@ export class BattleScene extends Phaser.Scene {
       delta,
       caster: this.ninja,
       enemies: this.livingEnemies(),
+      allies: this.livingFighters().filter((unit) => unit.team === this.ninja.team && unit !== this.ninja && unit.stats.role !== 'minion'),
       world: this.abilityWorld,
       interruptCombat: () => {
         this.attacks.interrupt(now);
