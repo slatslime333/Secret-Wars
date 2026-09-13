@@ -39,9 +39,9 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
   const radius = stickRadius(short, height, buttonRadius, inset.top, isPortrait);
 
   const sideInset = Math.round(
-    Math.max(radius + inset.left, Math.min(short * 0.18, width * 0.16), inset.left + radius),
+    Math.max(radius + inset.left, Math.min(short * (isPortrait ? 0.2 : 0.18), width * (isPortrait ? 0.2 : 0.16)), inset.left + radius),
   );
-  const bottomInset = Math.round(radius + inset.bottom + (tight ? 4 : isPortrait ? 16 : 10));
+  const bottomInset = Math.round(radius + inset.bottom + (isPortrait ? 10 : tight ? 4 : 10));
   const leftStick = { x: sideInset, y: height - bottomInset };
   const rightStick = { x: width - Math.max(sideInset, inset.right + radius), y: height - bottomInset };
 
@@ -49,6 +49,7 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
     width,
     height,
     tight,
+    isPortrait,
     radius,
     buttonRadius,
     abilityRadius,
@@ -103,13 +104,14 @@ const placeRightCluster = (options: {
   width: number;
   height: number;
   tight: boolean;
+  isPortrait: boolean;
   radius: number;
   buttonRadius: number;
   abilityRadius: number;
   rightStick: Point;
   inset: Insets;
 }): { block: Point; dash: Point; ability1: Point; ability2: Point; solids: Circle[] } => {
-  const { width, height, tight, radius, buttonRadius, abilityRadius, rightStick, inset } = options;
+  const { width, height, tight, isPortrait, radius, buttonRadius, abilityRadius, rightStick, inset } = options;
   const aim: Circle = { ...rightStick, r: radius };
 
   const dash = clampCircle(
@@ -139,7 +141,28 @@ const placeRightCluster = (options: {
   let ability1: Circle;
   let ability2: Circle;
 
-  if (tight) {
+  if (isPortrait) {
+    ability2 = clampCircle(
+      {
+        x: dash.x,
+        y: dash.y - buttonRadius - abilityRadius - GAP,
+        r: abilityRadius,
+      },
+      width,
+      height,
+      inset,
+    );
+    ability1 = clampCircle(
+      {
+        x: block.x,
+        y: block.y - buttonRadius - abilityRadius - GAP,
+        r: abilityRadius,
+      },
+      width,
+      height,
+      inset,
+    );
+  } else if (tight) {
     ability2 = clampCircle(
       {
         x: block.x - buttonRadius - abilityRadius - GAP,
@@ -210,9 +233,13 @@ const placeUltimate = (options: {
   const move: Circle = { ...leftStick, r: radius };
   const aim: Circle = { ...rightStick, r: radius };
   const midX = (leftStick.x + rightStick.x) / 2;
-  const ult: Circle = { x: midX, y: leftStick.y, r: ultimateRadius };
+  const ult: Circle = {
+    x: midX,
+    y: leftStick.y - radius - ultimateRadius - GAP,
+    r: ultimateRadius,
+  };
   if (circlesOverlap(ult, move) || circlesOverlap(ult, aim)) {
-    ult.y = leftStick.y - radius - ultimateRadius - GAP;
+    ult.y = leftStick.y - radius - ultimateRadius - GAP * 1.5;
   }
 
   const blockers = [move, aim, ...solids.filter((circle) => circle !== aim)];
