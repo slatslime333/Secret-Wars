@@ -427,14 +427,14 @@ export class CharacterSelectScene extends Phaser.Scene {
       add(
         this.add.text(x, rowY, CORE_STAT_LABEL[stat].toUpperCase(), {
           fontFamily: FONTS.body,
-          fontSize: compact ? '9px' : '11px',
+          fontSize: compact ? '9px' : '10px',
           fontStyle: 'bold',
           color: hex(COLORS.muted),
-          letterSpacing: compact ? 0.4 : 1,
+          letterSpacing: 0.3,
         }),
       );
-      const barX = x + (compact ? 118 : 128);
-      const barW = Math.max(52, width - (compact ? 158 : 178));
+      const barX = x + (compact ? 128 : 152);
+      const barW = Math.max(48, width - (compact ? 168 : 198));
       const barY = rowY + 5;
       add(this.add.rectangle(barX, barY, barW, compact ? 7 : 8, COLORS.panel, 1).setOrigin(0, 0.5));
       const fill = Math.max(2, (value / RATING_CAP) * barW);
