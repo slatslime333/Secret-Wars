@@ -22,7 +22,7 @@ import { PostMatchOverlay } from '../ui/PostMatchOverlay';
 import { RespawnOverlay } from '../ui/RespawnOverlay';
 import { Minimap } from '../ui/Minimap';
 import { COLORS, FONTS, hex } from '../ui/theme';
-import { Battlefield, freshMatchSeed } from '../map';
+import { Battlefield, rememberPlayTestSeed, resolvePlayTestSeed } from '../map';
 import { HeroPilot } from '../ai/HeroPilot';
 import { TacticalField } from '../ai/tactical/field';
 import { TacticalOverlay } from '../ai/tactical/overlay';
@@ -98,7 +98,8 @@ export class MatchScene extends Phaser.Scene {
     ensureAbilityIcons(this);
     setSelectedHeroId(this.startHeroId);
     const hero = PLAYABLE_HEROES[this.startHeroId];
-    this.battlefield = Battlefield.install(this, { seed: freshMatchSeed(), log: true });
+    this.battlefield = Battlefield.install(this, { seed: resolvePlayTestSeed(), log: true });
+    rememberPlayTestSeed(this.battlefield.result.seed);
     this.physics.world.setBounds(
       ARENA.wallThickness,
       ARENA.wallThickness,

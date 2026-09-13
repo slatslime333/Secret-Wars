@@ -26,9 +26,9 @@ export const DEATH_DASH = {
 
 export const DEATH_GUN = {
   cooldownMs: 14500,
-  bullets: 15,
-  intervalMs: 350,
-  speed: 500,
+  bullets: 18,
+  intervalMs: 280,
+  speed: 625,
   radius: 4,
   lifetimeMs: 5000,
   damageRating: 16,
@@ -42,17 +42,17 @@ export const DEATH_SMASH = {
   cooldownMs: 7000,
   animMs: 760,
   impactAt: 430,
-  radius: Math.round(NINJA_BASE_RANGE * 1.08),
-  /** Bat thickness for the aimed capsule. Generous so the telegraph matches the hit. */
+  radius: Math.round(NINJA_BASE_RANGE * 1.08 * 1.2),
+  /** Bat thickness. Hits anywhere along the swinging bat use the same shove. */
   halfWidth: 42,
   damageRating: 66,
   damage: abilityDamage(66),
   /**
-   * Aimed shove along the smash. launchCap is above the mul so the hit
-   * is one readable shove instead of a clip/no-clip coin flip.
+   * Set launch for any bat contact. ~250px of travel — far enough to read,
+   * well short of a map-width send.
    */
-  knockbackMul: 1.62,
-  launchCap: 420,
+  knockback: 460,
+  launchCap: 460,
   stunMs: 1300,
   batScale: 2.55,
   windupRad: 2.15,

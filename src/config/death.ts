@@ -28,12 +28,12 @@ export const DEATH = {
   role: 'tank',
   ratings: DEATH_RATINGS,
   ...gameplayFromRatings(DEATH_RATINGS),
-  /** 15% more melee reach than the shared 106px baseline. */
-  attackRange: Math.round(MELEE_BASE_RANGE * 1.15),
+  /** 15% more melee reach than the shared 106px baseline, then another 10%. */
+  attackRange: Math.round(MELEE_BASE_RANGE * 1.15 * 1.1),
   attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 16,
   staminaRegenPerSecond: 16,
-  ammoMax: 6,
+  ammoMax: 8,
   reloadMs: 1800,
   dashMaxCharges: 2,
 } as const satisfies HeroCombatConfig;

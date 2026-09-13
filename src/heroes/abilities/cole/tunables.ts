@@ -1,4 +1,5 @@
 import { COLE } from '../../../config/cole';
+import { COMBAT } from '../../../config/combat';
 import { NINJA_BASE_RANGE } from '../../../config/ninja';
 import { abilityDamage } from '../../../config/ratings';
 
@@ -7,7 +8,9 @@ export const COLE_ATTACK = {
   targetSlowMul: 0.8,
   targetSlowMs: 1000,
   animMs: 280,
-  knockbackMul: 2,
+  knockbackMul: 1.5,
+  /** Light punches were launch-capped; drop the felt send by 25%. */
+  launchCap: Math.round(COMBAT.launchSpeedCap * 0.75),
 } as const;
 
 export const COLE_SHOCKWAVE = {

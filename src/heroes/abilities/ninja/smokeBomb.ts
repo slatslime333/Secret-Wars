@@ -32,13 +32,17 @@ class SmokeBombAbility implements ActiveAbility {
   constructor(ctx: AbilityContext) {
     const { caster, now } = ctx;
     const aimLen = Math.hypot(caster.aim.x, caster.aim.y) || 1;
-    this.dirX = -caster.aim.x / aimLen;
-    this.dirY = -caster.aim.y / aimLen;
+    const aimX = caster.aim.x / aimLen;
+    const aimY = caster.aim.y / aimLen;
+    this.dirX = -aimX;
+    this.dirY = -aimY;
     this.blastUntil = now + NINJA_SMOKE.blastDurationMs;
+    const smokeX = caster.x + aimX * NINJA_SMOKE.spawnAhead;
+    const smokeY = caster.y + aimY * NINJA_SMOKE.spawnAhead;
 
     ctx.world.spawnSmoke({
-      x: caster.x,
-      y: caster.y,
+      x: smokeX,
+      y: smokeY,
       radius: NINJA_SMOKE.radius,
       startedAt: now,
       expandMs: NINJA_SMOKE.expandMs,
@@ -53,8 +57,8 @@ class SmokeBombAbility implements ActiveAbility {
 
     this.fx = new SmokeCloud(
       ctx.scene,
-      caster.x,
-      caster.y,
+      smokeX,
+      smokeY,
       now,
       now + NINJA_SMOKE.durationMs,
       NINJA_SMOKE.radius,

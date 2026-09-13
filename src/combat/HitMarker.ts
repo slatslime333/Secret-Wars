@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COMBAT } from '../config/combat';
 import { NINJA } from '../config/ninja';
+import { smashCrashOffsets } from '../heroes/abilities/death/smashHit';
 import { COLORS } from '../ui/theme';
 
 /**
@@ -103,7 +104,7 @@ export class HitMarker {
     this.ballAim.clear();
   }
 
-  /** Bat Smash aimed capsule. Matches smashHitsTarget. */
+  /** Bat Smash sweep fan. Matches smashCrashOffsets + smash radius. */
   syncSmashAim(
     x: number,
     y: number,
@@ -111,38 +112,37 @@ export class HitMarker {
     aimY: number,
     radius: number,
     aiming: boolean,
-    halfWidth: number = 42,
+    _halfWidth: number = 42,
   ): void {
-    const angle = Math.atan2(aimY, aimX);
+    const aim = Math.atan2(aimY, aimX);
+    const span = smashCrashOffsets();
+    const a0 = aim + span.from;
+    const a1 = aim + span.to;
     const g = this.ballAim;
     g.clear();
     g.setPosition(x, y);
-    const alpha = aiming ? 0.92 : 0.55;
-    const nx = Math.cos(angle);
-    const ny = Math.sin(angle);
-    const px = -ny * halfWidth;
-    const py = nx * halfWidth;
-    const end = radius;
+    const alpha = aiming ? 0.9 : 0.55;
     g.fillStyle(0xc04040, alpha * 0.16);
-    g.fillTriangle(px, py, -px, -py, nx * end + px, ny * end + py);
-    g.fillTriangle(-px, -py, nx * end - px, ny * end - py, nx * end + px, ny * end + py);
+    g.slice(0, 0, radius, a0, a1, false);
+    g.fillPath();
     g.lineStyle(aiming ? 2.5 : 2, 0xc04040, alpha);
-    g.lineBetween(px, py, nx * end + px, ny * end + py);
-    g.lineBetween(-px, -py, nx * end - px, ny * end - py);
-    g.strokeCircle(0, 0, halfWidth);
-    g.strokeCircle(nx * end, ny * end, halfWidth);
+    g.beginPath();
+    g.arc(0, 0, radius, a0, a1, false);
+    g.strokePath();
+    g.lineBetween(0, 0, Math.cos(a0) * radius, Math.sin(a0) * radius);
+    g.lineBetween(0, 0, Math.cos(a1) * radius, Math.sin(a1) * radius);
     g.lineStyle(aiming ? 3 : 2, 0xffc028, alpha);
-    g.lineBetween(nx * 8, ny * 8, nx * end, ny * end);
-    const tipX = nx * end;
-    const tipY = ny * end;
+    g.lineBetween(Math.cos(aim) * 8, Math.sin(aim) * 8, Math.cos(aim) * radius, Math.sin(aim) * radius);
+    const tipX = Math.cos(aim) * radius;
+    const tipY = Math.sin(aim) * radius;
     g.fillStyle(0xfff0c8, alpha);
     g.fillTriangle(
-      tipX + nx * 8,
-      tipY + ny * 8,
-      tipX + Math.cos(angle + 1.4) * 6,
-      tipY + Math.sin(angle + 1.4) * 6,
-      tipX + Math.cos(angle - 1.4) * 6,
-      tipY + Math.sin(angle - 1.4) * 6,
+      tipX + Math.cos(aim) * 8,
+      tipY + Math.sin(aim) * 8,
+      tipX + Math.cos(aim + 1.4) * 6,
+      tipY + Math.sin(aim + 1.4) * 6,
+      tipX + Math.cos(aim - 1.4) * 6,
+      tipY + Math.sin(aim - 1.4) * 6,
     );
   }
 

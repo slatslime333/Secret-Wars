@@ -23,7 +23,7 @@ export const gunBarrageDef: AbilityDef = {
   aimOnRelease: true,
   padLabel: 'GUN',
   deferCooldown: true,
-  tactics: { roles: ['damage', 'disruption', 'space'], range: 520 },
+    tactics: { roles: ['damage', 'disruption', 'space'], range: 650 },
   canActivate: (ctx) =>
     !ctx.caster.status.isHitReacting(ctx.now) &&
     !ctx.caster.status.isBlockStunned(ctx.now) &&
@@ -39,7 +39,7 @@ class GunBarrageAbility implements ActiveAbility {
   private done = false;
 
   constructor(ctx: AbilityContext) {
-    this.nextShotAt = ctx.now + 160;
+    this.nextShotAt = ctx.now + 128;
     spawnCombatCallout(ctx.scene, ctx.caster.x, ctx.caster.y, 'BARRAGE', COLORS.orange);
     ctx.caster.playCustomAttack(ctx.now, DEATH_GUN.bullets * DEATH_GUN.intervalMs + 220, (frac) => ({
       armLiftRight: 0.35 + Math.sin(frac * Math.PI * 18) * 0.12,
