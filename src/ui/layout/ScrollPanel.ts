@@ -134,6 +134,22 @@ export class ScrollPanel {
     return this.maxScroll() > 1;
   }
 
+  /** Keep a content-space x range inside the clip. */
+  revealX(contentX: number, itemW: number): void {
+    if (this.axis !== 'x') {
+      return;
+    }
+    const left = contentX - itemW / 2;
+    const right = contentX + itemW / 2;
+    if (left < this.scroll) {
+      this.setScroll(left);
+      return;
+    }
+    if (right > this.scroll + this.viewW) {
+      this.setScroll(right - this.viewW);
+    }
+  }
+
   destroy(): void {
     this.scene.input.off(Phaser.Input.Events.POINTER_DOWN, this.onDown);
     this.scene.input.off(Phaser.Input.Events.POINTER_MOVE, this.onMove);

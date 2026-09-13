@@ -30,7 +30,7 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
   const frame = measureViewport(width, height);
   const isPortrait = frame.isPortrait;
   const short = Math.min(width, height);
-  const tight = height < 400;
+  const tight = height < 400 || isPortrait;
   const inset = frame.controlInset;
   const minTouch = frame.minTouch;
   const buttonRadius = Math.round(clamp(tight ? minTouch * 0.58 : minTouch * 0.66, 24, 32));

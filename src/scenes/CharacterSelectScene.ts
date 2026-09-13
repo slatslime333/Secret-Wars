@@ -73,7 +73,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     const bodyBottom = height - inset.bottom - footerH;
     const bodyH = Math.max(120, bodyBottom - bodyTop);
     const tight = bodyH < 300;
-    const cardH = tight ? Math.round(clamp(bodyH * 0.42, 100, 128)) : 168;
+    const cardH = tight ? Math.round(clamp(bodyH * 0.34, 84, 112)) : 168;
     const cardsBottom = this.drawCards(inset.left, bodyTop, width - inset.left - inset.right, cardH);
     this.drawDetail(
       inset.left,
@@ -128,6 +128,12 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.cardScroll = new ScrollPanel(this, x, y, viewW, cardH + 8, { axis: 'x' });
       this.cardScroll.setContentSize(total + 8, cardH + 8);
     }
+    const artY = Math.round(cardH * 0.28);
+    const nameY = Math.round(cardH * 0.51);
+    const roleY = Math.round(cardH * 0.62);
+    const ovrY = Math.round(cardH * 0.73);
+    const pwrY = Math.round(cardH * 0.85);
+    const artScale = cardH >= 140 ? 1.25 : cardH >= 110 ? 1.05 : 0.9;
 
     HERO_ORDER.forEach((id, index) => {
       const copy = heroSelectCopy(id);
@@ -136,11 +142,11 @@ export class CharacterSelectScene extends Phaser.Scene {
       const panel = this.add.rectangle(cx, 0, cardW, cardH, COLORS.panel, 0.96).setOrigin(0.5, 0);
       panel.setStrokeStyle(3, selected ? COLORS.yellow : COLORS.cyan);
       const art = this.add.graphics();
-      art.setPosition(cx, 48);
-      art.setScale(1.25);
+      art.setPosition(cx, artY);
+      art.setScale(artScale);
       PLAYABLE_HEROES[id].draw(art, { facing: 'east', team: 'alpha' });
       const name = this.add
-        .text(cx, 86, copy.name.toUpperCase(), {
+        .text(cx, nameY, copy.name.toUpperCase(), {
           fontFamily: FONTS.display,
           fontSize: '13px',
           color: hex(COLORS.paper),
@@ -148,7 +154,7 @@ export class CharacterSelectScene extends Phaser.Scene {
         })
         .setOrigin(0.5, 0);
       const role = this.add
-        .text(cx, 104, copy.role.toUpperCase(), {
+        .text(cx, roleY, copy.role.toUpperCase(), {
           fontFamily: FONTS.body,
           fontSize: copy.role.length > 12 ? '8px' : '10px',
           fontStyle: 'bold',
@@ -157,7 +163,7 @@ export class CharacterSelectScene extends Phaser.Scene {
         })
         .setOrigin(0.5, 0);
       const ovr = this.add
-        .text(cx, 122, `OVR  ${copy.overall}`, {
+        .text(cx, ovrY, `OVR  ${copy.overall}`, {
           fontFamily: FONTS.display,
           fontSize: '14px',
           color: hex(COLORS.yellow),
@@ -165,7 +171,7 @@ export class CharacterSelectScene extends Phaser.Scene {
         })
         .setOrigin(0.5, 0);
       const pwr = this.add
-        .text(cx, 140, `PWR  ${copy.power}`, {
+        .text(cx, pwrY, `PWR  ${copy.power}`, {
           fontFamily: FONTS.body,
           fontSize: '10px',
           fontStyle: 'bold',
@@ -188,16 +194,21 @@ export class CharacterSelectScene extends Phaser.Scene {
       }
     });
 
+    if (this.cardScroll) {
+      const selectedIndex = Math.max(0, HERO_ORDER.indexOf(this.selected));
+      const selectedX = cardW / 2 + selectedIndex * (cardW + gap);
+      this.cardScroll.revealX(selectedX, cardW + gap);
+    }
+
     return y + cardH + 8;
   }
 
   private drawDetail(x: number, y: number, boxW: number, boxH: number, showHint = true): void {
     const copy = heroSelectCopy(this.selected);
     const frame = measureViewport(this.scale.width, this.scale.height);
-    const box = this.add.rectangle(x, y, boxW, Math.max(120, boxH), COLORS.ink, 0.82).setOrigin(0, 0);
+    const box = this.add.rectangle(x, y, boxW, Math.max(48, boxH), COLORS.ink, 0.82).setOrigin(0, 0);
     box.setStrokeStyle(2, COLORS.cyan);
-
-    this.detailScroll = new ScrollPanel(this, x + 8, y + 8, boxW - 16, Math.max(100, boxH - 16));
+    this.detailScroll = new ScrollPanel(this, x + 8, y + 8, boxW - 16, Math.max(48, boxH - 16));
     const inner = this.detailScroll.content;
     const innerW = boxW - 32;
     const stack = frame.isPortrait || boxW < 640;
