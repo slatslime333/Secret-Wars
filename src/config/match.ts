@@ -16,6 +16,10 @@ export const MATCH = {
   suddenDeathEnabled: true,
   respawnDelayMs: 8_000,
   respawnInvulnMs: 900,
+  /** Free-roam camera pan while waiting to respawn (left stick / WASD). */
+  spectator: {
+    panSpeed: 460,
+  },
   assistWindowMs: 8_000,
   enemyInwardOffset: 72,
   waves: {

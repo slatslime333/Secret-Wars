@@ -27,7 +27,7 @@ export const COLE = {
   attackArcDegrees: 65,
   bodyRadius: NINJA.bodyRadius,
   staminaRegenPerSecond: 17,
-  ammoMax: 4,
-  reloadMs: 2500,
+  ammoMax: 5,
+  reloadMs: 2000,
   dashMaxCharges: 2,
 } as const satisfies HeroCombatConfig;

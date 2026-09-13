@@ -76,12 +76,13 @@ const resolveBallHit = (
     primary,
     {
       rawDamage: COLE_BALL.damage,
-      knockback: caster.stats.knockbackPower * COLE_BALL.knockbackMul,
-      staminaDamage: 8,
-      dirX: primary.x - caster.x,
-      dirY: primary.y - caster.y,
-      step: 2,
-      heavy: true,
+          knockback: caster.stats.knockbackPower * COLE_BALL.knockbackMul,
+          staminaDamage: 8,
+          dirX: primary.x - caster.x,
+          dirY: primary.y - caster.y,
+          step: 2,
+          heavy: true,
+          launchCap: COLE_BALL.launchCap,
     },
     rivalBlock,
   );
@@ -118,6 +119,7 @@ const resolveBallHit = (
           dirY: enemy.y - y,
           step: 2,
           heavy: true,
+          launchCap: COLE_BALL.launchCap,
         },
         rivalBlock,
       );

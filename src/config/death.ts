@@ -1,6 +1,6 @@
 import { HeroCombatConfig } from './hero';
 import { COMBAT } from './combat';
-import { gameplayFromRatings, type CoreRatings } from './ratings';
+import { gameplayFromRatings, type CoreRatings, MELEE_BASE_RANGE } from './ratings';
 
 /**
  * Foundational tank / heavy bruiser. Slow because he is heavy and lacks
@@ -18,7 +18,7 @@ export const DEATH_RATINGS = {
   defense: 63,
   speed: 30,
   attackSpeed: 77,
-  attackRange: 50,
+  attackRange: 54,
   knockback: 52,
 } as const satisfies CoreRatings;
 
@@ -28,6 +28,8 @@ export const DEATH = {
   role: 'tank',
   ratings: DEATH_RATINGS,
   ...gameplayFromRatings(DEATH_RATINGS),
+  /** 15% more melee reach than the shared 106px baseline. */
+  attackRange: Math.round(MELEE_BASE_RANGE * 1.15),
   attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 16,
   staminaRegenPerSecond: 16,

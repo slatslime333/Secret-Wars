@@ -19,6 +19,7 @@ import { AbilityTray } from '../ui/AbilityTray';
 import { BattleHud } from '../ui/BattleHud';
 import { MatchHud } from '../ui/MatchHud';
 import { PostMatchOverlay } from '../ui/PostMatchOverlay';
+import { RespawnOverlay } from '../ui/RespawnOverlay';
 import { Minimap } from '../ui/Minimap';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { Battlefield, freshMatchSeed } from '../map';
@@ -68,6 +69,7 @@ export class MatchScene extends Phaser.Scene {
   private hud!: BattleHud;
   private matchHud!: MatchHud;
   private results!: PostMatchOverlay;
+  private respawnOverlay!: RespawnOverlay;
   private chromeBar?: Phaser.GameObjects.Rectangle;
   private titleText?: Phaser.GameObjects.Text;
   private menuButton?: ActionButton;
@@ -184,6 +186,7 @@ export class MatchScene extends Phaser.Scene {
       onRematch: () => this.restartMatch(),
       onMenu: () => this.returnToMenu(),
     });
+    this.respawnOverlay = new RespawnOverlay(this);
 
     this.cameras.main.setBounds(0, 0, ARENA.width, ARENA.height);
     this.cameras.main.startFollow(this.player.body.sprite, true, 0.16, 0.16);
@@ -213,6 +216,7 @@ export class MatchScene extends Phaser.Scene {
       this.orbs.destroy();
       this.abilityTray?.destroy();
       this.minimap?.destroy();
+      this.respawnOverlay?.destroy();
       this.battlefield?.destroy();
       for (const unit of this.heroes) {
         unit.destroy();
@@ -225,7 +229,6 @@ export class MatchScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     const now = this.time.now;
-    audio.setListener(this.player.body.x, this.player.body.y);
     if (this.match.paused) {
       this.syncHud(now);
       return;
@@ -239,6 +242,7 @@ export class MatchScene extends Phaser.Scene {
     if (this.match.finished) {
       this.freezeField();
       this.syncHud(now);
+      this.respawnOverlay.hide();
       if (!this.results.isOpen) {
         this.results.show(this.match.winner, this.player.team, this.stats.allLines());
       }
@@ -258,6 +262,7 @@ export class MatchScene extends Phaser.Scene {
       }
       if (unit.maybeRespawn(now) && unit.isPlayer) {
         this.cameras.main.startFollow(unit.body.sprite, true, 0.16, 0.16);
+        this.respawnOverlay.hide();
       }
     }
     this.drawAiDebug();
@@ -266,10 +271,18 @@ export class MatchScene extends Phaser.Scene {
 
     if (!this.player.alive) {
       this.player.body.stop();
+      const frame = this.inputReader.sample(this.player.body.x, this.player.body.y);
+      this.panSpectator(frame, delta);
+      const cam = this.cameras.main;
+      audio.setListener(cam.worldView.centerX, cam.worldView.centerY);
+      this.marker.clear();
+      this.respawnOverlay.sync(this.player.respawnAt - now, this.scale.width, this.scale.height);
       this.syncHud(now);
       return;
     }
 
+    this.respawnOverlay.hide();
+    audio.setListener(this.player.body.x, this.player.body.y);
     const frame = this.inputReader.sample(this.player.body.x, this.player.body.y);
     if (frame.ability1AimActive) {
       this.abilityAim = { x: frame.ability1Aim.x, y: frame.ability1Aim.y };
@@ -401,11 +414,22 @@ export class MatchScene extends Phaser.Scene {
       }
       unit.markDead(now);
       this.match.notifyHeroKill();
+      if (unit.isPlayer) {
+        this.cameras.main.stopFollow();
+      }
     }
   }
 
   private inputLocked(): boolean {
-    return this.match.finished || this.match.paused || this.results.isOpen || !this.player.alive;
+    return this.match.finished || this.match.paused || this.results.isOpen;
+  }
+
+  private panSpectator(frame: { move: Phaser.Math.Vector2 }, delta: number): void {
+    const cam = this.cameras.main;
+    const dt = delta / 1000;
+    const speed = MATCH.spectator.panSpeed;
+    cam.stopFollow();
+    cam.setScroll(cam.scrollX + frame.move.x * speed * dt, cam.scrollY + frame.move.y * speed * dt);
   }
 
   private freezeField(): void {
@@ -457,7 +481,7 @@ export class MatchScene extends Phaser.Scene {
     if (ninja.heroId === 'cole') {
       this.marker.syncBallAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, COLE_BALL.explodeRadius, frame.ability1Aiming);
     } else if (ninja.heroId === 'death' && frame.ability2Aiming) {
-      this.marker.syncSmashAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, DEATH_SMASH.radius, true);
+      this.marker.syncSmashAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, DEATH_SMASH.radius, true, DEATH_SMASH.halfWidth);
     } else if (ninja.heroId === 'ninja' && frame.ability2Aiming) {
       this.marker.syncKickAim(
         ninja.x,
@@ -574,6 +598,11 @@ export class MatchScene extends Phaser.Scene {
     this.minimap?.layout(width);
     this.inputReader?.layout(width, height);
     this.abilityTray?.layout(52, 148, 1);
+    this.respawnOverlay?.sync(
+      this.player.alive ? 0 : this.player.respawnAt - this.time.now,
+      width,
+      height,
+    );
     this.cameras.main.setSize(width, height);
   }
 

@@ -43,14 +43,16 @@ export const DEATH_SMASH = {
   animMs: 760,
   impactAt: 430,
   radius: Math.round(NINJA_BASE_RANGE * 1.08),
+  /** Bat thickness for the aimed capsule. Generous so the telegraph matches the hit. */
+  halfWidth: 42,
   damageRating: 66,
   damage: abilityDamage(66),
   /**
-   * Aimed shove along the smash, not a sideways sweep.
-   * launchCap keeps a running target from stacking into a map launch.
+   * Aimed shove along the smash. launchCap is above the mul so the hit
+   * is one readable shove instead of a clip/no-clip coin flip.
    */
-  knockbackMul: 1.22,
-  launchCap: 310,
+  knockbackMul: 1.62,
+  launchCap: 420,
   stunMs: 1300,
   batScale: 2.55,
   windupRad: 2.15,
