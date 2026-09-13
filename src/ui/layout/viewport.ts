@@ -135,21 +135,12 @@ export const measureViewport = (
       : isPortrait
         ? 96
         : 78;
-  // Portrait lifts sticks above the bottom-center HP cluster. Landscape HP
-  // sits in the middle third, so sticks can stay in the bottom corners.
-  const hudBottom = !isMobile
-    ? 12
-    : isTablet
-      ? isPortrait
-        ? 176
-        : 48
-      : isPortrait
-        ? 158
-        : 32;
+  // Sticks stay in the corners. The bottom-center HP cluster is compact enough
+  // to sit in the gap between MOVE and AIM without lifting the pad.
   const controlInset: Insets = {
     top: Math.max(contentInset.top, safe.top + hudReserve),
     right: Math.max(contentInset.right, safe.right + 12),
-    bottom: Math.max(contentInset.bottom, safe.bottom + hudBottom),
+    bottom: Math.max(contentInset.bottom, safe.bottom + (isPortrait ? 28 : 18)),
     left: Math.max(contentInset.left, safe.left + 12),
   };
 
