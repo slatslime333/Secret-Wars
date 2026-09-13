@@ -99,12 +99,12 @@ export class MatchHud {
     this.timer.setX(width / 2);
     this.phase.setX(width / 2);
     this.score.setX(width / 2);
-    if (height <= 0 || isTouchPrimary()) {
-      const chrome = layoutHudChrome(measureViewport(width, Math.max(height, 1)));
+    if (height <= 1 || isTouchPrimary()) {
+      const chrome = layoutHudChrome(height > 1 ? measureViewport(width, height) : measureViewport(width));
       this.barWidth = chrome.bars.width;
-      this.timer.setY(chrome.match.timerY).setFontSize(chrome.titleVisible ? 20 : 16);
-      this.phase.setY(chrome.match.phaseY).setFontSize(10);
-      this.score.setY(chrome.match.scoreY).setFontSize(chrome.titleVisible ? 16 : 13);
+      this.timer.setX(chrome.match.x).setY(chrome.match.timerY).setFontSize(chrome.titleVisible ? 20 : 15);
+      this.phase.setX(chrome.match.x).setY(chrome.match.phaseY).setFontSize(10);
+      this.score.setX(chrome.match.x).setY(chrome.match.scoreY).setFontSize(chrome.titleVisible ? 16 : 13);
       const cx = chrome.bars.x + chrome.bars.width / 2;
       this.xpTrack.setPosition(cx, chrome.bars.xpY).setSize(chrome.bars.width, chrome.bars.xpH);
       this.xpFill.setPosition(chrome.bars.x, chrome.bars.xpY).setSize(this.xpFill.width || chrome.bars.width, chrome.bars.xpH);

@@ -5,6 +5,19 @@ import {
   powerPoints,
   type CoreRatings,
 } from '../config/ratings';
+import { COMBAT } from '../config/combat';
+import { NINJA } from '../config/ninja';
+import { COLE } from '../config/cole';
+import { DEATH } from '../config/death';
+import { ROPE } from '../config/rope';
+import { WITCH } from '../config/witch';
+import { SHADOW } from '../config/shadow';
+import { NINJA_KICK, NINJA_SMOKE, NINJA_TORNADO } from './abilities/ninja/tunables';
+import { COLE_ATTACK, COLE_BALL, COLE_DISCHARGE, COLE_STORM } from './abilities/cole/tunables';
+import { DEATH_ATTACK, DEATH_GUN, DEATH_SMASH, DEATH_SWEEP } from './abilities/death/tunables';
+import { ROPE_PUNCH, ROPE_SPRAY } from './abilities/rope/tunables';
+import { WITCH_HEX, WITCH_SKULL, WITCH_SKELETON, WITCH_TOMBSTONE, WITCH_ULT } from './abilities/witch/tunables';
+import { SHADOW_CLAW, SHADOW_DASH, SHADOW_MARK, SHADOW_RAGE } from './abilities/shadow/tunables';
 
 export type HeroSelectCopy = {
   id: HeroId;
@@ -33,43 +46,72 @@ const ROLE_LABEL: Record<string, string> = {
   hybrid: 'Hybrid',
 };
 
+const hit = (value: number): number => Math.max(1, Math.round(value));
+
+const seconds = (ms: number): string => {
+  const s = ms / 1000;
+  if (Number.isInteger(s)) {
+    return s === 1 ? '1 second' : `${s} seconds`;
+  }
+  const rounded = Math.round(s * 100) / 100;
+  return `${rounded} seconds`;
+};
+
+const slower = (mul: number): string => `${Math.round((1 - mul) * 100)}% slower`;
+const faster = (mul: number): string => `${Math.round((mul - 1) * 100)}% faster`;
+const more = (mul: number): string => `${Math.round((mul - 1) * 100)}% more`;
+const cooldownSlower = (mul: number): string => `${Math.round((mul - 1) * 100)}% slower`;
+
+const ninjaHit = (step: 1 | 2 | 3): number => hit(NINJA.attackDamage * COMBAT.combo[step].damageMultiplier);
+const coleHit = (step: 1 | 2 | 3): number => hit(COLE.attackDamage * COMBAT.combo[step].damageMultiplier);
+const deathHit = (step: 1 | 2 | 3): number => {
+  const combo = step === 3 ? COMBAT.combo[3].damageMultiplier : COMBAT.combo[1].damageMultiplier;
+  const extra = step === 3 ? DEATH_ATTACK.hit3DamageMul : step === 2 ? 1.05 : 1;
+  return hit(DEATH.attackDamage * combo * extra);
+};
+const shadowHit = (step: 1 | 2 | 3): number => hit(SHADOW.attackDamage * COMBAT.combo[step].damageMultiplier);
+const witchSkull = hit(WITCH.attackDamage * WITCH_SKULL.damageMul);
+const hexShield = Math.round(WITCH.maxHealth * WITCH_HEX.shieldHealthMul);
+const markPct = Math.round(SHADOW_MARK.healthPerSecond * 10000) / 100;
+const rageStamina = Math.round(SHADOW.maxStamina * SHADOW_RAGE.staminaPoolMul);
+
 const ABILITY_TEXT: Record<string, string> = {
   'ninja-smoke-bomb':
-    'Ninja tosses a smoke cloud a step ahead, then blasts backward out of it. Enemies caught in the smoke move slower and attack slower for a few seconds.',
+    `Ninja tosses a smoke cloud a step ahead, then blasts backward out of it. Enemies in the cloud move ${slower(NINJA_SMOKE.moveMul)} and attack ${slower(NINJA_SMOKE.attackSpeedMul)} for ${seconds(NINJA_SMOKE.durationMs)}.`,
   'ninja-backflip-kick':
-    'A dash-kick through the aimed line. Hits launch enemies with powerful knockback and slow them for a couple of seconds. Two charges.',
+    `A dash-kick through the aimed line. Hits deal ${hit(NINJA_KICK.damage)} damage, launch with heavy knockback, and slow movement by 50% for ${seconds(NINJA_KICK.hitSlowMs)}. Two charges.`,
   'ninja-tornado':
-    'Ninja becomes a bouncing whirlwind for a few seconds, cutting through nearby enemies with light knockback and a brief stun.',
+    `Ninja becomes a bouncing whirlwind for ${seconds(NINJA_TORNADO.durationMs)}. Nearby enemies take ${hit(NINJA_TORNADO.damage)} damage per slash, a brief ${seconds(NINJA_TORNADO.stunMs)} stun, and light knockback.`,
   'cole-electric-ball':
-    'Cole hurls a ball that explodes on impact. The blast launches the first target with powerful knockback and slows them for a couple of seconds, then chains to nearby enemies with a lighter slow.',
+    `Cole hurls a ball that explodes for ${hit(COLE_BALL.damage)} damage. The first target is launched and slowed ${slower(COLE_BALL.slowMul)} for ${seconds(COLE_BALL.slowMs)}. The blast chains to up to ${COLE_BALL.maxTargets - 1} nearby enemies for ${hit(COLE_BALL.chainDamage)} damage and a ${seconds(COLE_BALL.chainSlowMs)} slow.`,
   'cole-discharge':
-    'A close electric burst around Cole. Hits with strong knockback and paralyzes enemies for about a second.',
+    `A close electric burst around Cole. Hits deal ${hit(COLE_DISCHARGE.damage)} damage with strong knockback and paralyze enemies for ${seconds(COLE_DISCHARGE.paralyzeMs)}.`,
   'cole-thunderstorm':
-    'Cole plants himself and calls lightning around him for several seconds. Strikes deal moderate knockback and slow survivors for about a second. Cole himself is heavily slowed while the storm lasts.',
+    `Cole plants himself and calls lightning for ${seconds(COLE_STORM.durationMs)}. Each strike deals ${hit(COLE_STORM.damage)} damage and slows survivors ${slower(COLE_STORM.slowMul)} for ${seconds(COLE_STORM.slowMs)}. Cole himself is ${slower(COLE_STORM.moveMul)} while the storm lasts.`,
   'death-gun-barrage':
-    'Death sprays a burst of SMG fire along his aim. Individual shots have light knockback.',
+    `Death sprays ${DEATH_GUN.bullets} SMG shots along his aim. Each shot deals ${hit(DEATH_GUN.damage)} damage with light knockback.`,
   'death-bat-smash':
-    'A heavy bat sweep through the aimed arc. Contact stuns for just over a second and sends enemies flying with powerful knockback.',
+    `A heavy bat sweep through the aimed arc. Contact deals ${hit(DEATH_SMASH.damage)} damage, stuns for ${seconds(DEATH_SMASH.stunMs)}, and launches enemies with powerful knockback.`,
   'death-bat-sweep':
-    'Death spins the bat in a wide damaging arc for several seconds. Hits carry strong knockback, and Death moves slower while sweeping.',
+    `Death spins the bat in a wide damaging arc for ${seconds(DEATH_SWEEP.durationMs)}. Hits deal ${hit(DEATH_SWEEP.damage)} damage with strong knockback, and Death moves ${slower(DEATH_SWEEP.moveMul)} while sweeping.`,
   'rope-grab':
-    'Fire a long rope along your aim. A hit flings you in for a backflip kick with powerful knockback. Misses cost nothing.',
+    `Fire a long rope along your aim. A hit flings you in for a backflip kick that deals ${hit(NINJA_KICK.damage)} damage, launches with powerful knockback, and slows movement by 50% for ${seconds(NINJA_KICK.hitSlowMs)}. Misses cost nothing.`,
   'rope-mega-punch':
-    'Rope Man jumps into a close uppercut with strong knockback that also slows movement for a couple of seconds.',
+    `Rope Man jumps into a close uppercut that deals ${hit(ROPE_PUNCH.damage)} damage with strong knockback and slows movement ${slower(ROPE_PUNCH.slowMul)} for ${seconds(ROPE_PUNCH.slowMs)}.`,
   'rope-spray':
-    'He spins and sprays ropes in every direction for several seconds. Hits paralyze for a couple of seconds and carry light knockback. Rope Man moves slower while spraying.',
+    `He spins and sprays ropes in every direction for ${seconds(ROPE_SPRAY.durationMs)}, firing ${ROPE_SPRAY.shotsPerPulse} shots every ${seconds(ROPE_SPRAY.intervalMs)}. Hits deal ${hit(ROPE_SPRAY.damage)} damage, paralyze for ${seconds(ROPE_SPRAY.paralyzeMs)}, and carry light knockback. Rope Man moves ${slower(ROPE_SPRAY.moveMul)} while spraying.`,
   'witch-tombstone':
-    'Witch raises her staff and summons two skeleton bodyguards. They stay close and fight for her. She can have no more than four living skeletons at once.',
+    `Witch raises her staff and summons ${WITCH_TOMBSTONE.summonCount} skeleton bodyguards (${WITCH_SKELETON.maxHealth} HP, ${hit(WITCH_SKELETON.attackDamage)} damage). They stay close and fight for her. She can have no more than ${WITCH_TOMBSTONE.cap} living skeletons at once.`,
   'witch-hex':
-    'Witch and one nearby teammate gain a green shield plus faster movement and attack speed for several seconds.',
+    `Witch and one nearby teammate gain a ${hexShield} HP shield, ${faster(WITCH_HEX.moveMul)} movement, and ${faster(WITCH_HEX.attackSpeedMul)} attack speed for ${seconds(WITCH_HEX.durationMs)}.`,
   'witch-tombstone-ult':
-    'Fills the skeleton pack up to four and pulses a purple aura. Nearby enemies move slower and attack slower for several seconds.',
+    `Fills the skeleton pack toward its ${WITCH_TOMBSTONE.cap}-cap (${WITCH_ULT.summonCount} more skeletons) and pulses a purple aura. Nearby enemies move ${slower(WITCH_ULT.moveMul)} and attack ${cooldownSlower(WITCH_ULT.attackSlowMul)} for ${seconds(WITCH_ULT.debuffMs)}.`,
   'shadow-claw':
-    'A giant directional claw swipe with powerful knockback. Much larger than a basic swipe.',
+    `A giant directional claw swipe that deals ${hit(SHADOW_CLAW.damage)} damage with powerful knockback. Much larger than a basic swipe.`,
   'shadow-dash':
-    'Shadow dashes through the aimed line. Enemies are knocked sideways with strong knockback and both move and attack slower for a couple of seconds.',
+    `Shadow dashes through the aimed line, dealing ${hit(SHADOW_DASH.damage)} damage. Enemies are knocked sideways, move ${slower(SHADOW_DASH.slowMul)}, and attack ${cooldownSlower(SHADOW_DASH.attackSlowMul)} for ${seconds(SHADOW_DASH.slowMs)}.`,
   'shadow-rage':
-    'Shadow locks in place to transform, then fights faster and harder for several seconds — quicker movement and attacks, extra stamina, faster stamina recovery, and a defense boost.',
+    `Shadow locks in place for ${seconds(SHADOW_RAGE.castMs)} to transform, then fights harder for ${seconds(SHADOW_RAGE.durationMs)}: ${faster(SHADOW_RAGE.moveMul)} movement, ${faster(SHADOW_RAGE.attackSpeedMul)} attacks, +${rageStamina} max stamina, ${faster(SHADOW_RAGE.staminaRegenMul)} stamina recovery, and ${more(SHADOW_RAGE.defenseMul)} defense.`,
 };
 
 const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
@@ -77,37 +119,37 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
     description:
       'A fast melee disruptor. Ninja darts in to harass, then uses smoke and kicks to break a fight and open space for his team.',
     light:
-      'A close three-hit sword combo with extra reach. Keep tapping to chain into a heavier finisher.',
+      `A close three-hit sword combo. Hits deal ${ninjaHit(1)}, then ${ninjaHit(2)}, then a ${ninjaHit(3)}-damage finisher with extra reach. Keep tapping to chain the combo.`,
   },
   cole: {
     description:
       'A melee frontliner. Cole holds space with long punches, then punishes groups with electricity.',
     light:
-      'Long-reach punches at a slower cadence. Each hit slows the target for about a second. The third punch sends a shockwave with stronger knockback up close.',
+      `Long-reach punches at a slower cadence. Hits deal ${coleHit(1)}, then ${coleHit(2)}, and slow the target ${slower(COLE_ATTACK.targetSlowMul)} for ${seconds(COLE_ATTACK.targetSlowMs)}. The third punch is a shockwave for ${coleHit(3)} damage with stronger knockback up close.`,
   },
   death: {
     description:
       'A heavy melee tank. Death crowds the lane with bat swings, then mixes in SMG fire and crushing slams.',
     light:
-      'Close-range bat swings in fast pairs, then a short pause. The third hit reaches farther, hits harder, and carries stronger knockback.',
+      `Close-range bat swings in fast pairs, then a ${seconds(DEATH_ATTACK.pairDelayMs)} pause. Hits deal ${deathHit(1)}, then ${deathHit(2)}. The third hit reaches ${Math.round((DEATH_ATTACK.hit3RangeMul - 1) * 100)}% farther, deals ${deathHit(3)} damage, and carries stronger knockback.`,
   },
   rope: {
     description:
       'A long-range support. Rope Man pokes from very far away, then yanks into the fight or locks people down with ropes.',
     light:
-      'Alternating rope shots from each arm. Low damage, very long range, and moderate knockback.',
+      `Alternating rope shots from each arm. Each shot deals ${hit(ROPE.attackDamage)} damage at very long range with moderate knockback.`,
   },
   witch: {
     description:
       'A slow ranged tank and support. Witch bombards from far away, raises skeleton bodyguards, and hexes her side of the fight.',
     light:
-      'A four-skull barrage. Small hits add up, with light knockback and a movement slow that lasts a couple of seconds.',
+      `Fires ${WITCH_SKULL.count} skulls in rapid succession. Each skull deals ${witchSkull} damage and lightly knocks enemies back. Hits slow enemies ${slower(WITCH_SKULL.hitSlowMul)} for ${seconds(WITCH_SKULL.hitSlowMs)}.`,
   },
   shadow: {
     description:
       'A committed melee bruiser. Shadow claws into the fight, marks wounds, and rages when she can stay in close.',
     light:
-      'Fast shadow-claw swipes with light knockback. Each hit leaves a lingering wound that continues to drain their health for a few seconds.',
+      `Fast shadow-claw swipes dealing ${shadowHit(1)}, ${shadowHit(2)}, then a ${shadowHit(3)}-damage finisher with light knockback. Each hit leaves a wound that drains ${markPct}% of their max health each second for ${seconds(SHADOW_MARK.durationMs)}.`,
   },
 };
 

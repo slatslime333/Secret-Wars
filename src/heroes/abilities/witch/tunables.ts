@@ -1,6 +1,5 @@
-import { COLE } from '../../../config/cole';
 import { SWORD_MINION } from '../../../config/minion';
-import { WITCH } from '../../../config/witch';
+import { WITCH, WITCH_KIT_RANGE } from '../../../config/witch';
 import { abilityDamage } from '../../../config/ratings';
 
 export const WITCH_SKULL = {
@@ -78,9 +77,9 @@ export const WITCH_ULT = {
 
 export const witchAttackRange = (): number => WITCH.attackRange;
 
-export const witchAuraRadius = (): number => Math.round(WITCH.attackRange * WITCH_ULT.auraRadiusMul);
+export const witchAuraRadius = (): number => Math.round(WITCH_KIT_RANGE * WITCH_ULT.auraRadiusMul);
 
-export const witchHexAllyRange = (): number => Math.round(WITCH.attackRange * WITCH_HEX.allyRangeMul);
+export const witchHexAllyRange = (): number => Math.round(WITCH_KIT_RANGE * WITCH_HEX.allyRangeMul);
 
-/** Cole range is the authored baseline; Witch is +20%. */
-export const WITCH_VS_COLE_RANGE = Math.round(COLE.attackRange * 1.2);
+/** Live Witch light-attack range (previous live range × 1.2). */
+export const WITCH_VS_COLE_RANGE = WITCH.attackRange;
