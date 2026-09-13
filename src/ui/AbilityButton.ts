@@ -96,8 +96,12 @@ export class AbilityButton {
     this.icon.setTint(state.consumed ? 0x667088 : 0xffffff);
     if (state.consumed) {
       this.timer.setText('');
+    } else if (state.maxCharges > 1 && state.ready) {
+      this.timer.setText(`${state.charges}`);
     } else if (!state.ready && state.cooldownRemainingMs > 0) {
       this.timer.setText((state.cooldownRemainingMs / 1000).toFixed(state.cooldownRemainingMs >= 10000 ? 0 : 1));
+    } else if (state.maxCharges > 1) {
+      this.timer.setText(`${state.charges}`);
     } else {
       this.timer.setText('');
     }
@@ -180,7 +184,7 @@ export class AbilityButton {
       this.overlay.strokePath();
       return;
     }
-    if (state.ready || state.cooldownRatio <= 0) {
+    if (state.cooldownRatio <= 0) {
       return;
     }
     this.overlay.fillStyle(COLORS.ink, 0.62);

@@ -8,6 +8,7 @@ export { COLE } from './cole';
 export { DEATH } from './death';
 export { ROPE } from './rope';
 export { WITCH } from './witch';
+export { SHADOW } from './shadow';
 export { MINION, SWORD_MINION, RANGER_MINION } from './minion';
 export type { HeroCombatConfig, TeamId } from './hero';
 export { INPUT } from './input';

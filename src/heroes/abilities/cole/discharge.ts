@@ -1,4 +1,4 @@
-import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
+import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { COLE_DISCHARGE } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
@@ -18,10 +18,7 @@ export const dischargeDef: AbilityDef = {
   iconKey: ABILITY_ICON.discharge,
   accent: COLORS.cyan,
   tactics: { roles: ['aoe', 'cc', 'peel', 'space', 'damage'], range: COLE_DISCHARGE.radius },
-  canActivate: (ctx) =>
-    !ctx.caster.status.isHitReacting(ctx.now) &&
-    !ctx.caster.status.isBlockStunned(ctx.now) &&
-    !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new DischargeAbility(ctx),
 };
 

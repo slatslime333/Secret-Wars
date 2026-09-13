@@ -1,5 +1,5 @@
 import { playWorld } from '../../../audio';
-import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
+import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { DEATH_SMASH } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
@@ -23,10 +23,7 @@ export const batSmashDef: AbilityDef = {
   aimOnRelease: true,
   padLabel: 'SMASH',
   tactics: { roles: ['burst', 'cc', 'damage', 'finish', 'knockback'], range: DEATH_SMASH.radius },
-  canActivate: (ctx) =>
-    !ctx.caster.status.isHitReacting(ctx.now) &&
-    !ctx.caster.status.isBlockStunned(ctx.now) &&
-    !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new BatSmashAbility(ctx),
 };
 

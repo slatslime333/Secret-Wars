@@ -17,6 +17,9 @@ export const ABILITY_ICON = {
   tombstone: 'ability-icon-tombstone',
   hex: 'ability-icon-hex',
   tombstoneUlt: 'ability-icon-tombstone-ult',
+  shadowClaw: 'ability-icon-shadow-claw',
+  shadowDash: 'ability-icon-shadow-dash',
+  shadowRage: 'ability-icon-shadow-rage',
 } as const;
 
 const SIZE = 128;
@@ -39,6 +42,9 @@ export const ensureAbilityIcons = (scene: Phaser.Scene): void => {
   drawIfMissing(scene, ABILITY_ICON.tombstone, drawTombstoneIcon);
   drawIfMissing(scene, ABILITY_ICON.hex, drawHexIcon);
   drawIfMissing(scene, ABILITY_ICON.tombstoneUlt, drawTombstoneUltIcon);
+  drawIfMissing(scene, ABILITY_ICON.shadowClaw, drawShadowClawIcon);
+  drawIfMissing(scene, ABILITY_ICON.shadowDash, drawShadowDashIcon);
+  drawIfMissing(scene, ABILITY_ICON.shadowRage, drawShadowRageIcon);
 };
 
 const drawIfMissing = (
@@ -565,4 +571,88 @@ const drawTombstoneUltIcon = (ctx: CanvasRenderingContext2D, size: number): void
   ctx.arc(c + 22, c + 16, 7, 0, Math.PI * 2);
   ctx.fill();
 };
+
+const drawShadowClawIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a1028';
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath();
+  ctx.ellipse(c + 6, c + 4, 28, 22, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = '#8a68c0';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(c - 18, c + 16);
+  ctx.lineTo(c + 8, c - 8);
+  ctx.lineTo(c + 28, c - 22);
+  ctx.stroke();
+  ctx.strokeStyle = '#c8b8e8';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(c - 10, c + 18);
+  ctx.lineTo(c + 16, c - 4);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(c - 4, c + 22);
+  ctx.lineTo(c + 22, c + 2);
+  ctx.stroke();
+};
+
+const drawShadowDashIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#4a3470';
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(c - 28, c + 10);
+  ctx.lineTo(c + 24, c - 12);
+  ctx.stroke();
+  ctx.strokeStyle = '#b8a0e0';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(c - 20, c + 16);
+  ctx.lineTo(c + 18, c - 6);
+  ctx.stroke();
+  ctx.fillStyle = ink;
+  ctx.beginPath();
+  ctx.arc(c - 8, c + 4, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = paper;
+  ctx.fillRect(c - 12, c, 8, 3);
+};
+
+const drawShadowRageIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = '#120814';
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2a1438';
+  ctx.beginPath();
+  ctx.ellipse(c, c + 6, 22, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#6a48a0';
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath();
+  ctx.ellipse(c - 8, c - 10, 10, 18, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(c + 10, c - 8, 9, 16, 0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#c8b8e8';
+  ctx.beginPath();
+  ctx.arc(c, c - 4, 6, 0, Math.PI * 2);
+  ctx.fill();
+};
+
 

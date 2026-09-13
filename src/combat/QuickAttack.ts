@@ -20,6 +20,8 @@ import { playLightAttack } from '../audio';
 import { BlockController } from './BlockController';
 import { Projectile } from './projectile';
 import { WitchSkullBarrage } from './WitchSkullBarrage';
+import { SHADOW_ATTACK } from '../heroes/abilities/shadow/tunables';
+import { spawnShadowSlash } from '../heroes/abilities/shadow/clawFx';
 
 type PendingImpact = {
   at: number;
@@ -45,7 +47,7 @@ export class QuickAttack {
   private deathPairLockUntil = 0;
   private ropeArm: -1 | 1 = -1;
   private readonly ropeShots: Projectile[] = [];
-  private witchBarrage?: WitchSkullBarrage;
+  private readonly witchBarrages: WitchSkullBarrage[] = [];
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -65,14 +67,11 @@ export class QuickAttack {
     this.pendingTaps = 0;
     this.pendingImpact = undefined;
     this.clearRopeShots();
-    this.witchBarrage?.destroy();
-    this.witchBarrage = undefined;
   }
 
   destroy(): void {
     this.clearRopeShots();
-    this.witchBarrage?.destroy();
-    this.witchBarrage = undefined;
+    this.clearWitchBarrages();
   }
 
   update(
@@ -89,7 +88,7 @@ export class QuickAttack {
 
     const tapQueued = this.pendingTaps > 0;
     this.combo.expire(now, COMBAT.comboWindowMs, held || tapQueued || pressed);
-    if (pressed && attacker.heroId !== 'witch' && attacker.heroId !== 'rope') {
+    if (pressed && attacker.heroId !== 'witch' && attacker.heroId !== 'rope' && attacker.heroId !== 'shadow') {
       this.pendingTaps = Math.min(3, this.pendingTaps + 1);
       this.lastPendingAt = now;
     }
@@ -103,7 +102,7 @@ export class QuickAttack {
 
     this.marker?.setAttacking((held || this.pendingTaps > 0) && attacker.canAttack(now));
 
-    if (this.pendingImpact || (this.witchBarrage && !this.witchBarrage.firingDone)) {
+    if (this.pendingImpact) {
       return;
     }
     if (attacker.status.cannotAttack(now) || attacker.status.isHitReacting(now)) {
@@ -126,7 +125,7 @@ export class QuickAttack {
     if (this.pendingTaps > 0) {
       this.combo.tap(now, COMBAT.comboWindowMs);
       this.pendingTaps -= 1;
-      if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch') {
+      if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch' && attacker.heroId !== 'shadow') {
         spawnCombatCallout(
           this.scene,
           attacker.x,
@@ -171,6 +170,8 @@ export class QuickAttack {
       this.fireRopeLight(now, attacker);
     } else if (attacker.heroId === 'witch') {
       this.fireWitchLight(now, attacker);
+    } else if (attacker.heroId === 'shadow') {
+      this.playShadowLight(attacker, now);
     } else {
       attacker.playAttackAnimation(now, step);
       this.spawnWhiteLineSlice(attacker, step);
@@ -181,7 +182,7 @@ export class QuickAttack {
   }
 
   private nextComboStep(now: number, attacker: NinjaBody): ComboStep {
-    if (attacker.heroId === 'rope' || attacker.heroId === 'witch') {
+    if (attacker.heroId === 'rope' || attacker.heroId === 'witch' || attacker.heroId === 'shadow') {
       return 1;
     }
     if (this.pendingTaps > 0) {
@@ -223,8 +224,7 @@ export class QuickAttack {
   }
 
   private fireWitchLight(now: number, attacker: NinjaBody): void {
-    this.witchBarrage?.destroy();
-    this.witchBarrage = new WitchSkullBarrage(this.scene, attacker, now);
+    this.witchBarrages.push(new WitchSkullBarrage(this.scene, attacker, now));
   }
 
   private tickWitchBarrage(
@@ -233,12 +233,61 @@ export class QuickAttack {
     enemies: NinjaBody[],
     defenderBlock?: BlockController,
   ): void {
-    if (!this.witchBarrage) {
-      return;
+    const dt = this.scene.game.loop.delta / 1000;
+    for (let i = this.witchBarrages.length - 1; i >= 0; i -= 1) {
+      const keep = this.witchBarrages[i].update(now, dt, attacker, enemies, defenderBlock);
+      if (!keep) {
+        this.witchBarrages.splice(i, 1);
+      }
     }
-    const keep = this.witchBarrage.update(now, this.scene.game.loop.delta / 1000, attacker, enemies, defenderBlock);
-    if (!keep) {
-      this.witchBarrage = undefined;
+  }
+
+  private clearWitchBarrages(): void {
+    for (const barrage of this.witchBarrages) {
+      barrage.destroy();
+    }
+    this.witchBarrages.length = 0;
+  }
+
+  private playShadowLight(attacker: NinjaBody, now: number): void {
+    const len = Math.hypot(attacker.aim.x, attacker.aim.y) || 1;
+    const nx = attacker.aim.x / len;
+    const ny = attacker.aim.y / len;
+    attacker.playCustomAttack(now, SHADOW_ATTACK.animMs, (frac) => ({
+      armLiftRight: frac < 0.45 ? 0.25 + frac * 1.8 : Math.max(0.15, 1.1 - (frac - 0.45) * 1.6),
+      armLiftLeft: 0.12,
+      swayX: nx * (frac < 0.4 ? -3 : 8) * Math.min(1, frac * 1.6),
+    }));
+    spawnShadowSlash(this.scene, attacker.x, attacker.y, nx, ny, attacker.stats.attackRange);
+  }
+
+  private resolveShadowImpact(
+    now: number,
+    attacker: NinjaBody,
+    enemies: NinjaBody[],
+    step: ComboStep,
+    defenderBlock?: BlockController,
+  ): void {
+    let connected = false;
+    for (const defender of enemies) {
+      if (defender.down) {
+        continue;
+      }
+      const result = resolveMelee(this.scene, now, attacker, defender, step, defenderBlock, {
+        alreadyClashed: connected,
+        knockbackMul: SHADOW_ATTACK.knockbackMul,
+      });
+      if (result === 'hit') {
+        connected = true;
+        defender.applyClawMark(now);
+      }
+      if (result === 'blocked' || result === 'perfect-block' || result === 'clash') {
+        this.combo.reset();
+      }
+    }
+    if (!connected) {
+      attacker.status.applyAttackRecovery(now, COMBAT.combo[step].recoveryMs);
+      this.combo.reset();
     }
   }
 
@@ -320,6 +369,10 @@ export class QuickAttack {
       if (pending.step === 3) {
         this.combo.reset();
       }
+      return;
+    }
+    if (attacker.heroId === 'shadow') {
+      this.resolveShadowImpact(now, attacker, enemies, pending.step, defenderBlock);
       return;
     }
 

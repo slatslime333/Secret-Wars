@@ -1,5 +1,5 @@
 import { playWorld } from '../../../audio';
-import { AbilityContext, AbilityDef } from '../types';
+import { AbilityContext, AbilityDef, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { COLE_BALL } from './tunables';
 import { Projectile } from '../../../combat/projectile';
@@ -22,7 +22,7 @@ export const electricBallDef: AbilityDef = {
   aimOnRelease: true,
   padLabel: 'BALL',
   tactics: { roles: ['damage', 'cc', 'initiate', 'disruption'], range: 420 },
-  canActivate: (ctx) => !ctx.caster.status.isBlockStunned(ctx.now) && !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => {
     const aim = ctx.aimOverride ?? ctx.caster.aim;
     const len = Math.hypot(aim.x, aim.y) || 1;

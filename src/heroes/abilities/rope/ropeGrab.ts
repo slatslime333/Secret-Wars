@@ -8,11 +8,11 @@ import { COLORS } from '../../../ui/theme';
 import { NINJA } from '../../../config/ninja';
 import { NinjaBody } from '../../NinjaBody';
 import { ropeArmOrigin } from '../../drawRope';
-import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
+import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { segmentHitsCircle } from '../geometry';
 import { NINJA_KICK } from '../ninja/tunables';
-import { spawnRopeProjectile } from './ropeShot';
 import { strokeRope } from './ropeVisual';
 import { ROPE_GRAB } from './tunables';
 
@@ -33,10 +33,7 @@ export const ropeGrabDef: AbilityDef = {
     roles: ['mobility', 'initiate', 'damage', 'disruption', 'finish'],
     range: ROPE_GRAB.range,
   },
-  canActivate: (ctx) =>
-    !ctx.caster.status.isHitReacting(ctx.now) &&
-    !ctx.caster.status.isBlockStunned(ctx.now) &&
-    !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new RopeGrabAbility(ctx),
 };
 
@@ -48,13 +45,13 @@ class RopeGrabAbility implements ActiveAbility {
   consumeDeferred = false;
   private phase: 'shot' | 'sling' | 'impact' | 'flip' | 'done' = 'shot';
   private target?: NinjaBody;
-  private cancelled = false;
   private readonly dir = { x: 1, y: 0 };
   private slingUntil = 0;
   private impactUntil = 0;
   private flipUntil = 0;
   private readonly line: Phaser.GameObjects.Graphics;
-  private shotGone = false;
+  private length = 0;
+  private readonly origin = { x: 0, y: 0 };
 
   constructor(ctx: AbilityContext) {
     const { caster } = ctx;
@@ -63,41 +60,13 @@ class RopeGrabAbility implements ActiveAbility {
     this.dir.x = aim.x / len;
     this.dir.y = aim.y / len;
     caster.setAim(this.dir.x, this.dir.y);
-    const ang = Math.atan2(this.dir.y, this.dir.x);
-    const origin = ropeArmOrigin(caster.x, caster.y, ang, 1, 16);
+    this.syncOrigin(caster);
     this.line = ctx.scene.add.graphics().setDepth(16);
     spawnCombatCallout(ctx.scene, caster.x, caster.y, 'GRAB', COLORS.orange);
     caster.playCustomAttack(ctx.now, 220, () => ({
       armLiftRight: 0.95,
       armLiftLeft: 0.2,
     }));
-    spawnRopeProjectile({
-      scene: ctx.scene,
-      world: ctx.world,
-      caster,
-      x: origin.x,
-      y: origin.y,
-      dirX: this.dir.x,
-      dirY: this.dir.y,
-      speed: ROPE_GRAB.speed,
-      radius: ROPE_GRAB.radius,
-      lifetimeMs: ROPE_GRAB.lifetimeMs,
-      maxRange: ROPE_GRAB.range,
-      onHit: (hit) => {
-        if (this.cancelled) {
-          return;
-        }
-        this.consumeDeferred = true;
-        this.target = hit.target;
-        playWorld('rope-grab-catch', caster);
-      },
-      onMiss: () => {
-        if (this.cancelled) {
-          return;
-        }
-        this.shotGone = true;
-      },
-    });
   }
 
   update(ctx: AbilityContext): boolean {
@@ -106,18 +75,11 @@ class RopeGrabAbility implements ActiveAbility {
       return false;
     }
     if (this.phase === 'shot') {
-      if (this.target && !this.target.down) {
-        this.beginSling(ctx);
+      if (this.advanceRope(ctx)) {
         return true;
       }
-      if (this.target?.down || this.shotGone) {
-        if (!this.consumeDeferred) {
-          spawnCombatCallout(ctx.scene, caster.x, caster.y, 'MISS', COLORS.muted);
-        }
-        return false;
-      }
-      this.drawLine(caster, caster.x + this.dir.x * 40, caster.y + this.dir.y * 40);
-      return true;
+      spawnCombatCallout(ctx.scene, caster.x, caster.y, 'MISS', COLORS.muted);
+      return false;
     }
     if (this.phase === 'sling') {
       const dest = this.target && !this.target.down ? this.target : undefined;
@@ -158,7 +120,6 @@ class RopeGrabAbility implements ActiveAbility {
   }
 
   destroy(): void {
-    this.cancelled = true;
     this.line.destroy();
     this.target = undefined;
   }
@@ -186,6 +147,7 @@ class RopeGrabAbility implements ActiveAbility {
     this.impactUntil = ctx.now + NINJA_KICK.hitStopMs;
     applyImpactHitStop(ctx.now, [ctx.caster, enemy], NINJA_KICK.hitStopMs);
     ctx.caster.playKickPose(NINJA_KICK.hitStopMs);
+    enemy.status.applyParalyze(ctx.now, NINJA_KICK.hitStopMs + 40);
   }
 
   private launchKick(ctx: AbilityContext): void {
@@ -218,7 +180,40 @@ class RopeGrabAbility implements ActiveAbility {
       ctx.rivalBlock,
     );
     enemy.status.applySlow(ctx.now, NINJA_KICK.hitSlowMs, NINJA_KICK.hitSlowMul);
+    enemy.showRopeWrap(ctx.now + NINJA_KICK.hitSlowMs);
     this.beginFlip(ctx, NINJA_KICK.backflipDistance, NINJA_KICK.backflipMs, NINJA_KICK.jumpHeight);
+  }
+
+  private advanceRope(ctx: AbilityContext): boolean {
+    const { caster } = ctx;
+    this.syncOrigin(caster);
+    this.length = Math.min(ROPE_GRAB.range, this.length + ROPE_GRAB.speed * (ctx.delta / 1000));
+    const tipX = this.origin.x + this.dir.x * this.length;
+    const tipY = this.origin.y + this.dir.y * this.length;
+    this.drawLine(caster, tipX, tipY);
+    for (const enemy of ctx.enemies) {
+      if (enemy.down) {
+        continue;
+      }
+      const radius = ROPE_GRAB.radius + enemy.stats.bodyRadius;
+      if (!segmentHitsCircle(this.origin.x, this.origin.y, tipX, tipY, enemy.x, enemy.y, radius)) {
+        continue;
+      }
+      this.consumeDeferred = true;
+      this.target = enemy;
+      playWorld('rope-grab-catch', caster);
+      enemy.showRopeWrap(ctx.now + ROPE_GRAB.slingMs + NINJA_KICK.hitStopMs + NINJA_KICK.hitSlowMs);
+      this.beginSling(ctx);
+      return true;
+    }
+    return this.length < ROPE_GRAB.range;
+  }
+
+  private syncOrigin(caster: NinjaBody): void {
+    const ang = Math.atan2(this.dir.y, this.dir.x);
+    const hand = ropeArmOrigin(caster.x, caster.y, ang, 1, 16);
+    this.origin.x = hand.x;
+    this.origin.y = hand.y;
   }
 
   private beginFlip(ctx: AbilityContext, distance: number, durationMs: number, jumpHeight: number): void {
@@ -233,6 +228,6 @@ class RopeGrabAbility implements ActiveAbility {
     const ang = Math.atan2(this.dir.y, this.dir.x);
     const hand = ropeArmOrigin(caster.x, caster.y, ang, 1, 14);
     this.line.clear();
-    strokeRope(this.line, hand.x, hand.y, tx, ty, 3.4);
+    strokeRope(this.line, hand.x, hand.y, tx, ty, ROPE_GRAB.width);
   }
 }

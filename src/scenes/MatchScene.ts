@@ -12,6 +12,8 @@ import { DEATH_GUN, DEATH_SMASH } from '../heroes/abilities/death/tunables';
 import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
 import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
 import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT } from '../heroes/abilities/rope/tunables';
+import { witchHexAllyRange } from '../heroes/abilities/witch/tunables';
+import { SHADOW_CLAW, SHADOW_DASH } from '../heroes/abilities/shadow/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { onCombatDamage, onCombatBlocked, isHeroFighter } from '../combat/damageEvents';
 import { BattleInput } from '../input/BattleInput';
@@ -648,9 +650,17 @@ export class MatchScene extends Phaser.Scene {
         this.player.attacks.nextRopeArm,
         ROPE_SHOT.armOffsetRad,
       );
-    } else if (ninja.heroId === 'witch' && !frame.ability1Aiming && !frame.ability2Aiming) {
-      this.marker.syncWitchAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, ninja.stats.attackRange, frame.attackHeld);
-    } else if (ninja.heroId === 'rope' || ninja.heroId === 'witch') {
+    } else if (ninja.heroId === 'witch') {
+      this.marker.syncWitchAim(
+        ninja.x,
+        ninja.y,
+        ninja.aim.x,
+        ninja.aim.y,
+        ninja.stats.attackRange,
+        frame.attackHeld,
+        witchHexAllyRange(),
+      );
+    } else if (ninja.heroId === 'rope') {
       this.marker.clearRange();
     } else {
       this.marker.sync(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, ninja.stats.attackRange, ninja.stats.attackArcDegrees);
@@ -670,6 +680,26 @@ export class MatchScene extends Phaser.Scene {
         NINJA_KICK.dashDistance,
         true,
         NINJA_KICK.aimHalfWidth,
+      );
+    } else if (ninja.heroId === 'shadow' && frame.ability1Aiming) {
+      this.marker.syncKickAim(
+        ninja.x,
+        ninja.y,
+        ninja.aim.x,
+        ninja.aim.y,
+        SHADOW_CLAW.radius,
+        true,
+        SHADOW_CLAW.aimHalfWidth,
+      );
+    } else if (ninja.heroId === 'shadow' && frame.ability2Aiming) {
+      this.marker.syncKickAim(
+        ninja.x,
+        ninja.y,
+        ninja.aim.x,
+        ninja.aim.y,
+        SHADOW_DASH.distance,
+        true,
+        SHADOW_DASH.aimHalfWidth,
       );
     } else if (ninja.heroId === 'rope' && frame.ability1Aiming && !this.player.abilities.isBusy()) {
       this.marker.syncRopeGrabAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, ROPE_GRAB.range, true);

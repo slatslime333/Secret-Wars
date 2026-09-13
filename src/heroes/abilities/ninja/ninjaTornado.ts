@@ -6,7 +6,7 @@ import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { playUltimateShake } from '../../../effects/hitJuice';
 import { COLORS } from '../../../ui/theme';
 import { NinjaBody } from '../../NinjaBody';
-import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
+import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { distanceBetween } from '../geometry';
 import { resolveAbilityHit } from '../resolveAbilityHit';
 import { ABILITY_ICON } from '../icons';
@@ -23,10 +23,7 @@ export const ninjaTornadoDef: AbilityDef = {
   iconKey: ABILITY_ICON.ninjaTornado,
   accent: COLORS.yellow,
   tactics: { roles: ['aoe', 'burst', 'cc', 'damage', 'space'], range: NINJA_TORNADO.radius },
-  canActivate: (ctx) =>
-    !ctx.caster.status.isHitReacting(ctx.now) &&
-    !ctx.caster.status.isBlockStunned(ctx.now) &&
-    !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new NinjaTornadoAbility(ctx),
 };
 

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { COMBAT } from '../../../config/combat';
 import { COLORS } from '../../../ui/theme';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
-import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
+import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { NINJA_SMOKE } from './tunables';
 
@@ -17,7 +17,7 @@ export const smokeBombDef: AbilityDef = {
   iconKey: ABILITY_ICON.smokeBomb,
   accent: 0x6b7c8a,
   tactics: { roles: ['escape', 'space', 'disruption', 'defense', 'mobility'], range: NINJA_SMOKE.radius },
-  canActivate: (ctx) => !ctx.caster.status.isBlockStunned(ctx.now) && !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new SmokeBombAbility(ctx),
 };
 

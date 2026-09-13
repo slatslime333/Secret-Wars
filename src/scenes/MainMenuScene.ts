@@ -291,9 +291,9 @@ export class MainMenuScene extends Phaser.Scene {
       letterSpacing: 3,
     });
     const make = (id: HeroId, ox: number) =>
-      new ActionButton(this, x + 40 + ox, y + 10, {
+      new ActionButton(this, x + 28 + ox, y + 10, {
         label: id === 'rope' ? 'ROPE' : id.toUpperCase(),
-        width: 64,
+        width: 56,
         height: 34,
         compact: true,
         primary: getSelectedHeroId() === id,
@@ -304,7 +304,7 @@ export class MainMenuScene extends Phaser.Scene {
           this.scene.restart();
         },
       });
-    HERO_IDS.forEach((id, index) => make(id, index * 70));
+    HERO_IDS.forEach((id, index) => make(id, index * 58));
   }
 
   private createTeamMarks(x: number, y: number): void {

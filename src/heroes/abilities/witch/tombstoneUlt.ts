@@ -1,6 +1,6 @@
 import { playWorld } from '../../../audio';
 import { isHeroFighter } from '../../../combat/damageEvents';
-import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
+import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { COMBAT } from '../../../config/combat';
 import { WITCH_ULT, witchAuraRadius } from './tunables';
@@ -19,10 +19,7 @@ export const tombstoneUltDef: AbilityDef = {
   accent: 0x9b4dff,
   padLabel: 'TOMB',
   tactics: { roles: ['aoe', 'cc', 'space', 'defense'], range: witchAuraRadius() },
-  canActivate: (ctx) =>
-    !ctx.caster.status.isHitReacting(ctx.now) &&
-    !ctx.caster.status.isBlockStunned(ctx.now) &&
-    !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new TombstoneUltAbility(ctx),
 };
 

@@ -1,5 +1,5 @@
 import { playWorld } from '../../../audio';
-import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
+import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { WITCH_HEX, witchHexAllyRange } from './tunables';
 import { nearestAllyHero } from './tombstone';
@@ -18,10 +18,7 @@ export const hexDef: AbilityDef = {
   accent: 0x9b4dff,
   padLabel: 'HEX',
   tactics: { roles: ['defense', 'peel'], range: witchHexAllyRange() },
-  canActivate: (ctx) =>
-    !ctx.caster.status.isHitReacting(ctx.now) &&
-    !ctx.caster.status.isBlockStunned(ctx.now) &&
-    !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new HexAbility(ctx),
 };
 

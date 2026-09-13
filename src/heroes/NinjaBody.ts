@@ -10,9 +10,11 @@ import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
 import { drawColeElectricity } from './drawCole';
 import type { HeroDrawFn } from './heroDraw';
-import { playDeath } from '../audio';
+import { playDeath, playWorld } from '../audio';
 import { drawRopeWrap } from './abilities/rope/ropeVisual';
 import { drawMagicVortex } from './abilities/witch/vortex';
+import { drawClawMark, drawRageFire } from './abilities/shadow/clawFx';
+import { SHADOW_MARK, SHADOW_RAGE } from './abilities/shadow/tunables';
 import { dismissWitchSkeletons, unregisterWitchSkeleton } from './abilities/witch/skeletonPack';
 import { DEV_CHEATS } from '../debug/devCheats';
 import { MATCH } from '../config/match';
@@ -65,6 +67,14 @@ export class NinjaBody {
   private vortexTint = 0x9b4dff;
   private tempShield = 0;
   private tempShieldUntil = 0;
+  private clawGfx?: Phaser.GameObjects.Graphics;
+  private clawUntil = 0;
+  private clawTickAt = 0;
+  private rageGfx?: Phaser.GameObjects.Graphics;
+  private rageUntil = 0;
+  private rageCastUntil = 0;
+  private readonly baseMaxStamina: number;
+  private rageStaminaUntil = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: FighterOptions = {}) {
     this.scene = scene;
@@ -75,6 +85,7 @@ export class NinjaBody {
     this.drawHero = options.draw ?? ((graphics, drawOptions) => drawNinja(graphics, drawOptions));
     this.health = this.stats.maxHealth;
     this.stamina = this.stats.maxStamina;
+    this.baseMaxStamina = this.stats.maxStamina;
     ensureBodyTexture(scene);
     this.sprite = scene.physics.add.image(x, y, BODY_TEXTURE);
     this.sprite.setAlpha(0);
@@ -101,7 +112,7 @@ export class NinjaBody {
   }
 
   get defense(): number {
-    return this.stats.defense;
+    return Math.round(this.stats.defense * this.status.defenseMultiplier(this.now()));
   }
 
   get heroId(): string {
@@ -145,6 +156,8 @@ export class NinjaBody {
     this.redrawHandSparks();
     this.syncRopeWrap();
     this.syncMagicVortex();
+    this.syncClawMark();
+    this.syncRageFire();
     const now = this.now();
     if (this.heroId === 'rope' && now >= this.attackingUntil && this.present && !this.down) {
       const hop = Math.abs(Math.sin(now / 130)) * 3.4;
@@ -253,6 +266,8 @@ export class NinjaBody {
       this.stop();
       this.clearTempShield();
       this.clearMagicVortex();
+      this.clearClawMark();
+      this.clearRage();
       dismissWitchSkeletons(this);
       if (applied > 0) {
         playDeath(this);
@@ -587,10 +602,12 @@ export class NinjaBody {
   }
 
   healFull(): void {
+    this.clearRage();
     this.health = this.stats.maxHealth;
     this.stamina = this.stats.maxStamina;
     this.clearTempShield();
     this.clearMagicVortex();
+    this.clearClawMark();
   }
 
   heal(amount: number): void {
@@ -618,6 +635,8 @@ export class NinjaBody {
       this.clearRopeWrap();
       this.clearMagicVortex();
       this.clearTempShield();
+      this.clearClawMark();
+      this.clearRage();
       dismissWitchSkeletons(this);
     }
   }
@@ -693,13 +712,138 @@ export class NinjaBody {
     drawMagicVortex(gfx, this.x, this.y, now, this.vortexTint);
   }
 
+  applyClawMark(now: number): void {
+    const fresh = now >= this.clawUntil;
+    this.clawUntil = now + SHADOW_MARK.durationMs;
+    if (fresh) {
+      this.clawTickAt = now;
+      playWorld('shadow-claw-mark', this);
+    }
+    if (!this.clawGfx || !this.clawGfx.active) {
+      this.clawGfx = this.scene.add.graphics().setDepth(11);
+    }
+  }
+
+  takeDotDamage(amount: number, now: number): void {
+    if (this.down || !this.present || amount <= 0) {
+      return;
+    }
+    const applied = Math.min(this.health, amount);
+    this.health = Math.max(0, this.health - amount);
+    if (applied > 0) {
+      emitCombatDamage({
+        attacker: null,
+        victim: this,
+        amount: applied,
+        kind: 'other',
+        at: now,
+        victimTeam: this.team,
+      });
+    }
+    if (this.down) {
+      this.stop();
+      this.clearTempShield();
+      this.clearMagicVortex();
+      this.clearClawMark();
+      this.clearRage();
+      dismissWitchSkeletons(this);
+      if (applied > 0) {
+        playDeath(this);
+      }
+    }
+  }
+
+  applyRagePool(now: number, durationMs: number, extraMul: number): void {
+    this.clearRagePool();
+    const extra = Math.round(this.baseMaxStamina * extraMul);
+    this.stats.maxStamina = this.baseMaxStamina + extra;
+    this.stamina += extra;
+    this.rageStaminaUntil = now + durationMs;
+  }
+
+  showRageFire(untilMs: number, castUntilMs: number): void {
+    this.rageUntil = untilMs;
+    this.rageCastUntil = castUntilMs;
+    if (!this.rageGfx || !this.rageGfx.active) {
+      this.rageGfx = this.scene.add.graphics().setDepth(8);
+    }
+  }
+
+  clearRage(): void {
+    this.clearRagePool();
+    this.status.clearTimedBuffs();
+    this.rageUntil = 0;
+    this.rageCastUntil = 0;
+    this.rageGfx?.destroy();
+    this.rageGfx = undefined;
+  }
+
+  private clearRagePool(): void {
+    if (this.rageStaminaUntil <= 0) {
+      return;
+    }
+    this.stats.maxStamina = this.baseMaxStamina;
+    this.stamina = Math.min(this.stamina, this.baseMaxStamina);
+    this.rageStaminaUntil = 0;
+  }
+
+  clearClawMark(): void {
+    this.clawUntil = 0;
+    this.clawTickAt = 0;
+    this.clawGfx?.destroy();
+    this.clawGfx = undefined;
+  }
+
+  private syncClawMark(): void {
+    const gfx = this.clawGfx;
+    if (!gfx) {
+      return;
+    }
+    const now = this.now();
+    if (!this.present || this.down || now >= this.clawUntil) {
+      this.clearClawMark();
+      return;
+    }
+    while (this.clawTickAt + SHADOW_MARK.tickMs <= now && this.clawTickAt + SHADOW_MARK.tickMs <= this.clawUntil) {
+      this.clawTickAt += SHADOW_MARK.tickMs;
+      const amount = this.stats.maxHealth * SHADOW_MARK.healthPerSecond * (SHADOW_MARK.tickMs / 1000);
+      this.takeDotDamage(amount, now);
+      if (this.down) {
+        return;
+      }
+    }
+    drawClawMark(gfx, this.x, this.y, now);
+  }
+
+  private syncRageFire(): void {
+    if (this.rageStaminaUntil > 0 && this.now() >= this.rageStaminaUntil) {
+      this.clearRagePool();
+    }
+    const gfx = this.rageGfx;
+    if (!gfx) {
+      return;
+    }
+    const now = this.now();
+    if (!this.present || this.down || now >= this.rageUntil) {
+      this.rageGfx?.destroy();
+      this.rageGfx = undefined;
+      this.rageUntil = 0;
+      return;
+    }
+    const intensity =
+      now < this.rageCastUntil
+        ? 0.28 + 0.72 * (1 - (this.rageCastUntil - now) / SHADOW_RAGE.castMs)
+        : 1;
+    drawRageFire(gfx, this.x, this.y, now, intensity);
+  }
+
   private syncRopeWrap(): void {
     const gfx = this.wrapGfx;
     if (!gfx) {
       return;
     }
     const now = this.now();
-    if (!this.present || this.down || now >= this.wrapUntil || !this.status.isParalyzed(now)) {
+    if (!this.present || this.down || now >= this.wrapUntil) {
       this.clearRopeWrap();
       return;
     }
@@ -797,7 +941,7 @@ export class NinjaBody {
     }
     this.stamina = Math.min(
       this.stats.maxStamina,
-      this.stamina + this.stats.staminaRegenPerSecond * (deltaMs / 1000),
+      this.stamina + this.stats.staminaRegenPerSecond * this.status.staminaRegenMultiplier(now) * (deltaMs / 1000),
     );
   }
 
@@ -827,6 +971,8 @@ export class NinjaBody {
     this.clearRopeWrap();
     this.clearMagicVortex();
     this.clearTempShield();
+    this.clearClawMark();
+    this.clearRage();
     unregisterWitchSkeleton(this);
     dismissWitchSkeletons(this);
     this.sprite.destroy();

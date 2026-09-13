@@ -73,6 +73,7 @@ export const LOOP_PERIOD_MS: Partial<Record<SoundId, number>> = {
   'cole-storm-loop': 400,
   'death-sweep-loop': 300,
   'rope-spray-loop': 280,
+  'shadow-rage-loop': 260,
 };
 
 /**
@@ -129,6 +130,13 @@ export function synthesize(ctx: AudioContext, dest: AudioNode, id: SoundId): voi
         { kind: 'sine', freq: 220, duration: 0.1, gain: 0.14 },
         { kind: 'triangle', freq: 660, endFreq: 330, duration: 0.12, gain: 0.1, delay: 0.04 },
         { kind: 'sawtooth', freq: 90, duration: 0.1, gain: 0.06 },
+      ]);
+      return;
+    case 'ui-select-shadow':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 110, duration: 0.12, gain: 0.16 },
+        { kind: 'sawtooth', freq: 240, endFreq: 80, duration: 0.14, gain: 0.1, delay: 0.04 },
+        { kind: 'triangle', freq: 420, endFreq: 160, duration: 0.1, gain: 0.08, delay: 0.06 },
       ]);
       return;
     case 'ui-match-start':
@@ -448,6 +456,68 @@ export function synthesize(ctx: AudioContext, dest: AudioNode, id: SoundId): voi
       playRecipe(ctx, dest, [
         { kind: 'triangle', freq: 180, endFreq: 90, duration: 0.12, gain: 0.11 },
         { kind: 'sine', freq: 420, duration: 0.08, gain: 0.07 },
+      ]);
+      return;
+    case 'shadow-light':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: v(140, 18), endFreq: 70, duration: 0.08, gain: 0.12 },
+        { kind: 'triangle', freq: v(420, 30), endFreq: 180, duration: 0.07, gain: 0.08 },
+      ]);
+      return;
+    case 'shadow-claw-mark':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: 90, endFreq: 50, duration: 0.1, gain: 0.12 },
+        { kind: 'sine', freq: 180, duration: 0.08, gain: 0.06 },
+      ]);
+      return;
+    case 'shadow-claw-charge':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 70, endFreq: 140, duration: 0.18, gain: 0.16 },
+        { kind: 'sawtooth', freq: 160, endFreq: 90, duration: 0.16, gain: 0.1 },
+      ]);
+      return;
+    case 'shadow-claw-whoosh':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: v(220, 20), endFreq: 60, duration: 0.14, gain: 0.16 },
+        { kind: 'noise', freq: 0, duration: 0.08, gain: 0.07 },
+      ]);
+      return;
+    case 'shadow-claw-impact':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: 80, duration: 0.12, gain: 0.18 },
+        { kind: 'noise', freq: 0, duration: 0.08, gain: 0.1 },
+        { kind: 'sine', freq: 50, duration: 0.14, gain: 0.12 },
+      ]);
+      return;
+    case 'shadow-dash-whoosh':
+      playRecipe(ctx, dest, [
+        { kind: 'sawtooth', freq: v(280, 30), endFreq: 90, duration: 0.12, gain: 0.14 },
+        { kind: 'noise', freq: 0, duration: 0.08, gain: 0.06 },
+      ]);
+      return;
+    case 'shadow-dash-impact':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: 120, endFreq: 60, duration: 0.1, gain: 0.16 },
+        { kind: 'noise', freq: 0, duration: 0.06, gain: 0.08 },
+      ]);
+      return;
+    case 'shadow-rage-cast':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 55, endFreq: 90, duration: 0.28, gain: 0.18 },
+        { kind: 'sawtooth', freq: 90, endFreq: 40, duration: 0.24, gain: 0.1 },
+      ]);
+      return;
+    case 'shadow-rage-loop':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: v(70, 8), duration: 0.22, gain: 0.08 },
+        { kind: 'sawtooth', freq: v(110, 12), duration: 0.18, gain: 0.05 },
+      ]);
+      return;
+    case 'shadow-rage-active':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: 50, duration: 0.16, gain: 0.2 },
+        { kind: 'sawtooth', freq: 140, endFreq: 70, duration: 0.14, gain: 0.12 },
+        { kind: 'noise', freq: 0, duration: 0.1, gain: 0.08 },
       ]);
       return;
 

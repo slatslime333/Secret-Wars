@@ -32,5 +32,5 @@ export const ROPE = {
   staminaRegenPerSecond: 17,
   /** Baseline cost: 12 light shots ≈ 84 of 128 stamina. */
   attackStaminaMul: 1,
-  dashMaxCharges: 3,
+  dashMaxCharges: 4,
 } as const satisfies HeroCombatConfig;

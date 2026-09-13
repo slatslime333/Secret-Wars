@@ -84,8 +84,8 @@ const paletteFor = (rival: boolean, hitFlash: boolean): Palette => {
 };
 
 /**
- * Cole-sized skinny witch: purple skin, deep-purple hair, green eyes,
- * crop top, skirt, black hat, skull staff. Same chunky pixel language.
+ * Cole-sized witch: slim oval face, curvy feminine silhouette, crop top,
+ * skirt, black hat, skull staff. Same chunky pixel language.
  */
 export const drawWitch = (
   graphics: Phaser.GameObjects.Graphics,
@@ -132,21 +132,22 @@ const drawEast = (
   g.fillRect(3, 9, 4, 6);
 
   g.fillStyle(p.skirtDark);
-  g.fillRoundedRect(-10, 5, 20, 8, 3);
+  g.fillRoundedRect(-12, 5, 24, 8, 4);
   g.fillStyle(p.skirt);
-  g.fillRoundedRect(-9, 4, 18, 7, 3);
+  g.fillRoundedRect(-11, 4, 22, 7, 4);
   g.fillStyle(p.sash);
-  g.fillRect(-9, 4, 18, 2);
+  g.fillRect(-8, 4, 16, 2);
 
   g.fillStyle(p.skin);
-  g.fillRect(-6, 1, 12, 4);
+  g.fillRect(-5, 1, 10, 4);
 
   g.fillStyle(p.topDark);
-  g.fillRoundedRect(-9, -8, 18, 11, 3);
+  g.fillRoundedRect(-9, -8, 18, 11, 4);
   g.fillStyle(p.top);
-  g.fillRoundedRect(-8, -7, 16, 8, 3);
+  g.fillEllipse(0, -5, 17, 8);
+  g.fillRoundedRect(-7, -6, 14, 7, 3);
   g.fillStyle(p.sash);
-  g.fillRect(-8, -2, 16, 2);
+  g.fillRect(-7, -1, 14, 2);
   g.fillStyle(p.band);
   g.fillRect(-8, -8, 16, 3);
 
@@ -162,9 +163,9 @@ const drawEast = (
   g.fillRoundedRect(-8, -18, 16, 8, 4);
 
   g.fillStyle(p.skinDark);
-  g.fillCircle(2, -14, 8.5);
+  g.fillEllipse(2, -14.4, 6.2, 9.2);
   g.fillStyle(p.skin);
-  g.fillCircle(2, -14, 7.4);
+  g.fillEllipse(2, -14.4, 5.2, 8.2);
 
   g.fillStyle(p.hair);
   g.fillRect(-6, -22, 14, 6);
@@ -194,21 +195,22 @@ const drawWest = (
   g.fillRect(4, 9, 4, 6);
 
   g.fillStyle(p.skirtDark);
-  g.fillRoundedRect(-10, 5, 20, 8, 3);
+  g.fillRoundedRect(-12, 5, 24, 8, 4);
   g.fillStyle(p.skirt);
-  g.fillRoundedRect(-9, 4, 18, 7, 3);
+  g.fillRoundedRect(-11, 4, 22, 7, 4);
   g.fillStyle(p.sash);
-  g.fillRect(-9, 4, 18, 2);
+  g.fillRect(-8, 4, 16, 2);
 
   g.fillStyle(p.skin);
-  g.fillRect(-6, 1, 12, 4);
+  g.fillRect(-5, 1, 10, 4);
 
   g.fillStyle(p.topDark);
-  g.fillRoundedRect(-9, -8, 18, 11, 3);
+  g.fillRoundedRect(-9, -8, 18, 11, 4);
   g.fillStyle(p.top);
-  g.fillRoundedRect(-8, -7, 16, 8, 3);
+  g.fillEllipse(0, -5, 17, 8);
+  g.fillRoundedRect(-7, -6, 14, 7, 3);
   g.fillStyle(p.sash);
-  g.fillRect(-8, -2, 16, 2);
+  g.fillRect(-7, -1, 14, 2);
   g.fillStyle(p.band);
   g.fillRect(-8, -8, 16, 3);
 
@@ -224,9 +226,9 @@ const drawWest = (
   g.fillRoundedRect(-8, -18, 16, 8, 4);
 
   g.fillStyle(p.skinDark);
-  g.fillCircle(-2, -14, 8.5);
+  g.fillEllipse(-2, -14.4, 6.2, 9.2);
   g.fillStyle(p.skin);
-  g.fillCircle(-2, -14, 7.4);
+  g.fillEllipse(-2, -14.4, 5.2, 8.2);
 
   g.fillStyle(p.hair);
   g.fillRect(-8, -22, 14, 6);
@@ -254,19 +256,20 @@ const drawFront = (
   g.fillRect(3, 9, 4, 6);
 
   g.fillStyle(p.skirtDark);
-  g.fillRoundedRect(-10, 5, 20, 8, 3);
+  g.fillRoundedRect(-12, 5, 24, 8, 4);
   g.fillStyle(p.skirt);
-  g.fillRoundedRect(-9, 4, 18, 7, 3);
+  g.fillRoundedRect(-11, 4, 22, 7, 4);
 
   g.fillStyle(p.skin);
-  g.fillRect(-5, 1, 10, 4);
+  g.fillRect(-4, 1, 8, 4);
 
   g.fillStyle(p.topDark);
-  g.fillRoundedRect(-9, -8, 18, 11, 3);
+  g.fillRoundedRect(-9, -8, 18, 11, 4);
   g.fillStyle(p.top);
-  g.fillRoundedRect(-8, -7, 16, 8, 3);
+  g.fillEllipse(0, -5, 17, 8);
+  g.fillRoundedRect(-7, -6, 14, 7, 3);
   g.fillStyle(p.sash);
-  g.fillRect(-8, -2, 16, 2);
+  g.fillRect(-7, -1, 14, 2);
   g.fillStyle(p.band);
   g.fillRect(-8, -8, 16, 3);
 
@@ -283,10 +286,10 @@ const drawFront = (
 
   if (!north) {
     g.fillStyle(p.skinDark);
-    g.fillCircle(0, -14, 8.2);
+    g.fillEllipse(0, -14.4, 6, 9);
     g.fillStyle(p.skin);
-    g.fillCircle(0, -14, 7.2);
-    drawEyes(g, p, 0, -14, 0);
+    g.fillEllipse(0, -14.4, 5, 8);
+    drawEyes(g, p, 0, -14.2, 0);
     g.fillStyle(p.hair);
     g.fillTriangle(-10, -16, -4, -16, -9, -7);
     g.fillTriangle(10, -16, 4, -16, 9, -7);

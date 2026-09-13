@@ -28,8 +28,8 @@ export const NINJA = {
   role: 'disruptor' as const,
   ratings: NINJA_RATINGS,
   ...ninjaGameplay,
-  /** 15% more light-attack reach than the converted 95px kit. */
-  attackRange: Math.round(ninjaGameplay.attackRange * 1.15),
+  /** 15% more light-attack reach, then another 13% on the live radius. */
+  attackRange: Math.round(ninjaGameplay.attackRange * 1.15 * 1.13),
   attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 14,
   /** Not a displayed core stat. Kept at the live regen rate. */
@@ -37,5 +37,5 @@ export const NINJA = {
   staminaRegenPerSecond: 14 + (26 - 14) * (70 / 99),
   /** Best light-attack stamina efficiency. */
   attackStaminaMul: 0.85,
-  dashMaxCharges: COMBAT.dashMaxCharges,
+  dashMaxCharges: 4,
 } as const satisfies HeroCombatConfig;

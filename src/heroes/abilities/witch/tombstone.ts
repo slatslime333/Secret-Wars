@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { playWorld } from '../../../audio';
 import { arenaInnerBounds } from '../../../config/arena';
-import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
+import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
-import { WITCH_SKELETON, WITCH_TOMBSTONE } from './tunables';
+import { WITCH_HEX, WITCH_SKELETON, WITCH_TOMBSTONE } from './tunables';
 import { canSummonWitchSkeletons, registerWitchSkeleton, witchSummonSlots } from './skeletonPack';
 import { drawTombstone } from './vortex';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
@@ -23,11 +23,7 @@ export const tombstoneDef: AbilityDef = {
   accent: 0x9b4dff,
   padLabel: 'TOMB',
   tactics: { roles: ['defense', 'peel', 'space'], range: WITCH_TOMBSTONE.protectRadius },
-  canActivate: (ctx) =>
-    canSummonWitchSkeletons(ctx.caster) &&
-    !ctx.caster.status.isHitReacting(ctx.now) &&
-    !ctx.caster.status.isBlockStunned(ctx.now) &&
-    !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canSummonWitchSkeletons(ctx.caster) && canStartAbility(ctx),
   activate: (ctx) => new TombstoneAbility(ctx, WITCH_TOMBSTONE.summonCount, WITCH_TOMBSTONE.castMs, false),
 };
 
@@ -54,6 +50,7 @@ export class TombstoneAbility implements ActiveAbility {
     }));
     spawnCombatCallout(ctx.scene, ctx.caster.x, ctx.caster.y, 'TOMBSTONE', 0x9b4dff);
     playWorld(ultimate ? 'witch-ult-cast' : 'witch-tombstone-cast', ctx.caster);
+    ctx.caster.showMagicVortex(ctx.now + WITCH_HEX.durationMs, 0x9b4dff);
     this.placeMarkers(ctx);
   }
 

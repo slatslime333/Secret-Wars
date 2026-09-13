@@ -26,7 +26,8 @@ export const NINJA_SMOKE = {
 
 export const NINJA_KICK = {
   cooldownMs: 5700,
-  dashDistance: Math.round(112 * 1.2),
+  /** 20% then 35% farther than the original 112px dash. */
+  dashDistance: Math.round(112 * 1.2 * 1.35),
   dashDurationMs: 125,
   maxTargets: 4,
   /** Path width uses body radii plus a small contact slop. */
@@ -36,8 +37,8 @@ export const NINJA_KICK = {
   damageRating: 51,
   /** 15% more than the converted kick so the connect actually rewards the dash. */
   damage: abilityDamage(51) * 1.15,
-  knockbackMul: 6.9,
-  secondaryKnockbackMul: 5.15,
+  knockbackMul: 6.9 * 1.15,
+  secondaryKnockbackMul: 5.15 * 1.15,
   /** Lets the kick exceed the shared launch cap without changing other heroes. */
   launchCap: 858,
   staminaDamage: 6,
@@ -45,7 +46,7 @@ export const NINJA_KICK = {
   hitSlowMul: 0.5,
   hitSlowMs: 1500,
   backflipMs: 460,
-  backflipDistance: 192,
+  backflipDistance: Math.round(192 * 1.15),
   missRecoverMs: 200,
   missRecoverDistance: 34,
   jumpHeight: 44,

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { playWorld } from '../../../audio';
-import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
+import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { ROPE_PUNCH } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
@@ -23,10 +23,7 @@ export const megaPunchDef: AbilityDef = {
   aimOnRelease: true,
   padLabel: 'PUNCH',
   tactics: { roles: ['burst', 'cc', 'knockback', 'peel', 'defense'], range: ROPE_PUNCH.radius },
-  canActivate: (ctx) =>
-    !ctx.caster.status.isHitReacting(ctx.now) &&
-    !ctx.caster.status.isBlockStunned(ctx.now) &&
-    !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new MegaPunchAbility(ctx),
 };
 
@@ -127,6 +124,7 @@ class MegaPunchAbility implements ActiveAbility {
       if (kind === 'hit') {
         this.hit.add(enemy);
         enemy.status.applySlow(ctx.now, ROPE_PUNCH.slowMs, ROPE_PUNCH.slowMul);
+        enemy.showRopeWrap(ctx.now + ROPE_PUNCH.slowMs);
       }
     }
   }

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { playWorld } from '../../../audio';
 import { COMBAT } from '../../../config/combat';
-import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
+import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { DEATH_SWEEP } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
@@ -23,10 +23,7 @@ export const deathBatSweepDef: AbilityDef = {
   iconKey: ABILITY_ICON.batSweep,
   accent: COLORS.yellow,
   tactics: { roles: ['aoe', 'knockback', 'space', 'burst', 'damage'], range: DEATH_SWEEP.radius },
-  canActivate: (ctx) =>
-    !ctx.caster.status.isHitReacting(ctx.now) &&
-    !ctx.caster.status.isBlockStunned(ctx.now) &&
-    !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new DeathBatSweepAbility(ctx),
 };
 

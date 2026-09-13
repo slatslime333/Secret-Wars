@@ -60,11 +60,14 @@ export class AbilityController {
     if (ctx.caster.down) {
       return false;
     }
+    this.tickChargePools(ctx.now);
     if (def.chargeMode === 'once' && runtime.charges <= 0 && !DEV_CHEATS.noCooldowns) {
       return false;
     }
-    if (def.chargeMode === 'cooldown' && ctx.now < runtime.readyAt && !DEV_CHEATS.noCooldowns) {
-      return false;
+    if (def.chargeMode === 'cooldown' && !DEV_CHEATS.noCooldowns) {
+      if (usesChargePool(def) ? runtime.charges <= 0 : ctx.now < runtime.readyAt) {
+        return false;
+      }
     }
     if (def.chargeMode === 'meter' && runtime.meter < 1 && runtime.charges <= 0) {
       return false;
@@ -85,6 +88,11 @@ export class AbilityController {
       runtime.meter = 0;
     } else if (def.deferCooldown) {
       this.deferredSlot = slot;
+    } else if (usesChargePool(def)) {
+      runtime.charges = Math.max(0, runtime.charges - 1);
+      if (runtime.readyAt <= ctx.now) {
+        runtime.readyAt = ctx.now + def.cooldownMs;
+      }
     } else {
       runtime.readyAt = ctx.now + def.cooldownMs;
     }
@@ -99,6 +107,7 @@ export class AbilityController {
   }
 
   update(ctx: AbilityContext): void {
+    this.tickChargePools(ctx.now);
     if (!this.active) {
       return;
     }
@@ -119,19 +128,26 @@ export class AbilityController {
   }
 
   slotState(slot: AbilitySlot, now: number): AbilitySlotState {
+    this.tickChargePools(now);
     const def = defForSlot(this.kit, slot);
     const runtime = this.slots[slot];
     const remaining = DEV_CHEATS.noCooldowns ? 0 : Math.max(0, runtime.readyAt - now);
     const consumed = def.chargeMode === 'once' && runtime.charges <= 0 && !DEV_CHEATS.noCooldowns;
+    const pooled = usesChargePool(def);
     const ready =
       DEV_CHEATS.noCooldowns ||
       (!consumed &&
-        (def.chargeMode === 'cooldown' ? remaining <= 0 : runtime.charges > 0 || runtime.meter >= 1));
+        (pooled
+          ? runtime.charges > 0
+          : def.chargeMode === 'cooldown'
+            ? remaining <= 0
+            : runtime.charges > 0 || runtime.meter >= 1));
+    const showRecharge = pooled && runtime.charges < def.maxCharges;
     return {
       def,
       ready,
-      cooldownRemainingMs: remaining,
-      cooldownRatio: def.cooldownMs > 0 ? remaining / def.cooldownMs : 0,
+      cooldownRemainingMs: showRecharge || !pooled ? remaining : 0,
+      cooldownRatio: def.cooldownMs > 0 && (showRecharge || !pooled) ? remaining / def.cooldownMs : 0,
       charges: runtime.charges,
       maxCharges: def.maxCharges,
       consumed,
@@ -170,7 +186,29 @@ export class AbilityController {
     this.active = undefined;
     this.silence();
   }
+
+  private tickChargePools(now: number): void {
+    for (const slot of SLOT_ORDER) {
+      const def = defForSlot(this.kit, slot);
+      if (!usesChargePool(def)) {
+        continue;
+      }
+      const runtime = this.slots[slot];
+      if (DEV_CHEATS.noCooldowns) {
+        runtime.charges = def.maxCharges;
+        runtime.readyAt = 0;
+        continue;
+      }
+      while (runtime.charges < def.maxCharges && runtime.readyAt > 0 && now >= runtime.readyAt) {
+        runtime.charges += 1;
+        runtime.readyAt = runtime.charges < def.maxCharges ? runtime.readyAt + def.cooldownMs : 0;
+      }
+    }
+  }
 }
+
+const usesChargePool = (def: { chargeMode: string; maxCharges: number }): boolean =>
+  def.chargeMode === 'cooldown' && def.maxCharges > 1;
 
 const makeRuntime = (def: { startingCharges: number }): SlotRuntime => ({
   readyAt: 0,

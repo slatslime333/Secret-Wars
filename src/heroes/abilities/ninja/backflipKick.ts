@@ -6,7 +6,7 @@ import { spawnWindImpact } from '../../../effects/windImpact';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { COLORS } from '../../../ui/theme';
 import { NinjaBody } from '../../NinjaBody';
-import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
+import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { segmentHitsCircle } from '../geometry';
 import { resolveAbilityHit } from '../resolveAbilityHit';
 import { ABILITY_ICON } from '../icons';
@@ -18,17 +18,14 @@ export const backflipKickDef: AbilityDef = {
   slot: 'ability2',
   cooldownMs: NINJA_KICK.cooldownMs,
   chargeMode: 'cooldown',
-  startingCharges: 1,
-  maxCharges: 1,
+  startingCharges: 2,
+  maxCharges: 2,
   iconKey: ABILITY_ICON.backflipKick,
   accent: COLORS.orange,
   aimOnRelease: true,
   padLabel: 'KICK',
   tactics: { roles: ['damage', 'mobility', 'initiate', 'disruption', 'finish', 'escape'], range: NINJA_KICK.dashDistance },
-  canActivate: (ctx) =>
-    !ctx.caster.status.isHitReacting(ctx.now) &&
-    !ctx.caster.status.isBlockStunned(ctx.now) &&
-    !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new BackflipKickAbility(ctx),
 };
 
@@ -165,6 +162,9 @@ class BackflipKickAbility implements ActiveAbility {
     this.impactUntil = ctx.now + NINJA_KICK.hitStopMs;
     applyImpactHitStop(ctx.now, [ctx.caster, ...this.pending], NINJA_KICK.hitStopMs);
     ctx.caster.playKickPose(NINJA_KICK.hitStopMs);
+    for (const enemy of this.pending) {
+      enemy.status.applyParalyze(ctx.now, NINJA_KICK.hitStopMs + 40);
+    }
   }
 
   private launchImpact(ctx: AbilityContext): void {

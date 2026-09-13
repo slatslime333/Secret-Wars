@@ -158,7 +158,7 @@ export class HitMarker {
     g.fillCircle(nx * length, ny * length, 3);
   }
 
-  /** Thin purple aim line for Witch's skull barrage. */
+  /** Thin purple aim line plus persistent light-attack and Hex range auras. */
   syncWitchAim(
     x: number,
     y: number,
@@ -166,12 +166,21 @@ export class HitMarker {
     aimY: number,
     length: number,
     aiming: boolean,
+    hexRange = Math.round(length * 0.625),
   ): void {
     const angle = Math.atan2(aimY, aimX);
     const g = this.graphics;
     g.clear();
     g.setPosition(x, y);
     const alpha = aiming ? 0.84 : 0.5;
+    g.lineStyle(2, 0xc090ff, aiming ? 0.28 : 0.18);
+    g.strokeCircle(0, 0, length);
+    g.lineStyle(2, 0x3cdb5c, aiming ? 0.32 : 0.2);
+    g.strokeCircle(0, 0, hexRange);
+    g.fillStyle(0x9b4dff, 0.05);
+    g.fillCircle(0, 0, length);
+    g.fillStyle(0x3cdb5c, 0.04);
+    g.fillCircle(0, 0, hexRange);
     const nx = Math.cos(angle);
     const ny = Math.sin(angle);
     g.lineStyle(3.5, 0x4a1a6a, alpha * 0.22);

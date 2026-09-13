@@ -19,8 +19,8 @@ export const ROPE_SHOT = {
 } as const;
 
 export const ROPE_DASH = {
-  /** Farther than Ninja's 118px slide. */
-  distance: 172,
+  /** Farther than Ninja's 118px slide, then 10% more launch. */
+  distance: Math.round(172 * 1.1),
   shootMs: 70,
   grabMs: 40,
   travelMs: 110,
@@ -30,9 +30,11 @@ export const ROPE_DASH = {
 
 export const ROPE_GRAB = {
   cooldownMs: 7000,
-  range: 440,
-  speed: Math.round(DEATH_GUN.speed * 1.35),
-  radius: 7,
+  range: Math.round(440 * 1.08),
+  speed: Math.round(DEATH_GUN.speed * 1.35 * 1.4),
+  radius: Math.round(7 * 1.12),
+  /** Thicker than light-shot projectiles (4.5 radius). */
+  width: 6.6,
   lifetimeMs: 900,
   slingMs: 160,
 } as const;

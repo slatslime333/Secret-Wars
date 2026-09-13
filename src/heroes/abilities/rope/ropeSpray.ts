@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { playWorld } from '../../../audio';
 import { COMBAT } from '../../../config/combat';
-import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
+import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { ROPE_SPRAY, ROPE_SHOT } from './tunables';
 import { spawnRopeProjectile } from './ropeShot';
@@ -22,10 +22,7 @@ export const ropeSprayDef: AbilityDef = {
   iconKey: ABILITY_ICON.ropeSpray,
   accent: COLORS.yellow,
   tactics: { roles: ['aoe', 'cc', 'space', 'disruption', 'damage'], range: ROPE_SPRAY.range },
-  canActivate: (ctx) =>
-    !ctx.caster.status.isHitReacting(ctx.now) &&
-    !ctx.caster.status.isBlockStunned(ctx.now) &&
-    !ctx.caster.status.isClashLocked(ctx.now),
+  canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new RopeSprayAbility(ctx),
 };
 

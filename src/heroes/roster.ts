@@ -3,6 +3,7 @@ import { DEATH } from '../config/death';
 import { NINJA } from '../config/ninja';
 import { ROPE } from '../config/rope';
 import { WITCH } from '../config/witch';
+import { SHADOW } from '../config/shadow';
 import { HeroCombatConfig } from '../config/hero';
 import { HeroAbilityKit } from './abilities/types';
 import { NINJA_ABILITY_KIT } from './abilities/ninja/kit';
@@ -10,17 +11,19 @@ import { COLE_ABILITY_KIT } from './abilities/cole/kit';
 import { DEATH_ABILITY_KIT } from './abilities/death/kit';
 import { ROPE_ABILITY_KIT } from './abilities/rope/kit';
 import { WITCH_ABILITY_KIT } from './abilities/witch/kit';
+import { SHADOW_ABILITY_KIT } from './abilities/shadow/kit';
 import { drawNinja } from './drawNinja';
 import { drawCole } from './drawCole';
 import { drawDeath } from './drawDeath';
 import { drawRope } from './drawRope';
 import { drawWitch } from './drawWitch';
+import { drawShadow } from './drawShadow';
 import { HeroDrawFn } from './heroDraw';
 import type { CoreRatings } from '../config/ratings';
 
-export type HeroId = 'ninja' | 'cole' | 'death' | 'rope' | 'witch';
+export type HeroId = 'ninja' | 'cole' | 'death' | 'rope' | 'witch' | 'shadow';
 
-export const HERO_IDS: HeroId[] = ['ninja', 'cole', 'death', 'rope', 'witch'];
+export const HERO_IDS: HeroId[] = ['ninja', 'cole', 'death', 'rope', 'witch', 'shadow'];
 
 export const nextHeroId = (id: HeroId): HeroId => {
   const index = HERO_IDS.indexOf(id);
@@ -69,6 +72,13 @@ export const PLAYABLE_HEROES: Record<HeroId, PlayableHero> = {
     stats: WITCH,
     kit: WITCH_ABILITY_KIT,
     draw: drawWitch,
+    handSparks: false,
+  },
+  shadow: {
+    id: 'shadow',
+    stats: SHADOW,
+    kit: SHADOW_ABILITY_KIT,
+    draw: drawShadow,
     handSparks: false,
   },
 };

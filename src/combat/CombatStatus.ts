@@ -28,6 +28,10 @@ export class CombatStatus {
   private asDebuffMul = 1;
   private paralyzeUntil = 0;
   private stunUntil = 0;
+  private defenseUntil = 0;
+  private defenseMul = 1;
+  private staminaRegenUntil = 0;
+  private staminaRegenMul = 1;
   private zone: AreaModifier = OPEN_ZONE;
   private lastSwingAt = -9999;
   private lastSwingStep: ComboStep = 1;
@@ -120,6 +124,34 @@ export class CombatStatus {
   applyAttackSpeedSlow(now: number, durationMs: number, cooldownMul: number): void {
     this.asDebuffUntil = now + durationMs;
     this.asDebuffMul = cooldownMul;
+  }
+
+  applyDefenseBuff(now: number, durationMs: number, mul: number): void {
+    this.defenseUntil = now + durationMs;
+    this.defenseMul = mul;
+  }
+
+  applyStaminaRegenBuff(now: number, durationMs: number, mul: number): void {
+    this.staminaRegenUntil = now + durationMs;
+    this.staminaRegenMul = mul;
+  }
+
+  defenseMultiplier(now: number): number {
+    return now < this.defenseUntil ? this.defenseMul : 1;
+  }
+
+  staminaRegenMultiplier(now: number): number {
+    return now < this.staminaRegenUntil ? this.staminaRegenMul : 1;
+  }
+
+  clearTimedBuffs(): void {
+    this.hasteUntil = 0;
+    this.hasteMoveMul = 1;
+    this.hasteAttackMul = 1;
+    this.defenseUntil = 0;
+    this.defenseMul = 1;
+    this.staminaRegenUntil = 0;
+    this.staminaRegenMul = 1;
   }
 
   applyParalyze(now: number, durationMs: number): void {

@@ -71,6 +71,8 @@ export class BattleInput {
   private ability2AimingHeld = false;
   private ability2AimOnRelease = false;
   private ability1AimOnRelease = false;
+  private ability1Ready = true;
+  private ability2Ready = true;
   private pcAim: 'ability1' | 'ability2' | null = null;
   private uiPointerAt = -1;
   private suppressAttack = false;
@@ -146,9 +148,15 @@ export class BattleInput {
             accent: kit.ability1.accent,
             radius: layout.ability1.r,
             onPress: () => {
+              if (!this.ability1Ready) {
+                return;
+              }
               this.ability1AimingHeld = true;
             },
             onRelease: (aim) => {
+              if (!this.ability1AimingHeld) {
+                return;
+              }
               this.ability1AimingHeld = false;
               this.ability1AimActive = aim.length() >= INPUT.aimPadDeadzone;
               if (this.ability1AimActive) {
@@ -173,9 +181,15 @@ export class BattleInput {
             accent: kit.ability2.accent,
             radius: layout.ability2.r,
             onPress: () => {
+              if (!this.ability2Ready) {
+                return;
+              }
               this.ability2AimingHeld = true;
             },
             onRelease: (aim) => {
+              if (!this.ability2AimingHeld) {
+                return;
+              }
               this.ability2AimingHeld = false;
               this.ability2AimActive = aim.length() >= INPUT.aimPadDeadzone;
               if (this.ability2AimActive) {
@@ -292,6 +306,13 @@ export class BattleInput {
     if (slot === 'ultimate') {
       this.ultimateLatched = true;
       this.pcAim = null;
+      return;
+    }
+    const ready = slot === 'ability1' ? this.ability1Ready : this.ability2Ready;
+    if (!ready) {
+      if (this.pcAim === slot) {
+        this.pcAim = null;
+      }
       return;
     }
     const aimable = slot === 'ability1' ? this.ability1AimOnRelease : this.ability2AimOnRelease;
@@ -508,14 +529,22 @@ export class BattleInput {
 
   syncAbilities(states: AbilitySlotState[]): void {
     if (states[0]) {
+      this.ability1Ready = states[0].ready;
       this.ability1Button?.sync(states[0]);
       this.ability1Pad?.setRecovered(states[0].ready ? 1 : 1 - states[0].cooldownRatio);
       this.ability1Pad?.setDimmed(!states[0].ready || states[0].consumed);
+      if (!states[0].ready && this.pcAim === 'ability1') {
+        this.pcAim = null;
+      }
     }
     if (states[1]) {
+      this.ability2Ready = states[1].ready;
       this.ability2Button?.sync(states[1]);
       this.ability2Pad?.setRecovered(states[1].ready ? 1 : 1 - states[1].cooldownRatio);
       this.ability2Pad?.setDimmed(!states[1].ready || states[1].consumed);
+      if (!states[1].ready && this.pcAim === 'ability2') {
+        this.pcAim = null;
+      }
     }
     if (states[2]) {
       this.ultimateButton?.sync(states[2]);

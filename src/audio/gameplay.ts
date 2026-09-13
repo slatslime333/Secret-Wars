@@ -19,6 +19,9 @@ const ABILITY_START: Record<string, SoundId> = {
   'death-bat-smash': 'death-smash-windup',
   'rope-grab': 'rope-grab-fire',
   'rope-mega-punch': 'rope-punch-jump',
+  'shadow-claw': 'shadow-claw-charge',
+  'shadow-dash': 'shadow-dash-whoosh',
+  'shadow-rage': 'shadow-rage-cast',
 };
 
 const ABILITY_LOOP: Record<string, SoundId> = {
@@ -26,6 +29,7 @@ const ABILITY_LOOP: Record<string, SoundId> = {
   'cole-thunderstorm': 'cole-storm-loop',
   'death-bat-sweep': 'death-sweep-loop',
   'rope-spray': 'rope-spray-loop',
+  'shadow-rage': 'shadow-rage-loop',
 };
 
 const HERO_SELECT: Record<string, SoundId> = {
@@ -34,6 +38,7 @@ const HERO_SELECT: Record<string, SoundId> = {
   death: 'ui-select-death',
   rope: 'ui-select-rope',
   witch: 'ui-select-witch',
+  shadow: 'ui-select-shadow',
 };
 
 const LIGHT_ATTACK: Record<string, SoundId> = {
@@ -42,6 +47,7 @@ const LIGHT_ATTACK: Record<string, SoundId> = {
   death: 'death-light',
   rope: 'rope-light',
   witch: 'witch-light',
+  shadow: 'shadow-light',
 };
 
 export const abilityLoopKey = (abilityId: string, caster: Pick<AudioBody, 'heroId' | 'team'>): string =>

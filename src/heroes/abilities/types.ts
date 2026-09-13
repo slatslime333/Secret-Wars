@@ -108,6 +108,20 @@ export type AbilitySlotState = {
 
 export const SLOT_ORDER: AbilitySlot[] = ['ability1', 'ability2', 'ultimate'];
 
+/** Abilities stay usable while taking damage unless paralyzed or animation-locked. */
+export const canStartAbility = (ctx: AbilityContext): boolean => {
+  const { caster, now } = ctx;
+  return (
+    !caster.down &&
+    caster.isPresent &&
+    !caster.status.isParalyzed(now) &&
+    !caster.status.isStunned(now) &&
+    !caster.status.isControlLocked(now) &&
+    !caster.status.isBlockStunned(now) &&
+    !caster.status.isClashLocked(now)
+  );
+};
+
 export const defForSlot = (kit: HeroAbilityKit, slot: AbilitySlot): AbilityDef => {
   if (slot === 'ability1') {
     return kit.ability1;

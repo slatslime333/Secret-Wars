@@ -5,8 +5,8 @@ import { gameplayFromRatings, type CoreRatings } from './ratings';
 
 /**
  * Ranged tank / support. Slow walk, high range, rapid skull barrages.
- * Attack Speed 53 converts to 328ms, then the shared 1.22 swing multiplier
- * yields a 400ms barrage cadence — one four-skull sequence per light attack.
+ * Attack Speed 53 converts to 328ms, then a 20% grouping gap and the shared
+ * 1.22 swing multiplier yield a ~0.48s barrage cadence.
  */
 export const WITCH_RATINGS = {
   health: 65,
@@ -29,6 +29,8 @@ export const WITCH = {
   ...witchGameplay,
   /** 20% longer than Cole’s live attack radius. */
   attackRange: Math.round(COLE.attackRange * 1.2),
+  /** Grouping cadence is 20% slower than the converted 400ms barrage. */
+  attackCooldownMs: Math.round(witchGameplay.attackCooldownMs * 1.2),
   attackArcDegrees: 22,
   bodyRadius: NINJA.bodyRadius,
   staminaRegenPerSecond: 16,
