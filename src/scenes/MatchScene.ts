@@ -242,7 +242,6 @@ export class MatchScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     const now = this.time.now;
     if (this.match.paused) {
-      this.syncHud(now);
       return;
     }
 
@@ -426,7 +425,7 @@ export class MatchScene extends Phaser.Scene {
       }
       unit.markDead(now);
       this.match.notifyHeroKill();
-      if (result.killer === this.player.body) {
+      if (result.killer === this.player.body && result.killer.team !== unit.team) {
         spawnKillPopup(this, 'KILL', unit.body.stats.displayName);
       } else if (result.assists.includes(this.player.body)) {
         spawnKillPopup(this, 'ASSIST', unit.body.stats.displayName);
@@ -642,6 +641,7 @@ export class MatchScene extends Phaser.Scene {
     this.physics.world.pause();
     this.time.paused = true;
     this.freezeField();
+    this.setPauseChromeVisible(false);
     this.pauseOverlay.show(this.stats.allLines());
   }
 
@@ -652,7 +652,18 @@ export class MatchScene extends Phaser.Scene {
     this.match.setPaused(false);
     this.physics.world.resume();
     this.time.paused = false;
+    this.setPauseChromeVisible(true);
     this.pauseOverlay.hide();
+  }
+
+  private setPauseChromeVisible(visible: boolean): void {
+    this.chromeBar?.setVisible(visible);
+    this.titleText?.setVisible(visible);
+    this.menuButton?.setVisible(visible);
+    this.matchHud?.setVisible(visible);
+    this.minimap?.setVisible(visible);
+    this.hud?.setVisible(visible);
+    this.abilityTray?.setVisible(visible);
   }
 
   private restartMatch(): void {

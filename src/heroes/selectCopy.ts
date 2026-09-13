@@ -1,5 +1,5 @@
 import { PLAYABLE_HEROES, type HeroId, type PlayableHero } from './roster';
-import { ratingsFromGameplay, type CoreRatings } from '../config/ratings';
+import { displayedRatingsForHero, type CoreRatings } from '../config/ratings';
 
 export type HeroSelectCopy = {
   id: HeroId;
@@ -69,7 +69,7 @@ export const heroSelectCopy = (id: HeroId): HeroSelectCopy => {
     role: ROLE_LABEL[hero.stats.role] ?? hero.stats.role,
     description: flavor.description,
     light: flavor.light,
-    ratings: ratingsFromGameplay(hero.stats),
+    ratings: displayedRatingsForHero(hero.stats),
     ability1: slotCopy(hero, 'ability1'),
     ability2: slotCopy(hero, 'ability2'),
     ultimate: slotCopy(hero, 'ultimate'),

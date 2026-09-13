@@ -13,6 +13,7 @@ export class MatchHud {
   private readonly level: Phaser.GameObjects.Text;
   private readonly xpFill: Phaser.GameObjects.Rectangle;
   private readonly xpText: Phaser.GameObjects.Text;
+  private readonly xpTrack: Phaser.GameObjects.Rectangle;
 
   constructor(scene: Phaser.Scene) {
     const width = scene.scale.width;
@@ -56,7 +57,7 @@ export class MatchHud {
       .setScrollFactor(0)
       .setDepth(104);
 
-    scene.add.rectangle(148, 108, 224, 6, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
+    this.xpTrack = scene.add.rectangle(148, 108, 224, 6, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
     this.xpFill = scene.add.rectangle(36, 108, 224, 6, COLORS.yellow).setOrigin(0, 0.5);
     this.xpFill.setScrollFactor(0).setDepth(102);
 
@@ -92,6 +93,16 @@ export class MatchHud {
     this.timer.setX(width / 2);
     this.phase.setX(width / 2);
     this.score.setX(width / 2);
+  }
+
+  setVisible(visible: boolean): void {
+    this.timer.setVisible(visible);
+    this.phase.setVisible(visible);
+    this.score.setVisible(visible);
+    this.level.setVisible(visible);
+    this.xpFill.setVisible(visible);
+    this.xpText.setVisible(visible);
+    this.xpTrack.setVisible(visible);
   }
 
   sync(match: MatchSnapshot, score: TeamScore, progression: Progression): void {

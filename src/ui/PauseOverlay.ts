@@ -30,7 +30,7 @@ export class PauseOverlay {
     const width = this.scene.scale.width;
     const height = this.scene.scale.height;
 
-    const veil = this.scene.add.rectangle(width / 2, height / 2, width, height, COLORS.ink, 0.82);
+    const veil = this.scene.add.rectangle(width / 2, height / 2, width, height, COLORS.ink, 0.92);
     veil.setInteractive();
     const title = this.scene.add
       .text(width / 2, 28, 'PAUSED', {

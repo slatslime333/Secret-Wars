@@ -58,6 +58,14 @@ export class AbilityTray {
     this.scale = scale;
   }
 
+  setVisible(visible: boolean): void {
+    this.rings.setVisible(visible);
+    this.icons.forEach((icon) => icon.setVisible(visible));
+    this.overlays.forEach((overlay) => overlay.setVisible(visible));
+    this.labels.forEach((label) => label.setVisible(visible));
+    this.keys.forEach((key) => key.setVisible(visible));
+  }
+
   sync(states: AbilitySlotState[]): void {
     const gap = 52 * this.scale;
     const radius = 18 * this.scale;

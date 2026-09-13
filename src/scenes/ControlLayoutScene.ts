@@ -58,7 +58,6 @@ export class ControlLayoutScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, onResize);
       this.input.keyboard?.off('keydown-ESC', this.done, this);
-      this.input.off(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this.onPick, this);
       this.input.off(Phaser.Input.Events.DRAG, this.onDrag, this);
     });
   }
@@ -96,11 +95,10 @@ export class ControlLayoutScene extends Phaser.Scene {
 
   private drawChrome(): void {
     const width = this.scale.width;
-    const height = this.scale.height;
     this.add
-      .text(width / 2, 8, 'EDIT BUTTONS', {
+      .text(width / 2, 6, 'EDIT BUTTONS', {
         fontFamily: FONTS.display,
-        fontSize: '18px',
+        fontSize: '16px',
         color: hex(COLORS.paper),
         letterSpacing: 3,
         stroke: hex(COLORS.ink),
@@ -109,7 +107,7 @@ export class ControlLayoutScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setDepth(40);
     this.hint = this.add
-      .text(width / 2, height - 92, this.hintText(), {
+      .text(width / 2, 78, this.hintText(), {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
@@ -121,31 +119,31 @@ export class ControlLayoutScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setDepth(40);
 
-    new ActionButton(this, 78, height - 40, {
+    new ActionButton(this, 200, 22, {
       label: 'RESET',
-      width: 130,
-      height: 44,
+      width: 118,
+      height: 36,
       compact: true,
       onPress: () => this.resetLayout(),
     }).setDepth(50);
-    new ActionButton(this, width / 2 - 70, height - 40, {
+    new ActionButton(this, width / 2 - 72, 48, {
       label: 'SMALLER',
       width: 130,
-      height: 44,
+      height: 36,
       compact: true,
       onPress: () => this.nudgeScale(-0.1),
     }).setDepth(50);
-    new ActionButton(this, width / 2 + 70, height - 40, {
+    new ActionButton(this, width / 2 + 72, 48, {
       label: 'BIGGER',
       width: 130,
-      height: 44,
+      height: 36,
       compact: true,
       onPress: () => this.nudgeScale(0.1),
     }).setDepth(50);
-    new ActionButton(this, width - 90, height - 40, {
+    new ActionButton(this, width - 200, 22, {
       label: 'DONE',
-      width: 150,
-      height: 44,
+      width: 130,
+      height: 36,
       primary: true,
       compact: true,
       onPress: () => this.done(),
@@ -153,7 +151,6 @@ export class ControlLayoutScene extends Phaser.Scene {
   }
 
   private rebuildDummies(): void {
-    this.input.off(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this.onPick, this);
     this.input.off(Phaser.Input.Events.DRAG, this.onDrag, this);
     this.dummies.forEach((dummy) => {
       dummy.disc.destroy();
@@ -183,6 +180,10 @@ export class ControlLayoutScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true });
       disc.setData('controlId', id);
       this.input.setDraggable(disc);
+      disc.on(Phaser.Input.Events.POINTER_DOWN, () => {
+        this.selected = id;
+        this.refreshSelection();
+      });
       const label = this.add
         .text(item.x, item.y, CONTROL_LABEL[id], {
           fontFamily: FONTS.display,
@@ -196,21 +197,8 @@ export class ControlLayoutScene extends Phaser.Scene {
         .setDepth(31);
       this.dummies.push({ id, disc, label, accent: accents[id] });
     }
-    this.input.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this.onPick, this);
     this.input.on(Phaser.Input.Events.DRAG, this.onDrag, this);
   }
-
-  private onPick = (
-    _pointer: Phaser.Input.Pointer,
-    gameObject: Phaser.GameObjects.GameObject,
-  ): void => {
-    const id = gameObject.getData('controlId') as ControlId | undefined;
-    if (!id) {
-      return;
-    }
-    this.selected = id;
-    this.refreshSelection();
-  };
 
   private onDrag = (
     _pointer: Phaser.Input.Pointer,
@@ -218,6 +206,9 @@ export class ControlLayoutScene extends Phaser.Scene {
     dragX: number,
     dragY: number,
   ): void => {
+    if (!gameObject || typeof gameObject.getData !== 'function') {
+      return;
+    }
     const id = gameObject.getData('controlId') as ControlId | undefined;
     if (!id) {
       return;
@@ -228,7 +219,7 @@ export class ControlLayoutScene extends Phaser.Scene {
     const dummy = this.dummies.find((item) => item.id === id);
     const radius = dummy ? dummy.disc.radius : 30;
     const x = Phaser.Math.Clamp(dragX, radius + 10, width - radius - 10);
-    const y = Phaser.Math.Clamp(dragY, radius + 10, height - radius - 10);
+    const y = Phaser.Math.Clamp(dragY, radius + 90, height - radius - 10);
     const defaults = defaultControlPlacement(width, height);
     const current = this.working[id] ?? defaults[id];
     this.working[id] = {

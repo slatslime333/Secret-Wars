@@ -17,6 +17,7 @@ export {
   coreStatValue,
   formatRating,
   gameplayFromRatings,
+  displayedRatingsForHero,
   ratingsFromGameplay,
   fromStatRating,
 } from './ratings';

@@ -146,4 +146,33 @@ export const ratingsFromGameplay = (stats: GameplayCoreStats): CoreRatings => ({
   knockback: ratingFromStatValue(stats.knockbackPower, CORE_CURVES.knockback),
 });
 
+const GAMEPLAY_BY_STAT: Record<CoreStatId, keyof GameplayCoreStats> = {
+  health: 'maxHealth',
+  stamina: 'maxStamina',
+  damage: 'attackDamage',
+  defense: 'defense',
+  speed: 'moveSpeed',
+  attackSpeed: 'attackCooldownMs',
+  attackRange: 'attackRange',
+  knockback: 'knockbackPower',
+};
+
+/**
+ * Select cards keep authored ratings unless live gameplay was overridden
+ * (Death range, Ninja reach, etc.). Rounding-only conversion noise stays hidden.
+ */
+export const displayedRatingsForHero = (
+  stats: GameplayCoreStats & { ratings: CoreRatings },
+): CoreRatings => {
+  const converted = gameplayFromRatings(stats.ratings);
+  const next = { ...stats.ratings };
+  (Object.keys(GAMEPLAY_BY_STAT) as CoreStatId[]).forEach((stat) => {
+    const key = GAMEPLAY_BY_STAT[stat];
+    if (stats[key] !== converted[key]) {
+      next[stat] = ratingFromStatValue(stats[key], CORE_CURVES[stat]);
+    }
+  });
+  return next;
+};
+
 export const formatRating = (rating: number): string => `${clampRating(Math.round(rating))}/${RATING_CAP}`;
