@@ -146,6 +146,40 @@ export function synthesize(ctx: AudioContext, dest: AudioNode, id: SoundId): voi
         { kind: 'sine', freq: 660, duration: 0.16, gain: 0.13, delay: 0.2 },
       ]);
       return;
+    case 'objective-spawn':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 392, duration: 0.1, gain: 0.16 },
+        { kind: 'triangle', freq: 587, duration: 0.12, gain: 0.14, delay: 0.07 },
+        { kind: 'sine', freq: 784, duration: 0.16, gain: 0.15, delay: 0.14 },
+      ]);
+      return;
+    case 'objective-complete':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 523, duration: 0.1, gain: 0.16 },
+        { kind: 'sine', freq: 659, duration: 0.1, gain: 0.15, delay: 0.08 },
+        { kind: 'sine', freq: 784, duration: 0.14, gain: 0.16, delay: 0.16 },
+        { kind: 'triangle', freq: 1046, duration: 0.12, gain: 0.1, delay: 0.24 },
+      ]);
+      return;
+    case 'objective-contested':
+      playRecipe(ctx, dest, [
+        { kind: 'square', freq: 220, duration: 0.06, gain: 0.1 },
+        { kind: 'sawtooth', freq: 330, endFreq: 180, duration: 0.08, gain: 0.08, delay: 0.04 },
+      ]);
+      return;
+    case 'piggy-hit':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: v(420, 40), duration: 0.05, gain: 0.12 },
+        { kind: 'noise', freq: 0, duration: 0.03, gain: 0.04 },
+      ]);
+      return;
+    case 'piggy-break':
+      playRecipe(ctx, dest, [
+        { kind: 'noise', freq: 0, duration: 0.12, gain: 0.1 },
+        { kind: 'triangle', freq: 240, endFreq: 90, duration: 0.18, gain: 0.16 },
+        { kind: 'sine', freq: 880, duration: 0.1, gain: 0.1, delay: 0.06 },
+      ]);
+      return;
     case 'ui-level-up':
       playRecipe(ctx, dest, [
         { kind: 'sine', freq: 523, duration: 0.1, gain: 0.15 },

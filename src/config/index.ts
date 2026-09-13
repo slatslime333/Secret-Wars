@@ -1,5 +1,6 @@
 export { ARENA, LANES, nearestLane } from './arena';
 export { MATCH } from './match';
+export { OBJECTIVE } from './objective';
 export { AUDIO } from './audio';
 export { CHASER } from './chaser';
 export { COMBAT, attackHalfArcRad, lightAttackStaminaCost } from './combat';

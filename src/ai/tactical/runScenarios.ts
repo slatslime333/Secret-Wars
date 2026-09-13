@@ -1,4 +1,5 @@
 import { runTacticalScenarios } from './scenarios';
+import { runObjectiveChecks } from '../../match/objectives/runChecks';
 import { moveGoal } from './move';
 import { smashBatHits, smashHitsTarget } from '../../heroes/abilities/death/smashHit';
 import { atFarEdge, roamHuntPoint } from '../../config/arena';
@@ -77,7 +78,17 @@ if (reckless === 'rush_center') {
   console.log(`ok  cautious witch opening  ${reckless}`);
 }
 
+const objectiveChecks = runObjectiveChecks();
+for (const result of objectiveChecks) {
+  const mark = result.ok ? 'ok' : 'FAIL';
+  if (!result.ok) {
+    failed += 1;
+  }
+  console.log(`${mark}  ${result.name}  ${result.detail}`);
+}
+
 if (failed > 0) {
   throw new Error(`${failed} tactical scenario(s) failed`);
 }
 console.log(`\n${results.length} tactical scenarios passed`);
+console.log(`${objectiveChecks.length} objective checks passed`);
