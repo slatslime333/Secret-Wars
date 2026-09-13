@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { ARENA } from '../config/arena';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { battlefieldOf } from '../map';
+import type { TeamId } from '../config/hero';
+import { registerProjectile, unregisterProjectile } from './projectileRegistry';
 
 export type ProjectileHit = {
   target: NinjaBody;
@@ -24,6 +26,7 @@ export class Projectile {
   private readonly originX: number;
   private readonly originY: number;
   private readonly maxRange: number;
+  team?: TeamId;
 
   constructor(
     scene: Phaser.Scene,
@@ -37,11 +40,13 @@ export class Projectile {
     style: 'spark' | 'slug' | 'arrow' | 'rope' | 'skull' = 'spark',
     maxRange = Number.POSITIVE_INFINITY,
     rangeFrom?: { x: number; y: number },
+    team?: TeamId,
   ) {
     this.style = style;
     this.originX = rangeFrom?.x ?? x;
     this.originY = rangeFrom?.y ?? y;
     this.maxRange = maxRange;
+    this.team = team;
     this.endsAt = scene.time.now + lifetimeMs;
     this.view = scene.add.container(x, y).setDepth(15);
     if (style === 'arrow') {
@@ -64,6 +69,11 @@ export class Projectile {
     this.sparks = scene.add.graphics();
     this.view.add(this.body);
     this.view.add(this.sparks);
+    registerProjectile(this);
+  }
+
+  pose(): { x: number; y: number; vx: number; vy: number; radius: number; team?: TeamId } {
+    return { x: this.x, y: this.y, vx: this.vx, vy: this.vy, radius: this.radius, team: this.team };
   }
 
   update(now: number, dt: number, enemies: NinjaBody[]): ProjectileHit | 'dead' | null {
@@ -113,6 +123,7 @@ export class Projectile {
       return;
     }
     this.alive = false;
+    unregisterProjectile(this);
     this.view.destroy();
   }
 

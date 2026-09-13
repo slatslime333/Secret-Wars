@@ -23,41 +23,41 @@ export const facingFromAim = (aimX: number, aimY: number): CardinalFacing => {
 const paletteFor = (rival: boolean, hitFlash: boolean) => {
   if (hitFlash) {
     return {
-      tunic: 0x7a1820,
-      sash: COLORS.redBright,
-      sashTie: 0xffd0d4,
-      head: 0x8a2430,
-      mask: 0xffecec,
-      band: COLORS.redBright,
-      arms: 0x6a1420,
-      glove: COLORS.paper,
+      suit: 0x3a3a44,
+      suitLite: 0x5a5a68,
+      wrap: 0x2a2a32,
+      hood: 0x32323c,
+      band: rival ? COLORS.redBright : COLORS.cyan,
+      eye: 0xfff6a0,
+      eyeCore: 0xffee66,
+      glove: 0x2a2a32,
     };
   }
   if (rival) {
     return {
-      tunic: 0x1a1218,
-      sash: COLORS.red,
-      sashTie: COLORS.orange,
-      head: 0x24141a,
-      mask: 0xf6f1de,
+      suit: 0x0a080c,
+      suitLite: 0x161218,
+      wrap: 0x08060a,
+      hood: 0x100c12,
       band: COLORS.redBright,
-      arms: 0x24141a,
-      glove: COLORS.orange,
+      eye: 0xffe14a,
+      eyeCore: 0xfff6a8,
+      glove: 0x0c0a0e,
     };
   }
   return {
-    tunic: 0x121826,
-    sash: COLORS.cyanDark,
-    sashTie: COLORS.red,
-    head: 0x1b2433,
-    mask: COLORS.paper,
+    suit: 0x0c0c12,
+    suitLite: 0x18181f,
+    wrap: 0x08080c,
+    hood: 0x101016,
     band: COLORS.cyan,
-    arms: 0x1b2433,
-    glove: COLORS.cyan,
+    eye: 0xffe14a,
+    eyeCore: 0xfff6a8,
+    glove: 0x0a0a10,
   };
 };
 
-/** Pixel-comic Ninja. Original silhouette — equipped with a steel katana in hand. */
+/** Pixel-comic shinobi: all-black wraps, hooded mask, yellow eyes, katana. */
 export const drawNinja = (
   graphics: Phaser.GameObjects.Graphics,
   facingOrOptions: CardinalFacing | NinjaDrawOptions,
@@ -80,52 +80,121 @@ export const drawNinja = (
   const hitFlash = Boolean(options.hitFlash);
   const rival = Boolean(options.rival);
   const palette = paletteFor(rival, hitFlash);
+  const lift = attacking ? 0.35 : 0;
 
   graphics.clear();
-
   graphics.fillStyle(COLORS.ink, 0.45);
-  graphics.fillEllipse(0, 16, 22, 8);
+  graphics.fillEllipse(facing === 'east' ? 1 : facing === 'west' ? -1 : 0, 16, 18, 6);
 
-  graphics.fillStyle(palette.tunic);
-  graphics.fillRoundedRect(-11, -6, 22, 20, 3);
-
-  graphics.fillStyle(palette.sash);
-  graphics.fillRect(-12, 2, 24, 5);
-
-  graphics.fillStyle(palette.sashTie);
   if (facing === 'east') {
-    graphics.fillTriangle(10, -2, 22, 4, 10, 10);
+    drawNinjaSide(graphics, palette, 1, lift);
   } else if (facing === 'west') {
-    graphics.fillTriangle(-10, -2, -22, 4, -10, 10);
+    drawNinjaSide(graphics, palette, -1, lift);
   } else {
-    graphics.fillTriangle(-4, 8, 4, 8, 0, 18);
+    drawNinjaFront(graphics, palette, facing === 'north', lift);
   }
-
-  graphics.fillStyle(palette.head);
-  graphics.fillCircle(0, -14, 11);
-  graphics.fillStyle(palette.mask);
-  graphics.fillCircle(0, -13, 8);
-  graphics.fillStyle(0x0c1118);
-  graphics.fillRect(-8, -16, 16, 5);
-
-  graphics.fillStyle(palette.band);
-  graphics.fillRect(-11, -18, 22, 4);
-
-  graphics.fillStyle(COLORS.ink);
-  if (facing === 'south' || facing === 'east') {
-    graphics.fillRect(-5, -12, 4, 3);
-    graphics.fillRect(2, -12, 4, 3);
-  } else if (facing === 'west') {
-    graphics.fillRect(-6, -12, 4, 3);
-  } else {
-    graphics.fillRect(-3, -11, 6, 2);
-  }
-
-  graphics.fillStyle(palette.arms);
-  graphics.fillRect(-14, 0, 6, 12);
-  graphics.fillRect(8, 0, 6, 12);
 
   drawNinjaSword(graphics, facing, attacking, swordAngleOffset, comboStep, palette.glove, hitFlash);
+};
+
+const drawNinjaFront = (
+  g: Phaser.GameObjects.Graphics,
+  p: ReturnType<typeof paletteFor>,
+  north: boolean,
+  lift: number,
+): void => {
+  g.fillStyle(p.wrap);
+  g.fillRoundedRect(-7, 8, 5.5, 8, 2);
+  g.fillRoundedRect(1.5, 8, 5.5, 8, 2);
+  g.fillStyle(p.suit);
+  g.fillRect(-6.5, 8, 4, 6);
+  g.fillRect(2.5, 8, 4, 6);
+
+  g.fillStyle(p.suit);
+  g.fillRoundedRect(-10, -8, 20, 18, 4);
+  g.fillStyle(p.suitLite);
+  g.fillRect(-8, -6, 16, 3);
+  g.fillStyle(p.band);
+  g.fillRect(-10, 2, 20, 2);
+
+  const armY = -2 - lift * 8;
+  g.fillStyle(p.wrap);
+  g.fillRoundedRect(-14, armY, 5, 13, 2);
+  g.fillRoundedRect(9, armY - 1, 5, 13, 2);
+
+  g.fillStyle(p.hood);
+  g.fillEllipse(0, -16, 22, 22);
+  g.fillTriangle(-11, -16, 11, -16, 0, -30);
+  g.fillStyle(p.suit);
+  g.fillEllipse(0, -15, 18, 18);
+  if (!north) {
+    g.fillStyle(p.suitLite);
+    g.fillEllipse(0, -13.5, 14, 12);
+    drawNinjaEyes(g, p, 0, -14.2, 0);
+    g.fillStyle(p.wrap);
+    g.fillEllipse(0, -10.5, 13, 7);
+  }
+};
+
+const drawNinjaSide = (
+  g: Phaser.GameObjects.Graphics,
+  p: ReturnType<typeof paletteFor>,
+  dir: number,
+  lift: number,
+): void => {
+  g.fillStyle(p.wrap);
+  g.fillRoundedRect(-5 + dir, 8, 10, 8, 2);
+  g.fillStyle(p.suit);
+  g.fillRect(-4 + dir, 8, 8, 6);
+
+  g.fillStyle(p.suit);
+  g.fillRoundedRect(-9 + dir, -8, 18, 18, 4);
+  g.fillStyle(p.suitLite);
+  g.fillRect(-7 + dir, -6, 14, 3);
+  g.fillStyle(p.band);
+  g.fillRect(-9 + dir, 2, 18, 2);
+
+  const backY = -1;
+  const frontY = -2 - lift * 9;
+  g.fillStyle(p.wrap);
+  g.fillRoundedRect(-13 * dir - (dir > 0 ? 0 : 5), backY, 5, 12, 2);
+  g.fillRoundedRect(8 * dir - (dir > 0 ? 0 : 5), frontY, 5, 13, 2);
+
+  g.fillStyle(p.hood);
+  g.fillEllipse(dir * 1.5, -16, 20, 22);
+  g.fillTriangle(-8 + dir * 2, -18, 8 + dir * 4, -14, dir * 4, -30);
+  g.fillStyle(p.suit);
+  g.fillEllipse(dir * 2.2, -14.5, 15, 16);
+  g.fillStyle(p.suitLite);
+  g.fillEllipse(dir * 3.4, -13.2, 10, 11);
+  drawNinjaEyes(g, p, dir * 5.2, -13.8, dir);
+  g.fillStyle(p.wrap);
+  g.fillEllipse(dir * 3.2, -10, 10, 6);
+};
+
+const drawNinjaEyes = (
+  g: Phaser.GameObjects.Graphics,
+  p: ReturnType<typeof paletteFor>,
+  cx: number,
+  cy: number,
+  dir: number,
+): void => {
+  const drawOne = (x: number): void => {
+    g.fillStyle(p.eye);
+    g.fillEllipse(x, cy, 3.4, 2.4);
+    g.fillStyle(p.eyeCore);
+    g.fillEllipse(x + dir * 0.2, cy, 2.2, 1.5);
+    g.fillStyle(COLORS.ink);
+    g.fillEllipse(x + dir * 0.25, cy, 1.1, 1.4);
+    g.fillStyle(0xffffff);
+    g.fillCircle(x - 0.6, cy - 0.4, 0.45);
+  };
+  if (dir === 0) {
+    drawOne(cx - 3.2);
+    drawOne(cx + 3.2);
+    return;
+  }
+  drawOne(cx);
 };
 
 /**

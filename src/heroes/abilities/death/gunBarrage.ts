@@ -137,6 +137,7 @@ class GunBarrageAbility implements ActiveAbility {
       0xe8c070,
       'slug',
     );
+    shot.team = caster.team;
     world.addTicker({
       update: (now, delta, fighters) => {
         const enemies = fighters.filter((fighter) => fighter.team !== caster.team && !fighter.down);

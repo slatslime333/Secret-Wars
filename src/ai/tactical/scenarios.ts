@@ -1,5 +1,6 @@
 import { NEUTRAL_PERSONALITY, type CombatantView, type ScoredAction, type Situation, type TacticalAction } from './types';
 import { ensureScoreBuffer, scoreSituation } from './evaluate';
+import { kitProfileOf } from './kitProfile';
 
 const buffer = ensureScoreBuffer();
 
@@ -10,6 +11,7 @@ const unit = (partial: Partial<CombatantView> & Pick<CombatantView, 'id' | 'team
   aimY: 0,
   kind: 'hero',
   role: 'frontliner',
+  heroId: 'cole',
   hpRatio: 1,
   staminaRatio: 1,
   attackRange: 70,
@@ -249,6 +251,45 @@ const scenarioN = (): ScenarioResult => {
   return { name: 'N far edge farm', ok, detail: `best=${best(rows)} farm=${farm.toFixed(1)} advance=${advance.toFixed(1)}` };
 };
 
+const scenarioO = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 620, y: 750, hpRatio: 0.88 });
+  const rows = rankActions(situationOf(self, [], []));
+  const advance = scoreOf(rows, 'advance');
+  const search = Math.max(scoreOf(rows, 'search_for_target'), scoreOf(rows, 'hold_position'), scoreOf(rows, 'recover'));
+  const ok = search >= advance && !['advance', 'push_lane'].includes(best(rows));
+  return { name: 'O empty lane no spawn rush', ok, detail: `best=${best(rows)} search=${search.toFixed(1)} advance=${advance.toFixed(1)}` };
+};
+
+const scenarioP = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 400,
+    y: 750,
+    role: 'ranged-tank',
+    heroId: 'witch',
+    attackRange: 220,
+    hpRatio: 0.86,
+  });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 430, y: 750, attackRange: 70, hpRatio: 0.9 })];
+  const kit = kitProfileOf('witch', 'ranged-tank', 220);
+  const rows = rankActions(situationOf(self, [], enemies, { kit }));
+  const ok = among(rows, ['reposition', 'hold_position', 'retreat', 'wait_for_opening', 'escape'], 3);
+  return { name: 'P witch spacing', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioQ = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.55 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 980, y: 640, hpRatio: 0.8 })];
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 470, y: 740, hpRatio: 0.9 }),
+    unit({ id: 11, team: 'bravo', x: 480, y: 770, hpRatio: 0.85 }),
+  ];
+  const rows = rankActions(situationOf(self, allies, enemies, { isolated: true, allyHeroCount: 1 }));
+  const ok = among(rows, ['regroup', 'retreat', 'escape', 'protect_ally'], 3);
+  return { name: 'Q isolated regroup', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -264,4 +305,7 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioL(),
   scenarioM(),
   scenarioN(),
+  scenarioO(),
+  scenarioP(),
+  scenarioQ(),
 ];

@@ -26,9 +26,10 @@ export class TacticalOverlay {
     for (const subject of subjects) {
       const info = subject.debug;
       const lines = [
+        `${info.strategy} / ${info.opening}`,
         `${info.action}  ${info.targetLabel}`,
-        `thr ${info.threat}  sc ${info.targetScore}`,
-        `a${info.allyCount} e${info.enemyCount}  ${info.hp}`,
+        `thr ${info.threat}  sc ${info.targetScore}${info.projectile ? '  SHOT' : ''}${info.regrouping ? '  REG' : ''}`,
+        `rng ${info.preferredRange}${info.savedUlt ? '  saveUlt' : ''}  ${info.hp}`,
         info.reason,
       ];
       const text = this.scene.add

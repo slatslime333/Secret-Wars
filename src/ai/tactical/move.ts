@@ -1,5 +1,5 @@
-import { ARENA, atFarEdge, nearestLane, pushLimitX, roamHuntPoint } from '../../config/arena';
-import type { TacticalAction } from './types';
+import { ARENA, atFarEdge, nearestLane, roamHuntPoint } from '../../config/arena';
+import type { KitStance, TacticalAction } from './types';
 
 export type MoveSample = {
   x: number;
@@ -25,19 +25,46 @@ export type MoveFocus = {
   aimY: number;
 };
 
-const preferredRange = (body: MoveBody, action: TacticalAction): number => {
-  const ranged = body.role === 'ranged' || (body.kind === 'minion' && body.attackRange > 80);
+export type MoveHint = {
+  stance?: KitStance;
+  preferredRange?: number;
+  anchorX?: number;
+  anchorY?: number;
+};
+
+const isRangedMove = (body: MoveBody, hint?: MoveHint): boolean => {
+  if (hint?.stance) {
+    return hint.stance === 'ranged' || hint.stance === 'support';
+  }
+  return body.role === 'ranged' || body.role === 'ranged-tank' || body.role === 'support' || (body.kind === 'minion' && body.attackRange > 80);
+};
+
+const preferredRange = (body: MoveBody, action: TacticalAction, hint?: MoveHint): number => {
+  const ranged = isRangedMove(body, hint);
+  const base = hint?.preferredRange ?? body.attackRange * (ranged ? 0.88 : 0.7);
   const wait = action === 'wait_for_opening' || action === 'hold_position';
   if (wait) {
     return body.attackRange * (ranged ? 0.92 : 1.14);
   }
   if (action === 'reposition' && ranged) {
-    return body.attackRange * 0.88;
+    return Math.max(base, body.attackRange * 0.88);
   }
-  return body.attackRange * (ranged ? 0.78 : 0.7);
+  return ranged ? base : body.attackRange * 0.7;
 };
 
 const laneYOf = (y: number): number => ARENA.laneY[nearestLane(y)];
+
+const idleAnchor = (body: MoveBody, now: number, slot: number, hint?: MoveHint): { x: number; y: number } => {
+  if (hint?.anchorX !== undefined && hint.anchorY !== undefined) {
+    return { x: hint.anchorX, y: hint.anchorY };
+  }
+  if (atFarEdge(body.team, body.x)) {
+    return roamHuntPoint(body.team, body.y, Math.floor(now / 1800) + slot);
+  }
+  const mid = ARENA.width / 2;
+  const own = body.team === 'alpha' ? mid - 220 : mid + 220;
+  return { x: own, y: laneYOf(body.y) };
+};
 
 /**
  * Turn a committed action into a walk point. Physics/steering stay on the body.
@@ -53,6 +80,7 @@ export const moveGoal = (
   flankSign = 1,
   slot = 0,
   retreatGoal?: { x: number; y: number },
+  hint?: MoveHint,
 ): MoveSample => {
   const aimTo = (x: number, y: number): { aimX: number; aimY: number } => {
     const len = Math.hypot(x - body.x, y - body.y) || 1;
@@ -74,24 +102,31 @@ export const moveGoal = (
     };
   }
 
-  if (!target) {
-    if (atFarEdge(body.team, body.x)) {
-      const hunt = roamHuntPoint(body.team, body.y, Math.floor(now / 1800) + slot);
-      const gap = Math.hypot(hunt.x - body.x, hunt.y - body.y);
-      const aim = aimTo(hunt.x, hunt.y);
-      return { x: hunt.x, y: hunt.y, halt: gap < 52, ...aim };
-    }
-    const destX = pushLimitX(body.team);
-    const destY = laneYOf(body.y);
-    const gap = Math.hypot(destX - body.x, destY - body.y);
-    const aim = aimTo(destX, destY);
-    return { x: destX, y: destY, halt: gap < 36, ...aim };
+  if (action === 'regroup') {
+    const dest = ally
+      ? {
+          x: ally.x + (hint?.stance === 'ranged' || hint?.stance === 'support' ? (body.team === 'alpha' ? -70 : 70) : body.team === 'alpha' ? 36 : -36),
+          y: ally.y + 28 * flankSign,
+        }
+      : idleAnchor(body, now, slot, hint);
+    const gap = Math.hypot(dest.x - body.x, dest.y - body.y);
+    const aim = target ? aimTo(target.x, target.y) : aimTo(dest.x, dest.y);
+    return { x: dest.x, y: dest.y, halt: gap < 28, ...aim };
   }
 
-  const range = preferredRange(body, action);
+  if (!target) {
+    const dest = idleAnchor(body, now, slot, hint);
+    const gap = Math.hypot(dest.x - body.x, dest.y - body.y);
+    const aim = aimTo(dest.x, dest.y);
+    const hold = action === 'hold_position' || action === 'wait_for_opening';
+    return { x: dest.x, y: dest.y, halt: hold ? gap < 42 : gap < 36, ...aim };
+  }
+
+  const range = preferredRange(body, action, hint);
   const toX = target.x - body.x;
   const toY = target.y - body.y;
   const gap = Math.hypot(toX, toY) || 1;
+  const ranged = isRangedMove(body, hint);
 
   if (action === 'wait_for_opening' || action === 'hold_position') {
     const t = now * 0.0032 + slot * 1.7;
@@ -120,8 +155,9 @@ export const moveGoal = (
     const side = flankSign >= 0 ? 1 : -1;
     const nx = toX / gap;
     const ny = toY / gap;
-    const gx = target.x - nx * range + -ny * 46 * side;
-    const gy = target.y - ny * range + nx * 46 * side;
+    const back = ranged && gap < range * 0.7 ? range * 1.02 : range;
+    const gx = target.x - nx * back + -ny * 46 * side;
+    const gy = target.y - ny * back + nx * 46 * side;
     const aim = aimTo(target.x, target.y);
     return { x: gx, y: gy, halt: false, ...aim };
   }
@@ -142,10 +178,20 @@ export const moveGoal = (
 
   const nx = toX / gap;
   const ny = toY / gap;
+  if (ranged && gap < range - 12 && action !== 'chase' && action !== 'finish_target') {
+    const side = flankSign >= 0 ? 1 : -1;
+    return {
+      x: target.x - nx * range + -ny * 32 * side,
+      y: target.y - ny * range + nx * 32 * side,
+      halt: false,
+      aimX: nx,
+      aimY: ny,
+    };
+  }
   if (gap < range - 20 && action !== 'chase' && action !== 'finish_target') {
     return { x: body.x, y: body.y, halt: true, aimX: nx, aimY: ny };
   }
-  const gx = target.x - nx * range * 0.62;
-  const gy = target.y - ny * range * 0.62;
+  const gx = target.x - nx * range * (ranged ? 0.92 : 0.62);
+  const gy = target.y - ny * range * (ranged ? 0.92 : 0.62);
   return { x: gx, y: gy, halt: false, aimX: nx, aimY: ny };
 };

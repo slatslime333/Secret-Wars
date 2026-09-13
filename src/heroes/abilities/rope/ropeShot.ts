@@ -37,6 +37,7 @@ export const spawnRopeProjectile = (args: {
     'rope',
     args.maxRange ?? Number.POSITIVE_INFINITY,
   );
+  shot.team = args.caster.team;
   let settled = false;
   args.world.addTicker({
     update: (now, delta, fighters) => {

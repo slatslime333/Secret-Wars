@@ -27,7 +27,8 @@ export type AbilityRole =
   | 'initiate'
   | 'finish'
   | 'space'
-  | 'peel';
+  | 'peel'
+  | 'setup';
 
 export type AbilityTactics = {
   roles: readonly AbilityRole[];

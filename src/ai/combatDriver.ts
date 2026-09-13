@@ -9,6 +9,7 @@ import type { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import type { NinjaBody } from '../heroes/NinjaBody';
 import { scoreKitSlot } from './tactical/kitTactics';
 import type { TacticalMind } from './tactical/mind';
+import { dodgeDirFor, scanProjectileThreat } from './tactical/shots';
 
 const SLOTS: AbilitySlot[] = SLOT_ORDER;
 
@@ -82,6 +83,7 @@ export class CombatDriver {
     }
 
     this.noticeSwing(now, body, mind, dash, foes, rng);
+    this.noticeShot(now, body, mind, dash, rng);
     this.resolvePending(now, body, mind, dash, world, scene, foes, rng);
 
     const holding = now < this.blockUntil && body.stamina > 10 && !dash.isActive(now) && !abilities?.control.block;
@@ -110,24 +112,69 @@ export class CombatDriver {
     }
     let bestSlot: AbilitySlot | undefined;
     let bestScore = 18;
+    let skippedUlt = false;
     for (const slot of SLOTS) {
       const state = abilities.slotState(slot, now);
       if (!state.ready || state.consumed) {
         continue;
       }
       const score = scoreKitSlot(state.def, situation, slot) + rng() * 6;
+      if (slot === 'ultimate' && score < 26 + situation.personality.abilityConservation * 18) {
+        skippedUlt = true;
+        continue;
+      }
       if (score > bestScore) {
         bestScore = score;
         bestSlot = slot;
       }
     }
     if (!bestSlot) {
+      if (skippedUlt) {
+        mind.noteUltSaved(true);
+      }
       this.nextAbilityAt = now + 220 + rng() * 180;
       return false;
+    }
+    if (bestSlot === 'ultimate') {
+      mind.noteUltSaved(false);
     }
     const fired = abilities.tryActivate(bestSlot, ctx);
     this.nextAbilityAt = now + (fired ? 640 + rng() * 420 : 180);
     return fired;
+  }
+
+  private noticeShot(
+    now: number,
+    body: NinjaBody,
+    mind: TacticalMind,
+    dash: DashController,
+    rng: () => number,
+  ): void {
+    if (this.pending || now < this.strafeUntil) {
+      return;
+    }
+    const threat = scanProjectileThreat(mind.situationView().self, mind.personality, body.stats.bodyRadius);
+    if (!threat?.willHit) {
+      return;
+    }
+    const p = mind.personality;
+    const hp = body.health / Math.max(1, body.stats.maxHealth);
+    const notice = 0.32 + p.reactionQuality * 0.48 + p.caution * 0.12 + (hp < 0.35 ? 0.15 : 0);
+    if (rng() > notice) {
+      return;
+    }
+    if (p.aggression > 0.72 && hp > 0.55 && rng() < 0.38) {
+      return;
+    }
+    const delay = 40 + (1 - p.reactionQuality) * 140 + rng() * 80;
+    const side = rng() < 0.5 ? 1 : -1;
+    const dir = dodgeDirFor(mind.situationView().self, threat, side);
+    let kind: PendingReact['kind'] = 'strafe';
+    if (hp < 0.28 && dash.chargeCount > 0 && rng() < 0.45) {
+      kind = 'dash';
+    }
+    this.reactions[kind] += 1;
+    this.pending = { at: now + delay, kind, x: dir.x, y: dir.y };
   }
 
   private noticeSwing(

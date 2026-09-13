@@ -9,10 +9,15 @@ import {
   threatFromRisk,
 } from './evaluate';
 import type { TacticalField } from './field';
+import { kitProfileOf } from './kitProfile';
 import { personalityFromSeed } from './personality';
 import { pickRetreatGoal, type RetreatGoal } from './retreat';
+import { scanProjectileThreat } from './shots';
+import { GamePlanController } from './strategy';
 import type {
   CombatantView,
+  GamePlan,
+  KitProfile,
   Personality,
   ScoredAction,
   Situation,
@@ -21,6 +26,7 @@ import type {
   TacticalKind,
   UnitFact,
 } from './types';
+import type { MoveHint } from './move';
 
 export type TacticalIntent = {
   action: TacticalAction;
@@ -82,14 +88,19 @@ export class TacticalMind {
   private readonly situation: Situation;
   private readonly rngState: { s: number };
   private readonly slot: number;
+  private readonly seed: string;
   private lastAllyCount = 0;
   private lastEnemyCount = 0;
+  private kit?: KitProfile;
+  private director?: GamePlanController;
+  private readonly teamBuf: UnitFact[] = [];
 
   constructor(kind: TacticalKind, seed: string, homeX: number, homeY: number) {
     this.kind = kind;
     this.personality = personalityFromSeed(seed);
     this.homeX = homeX;
     this.homeY = homeY;
+    this.seed = seed;
     this.slot = Math.floor(hashInt(seed) % 97);
     this.rngState = { s: hashInt(seed) || 1 };
     this.scores = ensureScoreBuffer();
@@ -133,12 +144,34 @@ export class TacticalMind {
     return this.intent.goal;
   }
 
+  get plan(): GamePlan | undefined {
+    return this.director?.snapshot(this.kit?.preferredRange ?? this.situation.self.attackRange);
+  }
+
+  moveHint(): MoveHint | undefined {
+    const kit = this.kit;
+    const director = this.director;
+    if (!kit && !director) {
+      return undefined;
+    }
+    return {
+      stance: kit?.stance,
+      preferredRange: kit?.preferredRange,
+      anchorX: director?.anchorX,
+      anchorY: director?.anchorY,
+    };
+  }
+
   situationView(): Situation {
     return this.situation;
   }
 
   wantsAbilities(): boolean {
     return this.kind === 'hero';
+  }
+
+  noteUltSaved(saved: boolean): void {
+    this.director?.markUltSaved(saved);
   }
 
   think(now: number, self: NinjaBody, field: TacticalField, scene?: object, force = false): void {
@@ -159,6 +192,19 @@ export class TacticalMind {
     }
 
     this.gather(now, selfFact, field, scene);
+    this.kit = kitProfileOf(self.stats.id, String(self.stats.role), self.stats.attackRange);
+    this.situation.kit = this.kit;
+    if (!this.director) {
+      this.director = new GamePlanController(
+        this.seed,
+        this.slot,
+        this.kit,
+        this.personality,
+        this.homeX,
+        this.homeY,
+      );
+    }
+    this.director.sync(now, this.situation, this.kit, this.intent.flankSign);
     const risk = riskOfSituation(this.situation);
     const threat = threatFromRisk(risk);
     const count = scoreSituation(this.situation, this.scores);
@@ -192,7 +238,7 @@ export class TacticalMind {
       commitUntil: now + this.commitMs(picked.action),
       hpAtCommit: selfFact.hpRatio,
       enemyCountAtCommit: this.lastEnemyCount,
-      goal: this.goalFor(picked.action),
+      goal: this.goalFor(picked.action, nextAlly),
     };
   }
 
@@ -210,6 +256,12 @@ export class TacticalMind {
       reason: this.intent.reason,
       flanking: this.intent.action === 'flank',
       assisting: this.intent.action === 'assist_ally' || this.intent.action === 'protect_ally',
+      strategy: this.director?.state ?? 'opening',
+      opening: this.director?.opening ?? 'controlled_advance',
+      preferredRange: Math.round(this.kit?.preferredRange ?? self.stats.attackRange),
+      projectile: Boolean(this.situation.projectile?.willHit),
+      regrouping: this.intent.action === 'regroup' || Boolean(this.director?.regrouping),
+      savedUlt: Boolean(this.director?.savedUlt),
     };
   }
 
@@ -231,7 +283,7 @@ export class TacticalMind {
 
   wantsHold(): boolean {
     const action = this.intent.action;
-    if (action === 'hold_position' || action === 'wait_for_opening') {
+    if (action === 'hold_position' || action === 'wait_for_opening' || action === 'regroup') {
       return true;
     }
     if (action === 'recover' && this.intent.goal) {
@@ -309,6 +361,30 @@ export class TacticalMind {
 
     this.lastAllyCount = this.allies.length;
     this.lastEnemyCount = this.enemies.filter((enemy) => enemy.visible).length;
+
+    const teamN = field.fillAllies(selfFact.ref, this.teamBuf);
+    const seenAlly = new Set(this.allies.map((ally) => ally.id));
+    for (let i = 0; i < teamN; i += 1) {
+      const fact = this.teamBuf[i];
+      this.bodyById.set(fact.id, fact.ref);
+      if (!seenAlly.has(fact.id)) {
+        this.allies.push(fact);
+        seenAlly.add(fact.id);
+      }
+    }
+    const allyHeroes = this.allies.filter((ally) => ally.kind === 'hero');
+    const nearestAlly = allyHeroes.reduce((best, ally) => {
+      const d = Math.hypot(ally.x - selfFact.x, ally.y - selfFact.y);
+      return !best || d < best.d ? { d } : best;
+    }, undefined as { d: number } | undefined);
+    this.situation.allyHeroCount = allyHeroes.length;
+    this.situation.visibleHeroes = this.enemies.filter((enemy) => enemy.kind === 'hero' && enemy.visible).length;
+    this.situation.lastSurvivor = this.kind === 'hero' && allyHeroes.length === 0;
+    this.situation.isolated =
+      this.kind === 'hero' && allyHeroes.length > 0 && (nearestAlly?.d ?? 9999) > 280;
+    this.situation.now = now;
+    this.situation.projectile = scanProjectileThreat(this.situation.self, this.personality, selfFact.ref.stats.bodyRadius);
+    this.lastAllyCount = allyHeroes.length;
   }
 
   private remember(now: number, fact: UnitFact): void {
@@ -364,6 +440,12 @@ export class TacticalMind {
     if (this.lastEnemyCount >= intent.enemyCountAtCommit + 2 && AGGRESSIVE.has(intent.action)) {
       return true;
     }
+    if (this.situation.projectile?.willHit && intent.action !== 'reposition' && intent.action !== 'escape') {
+      return true;
+    }
+    if (this.situation.lastSurvivor && AGGRESSIVE.has(intent.action) && intent.action !== 'finish_target') {
+      return true;
+    }
     return false;
   }
 
@@ -383,15 +465,23 @@ export class TacticalMind {
     if (action === 'farm_minions') {
       return 920;
     }
-    if (action === 'push_lane' || action === 'advance' || action === 'search_for_target') {
+    if (action === 'push_lane' || action === 'advance' || action === 'search_for_target' || action === 'regroup') {
       return 880;
     }
     return TACTIC.commitMin + (this.slot % TACTIC.commitSpan);
   }
 
-  private goalFor(action: TacticalAction): RetreatGoal | undefined {
+  private goalFor(action: TacticalAction, ally?: NinjaBody): RetreatGoal | undefined {
     if (action === 'recover') {
       return pickRetreatGoal(this.situation, 'cover');
+    }
+    if (action === 'regroup') {
+      if (ally) {
+        return { kind: 'safe', x: ally.x, y: ally.y };
+      }
+      return this.director
+        ? { kind: 'safe', x: this.director.anchorX, y: this.director.anchorY }
+        : undefined;
     }
     if (action === 'farm_minions') {
       return pickRetreatGoal(this.situation, 'minions');
@@ -428,6 +518,7 @@ const blankView = (): CombatantView => ({
   team: 'alpha',
   kind: 'hero',
   role: 'generalist',
+  heroId: '',
   hpRatio: 1,
   staminaRatio: 1,
   attackRange: 40,
@@ -453,6 +544,7 @@ const copyView = (dest: CombatantView, src: CombatantView): void => {
   dest.team = src.team;
   dest.kind = src.kind;
   dest.role = src.role;
+  dest.heroId = src.heroId;
   dest.hpRatio = src.hpRatio;
   dest.staminaRatio = src.staminaRatio;
   dest.attackRange = src.attackRange;
