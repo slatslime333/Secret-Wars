@@ -184,7 +184,7 @@ export type SpectatorPlateLayout = {
 export const layoutSpectatorPlate = (frame: ViewportFrame): SpectatorPlateLayout => {
   const chrome = layoutHudChrome(frame);
   const width = Math.round(clamp(frame.isMobile ? frame.width * 0.38 : 168, 132, frame.isMobile ? 156 : 168));
-  const height = frame.isMobile ? 46 : 52;
+  const height = frame.isMobile ? 44 : 52;
   const marginR = Math.max(10, frame.contentInset.right);
   const cx = frame.width - marginR - width / 2;
   let floor: number;
@@ -205,10 +205,10 @@ export const layoutSpectatorPlate = (frame: ViewportFrame): SpectatorPlateLayout
     width,
     height,
     bottom,
-    prevX: cx - 36,
-    nextX: cx + 36,
-    buttonY: bottom - 13,
-    titleY: top + 11,
-    watchingY: top + 23,
+    prevX: cx - 34,
+    nextX: cx + 34,
+    buttonY: bottom - 12,
+    titleY: top + 10,
+    watchingY: top + 22,
   };
 };

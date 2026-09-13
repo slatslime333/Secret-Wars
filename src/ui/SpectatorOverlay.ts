@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { ActionButton } from './ActionButton';
 import { COLORS, FONTS, hex } from './theme';
 import { adoptHud } from './layout/hudCamera';
 import { layoutSpectatorPlate } from './layout/hudChrome';
@@ -13,14 +12,41 @@ export type SpectatorOverlayState = {
   watchingSide: string;
 };
 
+const makeChip = (
+  scene: Phaser.Scene,
+  label: string,
+  onPress: () => void,
+): Phaser.GameObjects.Container => {
+  const bg = scene.add.rectangle(0, 0, 52, 18, COLORS.panel, 0.95).setStrokeStyle(1, COLORS.cyan, 0.85);
+  const text = scene.add
+    .text(0, -1, label, {
+      fontFamily: FONTS.display,
+      fontSize: '10px',
+      color: hex(COLORS.paper),
+      letterSpacing: 1,
+      stroke: hex(COLORS.ink),
+      strokeThickness: 3,
+    })
+    .setOrigin(0.5);
+  const chip = scene.add.container(0, 0, [bg, text]);
+  chip.setSize(52, 18);
+  chip.setInteractive({ useHandCursor: true });
+  chip.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => chip.setScale(0.96));
+  chip.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => {
+    chip.setScale(1);
+    onPress();
+  });
+  chip.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => chip.setScale(1));
+  return chip;
+};
+
 /** Compact spectate chrome. Right side, just above the health cluster. */
 export class SpectatorOverlay {
   private readonly root: Phaser.GameObjects.Container;
   private readonly plate: Phaser.GameObjects.Rectangle;
   private readonly title: Phaser.GameObjects.Text;
-  private readonly watching: Phaser.GameObjects.Text;
-  private readonly prevButton: ActionButton;
-  private readonly nextButton: ActionButton;
+  private readonly prevButton: Phaser.GameObjects.Container;
+  private readonly nextButton: Phaser.GameObjects.Container;
 
   constructor(
     scene: Phaser.Scene,
@@ -28,49 +54,21 @@ export class SpectatorOverlay {
   ) {
     this.root = scene.add.container(0, 0).setDepth(148).setScrollFactor(0).setVisible(false);
     this.plate = scene.add
-      .rectangle(0, 0, 148, 46, COLORS.ink, 0.72)
+      .rectangle(0, 0, 148, 44, COLORS.ink, 0.72)
       .setStrokeStyle(1, COLORS.paper, 0.3);
     this.title = scene.add
       .text(0, 0, 'SPECTATE', {
         fontFamily: FONTS.display,
-        fontSize: '11px',
+        fontSize: '10px',
         color: hex(COLORS.yellow),
         letterSpacing: 1,
         stroke: hex(COLORS.ink),
         strokeThickness: 3,
       })
       .setOrigin(0.5);
-    this.watching = scene.add
-      .text(0, 0, '', {
-        fontFamily: FONTS.body,
-        fontSize: '9px',
-        color: hex(COLORS.paper),
-        letterSpacing: 0,
-        stroke: hex(COLORS.ink),
-        strokeThickness: 2,
-      })
-      .setOrigin(0.5);
-    this.prevButton = new ActionButton(scene, 0, 0, {
-      label: 'PREV',
-      width: 50,
-      height: 18,
-      compact: true,
-      fontSize: '11px',
-      letterSpacing: 1,
-      attachToScene: false,
-      onPress: handlers.onPrev,
-    });
-    this.nextButton = new ActionButton(scene, 0, 0, {
-      label: 'NEXT',
-      width: 50,
-      height: 18,
-      compact: true,
-      fontSize: '11px',
-      letterSpacing: 1,
-      attachToScene: false,
-      onPress: handlers.onNext,
-    });
-    this.root.add([this.plate, this.title, this.watching, this.prevButton, this.nextButton]);
+    this.prevButton = makeChip(scene, 'PREV', handlers.onPrev);
+    this.nextButton = makeChip(scene, 'NEXT', handlers.onNext);
+    this.root.add([this.plate, this.title, this.prevButton, this.nextButton]);
     adoptHud(scene, this.root);
   }
 
@@ -80,23 +78,20 @@ export class SpectatorOverlay {
     this.plate.setPosition(slot.cx, slot.cy);
     this.plate.setSize(slot.width, slot.height);
     this.title.setPosition(slot.cx, slot.titleY);
-    this.watching.setPosition(slot.cx, slot.watchingY);
+    this.title.setFontSize(slot.width < 150 ? '9px' : '10px');
+    this.title.setLetterSpacing(slot.width < 150 ? 0 : 1);
     this.prevButton.setPosition(slot.prevX, slot.buttonY);
     this.nextButton.setPosition(slot.nextX, slot.buttonY);
 
+    let heading: string;
     if (state.remainingMs > 0) {
-      const seconds = Math.max(0, Math.ceil(state.remainingMs / 1000));
-      this.title.setText(`RESPAWN  ${seconds}`);
+      heading = `R ${Math.max(0, Math.ceil(state.remainingMs / 1000))}`;
     } else {
-      this.title.setText(state.simulator ? 'SIMULATOR' : 'SPECTATE');
+      heading = state.simulator ? 'SIM' : 'SPEC';
     }
-
-    if (state.mode === 'lock' && state.watchingName) {
-      const name = state.watchingName.toUpperCase();
-      this.watching.setText(`${name} · ${state.watchingSide.toUpperCase()}`);
-    } else {
-      this.watching.setText('FREE ROAM');
-    }
+    const watch =
+      state.mode === 'lock' && state.watchingName ? state.watchingName.toUpperCase().slice(0, 6) : 'FREE';
+    this.title.setText(`${heading} · ${watch}`);
   }
 
   hide(): void {
