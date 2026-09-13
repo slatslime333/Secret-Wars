@@ -823,8 +823,8 @@ export class MatchScene extends Phaser.Scene {
 
   private createChrome(): void {
     const chrome = layoutHudChrome(measureViewport(this.scale.width, this.scale.height));
-    this.chromeBar = this.add.rectangle(this.scale.width / 2, chrome.barY, this.scale.width, chrome.barH, COLORS.ink, 0.78);
-    this.chromeBar.setStrokeStyle(2, COLORS.paper).setScrollFactor(0).setDepth(99);
+    this.chromeBar = this.add.rectangle(this.scale.width / 2, chrome.barY, this.scale.width, Math.max(1, chrome.barH), COLORS.ink, 0.78);
+    this.chromeBar.setStrokeStyle(2, COLORS.paper).setScrollFactor(0).setDepth(99).setVisible(chrome.barH > 8);
     this.titleText = this.add
       .text(chrome.titleX, chrome.titleY, `SECRET WARS  //  ${this.player.body.stats.displayName.toUpperCase()}`, {
         fontFamily: FONTS.display,
@@ -852,7 +852,8 @@ export class MatchScene extends Phaser.Scene {
     const width = gameSize.width;
     const height = gameSize.height;
     const chrome = layoutHudChrome(measureViewport(width, height));
-    this.chromeBar?.setPosition(width / 2, chrome.barY).setSize(width, chrome.barH);
+    this.chromeBar?.setPosition(width / 2, chrome.barY).setSize(width, Math.max(1, chrome.barH));
+    this.chromeBar?.setVisible(chrome.barH > 8);
     this.titleText?.setPosition(chrome.titleX, chrome.titleY).setVisible(chrome.titleVisible);
     this.menuButton?.setPosition(chrome.menuX, chrome.menuY);
     this.hud?.layout(width, height);

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ARENA } from '../../config/arena';
 import { getViewportSize, isTouchPrimary } from '../../device';
 
 export type Insets = {
@@ -89,10 +90,9 @@ export const cameraZoomFor = (width: number, height: number, isMobile: boolean):
     return 1;
   }
   const portrait = height > width;
-  if (portrait) {
-    return clamp(width / 1080, 0.48, 0.7);
-  }
-  return clamp(height / 780, 0.64, 0.88);
+  const desired = portrait ? clamp(width / 1080, 0.48, 0.7) : clamp(height / 780, 0.64, 0.88);
+  const minFit = Math.max(width / ARENA.width, height / ARENA.height);
+  return Math.max(desired, minFit);
 };
 
 export const measureViewport = (width?: number, height?: number): ViewportFrame => {

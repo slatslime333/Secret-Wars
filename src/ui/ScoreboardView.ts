@@ -45,16 +45,19 @@ export const addScoreboardSized = (
   originY: number,
   width: number,
 ): ScoreboardSize => {
+  const extraNarrow = width < 420;
   const compact = width < 640;
-  const tableW = Math.max(width, compact ? 620 : Math.min(width, 860));
-  const pad = 12;
+  const tableW = compact ? width : Math.min(Math.max(width, 640), 860);
+  const pad = extraNarrow ? 8 : 12;
   const inner = tableW - pad * 2;
-  const nameW = compact ? 92 : Math.min(130, inner * 0.2);
-  const tagW = compact ? 44 : 52;
+  const nameW = extraNarrow ? 72 : compact ? 88 : Math.min(130, inner * 0.2);
+  const tagW = extraNarrow ? 36 : compact ? 44 : 52;
   const rest = inner - nameW - tagW;
-  const slots = compact
-    ? ['K', 'A', 'D', 'HERO', 'TKN', 'ABL', 'LIT', 'BLK']
-    : ['K', 'A', 'D', 'HERO DMG', 'TAKEN', 'ABILITY', 'LIGHT', 'BLOCK'];
+  const slots = extraNarrow
+    ? ['K', 'A', 'D', 'H', 'T', 'Ab', 'L', 'B']
+    : compact
+      ? ['K', 'A', 'D', 'HERO', 'TKN', 'ABL', 'LIT', 'BLK']
+      : ['K', 'A', 'D', 'HERO DMG', 'TAKEN', 'ABILITY', 'LIGHT', 'BLOCK'];
   const slotW = rest / slots.length;
   const nameX = pad;
   const tagX = pad + nameW;

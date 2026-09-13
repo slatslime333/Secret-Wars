@@ -210,22 +210,22 @@ const drawFront = (
   g.fillRoundedRect(8, rightY, 4, 12, 2);
 
   g.fillStyle(p.hairDark);
-  g.fillEllipse(0, -18, 20, 18);
+  g.fillEllipse(0, -18, 24, 22);
   g.fillStyle(p.hair);
-  g.fillEllipse(0, -18, 17, 16);
+  g.fillEllipse(0, -18, 21, 19);
 
   if (!north) {
     g.fillStyle(p.skinDark);
-    g.fillEllipse(0, -16.4, 13.2, 17.2);
+    g.fillEllipse(0, -16.2, 19.2, 24);
     g.fillStyle(p.skin);
-    g.fillEllipse(0, -16.4, 11.6, 15.6);
+    g.fillEllipse(0, -16.2, 17.4, 22);
     drawEyes(g, p, 0, -16.2, 0);
     g.fillStyle(p.hair);
     g.fillTriangle(-11, -18, -3, -18, -10, -8);
     g.fillTriangle(11, -18, 3, -18, 10, -8);
   } else {
     g.fillStyle(p.hair);
-    g.fillEllipse(0, -18, 17, 16);
+    g.fillEllipse(0, -18, 21, 19);
   }
 
   drawHat(g, p, 0, -27);
@@ -234,15 +234,15 @@ const drawFront = (
 
 const drawHairAndHead = (g: Phaser.GameObjects.Graphics, p: Palette, faceX: number, dir: number): void => {
   g.fillStyle(p.hairDark);
-  g.fillEllipse(dir, -18, 20, 18);
+  g.fillEllipse(dir, -18, 24, 22);
   g.fillStyle(p.hair);
-  g.fillEllipse(dir, -18, 17, 16);
-  g.fillRoundedRect(-9 + dir, -20, 18, 9, 4);
+  g.fillEllipse(dir, -18, 21, 19);
+  g.fillRoundedRect(-10 + dir, -21, 20, 10, 4);
 
   g.fillStyle(p.skinDark);
-  g.fillEllipse(faceX, -16.4, 13.4, 17.4);
+  g.fillEllipse(faceX, -16.2, 19.4, 24.2);
   g.fillStyle(p.skin);
-  g.fillEllipse(faceX, -16.4, 11.8, 15.8);
+  g.fillEllipse(faceX, -16.2, 17.6, 22.2);
 
   g.fillStyle(p.hair);
   g.fillRect(-7 + dir, -24, 15, 7);
@@ -262,12 +262,12 @@ const drawEyes = (g: Phaser.GameObjects.Graphics, p: Palette, cx: number, cy: nu
 
 const drawHat = (g: Phaser.GameObjects.Graphics, p: Palette, x: number, y: number): void => {
   g.fillStyle(COLORS.ink);
-  g.fillEllipse(x, y + 7, 28, 8);
+  g.fillEllipse(x, y + 8, 32, 9);
   g.fillStyle(p.hat);
-  g.fillEllipse(x, y + 6.4, 26, 7);
-  g.fillTriangle(x - 8, y + 5, x + 8, y + 5, x + 1, y - 16);
+  g.fillEllipse(x, y + 7.2, 30, 8);
+  g.fillTriangle(x - 9, y + 6, x + 9, y + 6, x + 1, y - 18);
   g.fillStyle(p.hatBand);
-  g.fillRect(x - 7, y + 2, 15, 2);
+  g.fillRect(x - 8, y + 2, 17, 2);
 };
 
 const drawStaff = (g: Phaser.GameObjects.Graphics, p: Palette, x: number, y: number, angle: number): void => {

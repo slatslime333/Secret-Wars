@@ -185,15 +185,15 @@ const drawFront = (
   g.fillRoundedRect(north ? -11 : 8, leftY, 3.5, 10, 2);
 
   g.fillStyle(p.hairDark);
-  g.fillEllipse(0, -17.5, 18, 17);
+  g.fillEllipse(0, -17.2, 22, 21);
   g.fillStyle(p.hair);
-  g.fillEllipse(0, -17.5, 15.5, 15);
+  g.fillEllipse(0, -17.2, 19.5, 18.5);
 
   if (!north) {
     g.fillStyle(p.skinDark);
-    g.fillEllipse(0, -15.6, 12.4, 16.2);
+    g.fillEllipse(0, -15.4, 18.4, 22.4);
     g.fillStyle(p.skin);
-    g.fillEllipse(0, -15.6, 10.8, 14.6);
+    g.fillEllipse(0, -15.4, 16.6, 20.6);
     drawEye(g, p, -2.6, -15.4);
     drawEye(g, p, 2.8, -15.4);
     g.fillStyle(p.hair);
@@ -201,21 +201,21 @@ const drawFront = (
     g.fillTriangle(-4, -19, 7, -18, 1, -8);
   } else {
     g.fillStyle(p.hair);
-    g.fillEllipse(0, -17.5, 15.5, 15);
+    g.fillEllipse(0, -17.2, 19.5, 18.5);
   }
   drawShadowArm(g, p, north ? 8 : -8, rightY, shadowDir, liftR);
 };
 
 const drawHairAndHead = (g: Phaser.GameObjects.Graphics, p: Palette, faceX: number, dir: number): void => {
   g.fillStyle(p.hairDark);
-  g.fillEllipse(dir, -17.5, 18, 17);
+  g.fillEllipse(dir, -17.2, 22, 21);
   g.fillStyle(p.hair);
-  g.fillEllipse(dir, -17.5, 15.5, 15);
+  g.fillEllipse(dir, -17.2, 19.5, 18.5);
 
   g.fillStyle(p.skinDark);
-  g.fillEllipse(faceX, -15.6, 12.6, 16.4);
+  g.fillEllipse(faceX, -15.4, 18.6, 22.6);
   g.fillStyle(p.skin);
-  g.fillEllipse(faceX, -15.6, 11, 14.8);
+  g.fillEllipse(faceX, -15.4, 16.8, 20.8);
 
   g.fillStyle(p.hair);
   g.fillTriangle(-7 * dir, -18, 4 * dir, -20, -8 * dir, -8);

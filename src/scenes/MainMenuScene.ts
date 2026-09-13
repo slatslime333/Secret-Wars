@@ -93,6 +93,7 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   private createNavigation(width: number, height: number, isPortrait: boolean): void {
+    const inset = measureViewport(width, height).contentInset;
     if (isPortrait) {
       const showExit = !isTouchPrimary();
       const playH = Math.min(50, height * 0.06);
@@ -102,7 +103,7 @@ export class MainMenuScene extends Phaser.Scene {
         heights.push(40);
       }
       const stackH = heights.reduce((sum, h) => sum + h, 0) + gap * (heights.length - 1);
-      const startY = height - 22 - stackH + heights[0] / 2;
+      const startY = height - Math.max(22, inset.bottom + 16) - stackH + heights[0] / 2;
       const btnW = Math.min(340, width - 60);
       let y = startY;
       const place = (label: string, h: number, widthScale: number, primary: boolean, onPress: () => void) => {
@@ -352,8 +353,13 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   private createFooter(width: number, height: number): void {
+    const inset = measureViewport(width, height).contentInset;
+    if (height > width) {
+      return;
+    }
+    const y = height - Math.max(17, inset.bottom + 8);
     this.add
-      .text(28, height - 17, isTouchPrimary() ? 'TAP TO SELECT' : '↑↓ SELECT   ENTER CONFIRM', {
+      .text(Math.max(28, inset.left), y, isTouchPrimary() ? 'TAP TO SELECT' : '↑↓ SELECT   ENTER CONFIRM', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -363,7 +369,7 @@ export class MainMenuScene extends Phaser.Scene {
       .setOrigin(0, 1);
 
     this.add
-      .text(width - 28, height - 17, 'BUILD 00.06 // DRAFT MATCH', {
+      .text(width - Math.max(28, inset.right), y, 'BUILD 00.06 // DRAFT MATCH', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',

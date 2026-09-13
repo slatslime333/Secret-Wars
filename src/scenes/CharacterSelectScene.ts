@@ -45,7 +45,6 @@ export class CharacterSelectScene extends Phaser.Scene {
     const width = frame.width;
     const height = frame.height;
     const inset = frame.contentInset;
-    const footerH = Math.max(frame.minTouch + 12, 56);
 
     this.add
       .text(width / 2, inset.top, 'CHOOSE YOUR FIGHTER', {
@@ -68,10 +67,21 @@ export class CharacterSelectScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
 
-    const cardTop = inset.top + 52;
-    const cardH = 168;
-    const cardsBottom = this.drawCards(inset.left, cardTop, width - inset.left - inset.right, cardH);
-    this.drawDetail(inset.left, cardsBottom + 10, width - inset.left - inset.right, height - footerH - inset.bottom - cardsBottom - 18);
+    const headerH = 52;
+    const footerH = Math.max(frame.minTouch + 8, 52);
+    const bodyTop = inset.top + headerH;
+    const bodyBottom = height - inset.bottom - footerH;
+    const bodyH = Math.max(120, bodyBottom - bodyTop);
+    const tight = bodyH < 300;
+    const cardH = tight ? Math.round(clamp(bodyH * 0.42, 100, 128)) : 168;
+    const cardsBottom = this.drawCards(inset.left, bodyTop, width - inset.left - inset.right, cardH);
+    this.drawDetail(
+      inset.left,
+      cardsBottom + 6,
+      width - inset.left - inset.right,
+      Math.max(80, bodyBottom - cardsBottom - 8),
+      false,
+    );
 
     const btnH = Math.max(40, Math.min(48, frame.minTouch));
     new ActionButton(this, inset.left + 70, height - inset.bottom - btnH / 2, {
@@ -181,7 +191,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     return y + cardH + 8;
   }
 
-  private drawDetail(x: number, y: number, boxW: number, boxH: number): void {
+  private drawDetail(x: number, y: number, boxW: number, boxH: number, showHint = true): void {
     const copy = heroSelectCopy(this.selected);
     const frame = measureViewport(this.scale.width, this.scale.height);
     const box = this.add.rectangle(x, y, boxW, Math.max(120, boxH), COLORS.ink, 0.82).setOrigin(0, 0);
@@ -232,14 +242,16 @@ export class CharacterSelectScene extends Phaser.Scene {
     const contentH = Math.max(textBottom, statsY + 46 + CORE_STAT_ORDER.length * 18 + 8);
     this.detailScroll.setContentSize(innerW, contentH + 12);
 
-    this.add
-      .text(this.scale.width / 2, y + boxH + 4, isTouchPrimary() ? 'TAP A FIGHTER, THEN CONFIRM' : '← → SELECT    ENTER CONFIRM', {
-        fontFamily: FONTS.body,
-        fontSize: '11px',
-        color: hex(COLORS.muted),
-        letterSpacing: 2,
-      })
-      .setOrigin(0.5, 0);
+    if (showHint) {
+      this.add
+        .text(this.scale.width / 2, y + boxH + 4, isTouchPrimary() ? 'TAP A FIGHTER, THEN CONFIRM' : '← → SELECT    ENTER CONFIRM', {
+          fontFamily: FONTS.body,
+          fontSize: '11px',
+          color: hex(COLORS.muted),
+          letterSpacing: 2,
+        })
+        .setOrigin(0.5, 0);
+    }
   }
 
   private drawStatBlock(

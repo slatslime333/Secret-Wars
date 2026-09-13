@@ -79,15 +79,15 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
   }
 
   const top = Math.max(safe.top, 4);
-  const barH = isPortrait ? 34 : 36;
+  const barH = isPortrait ? 0 : 36;
   const menuW = Math.round(clamp(frame.minTouch * 2.05, 88, 118));
   const menuH = Math.round(clamp(frame.minTouch * 0.72, 30, 36));
   const menuX = width - contentInset.right - menuW / 2;
-  const menuY = top + barH / 2;
+  const menuY = top + (isPortrait ? menuH / 2 + 4 : barH / 2);
   const barsX = contentInset.left;
-  const barsY = top + barH + 8;
+  const barsY = isPortrait ? top + menuH + 10 : top + barH + 8;
   const barWidth = Math.round(
-    isPortrait ? clamp(width * 0.48, 128, 176) : clamp(Math.min(width * 0.3, height * 0.55), 148, 210),
+    isPortrait ? clamp(width * 0.4, 112, 156) : clamp(Math.min(width * 0.3, height * 0.55), 148, 210),
   );
   const hpH = isPortrait ? 8 : 9;
   const stamH = isPortrait ? 6 : 7;
@@ -95,7 +95,7 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
   const hpY = barsY;
   const staminaY = hpY + hpH + 6;
   const xpY = staminaY + stamH + 6;
-  const miniW = Math.round(isPortrait ? clamp(width * 0.3, 96, 128) : clamp(height * 0.32, 108, 148));
+  const miniW = Math.round(isPortrait ? clamp(width * 0.26, 88, 116) : clamp(height * 0.32, 108, 148));
   const miniH = Math.round(miniW * (isPortrait ? 0.7 : 0.74));
 
   return {
@@ -112,13 +112,13 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
     comboY: isPortrait ? barsY + 2 : menuY + barH / 2 + 14,
     bars: { x: barsX, hpY, staminaY, xpY, width: barWidth, hpH, stamH, xpH },
     match: {
-      scoreY: menuY - (isPortrait ? 7 : 8),
-      timerY: menuY + (isPortrait ? 8 : 9),
-      phaseY: top + barH + 2,
+      scoreY: isPortrait ? top + 10 : menuY - 8,
+      timerY: isPortrait ? top + 26 : menuY + 9,
+      phaseY: isPortrait ? top + menuH + 4 : top + barH + 2,
     },
     minimap: {
       x: width - contentInset.right,
-      y: top + barH + 6,
+      y: top + (isPortrait ? menuH + 8 : barH + 6),
       width: miniW,
       height: miniH,
     },
