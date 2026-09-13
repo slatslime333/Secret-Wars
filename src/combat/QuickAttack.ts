@@ -119,13 +119,15 @@ export class QuickAttack {
     if (this.pendingTaps > 0) {
       this.combo.tap(now, COMBAT.comboWindowMs);
       this.pendingTaps -= 1;
-      spawnCombatCallout(
-        this.scene,
-        attacker.x,
-        attacker.y,
-        step === 3 ? 'FINISHER' : `HIT ${step}`,
-        step === 3 ? COLORS.yellow : COLORS.orange,
-      );
+      if (attacker.heroId !== 'rope') {
+        spawnCombatCallout(
+          this.scene,
+          attacker.x,
+          attacker.y,
+          step === 3 ? 'FINISHER' : `HIT ${step}`,
+          step === 3 ? COLORS.yellow : COLORS.orange,
+        );
+      }
     } else {
       this.combo.reset();
     }

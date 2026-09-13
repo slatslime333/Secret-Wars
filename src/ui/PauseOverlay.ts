@@ -58,7 +58,7 @@ export class PauseOverlay {
     addScoreboard(this.scene, this.root, lines, 86, width);
 
     const sliderX = width / 2;
-    const sliderY = height - 148;
+    const sliderY = height - 168;
     const music = new SettingSlider(this.scene, sliderX, sliderY, {
       label: 'MUSIC',
       value: audioSettings.getMusicVolume(),
