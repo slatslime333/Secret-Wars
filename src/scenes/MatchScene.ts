@@ -30,7 +30,7 @@ import { PauseOverlay } from '../ui/PauseOverlay';
 import { SpectatorOverlay } from '../ui/SpectatorOverlay';
 import { Minimap } from '../ui/Minimap';
 import { COLORS, FONTS, hex } from '../ui/theme';
-import { applyGameplayCamera, layoutHudChrome, measureViewport } from '../ui/layout';
+import { applyGameplayCamera, layoutHudChrome, measureViewport, installHudCamera, resizeHudCamera, adoptHud } from '../ui/layout';
 import { Battlefield, rememberPlayTestSeed, resolvePlayTestSeed } from '../map';
 import { HeroPilot } from '../ai/HeroPilot';
 import { TacticalField } from '../ai/tactical/field';
@@ -123,6 +123,9 @@ export class MatchScene extends Phaser.Scene {
     this.returning = false;
     resetDevCheats();
     ensureAbilityIcons(this);
+    if (isTouchPrimary()) {
+      installHudCamera(this);
+    }
     setSelectedHeroId(this.startHeroId);
     const hero = PLAYABLE_HEROES[this.startHeroId];
     const battlefield = Battlefield.install(this, { seed: resolvePlayTestSeed(), log: true });
@@ -221,6 +224,7 @@ export class MatchScene extends Phaser.Scene {
     }
     this.cameras.main.setRoundPixels(true);
     applyGameplayCamera(this.cameras.main, this.scale.width, this.scale.height);
+    resizeHudCamera(this, this.scale.width, this.scale.height);
     this.cameras.main.fadeIn(220, 7, 10, 18);
 
     this.createChrome();
@@ -867,6 +871,7 @@ export class MatchScene extends Phaser.Scene {
       onPress: () => this.openPause(),
     });
     this.menuButton.setScrollFactor(0).setDepth(220);
+    adoptHud(this, this.chromeBar, this.titleText, this.menuButton);
   }
 
   private onResize(gameSize: Phaser.Structs.Size): void {
@@ -884,6 +889,7 @@ export class MatchScene extends Phaser.Scene {
     this.objectives?.layout(width, height);
     this.inputReader?.layout(width, height);
     this.layoutAbilityTray(width, height);
+    resizeHudCamera(this, width, height);
     if ((this.simulator || (this.player && !this.player.alive)) && this.spectatorOverlay) {
       const focus = this.hudFocus();
       this.spectatorOverlay.sync(

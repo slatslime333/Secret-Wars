@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { isTouchPrimary } from '../device';
 import { ActionButton } from './ActionButton';
 import { COLORS, FONTS, hex } from './theme';
+import { adoptHud } from './layout/hudCamera';
 import { measureViewport } from './layout/viewport';
 
 export type SpectatorOverlayState = {
@@ -83,6 +84,7 @@ export class SpectatorOverlay {
       onPress: handlers.onNext,
     });
     this.root.add([this.plate, this.title, this.watching, this.hint, this.prevButton, this.nextButton]);
+    adoptHud(scene, this.root);
   }
 
   sync(state: SpectatorOverlayState, width: number, height: number): void {

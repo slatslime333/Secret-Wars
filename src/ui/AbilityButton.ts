@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
 import { AbilitySlotState } from '../heroes/abilities/types';
+import { adoptHud, hudPointer } from './layout/hudCamera';
 import { COLORS, FONTS, hex } from './theme';
 
 type AbilityButtonOptions = {
@@ -26,6 +27,7 @@ export class AbilityButton {
   private ready = true;
   private consumed = false;
   private pressed = false;
+  private lastPressAt = -999;
 
   constructor(
     scene: Phaser.Scene,
@@ -57,24 +59,46 @@ export class AbilityButton {
       .setDepth(117);
 
     this.zone = scene.add
-      .zone(x, y, radius * 2, radius * 2)
-      .setInteractive(new Phaser.Geom.Circle(radius, radius, radius), Phaser.Geom.Circle.Contains)
+      .zone(x, y, radius * 2.4, radius * 2.4)
+      .setOrigin(0.5, 0.5)
+      .setInteractive(new Phaser.Geom.Circle(radius * 1.2, radius * 1.2, radius * 1.2), Phaser.Geom.Circle.Contains)
       .setScrollFactor(0)
       .setDepth(118);
-    this.zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => {
-      this.flashPress();
-      audio.unlock();
-      audio.play('ui-click');
-      options.onPress();
-    });
+    this.firePress = options.onPress;
+    this.zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this.onDown, this);
+    scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onSceneDown, this);
     this.drawArt();
     this.fitIcon();
+    adoptHud(scene, this.art, this.overlay, this.icon, this.timer, this.zone);
+  }
+
+  private firePress: () => void;
+
+  private onSceneDown(pointer: Phaser.Input.Pointer): void {
+    if (!this.zone.visible || !this.zone.input) {
+      return;
+    }
+    const point = hudPointer(this.scene, pointer);
+    if (Math.hypot(point.x - this.x, point.y - this.y) <= this.radius * 1.2) {
+      this.onDown();
+    }
+  }
+
+  private onDown(): void {
+    if (this.scene.time.now - this.lastPressAt < 80) {
+      return;
+    }
+    this.lastPressAt = this.scene.time.now;
+    this.flashPress();
+    audio.unlock();
+    audio.play('ui-click');
+    this.firePress();
   }
 
   setRadius(radius: number): void {
     this.radius = radius;
-    this.zone.setSize(radius * 2, radius * 2);
-    this.zone.setInteractive(new Phaser.Geom.Circle(radius, radius, radius), Phaser.Geom.Circle.Contains);
+    this.zone.setSize(radius * 2.4, radius * 2.4);
+    this.zone.setInteractive(new Phaser.Geom.Circle(radius * 1.2, radius * 1.2, radius * 1.2), Phaser.Geom.Circle.Contains);
     this.timer.setFontSize(Math.max(9, Math.round(11 * (radius / 30))));
     this.drawArt();
     this.fitIcon();
@@ -123,7 +147,7 @@ export class AbilityButton {
     this.zone.setVisible(visible);
     if (visible) {
       this.zone.setInteractive(
-        new Phaser.Geom.Circle(this.radius, this.radius, this.radius),
+        new Phaser.Geom.Circle(this.radius * 1.2, this.radius * 1.2, this.radius * 1.2),
         Phaser.Geom.Circle.Contains,
       );
     } else {
@@ -132,6 +156,7 @@ export class AbilityButton {
   }
 
   destroy(): void {
+    this.scene.input?.off(Phaser.Input.Events.POINTER_DOWN, this.onSceneDown, this);
     this.art.destroy();
     this.overlay.destroy();
     this.icon.destroy();

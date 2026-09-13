@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { isTouchPrimary } from '../device';
+import { adoptHud } from './layout/hudCamera';
 import { COLORS, FONTS, hex } from './theme';
 
 type RoundOverlayOptions = {
@@ -33,12 +34,12 @@ export class RoundOverlay {
     const win = winner === 'ninja';
     const width = this.scene.scale.width;
     const height = this.scene.scale.height;
-    this.scene.add
+    const veil = this.scene.add
       .rectangle(width / 2, height / 2, width, height, COLORS.ink, 0.62)
       .setScrollFactor(0)
       .setDepth(180);
 
-    this.scene.add
+    const ko = this.scene.add
       .text(width / 2, height / 2 - 70, win ? 'KO' : 'DOWN', {
         fontFamily: FONTS.display,
         fontSize: '54px',
@@ -51,7 +52,7 @@ export class RoundOverlay {
       .setScrollFactor(0)
       .setDepth(181);
 
-    this.scene.add
+    const result = this.scene.add
       .text(
         width / 2,
         height / 2 - 18,
@@ -69,28 +70,40 @@ export class RoundOverlay {
       .setScrollFactor(0)
       .setDepth(181);
 
+    const hud: Phaser.GameObjects.GameObject[] = [veil, ko, result];
     if (!isTouchPrimary()) {
-      this.scene.add
-        .text(width / 2, height / 2 + 126, 'R RESTART    ESC MENU', {
-          fontFamily: FONTS.body,
-          fontSize: '12px',
-          fontStyle: 'bold',
-          color: hex(COLORS.muted),
-          letterSpacing: 3,
-        })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(181);
+      hud.push(
+        this.scene.add
+          .text(width / 2, height / 2 + 126, 'R RESTART    ESC MENU', {
+            fontFamily: FONTS.body,
+            fontSize: '12px',
+            fontStyle: 'bold',
+            color: hex(COLORS.muted),
+            letterSpacing: 3,
+          })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(181),
+      );
     }
 
-    this.addTextButton(width / 2, height / 2 + 36, 'RESTART', COLORS.redBright, () =>
-      this.options.onRestart(),
+    hud.push(
+      this.addTextButton(width / 2, height / 2 + 36, 'RESTART', COLORS.redBright, () =>
+        this.options.onRestart(),
+      ),
+      this.addTextButton(width / 2, height / 2 + 88, 'MENU', COLORS.cyan, () => this.options.onMenu()),
     );
-    this.addTextButton(width / 2, height / 2 + 88, 'MENU', COLORS.cyan, () => this.options.onMenu());
+    adoptHud(this.scene, ...hud);
     this.scene.cameras.main.flash(180, 246, 241, 222, false);
   }
 
-  private addTextButton(x: number, y: number, label: string, accent: number, onPress: () => void): void {
+  private addTextButton(
+    x: number,
+    y: number,
+    label: string,
+    accent: number,
+    onPress: () => void,
+  ): Phaser.GameObjects.Text {
     const button = this.scene.add
       .text(x, y, label, {
         fontFamily: FONTS.display,
@@ -107,5 +120,6 @@ export class RoundOverlay {
       .setDepth(190)
       .setInteractive({ useHandCursor: true });
     button.on(Phaser.Input.Events.POINTER_UP, onPress);
+    return button;
   }
 }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
+import { adoptHud, hudPointer } from './layout/hudCamera';
 import { COLORS, FONTS, hex } from './theme';
 
 type CombatButtonOptions = {
@@ -33,6 +34,7 @@ export class CombatButton {
   private dimmed = false;
   private readonly onRelease?: () => void;
   private pointerId?: number;
+  private lastPressAt = -999;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: CombatButtonOptions) {
     this.scene = scene;
@@ -60,28 +62,46 @@ export class CombatButton {
       .setDepth(117);
 
     this.zone = scene.add
-      .zone(x, y, this.radius * 2, this.radius * 2)
+      .zone(x, y, this.radius * 2.4, this.radius * 2.4)
+      .setOrigin(0.5, 0.5)
       .setInteractive(
-        new Phaser.Geom.Circle(this.radius, this.radius, this.radius),
+        new Phaser.Geom.Circle(this.radius * 1.2, this.radius * 1.2, this.radius * 1.2),
         Phaser.Geom.Circle.Contains,
       )
       .setScrollFactor(0)
       .setDepth(118);
-    this.zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
-      if (this.dimmed) {
-        return;
-      }
-      this.pointerId = pointer.id;
-      audio.unlock();
-      audio.play('ui-click');
-      options.onPress();
-      if (this.holdable) {
-        scene.input.on(Phaser.Input.Events.POINTER_UP, this.onPointerUp, this);
-        scene.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUp, this);
-      }
-    });
+    this.firePress = options.onPress;
+    this.zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this.onDown, this);
+    scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onSceneDown, this);
+    adoptHud(scene, this.art, this.fill, this.pips, this.label, this.zone);
   }
 
+  private firePress: () => void;
+
+  private onSceneDown(pointer: Phaser.Input.Pointer): void {
+    if (this.dimmed || !this.zone.visible || !this.zone.input) {
+      return;
+    }
+    const point = hudPointer(this.scene, pointer);
+    if (Math.hypot(point.x - this.x, point.y - this.y) <= this.radius * 1.2) {
+      this.onDown(pointer);
+    }
+  }
+
+  private onDown(pointer: Phaser.Input.Pointer): void {
+    if (this.dimmed || this.scene.time.now - this.lastPressAt < 80) {
+      return;
+    }
+    this.lastPressAt = this.scene.time.now;
+    this.pointerId = pointer.id;
+    audio.unlock();
+    audio.play('ui-click');
+    this.firePress();
+    if (this.holdable) {
+      this.scene.input.on(Phaser.Input.Events.POINTER_UP, this.onPointerUp, this);
+      this.scene.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUp, this);
+    }
+  }
   private onPointerUp(pointer: Phaser.Input.Pointer): void {
     if (pointer.id !== this.pointerId) {
       return;
@@ -106,9 +126,9 @@ export class CombatButton {
   setRadius(radius: number): void {
     this.radius = radius;
     this.label.setFontSize(Math.max(9, Math.round(12 * (radius / 30))));
-    this.zone.setSize(radius * 2, radius * 2);
+    this.zone.setSize(radius * 2.4, radius * 2.4);
     this.zone.setInteractive(
-      new Phaser.Geom.Circle(radius, radius, radius),
+      new Phaser.Geom.Circle(radius * 1.2, radius * 1.2, radius * 1.2),
       Phaser.Geom.Circle.Contains,
     );
     this.drawArt();
@@ -161,7 +181,7 @@ export class CombatButton {
     this.zone.setVisible(visible);
     if (visible) {
       this.zone.setInteractive(
-        new Phaser.Geom.Circle(this.radius, this.radius, this.radius),
+        new Phaser.Geom.Circle(this.radius * 1.2, this.radius * 1.2, this.radius * 1.2),
         Phaser.Geom.Circle.Contains,
       );
     } else {
@@ -220,7 +240,13 @@ export class CombatButton {
   }
 
   destroy(): void {
+    this.scene.input?.off(Phaser.Input.Events.POINTER_DOWN, this.onSceneDown, this);
     this.scene.input?.off(Phaser.Input.Events.POINTER_UP, this.onPointerUp, this);
     this.scene.input?.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUp, this);
+    this.art.destroy();
+    this.fill.destroy();
+    this.pips.destroy();
+    this.label.destroy();
+    this.zone.destroy();
   }
 }

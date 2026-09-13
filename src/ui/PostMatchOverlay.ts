@@ -6,6 +6,7 @@ import type { HeroStatLine } from '../match/CombatStatsTracker';
 import { ActionButton } from './ActionButton';
 import { ScrollPanel } from './layout/ScrollPanel';
 import { measureViewport } from './layout/viewport';
+import { adoptHud } from './layout/hudCamera';
 import { addScoreboardSized } from './ScoreboardView';
 import { COLORS, FONTS, hex } from './theme';
 
@@ -21,6 +22,7 @@ export class PostMatchOverlay {
 
   constructor(private readonly scene: Phaser.Scene, private readonly handlers: PostMatchHandlers) {
     this.root = scene.add.container(0, 0).setDepth(240).setScrollFactor(0).setVisible(false);
+    adoptHud(scene, this.root);
   }
 
   get isOpen(): boolean {
@@ -101,6 +103,7 @@ export class PostMatchOverlay {
     menu.disableInteractive();
     menu.setVisible(false);
     this.root.add([rematch, menu]);
+    adoptHud(this.scene, this.root);
     this.root.setVisible(true);
     this.visible = true;
     audio.play(result === 'VICTORY' ? 'ui-victory' : result === 'DEFEAT' ? 'ui-defeat' : 'ui-draw');

@@ -97,11 +97,14 @@ export const cameraZoomFor = (width: number, height: number, isMobile: boolean):
   return clamp(Math.max(desired, minFit), 0.01, 1);
 };
 
-export const measureViewport = (width?: number, height?: number): ViewportFrame => {
+export const measureViewport = (
+  width?: number,
+  height?: number,
+  isMobile = isTouchPrimary(),
+): ViewportFrame => {
   const raw = getViewportSize();
   const w = Math.max(320, Math.round(width ?? raw.width));
   const h = Math.max(240, Math.round(height ?? raw.height));
-  const isMobile = isTouchPrimary();
   const isPortrait = h > w;
   const short = Math.min(w, h);
   const safe = readSafeAreaInsets();

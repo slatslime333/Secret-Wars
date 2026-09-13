@@ -1,4 +1,4 @@
-import { clamp, measureViewport, type Insets } from './layout/viewport';
+import { clamp, measureViewport } from './layout/viewport';
 
 export type Point = { x: number; y: number };
 
@@ -17,55 +17,62 @@ export type TouchControlLayout = {
   ultimate: Point;
 };
 
-const GAP = 12;
-
 type Circle = Point & { r: number };
 
+const GAP = 8;
+const RIGHT_BAND = 0.58;
+
 /**
- * Fighting-game pad: MOVE / AIM stay in the corners. Abilities never share a
- * circle with those sticks or with SHIELD / DASH. Positions use the shared
- * viewport frame so safe areas and orientation stay consistent.
+ * Fighting-game pad: MOVE on the left, AIM + actions on the right.
+ * Nothing is allowed to sit in the middle of the battlefield.
  */
 export function getTouchControlLayout(width: number, height: number): TouchControlLayout {
-  const frame = measureViewport(width, height);
+  const frame = measureViewport(width, height, true);
   const isPortrait = frame.isPortrait;
-  const short = Math.min(width, height);
-  const tight = height < 400 || isPortrait;
   const inset = frame.controlInset;
-  const minTouch = frame.minTouch;
-  const buttonRadius = Math.round(clamp(tight ? minTouch * 0.58 : minTouch * 0.66, 24, 32));
-  const abilityRadius = Math.round(clamp(tight ? minTouch * 0.62 : minTouch * 0.7, 26, 34));
-  const ultimateRadius = Math.round(clamp(tight ? minTouch * 0.7 : minTouch * 0.82, 30, 40));
-  const radius = stickRadius(short, height, buttonRadius, inset.top, isPortrait);
+  const short = Math.min(width, height);
+  const gap = Math.max(GAP, Math.round(short * 0.014));
+  const rightMin = width * RIGHT_BAND;
+  const rightEdge = width - inset.right;
+  const bottom = height - inset.bottom;
+  const top = inset.top;
 
-  const sideInset = Math.round(
-    Math.max(radius + inset.left, Math.min(short * (isPortrait ? 0.2 : 0.18), width * (isPortrait ? 0.2 : 0.16)), inset.left + radius),
-  );
-  const bottomInset = Math.round(radius + inset.bottom + (isPortrait ? 10 : tight ? 4 : 10));
-  const leftStick = { x: sideInset, y: height - bottomInset };
-  const rightStick = { x: width - Math.max(sideInset, inset.right + radius), y: height - bottomInset };
+  let radius = Math.round(clamp(short * (isPortrait ? 0.1 : 0.096), isPortrait ? 42 : 34, isPortrait ? 58 : 52));
+  let buttonRadius = Math.round(clamp(radius * 0.5, 22, 30));
+  let abilityRadius = Math.round(clamp(radius * 0.54, 24, 32));
+  let ultimateRadius = Math.round(clamp(radius * 0.58, 26, 34));
 
-  const rightCluster = placeRightCluster({
-    width,
-    height,
-    tight,
+  const fits = (stickR: number, btnR: number, abilR: number, ultR: number): boolean => {
+    const packed = pack(stickR, btnR, abilR, ultR, {
+      isPortrait,
+      gap,
+      rightMin,
+      rightEdge,
+      bottom,
+      top,
+      left: inset.left,
+    });
+    return !packOverlaps(packed) && packInBand(packed, rightMin, width, inset.left, top, rightEdge, bottom);
+  };
+
+  while (
+    radius > 32 &&
+    !fits(radius, buttonRadius, abilityRadius, ultimateRadius)
+  ) {
+    radius -= 1;
+    buttonRadius = Math.round(clamp(radius * 0.5, 20, 30));
+    abilityRadius = Math.round(clamp(radius * 0.54, 22, 32));
+    ultimateRadius = Math.round(clamp(radius * 0.58, 24, 34));
+  }
+
+  const packed = pack(radius, buttonRadius, abilityRadius, ultimateRadius, {
     isPortrait,
-    radius,
-    buttonRadius,
-    abilityRadius,
-    rightStick,
-    inset,
-  });
-
-  const ultimate = placeUltimate({
-    width,
-    height,
-    leftStick,
-    rightStick,
-    radius,
-    ultimateRadius,
-    solids: rightCluster.solids,
-    inset,
+    gap,
+    rightMin,
+    rightEdge,
+    bottom,
+    top,
+    left: inset.left,
   });
 
   return {
@@ -74,227 +81,167 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
     buttonRadius,
     abilityRadius,
     ultimateRadius,
-    leftStick,
-    rightStick,
-    block: rightCluster.block,
-    dash: rightCluster.dash,
-    ability1: rightCluster.ability1,
-    ability2: rightCluster.ability2,
-    ultimate,
+    leftStick: point(packed.move),
+    rightStick: point(packed.aim),
+    block: point(packed.block),
+    dash: point(packed.dash),
+    ability1: point(packed.ability1),
+    ability2: point(packed.ability2),
+    ultimate: point(packed.ultimate),
   };
 }
 
-const stickRadius = (
-  short: number,
-  height: number,
-  buttonRadius: number,
-  topInset: number,
-  isPortrait: boolean,
-): number => {
-  const preferred = clamp(short * (isPortrait ? 0.11 : 0.12), 44, isPortrait ? 64 : 72);
-  const room = height - topInset - 16 - GAP - buttonRadius * 2;
-  const maxByHeight = Math.floor(room / 2);
-  if (maxByHeight >= preferred) {
-    return Math.round(preferred);
-  }
-  return Math.round(clamp(maxByHeight, 36, preferred));
-};
-
-const placeRightCluster = (options: {
-  width: number;
-  height: number;
-  tight: boolean;
+type PackOpts = {
   isPortrait: boolean;
-  radius: number;
-  buttonRadius: number;
-  abilityRadius: number;
-  rightStick: Point;
-  inset: Insets;
-}): { block: Point; dash: Point; ability1: Point; ability2: Point; solids: Circle[] } => {
-  const { width, height, tight, isPortrait, radius, buttonRadius, abilityRadius, rightStick, inset } = options;
-  const aim: Circle = { ...rightStick, r: radius };
+  gap: number;
+  rightMin: number;
+  rightEdge: number;
+  bottom: number;
+  top: number;
+  left: number;
+};
 
-  const dash = clampCircle(
-    {
-      x: rightStick.x,
-      y: rightStick.y - radius - buttonRadius - GAP,
-      r: buttonRadius,
-    },
-    width,
-    height,
-    inset,
-  );
-  pushOut(dash, aim);
-  const block = clampCircle(
-    {
-      x: dash.x - buttonRadius * 2 - GAP,
-      y: dash.y,
-      r: buttonRadius,
-    },
-    width,
-    height,
-    inset,
-  );
-  pushOut(block, aim);
-  pushOut(block, dash);
+type Packed = {
+  move: Circle;
+  aim: Circle;
+  dash: Circle;
+  block: Circle;
+  ability1: Circle;
+  ability2: Circle;
+  ultimate: Circle;
+};
 
-  let ability1: Circle;
-  let ability2: Circle;
-
-  if (isPortrait) {
-    ability2 = clampCircle(
-      {
-        x: dash.x,
-        y: dash.y - buttonRadius - abilityRadius - GAP,
-        r: abilityRadius,
-      },
-      width,
-      height,
-      inset,
-    );
-    ability1 = clampCircle(
-      {
-        x: block.x,
-        y: block.y - buttonRadius - abilityRadius - GAP,
-        r: abilityRadius,
-      },
-      width,
-      height,
-      inset,
-    );
-  } else if (tight) {
-    ability2 = clampCircle(
-      {
-        x: block.x - buttonRadius - abilityRadius - GAP,
-        y: block.y,
-        r: abilityRadius,
-      },
-      width,
-      height,
-      inset,
-    );
-    ability1 = clampCircle(
-      {
-        x: ability2.x - abilityRadius * 2 - GAP,
-        y: block.y,
-        r: abilityRadius,
-      },
-      width,
-      height,
-      inset,
-    );
+const pack = (
+  stickR: number,
+  btnR: number,
+  abilR: number,
+  ultR: number,
+  opts: PackOpts,
+): Packed => {
+  const { isPortrait, gap, rightMin, rightEdge, bottom, top, left } = opts;
+  const move: Circle = {
+    x: left + stickR,
+    y: bottom - stickR,
+    r: stickR,
+  };
+  const aim: Circle = {
+    x: rightEdge - stickR,
+    y: bottom - stickR,
+    r: stickR,
+  };
+  const colSpan = Math.max(btnR, abilR) * 2 + gap;
+  const dash: Circle = {
+    x: aim.x,
+    y: aim.y - stickR - btnR - gap,
+    r: btnR,
+  };
+  const block: Circle = {
+    x: dash.x - colSpan,
+    y: dash.y,
+    r: btnR,
+  };
+  if (block.x < rightMin + btnR) {
+    block.x = rightMin + btnR;
+  }
+  const ability2: Circle = {
+    x: dash.x,
+    y: dash.y - btnR - abilR - gap,
+    r: abilR,
+  };
+  const ability1: Circle = {
+    x: Math.min(block.x, dash.x - colSpan),
+    y: ability2.y,
+    r: abilR,
+  };
+  const aboveY = Math.min(ability1.y, ability2.y) - abilR - ultR - gap;
+  let ultimate: Circle;
+  if (isPortrait && aboveY >= top + ultR) {
+    ultimate = {
+      x: (ability1.x + ability2.x) / 2,
+      y: aboveY,
+      r: ultR,
+    };
   } else {
-    ability1 = clampCircle(
-      {
-        x: block.x - buttonRadius - abilityRadius - GAP,
+    ultimate = {
+      x: ability1.x - abilR - ultR - gap,
+      y: ability1.y,
+      r: ultR,
+    };
+    if (ultimate.x < rightMin + ultR) {
+      ultimate = {
+        x: block.x - btnR - ultR - gap,
         y: block.y,
-        r: abilityRadius,
-      },
-      width,
-      height,
-      inset,
-    );
-    ability2 = clampCircle(
-      orbit(aim, abilityRadius, (-125 * Math.PI) / 180),
-      width,
-      height,
-      inset,
-    );
-  }
-
-  const solids: Circle[] = [aim, dash, block];
-  pushFromAll(ability1, solids);
-  solids.push(ability1);
-  pushFromAll(ability2, solids);
-  ability2 = clampCircle(ability2, width, height, inset);
-  pushFromAll(ability2, solids);
-  solids.push(ability2);
-
-  return {
-    block: point(block),
-    dash: point(dash),
-    ability1: point(ability1),
-    ability2: point(ability2),
-    solids,
-  };
-};
-
-const placeUltimate = (options: {
-  width: number;
-  height: number;
-  leftStick: Point;
-  rightStick: Point;
-  radius: number;
-  ultimateRadius: number;
-  solids: Circle[];
-  inset: Insets;
-}): Point => {
-  const { width, height, leftStick, rightStick, radius, ultimateRadius, solids, inset } = options;
-  const move: Circle = { ...leftStick, r: radius };
-  const aim: Circle = { ...rightStick, r: radius };
-  const midX = (leftStick.x + rightStick.x) / 2;
-  const ult: Circle = {
-    x: midX,
-    y: leftStick.y - radius - ultimateRadius - GAP,
-    r: ultimateRadius,
-  };
-  if (circlesOverlap(ult, move) || circlesOverlap(ult, aim)) {
-    ult.y = leftStick.y - radius - ultimateRadius - GAP * 1.5;
-  }
-
-  const blockers = [move, aim, ...solids.filter((circle) => circle !== aim)];
-  pushFromAll(ult, blockers);
-  const clamped = clampCircle(ult, width, height, inset);
-  pushFromAll(clamped, blockers);
-  return point(clamped);
-};
-
-const orbit = (center: Circle, radius: number, angle: number): Circle => {
-  const dist = center.r + radius + GAP;
-  return {
-    x: center.x + Math.cos(angle) * dist,
-    y: center.y + Math.sin(angle) * dist,
-    r: radius,
-  };
-};
-
-const pushFromAll = (movable: Circle, solids: Circle[]): void => {
-  for (let i = 0; i < 4; i += 1) {
-    for (const solid of solids) {
-      if (solid === movable) {
-        continue;
-      }
-      pushOut(movable, solid);
+        r: ultR,
+      };
+    }
+    if (ultimate.x < rightMin + ultR) {
+      ultimate = {
+        x: Math.max(rightMin + ultR, (ability1.x + ability2.x) / 2),
+        y: Math.max(top + ultR, aboveY),
+        r: ultR,
+      };
     }
   }
+  return { move, aim, dash, block, ability1, ability2, ultimate };
 };
 
-const pushOut = (movable: Circle, solid: Circle): void => {
-  const dx = movable.x - solid.x;
-  const dy = movable.y - solid.y;
-  const dist = Math.hypot(dx, dy);
-  const need = movable.r + solid.r + GAP;
-  if (dist >= need) {
-    return;
+const packList = (packed: Packed): Circle[] => [
+  packed.move,
+  packed.aim,
+  packed.dash,
+  packed.block,
+  packed.ability1,
+  packed.ability2,
+  packed.ultimate,
+];
+
+const packOverlaps = (packed: Packed): boolean => {
+  const items = packList(packed);
+  for (let i = 0; i < items.length; i += 1) {
+    for (let j = i + 1; j < items.length; j += 1) {
+      if (circlesOverlap(items[i], items[j])) {
+        return true;
+      }
+    }
   }
-  if (dist < 0.001) {
-    movable.x = solid.x - need;
-    return;
-  }
-  const scale = need / dist;
-  movable.x = solid.x + dx * scale;
-  movable.y = solid.y + dy * scale;
+  return false;
 };
 
-const clampCircle = (circle: Circle, width: number, height: number, inset: Insets): Circle => ({
-  x: clamp(circle.x, circle.r + inset.left, width - circle.r - inset.right),
-  y: clamp(circle.y, inset.top + circle.r, height - circle.r - inset.bottom),
-  r: circle.r,
-});
+const packInBand = (
+  packed: Packed,
+  rightMin: number,
+  width: number,
+  left: number,
+  top: number,
+  rightEdge: number,
+  bottom: number,
+): boolean => {
+  const right = [packed.aim, packed.dash, packed.block, packed.ability1, packed.ability2, packed.ultimate];
+  for (const circle of right) {
+    if (circle.x < rightMin) {
+      return false;
+    }
+    if (circle.x + circle.r > rightEdge + 0.5) {
+      return false;
+    }
+    if (circle.y - circle.r < top - 0.5 || circle.y + circle.r > bottom + 0.5) {
+      return false;
+    }
+  }
+  if (packed.move.x - packed.move.r < left - 0.5) {
+    return false;
+  }
+  if (packed.move.x > width * 0.32) {
+    return false;
+  }
+  if (Math.abs(packed.ultimate.x - width / 2) < width * 0.16) {
+    return false;
+  }
+  return packed.move.y + packed.move.r <= bottom + 0.5 && packed.move.y - packed.move.r >= top - 0.5;
+};
 
 const point = (circle: Circle): Point => ({ x: Math.round(circle.x), y: Math.round(circle.y) });
 
-/** Used by layout checks: true when two control circles collide. */
 export const circlesOverlap = (a: Circle, b: Circle, extra = GAP): boolean =>
   Math.hypot(a.x - b.x, a.y - b.y) < a.r + b.r + extra - 0.5;
 

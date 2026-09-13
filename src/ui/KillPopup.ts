@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { adoptHud } from './layout/hudCamera';
 import { COLORS, FONTS, hex } from './theme';
 
 /** Brief centered KILL / ASSIST flash for the local player. */
@@ -24,6 +25,7 @@ export const spawnKillPopup = (
     .setDepth(200)
     .setScale(1.18)
     .setAlpha(1);
+  adoptHud(scene, label);
 
   scene.tweens.add({
     targets: label,

@@ -11,3 +11,10 @@ export {
   type ViewportFrame,
 } from './viewport';
 export { applyBackingStore, displayPixelRatio, installBackingStore } from './backingStore';
+export {
+  HUD_CAMERA_NAME,
+  adoptHud,
+  hudPointer,
+  installHudCamera,
+  resizeHudCamera,
+} from './hudCamera';

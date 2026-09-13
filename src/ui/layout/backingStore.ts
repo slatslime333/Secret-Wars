@@ -31,6 +31,7 @@ const isWebGl = (
 
 let scissorPatched = false;
 let textFactoryPatched = false;
+let renderPatched = false;
 
 const patchScissorForDpr = (renderer: WebGlRenderer): void => {
   if (scissorPatched) {
@@ -50,6 +51,38 @@ const patchScissorForDpr = (renderer: WebGlRenderer): void => {
       return original(x, y, width, height, drawingBufferHeight);
     }
     return original(x * dpr, y * dpr, width * dpr, height * dpr, drawingBufferHeight);
+  };
+};
+
+const patchRenderForDpr = (renderer: WebGlRenderer): void => {
+  if (renderPatched) {
+    return;
+  }
+  renderPatched = true;
+  const originalPre = renderer.preRender.bind(renderer);
+  renderer.preRender = function patchedPreRender() {
+    originalPre();
+    const dpr = displayPixelRatio();
+    if (dpr <= 1) {
+      return;
+    }
+    const bufferW = Math.round(this.width * dpr);
+    const bufferH = Math.round(this.height * dpr);
+    const gl = this.gl;
+    gl.viewport(0, 0, bufferW, bufferH);
+    gl.scissor(0, 0, bufferW, bufferH);
+  };
+  const originalReset = renderer.resetViewport.bind(renderer);
+  renderer.resetViewport = function patchedResetViewport() {
+    const dpr = displayPixelRatio();
+    if (dpr <= 1) {
+      return originalReset();
+    }
+    const gl = this.gl;
+    const bufferW = Math.round(this.width * dpr);
+    const bufferH = Math.round(this.height * dpr);
+    gl.viewport(0, 0, bufferW, bufferH);
+    this.drawingBufferHeight = gl.drawingBufferHeight;
   };
 };
 
@@ -86,8 +119,10 @@ export const applyBackingStore = (game: Phaser.Game): void => {
   const canvas = game.canvas;
   const cssW = Math.max(1, Math.round(game.scale.width));
   const cssH = Math.max(1, Math.round(game.scale.height));
-  const bufferW = Math.round(cssW * dpr);
-  const bufferH = Math.round(cssH * dpr);
+  const renderer = game.renderer;
+  const useHiDpi = Boolean(renderer && isWebGl(renderer));
+  const bufferW = Math.round(cssW * (useHiDpi ? dpr : 1));
+  const bufferH = Math.round(cssH * (useHiDpi ? dpr : 1));
 
   canvas.style.setProperty('width', `${cssW}px`, 'important');
   canvas.style.setProperty('height', `${cssH}px`, 'important');
@@ -95,7 +130,6 @@ export const applyBackingStore = (game: Phaser.Game): void => {
 
   patchTextFactory();
 
-  const renderer = game.renderer;
   if (!renderer) {
     if (canvas.width !== bufferW || canvas.height !== bufferH) {
       canvas.width = bufferW;
@@ -106,6 +140,7 @@ export const applyBackingStore = (game: Phaser.Game): void => {
 
   if (isWebGl(renderer)) {
     patchScissorForDpr(renderer);
+    patchRenderForDpr(renderer);
     if (canvas.width !== bufferW || canvas.height !== bufferH) {
       canvas.width = bufferW;
       canvas.height = bufferH;
@@ -131,7 +166,7 @@ export const applyBackingStore = (game: Phaser.Game): void => {
   const canvasRenderer = renderer as Phaser.Renderer.Canvas.CanvasRenderer;
   canvasRenderer.width = cssW;
   canvasRenderer.height = cssH;
-  canvasRenderer.gameContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvasRenderer.gameContext.setTransform(1, 0, 0, 1, 0, 0);
 };
 
 export const installBackingStore = (game: Phaser.Game): void => {

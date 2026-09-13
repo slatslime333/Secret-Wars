@@ -1,7 +1,7 @@
 import { measureViewport } from './layout/viewport';
 import { getTouchControlLayout, type Point, type TouchControlLayout } from './touchLayout';
 
-export const CONTROL_LAYOUT_STORAGE_KEY = 'secret-wars-control-layout';
+export const CONTROL_LAYOUT_STORAGE_KEY = 'secret-wars-control-layout-v2';
 
 export const CONTROL_IDS = [
   'leftStick',
@@ -134,6 +134,16 @@ const radiusOf = (id: ControlId, layout: TouchControlLayout, scale: number): num
 
 export type ResolvedControl = Point & { r: number };
 
+const BASE_POINT: Record<ControlId, (layout: TouchControlLayout) => Point> = {
+  leftStick: (layout) => layout.leftStick,
+  rightStick: (layout) => layout.rightStick,
+  block: (layout) => layout.block,
+  dash: (layout) => layout.dash,
+  ability1: (layout) => layout.ability1,
+  ability2: (layout) => layout.ability2,
+  ultimate: (layout) => layout.ultimate,
+};
+
 export const resolveControls = (
   width: number,
   height: number,
@@ -146,6 +156,11 @@ export const resolveControls = (
   for (const id of CONTROL_IDS) {
     const entry = merged[id];
     const r = radiusOf(id, base, entry.scale);
+    if (!saved[id]) {
+      const point = BASE_POINT[id](base);
+      resolved[id] = { x: point.x, y: point.y, r };
+      continue;
+    }
     resolved[id] = {
       x: Math.round(clamp(entry.nx * width, r + inset.left, width - r - inset.right)),
       y: Math.round(clamp(entry.ny * height, r + inset.top, height - r - inset.bottom)),
