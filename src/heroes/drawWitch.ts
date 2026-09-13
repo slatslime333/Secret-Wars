@@ -197,19 +197,19 @@ const drawWest = (
 const drawLongHair = (g: Phaser.GameObjects.Graphics, p: Palette, dir: number, north: boolean): void => {
   g.fillStyle(p.hairDark);
   g.fillEllipse(dir * 0.6, -16, 26, 28);
-  g.fillEllipse(-10 + dir, -2, 10, 22);
-  g.fillEllipse(10 + dir, -2, 10, 22);
-  g.fillEllipse(-8 + dir * 2, 8, 9, 16);
-  g.fillEllipse(8 + dir * 2, 8, 9, 16);
+  g.fillEllipse(-11 + dir, 0, 11, 26);
+  g.fillEllipse(11 + dir, 0, 11, 26);
+  g.fillEllipse(-9 + dir * 2, 12, 10, 20);
+  g.fillEllipse(9 + dir * 2, 12, 10, 20);
   g.fillStyle(p.hair);
   g.fillEllipse(dir * 0.6, -16.5, 23, 25);
-  g.fillEllipse(-9 + dir, -1, 8, 20);
-  g.fillEllipse(9 + dir, -1, 8, 20);
-  g.fillEllipse(-7.5 + dir * 2, 8, 7.5, 14);
-  g.fillEllipse(7.5 + dir * 2, 8, 7.5, 14);
+  g.fillEllipse(-10 + dir, 1, 9, 24);
+  g.fillEllipse(10 + dir, 1, 9, 24);
+  g.fillEllipse(-8 + dir * 2, 12, 8, 18);
+  g.fillEllipse(8 + dir * 2, 12, 8, 18);
   if (north) {
     g.fillEllipse(dir, -18, 22, 22);
-    g.fillRoundedRect(-11 + dir, -4, 22, 16, 6);
+    g.fillRoundedRect(-12 + dir, -4, 24, 20, 7);
   }
 };
 

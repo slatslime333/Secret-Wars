@@ -75,7 +75,7 @@ const openingMenu = (
   const wait = 0.08 + personality.teamwork * 0.14 + (ranged ? 0.06 : 0);
   const poke = ranged
     ? 0.2 + personality.patience * 0.1 + (kit.wantsPoke ? 0.08 : 0)
-    : personality.caution * 0.06;
+    : personality.caution * 0.02;
   const controlled = 0.16 + (ranged ? 0.04 : 0.08);
   const behind = 0.1 + personality.patience * 0.08;
   const ally = 0.1 + personality.teamwork * 0.12;
@@ -275,7 +275,10 @@ export class GamePlanController {
     this.slot = slot;
     this.homeX = homeX;
     this.homeY = homeY;
-    this.opening = pickWeighted(openingMenu(kit, personality, slot), hash01(seed, 41 + slot));
+    this.opening = pickWeighted(
+      openingMenu(kit, personality, slot),
+      hash01(seed, 41 + slot) * 0.34 + Math.random() * 0.66,
+    );
     this.anchorX = homeX;
     this.anchorY = homeY;
     this.reason = this.opening;
