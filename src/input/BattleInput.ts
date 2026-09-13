@@ -3,6 +3,7 @@ import { COMBAT } from '../config/combat';
 import { INPUT } from '../config/input';
 import { isTouchPrimary } from '../device';
 import { AbilitySlot, AbilitySlotState, HeroAbilityKit } from '../heroes/abilities/types';
+import { CONTROL_ICON } from '../heroes/abilities/icons';
 import { AbilityButton } from '../ui/AbilityButton';
 import { CombatButton } from '../ui/CombatButton';
 import { COLORS } from '../ui/theme';
@@ -126,6 +127,7 @@ export class BattleInput {
         label: 'SHIELD',
         accent: COLORS.cyan,
         radius: layout.block.r,
+        iconKey: CONTROL_ICON.shield,
         onPress: () => {
           this.blockHeldTouch = true;
         },
@@ -136,6 +138,7 @@ export class BattleInput {
       this.dashButton = new CombatButton(scene, layout.dash.x, layout.dash.y, {
         label: 'DASH',
         accent: COLORS.orange,
+        iconKey: CONTROL_ICON.dash,
         onPress: () => {
           this.dashLatched = true;
         },
@@ -535,7 +538,10 @@ export class BattleInput {
     staminaRatio: number;
   }): void {
     this.dashButton?.setCharges(state.dashCharges, state.dashMax);
-    this.dashButton?.setRecovered(state.dashCharges <= 0 ? 1 - state.dashRecharge : 1);
+    this.dashButton?.setRecovered(
+      state.dashCharges <= 0 ? 1 - state.dashRecharge : 1,
+      state.dashRecharge * COMBAT.dashRechargeMs,
+    );
     this.dashButton?.setDimmed(state.dashCharges <= 0);
     this.blockPad?.setHeldVisual(state.blocking);
     this.blockPad?.setRecovered(state.staminaRatio);

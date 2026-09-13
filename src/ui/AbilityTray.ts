@@ -125,6 +125,8 @@ export class AbilityTray {
         overlay.closePath();
         overlay.fillPath();
         this.labels[i].setText(String(Math.max(1, Math.ceil(state.cooldownRemainingMs / 1000))));
+      } else if (state.maxCharges > 1) {
+        this.labels[i].setText(aimed ? 'AIM' : `${state.charges}`);
       } else {
         this.labels[i].setText(aimed ? 'AIM' : '');
       }
