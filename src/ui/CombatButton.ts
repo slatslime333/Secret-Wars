@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
 import { adoptHud, hudPointer } from './layout/hudCamera';
-import { COLORS, FONTS, hex } from './theme';
+import { COLORS, FONTS, hex, TOUCH_CONTROL_ALPHA } from './theme';
 
 type CombatButtonOptions = {
   label: string;
@@ -115,11 +115,11 @@ export class CombatButton {
   private drawArt(): void {
     const r = this.radius;
     this.art.clear();
-    this.art.fillStyle(COLORS.ink, 0.45);
+    this.art.fillStyle(COLORS.ink, 0.45 * TOUCH_CONTROL_ALPHA);
     this.art.fillCircle(this.x + 4, this.y + 5, r + 2);
-    this.art.fillStyle(this.held ? this.accent : COLORS.panel, this.held ? 0.28 : 0.58);
+    this.art.fillStyle(this.held ? this.accent : COLORS.panel, (this.held ? 0.28 : 0.58) * TOUCH_CONTROL_ALPHA);
     this.art.fillCircle(this.x, this.y, r);
-    this.art.lineStyle(3, this.accent);
+    this.art.lineStyle(3, this.accent, TOUCH_CONTROL_ALPHA);
     this.art.strokeCircle(this.x, this.y, r);
   }
 
@@ -195,7 +195,7 @@ export class CombatButton {
       return;
     }
     const remaining = 1 - this.recovered;
-    this.fill.fillStyle(COLORS.ink, 0.62);
+    this.fill.fillStyle(COLORS.ink, 0.62 * TOUCH_CONTROL_ALPHA);
     this.fill.beginPath();
     this.fill.moveTo(this.x, this.y);
     this.fill.arc(

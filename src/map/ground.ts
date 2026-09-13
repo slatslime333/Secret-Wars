@@ -136,8 +136,12 @@ const ensureGrassTexture = (scene: Phaser.Scene): void => {
 
 const drawPerimeter = (graphics: Phaser.GameObjects.Graphics): void => {
   const { width, height, wallThickness: wall, cameraBleed: bleed, wallColor } = ARENA;
+  // Wall beyond the arena only. Never paint over the grass field.
   graphics.fillStyle(wallColor);
-  graphics.fillRect(-bleed, -bleed, width + bleed * 2, height + bleed * 2);
+  graphics.fillRect(-bleed, -bleed, width + bleed * 2, bleed);
+  graphics.fillRect(-bleed, height, width + bleed * 2, bleed);
+  graphics.fillRect(-bleed, 0, bleed, height);
+  graphics.fillRect(width, 0, bleed, height);
   graphics.fillRect(0, 0, width, wall);
   graphics.fillRect(0, height - wall, width, wall);
   graphics.fillRect(0, 0, wall, height);

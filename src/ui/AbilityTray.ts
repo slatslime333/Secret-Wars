@@ -38,7 +38,7 @@ export class AbilityTray {
       const label = scene.add
         .text(0, 0, '', {
           fontFamily: FONTS.display,
-          fontSize: '16px',
+          fontSize: '20px',
           color: hex(COLORS.paper),
           stroke: hex(COLORS.ink),
           strokeThickness: 5,
@@ -124,7 +124,7 @@ export class AbilityTray {
         overlay.arc(px, py, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * state.cooldownRatio);
         overlay.closePath();
         overlay.fillPath();
-        this.labels[i].setText((state.cooldownRemainingMs / 1000).toFixed(state.cooldownRemainingMs >= 10000 ? 0 : 1));
+        this.labels[i].setText(String(Math.max(1, Math.ceil(state.cooldownRemainingMs / 1000))));
       } else {
         this.labels[i].setText(aimed ? 'AIM' : '');
       }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { ARENA } from '../../config/arena';
+import { cameraPrefs } from '../../config/cameraPrefs';
 import { getViewportSize, isTouchPrimary } from '../../device';
 
 /** iPad-class short side. Phones stay phones even in landscape. */
@@ -129,15 +130,26 @@ export const measureViewport = (
     ? 48
     : isTablet
       ? isPortrait
-        ? 196
-        : 148
+        ? 118
+        : 96
       : isPortrait
-        ? 168
-        : 110;
+        ? 96
+        : 78;
+  // Portrait lifts sticks above the bottom-center HP cluster. Landscape HP
+  // sits in the middle third, so sticks can stay in the bottom corners.
+  const hudBottom = !isMobile
+    ? 12
+    : isTablet
+      ? isPortrait
+        ? 176
+        : 48
+      : isPortrait
+        ? 158
+        : 32;
   const controlInset: Insets = {
     top: Math.max(contentInset.top, safe.top + hudReserve),
     right: Math.max(contentInset.right, safe.right + 12),
-    bottom: Math.max(contentInset.bottom, safe.bottom + (isPortrait ? 28 : 18)),
+    bottom: Math.max(contentInset.bottom, safe.bottom + hudBottom),
     left: Math.max(contentInset.left, safe.left + 12),
   };
 
@@ -176,7 +188,7 @@ export const applyGameplayCamera = (
 ): void => {
   const frame = measureViewport(width, height);
   camera.setSize(width, height);
-  camera.setZoom(frame.cameraZoom);
+  camera.setZoom(clamp(frame.cameraZoom * cameraPrefs.zoomMultiplier(), 0.28, 1.35));
   camera.removeBounds();
   camera.setBackgroundColor(ARENA.wallColor);
   camera.setDeadzone(0, 0);

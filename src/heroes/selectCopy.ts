@@ -15,8 +15,15 @@ import { SHADOW } from '../config/shadow';
 import { NINJA_KICK, NINJA_SMOKE, NINJA_TORNADO } from './abilities/ninja/tunables';
 import { COLE_ATTACK, COLE_BALL, COLE_DISCHARGE, COLE_STORM } from './abilities/cole/tunables';
 import { DEATH_ATTACK, DEATH_GUN, DEATH_SMASH, DEATH_SWEEP } from './abilities/death/tunables';
-import { ROPE_PUNCH, ROPE_SPRAY } from './abilities/rope/tunables';
-import { WITCH_HEX, WITCH_SKULL, WITCH_SKELETON, WITCH_TOMBSTONE, WITCH_ULT } from './abilities/witch/tunables';
+import { ROPE_PUNCH, ROPE_SHOT, ROPE_SPRAY } from './abilities/rope/tunables';
+import {
+  WITCH_HEX,
+  WITCH_SKULL,
+  WITCH_SKELETON,
+  WITCH_TOMBSTONE,
+  WITCH_ULT,
+  witchHexAllyRange,
+} from './abilities/witch/tunables';
 import { SHADOW_CLAW, SHADOW_DASH, SHADOW_MARK, SHADOW_RAGE } from './abilities/shadow/tunables';
 
 export type HeroSelectCopy = {
@@ -101,11 +108,11 @@ const ABILITY_TEXT: Record<string, string> = {
   'rope-spray':
     `He spins and sprays ropes in every direction for ${seconds(ROPE_SPRAY.durationMs)}, firing ${ROPE_SPRAY.shotsPerPulse} shots every ${seconds(ROPE_SPRAY.intervalMs)}. Hits deal ${hit(ROPE_SPRAY.damage)} damage, paralyze for ${seconds(ROPE_SPRAY.paralyzeMs)}, and carry light knockback. Rope Man moves ${slower(ROPE_SPRAY.moveMul)} while spraying.`,
   'witch-tombstone':
-    `Witch raises her staff and summons ${WITCH_TOMBSTONE.summonCount} skeleton bodyguards (${WITCH_SKELETON.maxHealth} HP, ${hit(WITCH_SKELETON.attackDamage)} damage). They stay close and fight for her. She can have no more than ${WITCH_TOMBSTONE.cap} living skeletons at once.`,
+    `Witch raises her staff and summons ${WITCH_TOMBSTONE.summonCount} skeleton bodyguards (${WITCH_SKELETON.maxHealth} HP, ${hit(WITCH_SKELETON.attackDamage)} damage). They roam up to ${WITCH_TOMBSTONE.leashRadius}px to fight for her and swing quickly. She can have no more than ${WITCH_TOMBSTONE.cap} living skeletons at once.`,
   'witch-hex':
-    `Witch and one nearby teammate gain a ${hexShield} HP shield, ${faster(WITCH_HEX.moveMul)} movement, and ${faster(WITCH_HEX.attackSpeedMul)} attack speed for ${seconds(WITCH_HEX.durationMs)}.`,
+    `Witch and one teammate within ${witchHexAllyRange()}px gain a ${hexShield} HP shield, ${faster(WITCH_HEX.moveMul)} movement, and ${faster(WITCH_HEX.attackSpeedMul)} attack speed for ${seconds(WITCH_HEX.durationMs)}.`,
   'witch-tombstone-ult':
-    `Fills the skeleton pack toward its ${WITCH_TOMBSTONE.cap}-cap (${WITCH_ULT.summonCount} more skeletons) and pulses a purple aura. Nearby enemies move ${slower(WITCH_ULT.moveMul)} and attack ${cooldownSlower(WITCH_ULT.attackSlowMul)} for ${seconds(WITCH_ULT.debuffMs)}.`,
+    `Fills the skeleton pack toward its ${WITCH_TOMBSTONE.cap}-cap (${WITCH_ULT.summonCount} more skeletons) and pulses a purple aura for ${seconds(WITCH_ULT.auraMs)}. Nearby enemies move ${slower(WITCH_ULT.moveMul)} and attack ${cooldownSlower(WITCH_ULT.attackSlowMul)} for ${seconds(WITCH_ULT.debuffMs)}.`,
   'shadow-claw':
     `A giant directional claw swipe that deals ${hit(SHADOW_CLAW.damage)} damage with powerful knockback. Much larger than a basic swipe.`,
   'shadow-dash':
@@ -137,7 +144,7 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
     description:
       'A long-range support. Rope Man pokes from very far away, then yanks into the fight or locks people down with ropes.',
     light:
-      `Alternating rope shots from each arm. Each shot deals ${hit(ROPE.attackDamage)} damage at very long range with moderate knockback.`,
+      `Alternating rope shots from each arm. Each shot deals ${hit(ROPE.attackDamage)} damage at very long range, drains stamina, and stacks a ${Math.round(ROPE_SHOT.cripplePerHit * 100)}% movement and attack-speed slow (up to ${Math.round(ROPE_SHOT.crippleCap * 100)}%) for ${seconds(ROPE_SHOT.crippleMs)}.`,
   },
   witch: {
     description:
@@ -153,11 +160,14 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
   },
 };
 
+const cooldownLine = (ms: number): string => `Cooldown: ${seconds(ms)}.`;
+
 const slotCopy = (hero: PlayableHero, slot: 'ability1' | 'ability2' | 'ultimate') => {
   const def = hero.kit[slot];
+  const body = ABILITY_TEXT[def.id] ?? def.name;
   return {
     name: def.name,
-    text: ABILITY_TEXT[def.id] ?? def.name,
+    text: `${body} ${cooldownLine(def.cooldownMs)}`,
   };
 };
 

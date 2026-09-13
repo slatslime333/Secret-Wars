@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { audioSettings } from './audio';
+import { cameraPrefs } from './config/cameraPrefs';
 import './style.css';
 import { getViewportSize } from './device';
 import { BattleScene } from './scenes/BattleScene';
@@ -15,6 +16,7 @@ import { getGameSize } from './ui/theme';
 import { applyBackingStore, installBackingStore } from './ui/layout/backingStore';
 
 audioSettings.load();
+cameraPrefs.load();
 
 const gameRoot = document.getElementById('game');
 

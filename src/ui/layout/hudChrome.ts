@@ -33,6 +33,7 @@ export type HudChromeLayout = {
     scoreSize: number;
     timerSize: number;
     phaseSize: number;
+    align: 'left' | 'center';
   };
   xpSize: number;
   minimap: {
@@ -76,7 +77,7 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
         stamH: 8,
         xpH: 6,
       },
-      match: { x: width / 2, scoreY: 22, timerY: 46, phaseY: 70, scoreSize: 16, timerSize: 22, phaseSize: 11 },
+      match: { x: width / 2, scoreY: 22, timerY: 46, phaseY: 70, scoreSize: 16, timerSize: 22, phaseSize: 11, align: 'left' },
       xpSize: 11,
       minimap: {
         x: width - 12,
@@ -97,8 +98,6 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
   const menuH = Math.round(clamp(frame.minTouch * (enlargeChrome ? 0.78 : 0.7), enlargeChrome ? 34 : 28, isTablet ? 42 : enlargeChrome ? 38 : 34));
   const menuX = width - contentInset.right - menuW / 2;
   const menuY = top + menuH / 2 + 2;
-  const barsX = contentInset.left;
-  // Phone landscape keeps the current HP / minimap size. Portrait and tablet scale up.
   const barWidth = Math.round(
     isTablet
       ? clamp(isPortrait ? width * 0.36 : Math.min(width * 0.28, height * 0.48), 168, 240)
@@ -111,13 +110,16 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
   const stamH = isTablet ? 10 : enlargeChrome ? 9 : 6;
   const xpH = isTablet ? 8 : enlargeChrome ? 7 : 5;
   const gap = enlargeChrome ? 6 : 5;
-  const hpY = top + (enlargeChrome ? 20 : 18);
-  const shieldY = hpY + hpH + gap;
-  const staminaY = shieldY + shieldH + gap;
-  const xpY = staminaY + stamH + gap;
-  const scoreY = xpY + xpH + (enlargeChrome ? 16 : 12);
-  const timerY = scoreY + (enlargeChrome ? 20 : 14);
-  const phaseY = timerY + (enlargeChrome ? 16 : 14);
+  const barsX = Math.round((width - barWidth) / 2);
+  const floor = height - Math.max(safe.bottom, 8) - 8;
+  const labelGap = enlargeChrome ? 16 : 14;
+  const xpY = floor - labelGap - xpH / 2;
+  const staminaY = xpY - xpH / 2 - gap - stamH / 2;
+  const shieldY = staminaY - stamH / 2 - gap - shieldH / 2;
+  const hpY = shieldY - shieldH / 2 - gap - hpH / 2;
+  const scoreY = hpY - hpH / 2 - (enlargeChrome ? 24 : 18);
+  const timerY = scoreY - (enlargeChrome ? 20 : 16);
+  const phaseY = timerY - (enlargeChrome ? 16 : 14);
   const miniW = Math.round(
     isTablet
       ? clamp(isPortrait ? width * 0.24 : Math.min(height * 0.34, width * 0.2), 140, 196)
@@ -139,16 +141,17 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
     menuY,
     menuW,
     menuH,
-    comboY: phaseY + 18,
+    comboY: top + (enlargeChrome ? 36 : 28),
     bars: { x: barsX, hpY, shieldY, staminaY, xpY, width: barWidth, hpH, shieldH, stamH, xpH },
     match: {
-      x: barsX,
+      x: width / 2,
       scoreY,
       timerY,
       phaseY,
       scoreSize: isTablet ? 18 : enlargeChrome ? 16 : 13,
       timerSize: isTablet ? 20 : enlargeChrome ? 18 : 14,
       phaseSize: isTablet ? 13 : enlargeChrome ? 12 : 10,
+      align: 'center',
     },
     xpSize: isTablet ? 13 : enlargeChrome ? 12 : 10,
     minimap: {

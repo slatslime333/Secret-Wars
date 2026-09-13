@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { adoptHud, hudPointer } from '../ui/layout/hudCamera';
-import { COLORS } from '../ui/theme';
+import { COLORS, TOUCH_CONTROL_ALPHA } from '../ui/theme';
 
 type VirtualThumbstickOptions = {
   label: string;
@@ -36,8 +36,8 @@ export class VirtualThumbstick {
     this.drawBase();
 
     this.knob = scene.add
-      .circle(x, y, this.radius * 0.4, COLORS.ink, 0.52)
-      .setStrokeStyle(3, options.accent, 0.95)
+      .circle(x, y, this.radius * 0.4, COLORS.ink, 0.52 * TOUCH_CONTROL_ALPHA)
+      .setStrokeStyle(3, options.accent, 0.95 * TOUCH_CONTROL_ALPHA)
       .setScrollFactor(0)
       .setDepth(112);
 
@@ -70,11 +70,11 @@ export class VirtualThumbstick {
 
   private drawBase(): void {
     this.base.clear();
-    this.base.fillStyle(COLORS.ink, 0.38);
+    this.base.fillStyle(COLORS.ink, 0.38 * TOUCH_CONTROL_ALPHA);
     this.base.fillCircle(this.originX, this.originY, this.radius + 10);
-    this.base.lineStyle(3, this.accent, 0.75);
+    this.base.lineStyle(3, this.accent, 0.75 * TOUCH_CONTROL_ALPHA);
     this.base.strokeCircle(this.originX, this.originY, this.radius + 3);
-    this.base.lineStyle(1, COLORS.paper, 0.22);
+    this.base.lineStyle(1, COLORS.paper, 0.22 * TOUCH_CONTROL_ALPHA);
     this.base.strokeCircle(this.originX, this.originY, this.radius - 16);
     this.base.lineBetween(this.originX - this.radius + 14, this.originY, this.originX + this.radius - 14, this.originY);
     this.base.lineBetween(this.originX, this.originY - this.radius + 14, this.originX, this.originY + this.radius - 14);

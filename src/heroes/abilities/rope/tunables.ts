@@ -16,6 +16,10 @@ export const ROPE_SHOT = {
   armReach: 16,
   knockbackMul: 1.15,
   staminaDamage: 3,
+  /** Stacking light-hit cripple. 6% move + attack speed per hit, cap 50%, 4s. */
+  cripplePerHit: 0.06,
+  crippleCap: 0.5,
+  crippleMs: 4000,
 } as const;
 
 export const ROPE_DASH = {
