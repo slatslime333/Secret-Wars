@@ -1,5 +1,5 @@
 import { canStartObjective, OBJECTIVE, pickObjectiveKind, pickObjectiveStartAt } from '../../config/objective';
-import { COLE } from '../../config/cole';
+import { COLE_CONVERTED_RANGE } from '../../config/cole';
 import { emptyCapture, tickCapture } from './captureLogic';
 
 export type CheckResult = { name: string; ok: boolean; detail: string };
@@ -56,12 +56,12 @@ const scenarioKindReroll = (): CheckResult => {
 };
 
 const scenarioCaptureRadius = (): CheckResult => {
-  const expected = Math.round(COLE.attackRange * 0.8);
-  const ok = OBJECTIVE.capture.radius === expected && expected < COLE.attackRange;
+  const expected = Math.round(COLE_CONVERTED_RANGE * 0.8);
+  const ok = OBJECTIVE.capture.radius === expected && expected < COLE_CONVERTED_RANGE;
   return {
     name: 'capture zone radius is 80% of Cole reach',
     ok,
-    detail: `radius=${OBJECTIVE.capture.radius} cole=${COLE.attackRange} expected=${expected}`,
+    detail: `radius=${OBJECTIVE.capture.radius} cole=${COLE_CONVERTED_RANGE} expected=${expected}`,
   };
 };
 

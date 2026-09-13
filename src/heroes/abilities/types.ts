@@ -114,9 +114,8 @@ export const isEnemyActionLocked = (ctx: AbilityContext): boolean =>
   ctx.caster.status.isEnemyActionLocked(ctx.now);
 
 /**
- * Abilities stay usable while taking damage unless an enemy has locked the
- * caster (stun / paralyze / hit reaction) or a control lock is active.
- * Own attack recovery does not use this gate.
+ * Abilities stay usable through slows and other debuffs. Only paralyze,
+ * stun, and the caster's own animation / control lock block a new cast.
  */
 export const canStartAbility = (ctx: AbilityContext): boolean => {
   const { caster, now } = ctx;

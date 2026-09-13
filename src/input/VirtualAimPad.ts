@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { INPUT } from '../config/input';
+import { AbilitySlotState } from '../heroes/abilities/types';
 import { adoptHud, hudPointer } from '../ui/layout/hudCamera';
 import { COLORS, FONTS, hex, TOUCH_CONTROL_ALPHA } from '../ui/theme';
 
@@ -8,6 +9,7 @@ export type VirtualAimPadOptions = {
   accent: number;
   radius?: number;
   deadzone?: number;
+  iconKey?: string;
   onPress?: () => void;
   onRelease?: (aim: Phaser.Math.Vector2) => void;
 };
@@ -28,7 +30,9 @@ export class VirtualAimPad {
   private readonly art: Phaser.GameObjects.Graphics;
   private readonly fill: Phaser.GameObjects.Graphics;
   private readonly knob: Phaser.GameObjects.Arc;
+  private readonly icon?: Phaser.GameObjects.Image;
   private readonly label: Phaser.GameObjects.Text;
+  private readonly timer: Phaser.GameObjects.Text;
   private readonly zone: Phaser.GameObjects.Zone;
   private x: number;
   private y: number;
@@ -59,13 +63,31 @@ export class VirtualAimPad {
       .setDepth(116)
       .setVisible(false);
 
+    if (options.iconKey) {
+      this.icon = scene.add.image(x, y, options.iconKey).setScrollFactor(0).setDepth(116);
+      this.fitIcon();
+    }
+
     this.label = scene.add
-      .text(x, y, options.label, {
+      .text(x, y, options.iconKey ? '' : options.label, {
         fontFamily: FONTS.display,
         fontSize: '12px',
         color: hex(COLORS.paper),
         stroke: hex(COLORS.ink),
         strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(117)
+      .setVisible(!options.iconKey);
+
+    this.timer = scene.add
+      .text(x, y + this.radius * 0.08, '', {
+        fontFamily: FONTS.display,
+        fontSize: '20px',
+        color: hex(COLORS.paper),
+        stroke: hex(COLORS.ink),
+        strokeThickness: 5,
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -82,7 +104,7 @@ export class VirtualAimPad {
       .setDepth(118);
     this.zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this.onDown, this);
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onSceneDown, this);
-    adoptHud(scene, this.art, this.fill, this.knob, this.label, this.zone);
+    adoptHud(scene, this.art, this.fill, this.knob, this.label, this.timer, this.zone, ...(this.icon ? [this.icon] : []));
   }
 
   get active(): boolean {
@@ -100,6 +122,8 @@ export class VirtualAimPad {
   setRadius(radius: number): void {
     this.radius = radius;
     this.label.setFontSize(Math.max(9, Math.round(12 * (radius / 30))));
+    this.timer.setFontSize(Math.max(14, Math.round(20 * (radius / 30))));
+    this.timer.setPosition(this.x, this.y + radius * 0.08);
     this.knob.setRadius(radius * 0.32);
     this.zone.setSize(radius * 2.4, radius * 2.4);
     this.zone.setInteractive(
@@ -108,6 +132,7 @@ export class VirtualAimPad {
     );
     this.drawArt();
     this.redrawFill();
+    this.fitIcon();
     this.syncKnob();
   }
 
@@ -117,6 +142,8 @@ export class VirtualAimPad {
     this.drawArt();
     this.redrawFill();
     this.label.setPosition(x, y);
+    this.timer.setPosition(x, y + this.radius * 0.08);
+    this.icon?.setPosition(x, y);
     this.zone.setPosition(x, y);
     this.syncKnob();
   }
@@ -134,16 +161,38 @@ export class VirtualAimPad {
     this.redrawFill();
   }
 
+  sync(state: AbilitySlotState): void {
+    this.icon?.setAlpha(state.consumed ? 0.28 : state.ready ? 1 : 0.45);
+    this.icon?.setTint(state.consumed ? 0x667088 : 0xffffff);
+    if (state.consumed) {
+      this.timer.setText('');
+    } else if (state.maxCharges > 1 && state.ready) {
+      this.timer.setText(`${state.charges}`);
+    } else if (!state.ready && state.cooldownRemainingMs > 0) {
+      this.timer.setText(String(Math.max(1, Math.ceil(state.cooldownRemainingMs / 1000))));
+    } else if (state.maxCharges > 1) {
+      this.timer.setText(`${state.charges}`);
+    } else {
+      this.timer.setText('');
+    }
+  }
+
   setDimmed(dimmed: boolean): void {
     this.dimmed = dimmed;
     this.label.setAlpha(dimmed ? 0.4 : 1);
+    this.timer.setAlpha(dimmed ? 0.7 : 1);
     this.knob.setAlpha(dimmed ? 0.4 : 1);
+    if (this.icon && this.icon.alpha > 0.32) {
+      this.icon.setAlpha(dimmed ? 0.32 : 1);
+    }
   }
 
   setVisible(visible: boolean): void {
     this.art.setVisible(visible);
     this.fill.setVisible(visible);
-    this.label.setVisible(visible);
+    this.icon?.setVisible(visible);
+    this.label.setVisible(visible && !this.icon);
+    this.timer.setVisible(visible);
     this.zone.setVisible(visible);
     if (!visible) {
       this.knob.setVisible(false);
@@ -163,7 +212,9 @@ export class VirtualAimPad {
     this.art.destroy();
     this.fill.destroy();
     this.knob.destroy();
+    this.icon?.destroy();
     this.label.destroy();
+    this.timer.destroy();
     this.zone.destroy();
   }
 
@@ -184,6 +235,7 @@ export class VirtualAimPad {
     this.pointerId = pointer.id;
     this.knob.setVisible(true);
     this.label.setAlpha(0.35);
+    this.icon?.setAlpha(0.35);
     this.scene.input.on(Phaser.Input.Events.POINTER_MOVE, this.onMove, this);
     this.scene.input.on(Phaser.Input.Events.POINTER_UP, this.onUp, this);
     this.scene.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onUp, this);
@@ -209,6 +261,7 @@ export class VirtualAimPad {
     this.knob.setVisible(false);
     this.knob.setPosition(this.x, this.y);
     this.label.setAlpha(this.dimmed ? 0.4 : 1);
+    this.icon?.setAlpha(this.dimmed ? 0.32 : 1);
     this.stopListening();
     this.onRelease?.(released);
   }
@@ -242,9 +295,11 @@ export class VirtualAimPad {
     this.art.fillCircle(this.x, this.y, r);
     this.art.lineStyle(3, this.accent, TOUCH_CONTROL_ALPHA);
     this.art.strokeCircle(this.x, this.y, r);
-    this.art.lineStyle(1, COLORS.paper, (this.held ? 0.35 : 0.16) * TOUCH_CONTROL_ALPHA);
-    this.art.lineBetween(this.x - r + 8, this.y, this.x + r - 8, this.y);
-    this.art.lineBetween(this.x, this.y - r + 8, this.x, this.y + r - 8);
+    if (!this.icon) {
+      this.art.lineStyle(1, COLORS.paper, (this.held ? 0.35 : 0.16) * TOUCH_CONTROL_ALPHA);
+      this.art.lineBetween(this.x - r + 8, this.y, this.x + r - 8, this.y);
+      this.art.lineBetween(this.x, this.y - r + 8, this.x, this.y + r - 8);
+    }
   }
 
   private redrawFill(): void {
@@ -266,5 +321,9 @@ export class VirtualAimPad {
     );
     this.fill.closePath();
     this.fill.fillPath();
+  }
+
+  private fitIcon(): void {
+    this.icon?.setDisplaySize(this.radius * 1.55, this.radius * 1.55);
   }
 }

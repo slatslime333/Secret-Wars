@@ -15,7 +15,7 @@ import { SHADOW } from '../config/shadow';
 import { NINJA_KICK, NINJA_SMOKE, NINJA_TORNADO } from './abilities/ninja/tunables';
 import { COLE_ATTACK, COLE_BALL, COLE_DISCHARGE, COLE_STORM } from './abilities/cole/tunables';
 import { DEATH_ATTACK, DEATH_GUN, DEATH_SMASH, DEATH_SWEEP } from './abilities/death/tunables';
-import { ROPE_PUNCH, ROPE_SHOT, ROPE_SPRAY } from './abilities/rope/tunables';
+import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT, ROPE_SPRAY } from './abilities/rope/tunables';
 import {
   WITCH_HEX,
   WITCH_SKULL,
@@ -102,9 +102,9 @@ const ABILITY_TEXT: Record<string, string> = {
   'death-bat-sweep':
     `Death spins the bat in a wide damaging arc for ${seconds(DEATH_SWEEP.durationMs)}. Hits deal ${hit(DEATH_SWEEP.damage)} damage with strong knockback, and Death moves ${slower(DEATH_SWEEP.moveMul)} while sweeping.`,
   'rope-grab':
-    `Fire a long rope along your aim. A hit flings you in for a backflip kick that deals ${hit(NINJA_KICK.damage)} damage, launches with powerful knockback, and slows movement by 50% for ${seconds(NINJA_KICK.hitSlowMs)}. Misses cost nothing.`,
+    `Fire a long rope along your aim. A hit flings you in for a backflip kick that deals ${hit(NINJA_KICK.damage)} damage, launches with powerful knockback, and slows movement by 50% for ${seconds(ROPE_GRAB.hitSlowMs)}. Misses cost nothing.`,
   'rope-mega-punch':
-    `Rope Man jumps into a close uppercut that deals ${hit(ROPE_PUNCH.damage)} damage with strong knockback and slows movement ${slower(ROPE_PUNCH.slowMul)} for ${seconds(ROPE_PUNCH.slowMs)}.`,
+    `Rope Man jumps into a 360 close burst that deals ${hit(ROPE_PUNCH.damage)} damage with strong knockback and slows movement ${slower(ROPE_PUNCH.slowMul)} for ${seconds(ROPE_PUNCH.slowMs)}.`,
   'rope-spray':
     `He spins and sprays ropes in every direction for ${seconds(ROPE_SPRAY.durationMs)}, firing ${ROPE_SPRAY.shotsPerPulse} shots every ${seconds(ROPE_SPRAY.intervalMs)}. Hits deal ${hit(ROPE_SPRAY.damage)} damage, paralyze for ${seconds(ROPE_SPRAY.paralyzeMs)}, and carry light knockback. Rope Man moves ${slower(ROPE_SPRAY.moveMul)} while spraying.`,
   'witch-tombstone':

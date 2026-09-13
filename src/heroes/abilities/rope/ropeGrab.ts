@@ -47,6 +47,7 @@ class RopeGrabAbility implements ActiveAbility {
   private target?: NinjaBody;
   private readonly dir = { x: 1, y: 0 };
   private slingUntil = 0;
+  private slingSpeed = 0;
   private impactUntil = 0;
   private flipUntil = 0;
   private readonly line: Phaser.GameObjects.Graphics;
@@ -90,13 +91,18 @@ class RopeGrabAbility implements ActiveAbility {
       const dist = Math.hypot(dx, dy) || 1;
       this.dir.x = dx / dist;
       this.dir.y = dy / dist;
-      const speed = Math.max(520, dist / (ROPE_GRAB.slingMs / 1000));
+      const remainingMs = Math.max(16, this.slingUntil - now);
+      const speed = Math.max(this.slingSpeed, dist / (remainingMs / 1000));
       caster.setSpeedCap(speed);
       caster.body?.setDrag(0, 0);
       caster.body?.setVelocity(this.dir.x * speed, this.dir.y * speed);
       this.drawLine(caster, tx, ty);
-      const reach = caster.stats.bodyRadius + (dest?.stats.bodyRadius ?? 14) + 10;
+      const reach = caster.stats.bodyRadius + (dest?.stats.bodyRadius ?? 14) + 12;
       if (!dest || dist <= reach || now >= this.slingUntil) {
+        if (dest && dist > reach) {
+          caster.placeAt(dest.x - this.dir.x * reach, dest.y - this.dir.y * reach);
+        }
+        caster.body?.setVelocity(0, 0);
         this.beginKick(ctx);
       }
       return true;
@@ -126,14 +132,19 @@ class RopeGrabAbility implements ActiveAbility {
 
   private beginSling(ctx: AbilityContext): void {
     this.phase = 'sling';
-    this.slingUntil = ctx.now + ROPE_GRAB.slingMs;
-    ctx.caster.status.applyControlLock(ctx.now, ROPE_GRAB.slingMs + NINJA_KICK.hitStopMs + NINJA_KICK.backflipMs);
-    ctx.caster.playCustomAttack(ctx.now, ROPE_GRAB.slingMs, (frac) => ({
+    const { caster } = ctx;
+    const dest = this.target;
+    const dist = dest ? Math.hypot(dest.x - caster.x, dest.y - caster.y) : 80;
+    const travelMs = Math.round(Phaser.Math.Clamp(dist / 1.45, 200, 520));
+    this.slingUntil = ctx.now + travelMs;
+    this.slingSpeed = Math.max(640, dist / (travelMs / 1000));
+    caster.status.applyControlLock(ctx.now, travelMs + NINJA_KICK.hitStopMs + NINJA_KICK.backflipMs);
+    caster.playCustomAttack(ctx.now, travelMs, (frac) => ({
       armLiftLeft: 0.9,
       armLiftRight: 0.9,
-      jumpY: -10 - Math.sin(frac * Math.PI) * 8,
+      jumpY: -12 - Math.sin(frac * Math.PI) * 14,
     }));
-    playWorld('rope-grab-zip', ctx.caster);
+    playWorld('rope-grab-zip', caster);
   }
 
   private beginKick(ctx: AbilityContext): void {
@@ -179,8 +190,8 @@ class RopeGrabAbility implements ActiveAbility {
       },
       ctx.rivalBlock,
     );
-    enemy.status.applySlow(ctx.now, NINJA_KICK.hitSlowMs, NINJA_KICK.hitSlowMul);
-    enemy.showRopeWrap(ctx.now + NINJA_KICK.hitSlowMs);
+    enemy.status.applySlow(ctx.now, ROPE_GRAB.hitSlowMs, ROPE_GRAB.hitSlowMul);
+    enemy.showRopeWrap(ctx.now + ROPE_GRAB.hitSlowMs);
     this.beginFlip(ctx, NINJA_KICK.backflipDistance, NINJA_KICK.backflipMs, NINJA_KICK.jumpHeight);
   }
 
@@ -195,14 +206,14 @@ class RopeGrabAbility implements ActiveAbility {
       if (enemy.down) {
         continue;
       }
-      const radius = ROPE_GRAB.radius + enemy.stats.bodyRadius;
+      const radius = ROPE_GRAB.radius + enemy.stats.bodyRadius + ROPE_GRAB.forgive;
       if (!segmentHitsCircle(this.origin.x, this.origin.y, tipX, tipY, enemy.x, enemy.y, radius)) {
         continue;
       }
       this.consumeDeferred = true;
       this.target = enemy;
       playWorld('rope-grab-catch', caster);
-      enemy.showRopeWrap(ctx.now + ROPE_GRAB.slingMs + NINJA_KICK.hitStopMs + NINJA_KICK.hitSlowMs);
+      enemy.showRopeWrap(ctx.now + ROPE_GRAB.hitSlowMs + NINJA_KICK.hitStopMs + 520);
       this.beginSling(ctx);
       return true;
     }

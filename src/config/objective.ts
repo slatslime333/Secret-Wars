@@ -1,4 +1,4 @@
-import { COLE } from './cole';
+import { COLE, COLE_CONVERTED_RANGE } from './cole';
 
 /**
  * Random mid-match objective tunables. Timing is match-elapsed, not remaining
@@ -17,7 +17,7 @@ export const OBJECTIVE = {
   rerollSameKind: 0.72,
   capture: {
     /** 80% of Cole's light-attack reach. */
-    radius: Math.round(COLE.attackRange * 0.8),
+    radius: Math.round(COLE_CONVERTED_RANGE * 0.8),
     captureMs: 20_000,
     graceMs: 5_000,
     /** Decay speed after grace. 1 = same rate as capturing. */

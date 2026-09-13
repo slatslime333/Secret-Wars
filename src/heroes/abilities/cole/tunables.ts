@@ -11,6 +11,8 @@ export const COLE_ATTACK = {
   knockbackMul: 1.5,
   /** Light punches were launch-capped; drop the felt send by 25%. */
   launchCap: Math.round(COMBAT.launchSpeedCap * 0.75),
+  /** Hit marker + punch reach. Matches Cole's live attackRange. */
+  range: COLE.attackRange,
 } as const;
 
 export const COLE_SHOCKWAVE = {

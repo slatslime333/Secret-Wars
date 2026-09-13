@@ -20,7 +20,7 @@ import { AbilityController } from '../heroes/abilities/AbilityController';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { AbilityContext } from '../heroes/abilities/types';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
-import { COLE_BALL } from '../heroes/abilities/cole/tunables';
+import { COLE_ATTACK, COLE_BALL } from '../heroes/abilities/cole/tunables';
 import { DEATH_GUN, DEATH_SMASH } from '../heroes/abilities/death/tunables';
 import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
 import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
@@ -59,6 +59,7 @@ export class BattleScene extends Phaser.Scene {
   private returning = false;
   private ninja!: NinjaBody;
   private rival?: NinjaBody;
+  private cpuDummy = false;
   private cpuHeroId: HeroId = 'ninja';
   private minionTeam: TeamId = 'alpha';
   private minionQty = 1;
@@ -178,8 +179,10 @@ export class BattleScene extends Phaser.Scene {
       onExit: () => this.returnToMenu(),
     });
     this.devMenu = new DevMenu(this, {
-      onToggleCpu: () => this.toggleCpu(),
+      onToggleCpu: () => this.toggleCpu(false),
+      onToggleDummy: () => this.toggleCpu(true),
       cpuPresent: () => Boolean(this.rival),
+      cpuDummy: () => this.cpuDummy,
       cpuHeroId: () => this.cpuHeroId,
       onSetCpuHero: (id) => this.setCpuHero(id),
       onSwapHero: (id) => this.swapHero(id),
@@ -423,12 +426,13 @@ export class BattleScene extends Phaser.Scene {
     } else if (this.ninja.heroId === 'rope') {
       this.marker.clearRange();
     } else {
+      const range = this.ninja.heroId === 'cole' ? COLE_ATTACK.range : this.ninja.stats.attackRange;
       this.marker.sync(
         this.ninja.x,
         this.ninja.y,
         this.ninja.aim.x,
         this.ninja.aim.y,
-        this.ninja.stats.attackRange,
+        range,
         this.ninja.stats.attackArcDegrees,
       );
     }
@@ -564,10 +568,8 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  private spawnCpu(): void {
-    if (this.rival) {
-      return;
-    }
+  private spawnCpu(dummy = false): void {
+    this.removeCpu();
     const pad = ARENA.teamSpawns.bravo;
     const hero = PLAYABLE_HEROES[this.cpuHeroId];
     this.rival = new NinjaBody(this, pad.x, pad.y, {
@@ -577,7 +579,7 @@ export class BattleScene extends Phaser.Scene {
       draw: hero.draw,
       handSparks: hero.handSparks,
     });
-    this.sandboxStats.register(this.rival, { instanceId: 'playtest-cpu', player: false });
+    this.sandboxStats.register(this.rival, { instanceId: dummy ? 'playtest-dummy' : 'playtest-cpu', player: false });
     this.rival.setAim(pad.facingX, 0);
     this.rivalCollider = this.physics.add.collider(this.ninja.sprite, this.rival.sprite);
     this.battlefield?.attachMover(this.rival.sprite);
@@ -585,14 +587,17 @@ export class BattleScene extends Phaser.Scene {
     this.rivalBlock = new BlockController(this);
     this.rivalDash = new DashController(this, hero.stats.dashMaxCharges);
     this.rivalAbilities = new AbilityController(hero.kit);
-    this.brain = new RivalBrain(
-      this.rivalAttacks,
-      this.rivalBlock,
-      this.rivalDash,
-      this.block,
-      this.rivalAbilities,
-      this.abilityWorld,
-    );
+    this.cpuDummy = dummy;
+    this.brain = dummy
+      ? undefined
+      : new RivalBrain(
+          this.rivalAttacks,
+          this.rivalBlock,
+          this.rivalDash,
+          this.block,
+          this.rivalAbilities,
+          this.abilityWorld,
+        );
     this.devMenu?.sync();
   }
 
@@ -611,25 +616,26 @@ export class BattleScene extends Phaser.Scene {
     this.rivalDash = undefined;
     this.rivalAbilities = undefined;
     this.brain = undefined;
+    this.cpuDummy = false;
     this.devMenu?.sync();
   }
 
-  private toggleCpu(): void {
+  private toggleCpu(dummy: boolean): void {
     if (this.round.isLocked) {
       return;
     }
-    if (this.rival) {
+    if (this.rival && this.cpuDummy === dummy) {
       this.removeCpu();
       return;
     }
-    this.spawnCpu();
+    this.spawnCpu(dummy);
   }
 
   private setCpuHero(id: HeroId): void {
     this.cpuHeroId = id;
     if (this.rival && !this.round.isLocked) {
-      this.removeCpu();
-      this.spawnCpu();
+      const dummy = this.cpuDummy;
+      this.spawnCpu(dummy);
     }
   }
 
@@ -917,7 +923,8 @@ export class BattleScene extends Phaser.Scene {
 
   private bindDebugApi(): void {
     (window as Window & { secretWarsPlaytest?: object }).secretWarsPlaytest = {
-      spawnCpu: () => this.spawnCpu(),
+      spawnCpu: () => this.spawnCpu(false),
+      spawnDummy: () => this.spawnCpu(true),
       spawnMixed: (team: 'alpha' | 'bravo' = 'bravo') => this.minions.spawnMixed(team),
       toggleAi: () => {
         DEV_CHEATS.showAi = !DEV_CHEATS.showAi;

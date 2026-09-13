@@ -182,15 +182,13 @@ export class CombatStatus {
     return now < this.stunUntil;
   }
 
-  /** Enemy-caused lock: stun, paralyze, hit reaction, block-stun, clash. */
+  /**
+   * Only hard crowd-control blocks abilities. Slows, cripple, hit-flinch,
+   * clash, and block-stun still let the fighter fire kit once their own
+   * animation / control lock is done.
+   */
   isEnemyActionLocked(now: number): boolean {
-    return (
-      this.isParalyzed(now) ||
-      this.isStunned(now) ||
-      this.isBlockStunned(now) ||
-      this.isClashLocked(now) ||
-      this.isHitReacting(now)
-    );
+    return this.isParalyzed(now) || this.isStunned(now);
   }
 
   isHitReacting(now: number): boolean {

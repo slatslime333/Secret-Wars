@@ -7,7 +7,7 @@ import { PLAYABLE_HEROES, HERO_IDS, getSelectedHeroId, setSelectedHeroId, type H
 import { HitMarker } from '../combat/HitMarker';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
-import { COLE_BALL } from '../heroes/abilities/cole/tunables';
+import { COLE_ATTACK, COLE_BALL } from '../heroes/abilities/cole/tunables';
 import { DEATH_GUN, DEATH_SMASH } from '../heroes/abilities/death/tunables';
 import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
 import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
@@ -685,7 +685,8 @@ export class MatchScene extends Phaser.Scene {
     } else if (ninja.heroId === 'rope') {
       this.marker.clearRange();
     } else {
-      this.marker.sync(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, ninja.stats.attackRange, ninja.stats.attackArcDegrees);
+      const range = ninja.heroId === 'cole' ? COLE_ATTACK.range : ninja.stats.attackRange;
+      this.marker.sync(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, range, ninja.stats.attackArcDegrees);
     }
     if (ninja.heroId === 'cole') {
       this.marker.syncBallAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, COLE_BALL.explodeRadius, frame.ability1Aiming);

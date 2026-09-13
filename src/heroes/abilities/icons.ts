@@ -1,6 +1,11 @@
 import Phaser from 'phaser';
 import { COLORS } from '../../ui/theme';
 
+export const CONTROL_ICON = {
+  dash: 'control-icon-dash',
+  shield: 'control-icon-shield',
+} as const;
+
 export const ABILITY_ICON = {
   smokeBomb: 'ability-icon-smoke-bomb',
   backflipKick: 'ability-icon-backflip-kick',
@@ -45,6 +50,8 @@ export const ensureAbilityIcons = (scene: Phaser.Scene): void => {
   drawIfMissing(scene, ABILITY_ICON.shadowClaw, drawShadowClawIcon);
   drawIfMissing(scene, ABILITY_ICON.shadowDash, drawShadowDashIcon);
   drawIfMissing(scene, ABILITY_ICON.shadowRage, drawShadowRageIcon);
+  drawIfMissing(scene, CONTROL_ICON.dash, drawDashIcon);
+  drawIfMissing(scene, CONTROL_ICON.shield, drawShieldIcon);
 };
 
 const drawIfMissing = (
@@ -653,6 +660,71 @@ const drawShadowRageIcon = (ctx: CanvasRenderingContext2D, size: number): void =
   ctx.beginPath();
   ctx.arc(c, c - 4, 6, 0, Math.PI * 2);
   ctx.fill();
+};
+
+const drawDashIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = orange;
+  ctx.lineWidth = 7;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(c - 30, c - 14);
+  ctx.lineTo(c + 6, c - 14);
+  ctx.moveTo(c - 34, c);
+  ctx.lineTo(c + 14, c);
+  ctx.moveTo(c - 28, c + 14);
+  ctx.lineTo(c + 4, c + 14);
+  ctx.stroke();
+  ctx.fillStyle = yellow;
+  ctx.beginPath();
+  ctx.moveTo(c + 8, c - 26);
+  ctx.lineTo(c + 42, c);
+  ctx.lineTo(c + 8, c + 26);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = paper;
+  ctx.beginPath();
+  ctx.moveTo(c + 14, c - 16);
+  ctx.lineTo(c + 34, c);
+  ctx.lineTo(c + 14, c + 16);
+  ctx.closePath();
+  ctx.fill();
+};
+
+const drawShieldIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = cyan;
+  ctx.beginPath();
+  ctx.moveTo(c, c - 36);
+  ctx.quadraticCurveTo(c + 34, c - 28, c + 32, c + 4);
+  ctx.quadraticCurveTo(c + 28, c + 28, c, c + 40);
+  ctx.quadraticCurveTo(c - 28, c + 28, c - 32, c + 4);
+  ctx.quadraticCurveTo(c - 34, c - 28, c, c - 36);
+  ctx.fill();
+  ctx.fillStyle = '#1a3040';
+  ctx.beginPath();
+  ctx.moveTo(c, c - 26);
+  ctx.quadraticCurveTo(c + 22, c - 20, c + 20, c + 2);
+  ctx.quadraticCurveTo(c + 18, c + 20, c, c + 30);
+  ctx.quadraticCurveTo(c - 18, c + 20, c - 20, c + 2);
+  ctx.quadraticCurveTo(c - 22, c - 20, c, c - 26);
+  ctx.fill();
+  ctx.strokeStyle = paper;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(c, c - 22);
+  ctx.lineTo(c, c + 24);
+  ctx.moveTo(c - 14, c - 2);
+  ctx.lineTo(c + 14, c - 2);
+  ctx.stroke();
 };
 
 

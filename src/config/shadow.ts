@@ -1,5 +1,5 @@
 import { HeroCombatConfig } from './hero';
-import { COLE } from './cole';
+import { COLE_CONVERTED_RANGE } from './cole';
 import { NINJA } from './ninja';
 import { gameplayFromRatings, type CoreRatings } from './ratings';
 
@@ -32,7 +32,7 @@ export const SHADOW = {
    * Previous live Cole×0.75 (143px), then +25% on that light-attack radius.
    * Claw radius is frozen separately so this bump does not grow the ability.
    */
-  attackRange: Math.round(Math.round(COLE.attackRange * 0.75) * 1.25),
+  attackRange: Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.25),
   attackArcDegrees: 68,
   bodyRadius: NINJA.bodyRadius,
   /** Moderately fast — quicker than Death’s 16/s, not Ninja-fast. Rage still multiplies this. */

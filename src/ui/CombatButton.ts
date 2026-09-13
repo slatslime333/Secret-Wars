@@ -6,6 +6,7 @@ import { COLORS, FONTS, hex, TOUCH_CONTROL_ALPHA } from './theme';
 type CombatButtonOptions = {
   label: string;
   accent: number;
+  iconKey?: string;
   onPress: () => void;
   onRelease?: () => void;
   holdable?: boolean;
@@ -24,12 +25,15 @@ export class CombatButton {
   private readonly art: Phaser.GameObjects.Graphics;
   private readonly fill: Phaser.GameObjects.Graphics;
   private readonly pips: Phaser.GameObjects.Graphics;
+  private readonly icon?: Phaser.GameObjects.Image;
   private readonly label: Phaser.GameObjects.Text;
+  private readonly timer: Phaser.GameObjects.Text;
   private readonly zone: Phaser.GameObjects.Zone;
   private readonly scene: Phaser.Scene;
   private charges = 0;
   private maxCharges = 0;
   private recovered = 1;
+  private remainingMs = 0;
   private held = false;
   private dimmed = false;
   private readonly onRelease?: () => void;
@@ -49,13 +53,31 @@ export class CombatButton {
     this.pips = scene.add.graphics().setScrollFactor(0).setDepth(116);
     this.drawArt();
 
+    if (options.iconKey) {
+      this.icon = scene.add.image(x, y, options.iconKey).setScrollFactor(0).setDepth(116);
+      this.fitIcon();
+    }
+
     this.label = scene.add
-      .text(x, y, options.label, {
+      .text(x, y, options.iconKey ? '' : options.label, {
         fontFamily: FONTS.display,
         fontSize: '12px',
         color: hex(COLORS.paper),
         stroke: hex(COLORS.ink),
         strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(117)
+      .setVisible(!options.iconKey);
+
+    this.timer = scene.add
+      .text(x, y + this.radius * 0.08, '', {
+        fontFamily: FONTS.display,
+        fontSize: '20px',
+        color: hex(COLORS.paper),
+        stroke: hex(COLORS.ink),
+        strokeThickness: 5,
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -73,7 +95,7 @@ export class CombatButton {
     this.firePress = options.onPress;
     this.zone.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this.onDown, this);
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onSceneDown, this);
-    adoptHud(scene, this.art, this.fill, this.pips, this.label, this.zone);
+    adoptHud(scene, this.art, this.fill, this.pips, this.label, this.timer, this.zone, ...(this.icon ? [this.icon] : []));
   }
 
   private firePress: () => void;
@@ -126,6 +148,8 @@ export class CombatButton {
   setRadius(radius: number): void {
     this.radius = radius;
     this.label.setFontSize(Math.max(9, Math.round(12 * (radius / 30))));
+    this.timer.setFontSize(Math.max(14, Math.round(20 * (radius / 30))));
+    this.timer.setPosition(this.x, this.y + radius * 0.08);
     this.zone.setSize(radius * 2.4, radius * 2.4);
     this.zone.setInteractive(
       new Phaser.Geom.Circle(radius * 1.2, radius * 1.2, radius * 1.2),
@@ -134,6 +158,7 @@ export class CombatButton {
     this.drawArt();
     this.redrawFill();
     this.redrawPips();
+    this.fitIcon();
   }
 
   setPosition(x: number, y: number): void {
@@ -143,6 +168,8 @@ export class CombatButton {
     this.redrawFill();
     this.redrawPips();
     this.label.setPosition(x, y);
+    this.timer.setPosition(x, y + this.radius * 0.08);
+    this.icon?.setPosition(x, y);
     this.zone.setPosition(x, y);
   }
 
@@ -152,12 +179,16 @@ export class CombatButton {
     this.dimmed = max > 0 && current <= 0;
     this.redrawPips();
     this.label.setAlpha(this.dimmed ? 0.4 : 1);
+    this.icon?.setAlpha(this.dimmed ? 0.32 : 1);
+    this.syncTimer();
   }
 
   /** 0 = empty / just used, 1 = fully recovered. */
-  setRecovered(ratio: number): void {
+  setRecovered(ratio: number, remainingMs = 0): void {
     this.recovered = Phaser.Math.Clamp(ratio, 0, 1);
+    this.remainingMs = Math.max(0, remainingMs);
     this.redrawFill();
+    this.syncTimer();
   }
 
   setHeldVisual(held: boolean): void {
@@ -171,13 +202,17 @@ export class CombatButton {
   setDimmed(dimmed: boolean): void {
     this.dimmed = dimmed;
     this.label.setAlpha(dimmed ? 0.4 : 1);
+    this.timer.setAlpha(dimmed ? 0.7 : 1);
+    this.icon?.setAlpha(dimmed ? 0.32 : 1);
   }
 
   setVisible(visible: boolean): void {
     this.art.setVisible(visible);
     this.fill.setVisible(visible);
     this.pips.setVisible(visible);
-    this.label.setVisible(visible);
+    this.icon?.setVisible(visible);
+    this.label.setVisible(visible && !this.icon);
+    this.timer.setVisible(visible);
     this.zone.setVisible(visible);
     if (visible) {
       this.zone.setInteractive(
@@ -246,7 +281,21 @@ export class CombatButton {
     this.art.destroy();
     this.fill.destroy();
     this.pips.destroy();
+    this.icon?.destroy();
     this.label.destroy();
+    this.timer.destroy();
     this.zone.destroy();
+  }
+
+  private fitIcon(): void {
+    this.icon?.setDisplaySize(this.radius * 1.55, this.radius * 1.55);
+  }
+
+  private syncTimer(): void {
+    if (this.recovered < 0.999 && this.remainingMs > 0) {
+      this.timer.setText(String(Math.max(1, Math.ceil(this.remainingMs / 1000))));
+      return;
+    }
+    this.timer.setText('');
   }
 }
