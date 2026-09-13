@@ -1,4 +1,5 @@
 import { ARENA, atFarEdge, nearestLane, roamHuntPoint } from '../../config/arena';
+import type { ObjectiveKind } from '../../config/objective';
 import type { KitStance, TacticalAction } from './types';
 
 export type MoveSample = {
@@ -31,7 +32,7 @@ export type MoveHint = {
   anchorX?: number;
   anchorY?: number;
   objective?: {
-    kind: 'capture_zone' | 'golden_piggy';
+    kind: ObjectiveKind;
     x: number;
     y: number;
     radius: number;

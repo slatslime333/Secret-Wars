@@ -44,6 +44,7 @@ import { CombatStatsTracker } from '../match/CombatStatsTracker';
 import { WaveDirector } from '../match/WaveDirector';
 import { XpOrbWorld } from '../match/XpOrbWorld';
 import { ObjectiveManager } from '../match/objectives/ObjectiveManager';
+import type { ObjectiveKind } from '../config/objective';
 import { buildMatchGameState, type MatchGameState } from '../match/MatchQuery';
 import { SpectatorCamera } from '../match/SpectatorCamera';
 import {
@@ -991,7 +992,7 @@ export class MatchScene extends Phaser.Scene {
       giveLevel: () => this.player.progression.giveLevel(),
       scores: () => this.score.snapshot(),
       phase: () => this.match.snapshot(),
-      spawnObjective: (kind?: 'capture_zone' | 'golden_piggy') => this.objectives?.debugSpawn(kind),
+      spawnObjective: (kind?: ObjectiveKind) => this.objectives?.debugSpawn(kind),
       toggleAi: () => {
         DEV_CHEATS.showAi = !DEV_CHEATS.showAi;
         return DEV_CHEATS.showAi;

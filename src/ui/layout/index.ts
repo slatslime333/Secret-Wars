@@ -1,5 +1,10 @@
 export { ScrollPanel, type ScrollAxis } from './ScrollPanel';
-export { layoutHudChrome, type HudChromeLayout } from './hudChrome';
+export {
+  layoutHudChrome,
+  layoutSpectatorPlate,
+  type HudChromeLayout,
+  type SpectatorPlateLayout,
+} from './hudChrome';
 export {
   applyGameplayCamera,
   cameraZoomFor,

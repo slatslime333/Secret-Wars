@@ -29,10 +29,11 @@ export const SHADOW = {
   ratings: SHADOW_RATINGS,
   ...shadowGameplay,
   /**
-   * Previous live Cole×0.75 (143px), then +25% on that light-attack radius.
-   * Claw radius is frozen separately so this bump does not grow the ability.
+   * Previous live Cole×0.75 (143px), then +25% on that light-attack radius,
+   * then −10% on the resulting swipe.
+   * Claw radius is frozen separately so this does not shrink the ability.
    */
-  attackRange: Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.25),
+  attackRange: Math.round(Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.25) * 0.9),
   attackArcDegrees: 68,
   bodyRadius: NINJA.bodyRadius,
   /** Moderately fast — quicker than Death’s 16/s, not Ninja-fast. Rage still multiplies this. */
