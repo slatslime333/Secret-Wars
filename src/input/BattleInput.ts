@@ -69,7 +69,7 @@ export class BattleInput {
   private readonly ability2Aim = new Phaser.Math.Vector2();
   private ability2AimActive = false;
   private ability2AimingHeld = false;
-  private readonly ability2AimOnRelease: boolean;
+  private ability2AimOnRelease = false;
   private readonly ultimateButton?: AbilityButton;
   private readonly keys?: KeyMap;
   private readonly cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -449,6 +449,18 @@ export class BattleInput {
     if (states[2]) {
       this.ultimateButton?.sync(states[2]);
     }
+  }
+
+  rebindHero(kit: HeroAbilityKit, dashMaxCharges: number = COMBAT.dashMaxCharges): void {
+    this.ability2AimOnRelease = Boolean(kit.ability2.aimOnRelease);
+    this.ability1AimingHeld = false;
+    this.ability2AimingHeld = false;
+    this.ability1AimActive = false;
+    this.ability2AimActive = false;
+    this.ability1Latched = false;
+    this.ability2Latched = false;
+    this.dashLatched = false;
+    this.dashButton?.setCharges(dashMaxCharges, dashMaxCharges);
   }
 
   destroy(): void {

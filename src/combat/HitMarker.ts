@@ -104,6 +104,30 @@ export class HitMarker {
     this.ballAim.clear();
   }
 
+  /** Gun Barrage aim laser. Same length as the live barrage beam. */
+  syncGunAim(
+    x: number,
+    y: number,
+    aimX: number,
+    aimY: number,
+    length: number,
+    aiming: boolean,
+  ): void {
+    const angle = Math.atan2(aimY, aimX);
+    const g = this.ballAim;
+    g.clear();
+    g.setPosition(x, y);
+    const alpha = aiming ? 0.95 : 0.55;
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    g.lineStyle(5, 0xff3a3a, alpha * 0.22);
+    g.lineBetween(nx * 8, ny * 8, nx * length, ny * length);
+    g.lineStyle(aiming ? 2.5 : 2, 0xffd080, alpha);
+    g.lineBetween(nx * 8, ny * 8, nx * length, ny * length);
+    g.fillStyle(0xfff0c8, alpha);
+    g.fillCircle(nx * length, ny * length, 4);
+  }
+
   /** Bat Smash sweep fan. Matches smashCrashOffsets + smash radius. */
   syncSmashAim(
     x: number,

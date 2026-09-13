@@ -97,6 +97,7 @@ export class TitleScene extends Phaser.Scene {
 
     this.continuing = true;
     audio.unlock();
+    audio.startMusic();
     audio.play('ui-confirm');
     this.cameras.main.flash(90, 246, 241, 222);
     fadeToScene(this, 'MainMenu', 260);

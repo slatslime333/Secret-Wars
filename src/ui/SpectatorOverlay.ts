@@ -11,10 +11,11 @@ export type SpectatorOverlayState = {
   watchingSide: string;
 };
 
-const PLATE_WIDTH = 320;
-const PLATE_HEIGHT = 78;
+const PLATE_WIDTH = 268;
+const PLATE_HEIGHT = 74;
+const MARGIN = 16;
 
-/** Compact spectate chrome. Sits at the bottom so the fight stays visible. */
+/** Compact spectate chrome. Bottom-right so the fight and move stick stay clear. */
 export class SpectatorOverlay {
   private readonly root: Phaser.GameObjects.Container;
   private readonly plate: Phaser.GameObjects.Rectangle;
@@ -35,7 +36,7 @@ export class SpectatorOverlay {
     this.title = scene.add
       .text(0, 0, 'SPECTATING', {
         fontFamily: FONTS.display,
-        fontSize: '15px',
+        fontSize: '14px',
         color: hex(COLORS.yellow),
         letterSpacing: 2,
         stroke: hex(COLORS.ink),
@@ -66,16 +67,16 @@ export class SpectatorOverlay {
       .setOrigin(0.5);
     this.prevButton = new ActionButton(scene, 0, 0, {
       label: 'PREV',
-      width: 72,
-      height: 26,
+      width: 68,
+      height: 24,
       compact: true,
       attachToScene: false,
       onPress: handlers.onPrev,
     });
     this.nextButton = new ActionButton(scene, 0, 0, {
       label: 'NEXT',
-      width: 72,
-      height: 26,
+      width: 68,
+      height: 24,
       compact: true,
       attachToScene: false,
       onPress: handlers.onNext,
@@ -85,16 +86,17 @@ export class SpectatorOverlay {
 
   sync(state: SpectatorOverlayState, width: number, height: number): void {
     this.root.setVisible(true);
-    const cx = width / 2;
-    const bottom = height - 14;
-    const plateH = state.remainingMs > 0 ? 86 : PLATE_HEIGHT;
+    const plateW = PLATE_WIDTH;
+    const plateH = state.remainingMs > 0 ? 82 : PLATE_HEIGHT;
+    const cx = width - MARGIN - plateW / 2;
+    const bottom = height - MARGIN;
     this.plate.setPosition(cx, bottom - plateH / 2);
-    this.plate.setSize(Math.min(PLATE_WIDTH, width - 20), plateH);
-    this.prevButton.setPosition(cx - 44, bottom - 16);
-    this.nextButton.setPosition(cx + 44, bottom - 16);
-    this.hint.setPosition(cx, bottom - 38);
-    this.watching.setPosition(cx, bottom - 52);
-    this.title.setPosition(cx, bottom - (state.remainingMs > 0 ? 70 : 66));
+    this.plate.setSize(plateW, plateH);
+    this.prevButton.setPosition(cx - 40, bottom - 14);
+    this.nextButton.setPosition(cx + 40, bottom - 14);
+    this.hint.setPosition(cx, bottom - 36);
+    this.watching.setPosition(cx, bottom - 50);
+    this.title.setPosition(cx, bottom - (state.remainingMs > 0 ? 66 : 62));
 
     if (state.remainingMs > 0) {
       const seconds = Math.max(0, Math.ceil(state.remainingMs / 1000));
@@ -109,7 +111,7 @@ export class SpectatorOverlay {
       this.watching.setText('FREE ROAM');
     }
 
-    this.hint.setText(isTouchPrimary() ? 'STICK PANS  ·  PREV NEXT LOCK' : 'WASD PANS  ·  [ ] TAB LOCK');
+    this.hint.setText(isTouchPrimary() ? 'STICK PANS  ·  PREV NEXT' : 'WASD PANS  ·  [ ] TAB');
   }
 
   hide(): void {

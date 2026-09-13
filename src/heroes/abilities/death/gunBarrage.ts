@@ -1,4 +1,5 @@
 import { playWorld } from '../../../audio';
+import Phaser from 'phaser';
 import { AbilityContext, AbilityDef, ActiveAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { DEATH_GUN } from './tunables';
@@ -37,9 +38,11 @@ class GunBarrageAbility implements ActiveAbility {
   private fired = 0;
   private nextShotAt: number;
   private done = false;
+  private readonly laser: Phaser.GameObjects.Graphics;
 
   constructor(ctx: AbilityContext) {
     this.nextShotAt = ctx.now + 128;
+    this.laser = ctx.scene.add.graphics().setDepth(14);
     spawnCombatCallout(ctx.scene, ctx.caster.x, ctx.caster.y, 'BARRAGE', COLORS.orange);
     ctx.caster.playCustomAttack(ctx.now, DEATH_GUN.bullets * DEATH_GUN.intervalMs + 220, (frac) => ({
       armLiftRight: 0.35 + Math.sin(frac * Math.PI * 18) * 0.12,
@@ -56,6 +59,7 @@ class GunBarrageAbility implements ActiveAbility {
       return false;
     }
     this.aimCaster(ctx);
+    this.drawLaser(ctx);
     if (now >= this.nextShotAt && this.fired < DEATH_GUN.bullets) {
       this.fire(ctx);
       this.fired += 1;
@@ -70,6 +74,7 @@ class GunBarrageAbility implements ActiveAbility {
 
   destroy(): void {
     this.done = true;
+    this.laser.destroy();
   }
 
   private aimCaster(ctx: AbilityContext): void {
@@ -82,6 +87,26 @@ class GunBarrageAbility implements ActiveAbility {
     if (aim.lengthSq() > 0.01) {
       ctx.caster.setAim(aim.x, aim.y);
     }
+  }
+
+  private drawLaser(ctx: AbilityContext): void {
+    const { caster } = ctx;
+    const aim = ctx.aimOverride ?? caster.aim;
+    const length = Math.hypot(aim.x, aim.y) || 1;
+    const nx = aim.x / length;
+    const ny = aim.y / length;
+    const muzzle = deathUziMuzzleOffset(facingFromAim(nx, ny), 0.35);
+    const mx = caster.x + muzzle.x;
+    const my = caster.y + muzzle.y;
+    const reach = DEATH_GUN.laserLength;
+    const g = this.laser;
+    g.clear();
+    g.lineStyle(5, 0xff3a3a, 0.22);
+    g.lineBetween(mx, my, mx + nx * reach, my + ny * reach);
+    g.lineStyle(2, 0xffd080, 0.92);
+    g.lineBetween(mx, my, mx + nx * reach, my + ny * reach);
+    g.fillStyle(0xfff0c8, 0.95);
+    g.fillCircle(mx + nx * reach, my + ny * reach, 4);
   }
 
   private fire(ctx: AbilityContext): void {

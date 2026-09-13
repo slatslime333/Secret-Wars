@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { audioSettings } from '../audio';
+import { audio, audioSettings } from '../audio';
 import { INPUT } from '../config/input';
 import { isTouchPrimary } from '../device';
 import { ActionButton } from '../ui/ActionButton';
@@ -75,7 +75,10 @@ export class SettingsScene extends Phaser.Scene {
     new SettingSlider(this, sliderX, musicY, {
       label: 'MUSIC',
       value: audioSettings.getMusicVolume(),
-      onChange: (value) => audioSettings.setMusicVolume(value),
+      onChange: (value) => {
+        audioSettings.setMusicVolume(value);
+        audio.syncMusicVolume();
+      },
     });
 
     new SettingSlider(this, sliderX, sfxY, {

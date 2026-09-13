@@ -88,7 +88,12 @@ export class HeroPilot {
       unit.block.isActive(now) ||
       unit.dash.isActive(now)
     ) {
-      if (!body.status.isHitReacting(now) && !body.status.isLunging(now) && !unit.dash.isActive(now)) {
+      if (
+        !body.status.isHitReacting(now) &&
+        !body.status.isLunging(now) &&
+        !body.status.isHitStopping(now) &&
+        !unit.dash.isActive(now)
+      ) {
         body.stop();
       }
       unit.attacks.update(now, false, false, body, foes, foeBlock);

@@ -3,6 +3,7 @@ import { ARENA } from '../config/arena';
 import { DEV_CHEATS, resetDevCheats } from '../debug/devCheats';
 import { MinionWorld } from '../minions/MinionWorld';
 import { getSelectedHero, PLAYABLE_HEROES, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { COMBAT } from '../config/combat';
 import { MATCH } from '../config/match';
 import { Progression } from '../match/Progression';
 import { CombatStatsTracker } from '../match/CombatStatsTracker';
@@ -20,7 +21,7 @@ import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { AbilityContext } from '../heroes/abilities/types';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
 import { COLE_BALL } from '../heroes/abilities/cole/tunables';
-import { DEATH_SMASH } from '../heroes/abilities/death/tunables';
+import { DEATH_GUN, DEATH_SMASH } from '../heroes/abilities/death/tunables';
 import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
 import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
@@ -397,6 +398,15 @@ export class BattleScene extends Phaser.Scene {
         COLE_BALL.explodeRadius,
         frame.ability1Aiming,
       );
+    } else if (this.ninja.heroId === 'death' && frame.ability1Aiming) {
+      this.marker.syncGunAim(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        DEATH_GUN.laserLength,
+        true,
+      );
     } else if (this.ninja.heroId === 'death' && frame.ability2Aiming) {
       this.marker.syncSmashAim(
         this.ninja.x,
@@ -742,7 +752,10 @@ export class BattleScene extends Phaser.Scene {
     const hero = getSelectedHero();
     const x = this.ninja.x;
     const y = this.ninja.y;
-    this.attacks.interrupt(this.time.now);
+    const now = this.time.now;
+    this.dash.cancel(this.ninja);
+    this.block.setHeld(now, this.ninja, false);
+    this.attacks.interrupt(now);
     this.abilities.destroy();
     this.ninja.destroy();
     this.ninja = new NinjaBody(this, x, y, {
@@ -752,9 +765,12 @@ export class BattleScene extends Phaser.Scene {
       team: 'alpha',
       playerControlled: true,
     });
+    this.ninja.setSpeedCap(COMBAT.physicsMaxSpeed);
     this.battlefield?.attachMover(this.ninja.sprite);
     this.abilities = new AbilityController(hero.kit);
     this.dash = new DashController(this, hero.stats.dashMaxCharges);
+    this.attacks = new QuickAttack(this, this.marker);
+    this.inputReader.rebindHero(hero.kit, hero.stats.dashMaxCharges);
     this.cameras.main.startFollow(this.ninja.sprite, true, 0.16, 0.16);
     this.rivalCollider?.destroy();
     if (this.rival) {
