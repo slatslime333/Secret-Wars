@@ -11,7 +11,7 @@ import { gameplayFromRatings, type CoreRatings } from './ratings';
 export const ROPE_RATINGS = {
   health: 38,
   stamina: 62,
-  staminaRegen: 54,
+  staminaRegen: 65,
   damage: 32,
   defense: 48,
   speed: 86,
@@ -28,8 +28,6 @@ export const ROPE = {
   ...gameplayFromRatings(ROPE_RATINGS),
   attackArcDegrees: 28,
   bodyRadius: NINJA.bodyRadius,
-  /** Same endurance pool regen as Cole. */
-  staminaRegenPerSecond: 17,
   /** Baseline cost: 12 light shots ≈ 84 of 128 stamina. */
   attackStaminaMul: 1,
   dashMaxCharges: 4,

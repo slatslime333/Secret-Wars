@@ -100,10 +100,8 @@ class MegaPunchAbility implements ActiveAbility {
       if (dist > ROPE_PUNCH.radius + enemy.stats.bodyRadius) {
         continue;
       }
-      const toward = (enemy.x - ctx.caster.x) * this.dirX + (enemy.y - ctx.caster.y) * this.dirY;
-      if (toward < -8) {
-        continue;
-      }
+      const away = dist > 0.001 ? (enemy.x - ctx.caster.x) / dist : this.dirX;
+      const awayY = dist > 0.001 ? (enemy.y - ctx.caster.y) / dist : this.dirY;
       const kind = resolveAbilityHit(
         ctx.scene,
         ctx.now,
@@ -113,8 +111,8 @@ class MegaPunchAbility implements ActiveAbility {
           rawDamage: ROPE_PUNCH.damage,
           knockback: ROPE_PUNCH.knockback,
           staminaDamage: ROPE_PUNCH.staminaDamage,
-          dirX: this.dirX,
-          dirY: this.dirY,
+          dirX: away,
+          dirY: awayY,
           step: 3,
           heavy: true,
           launchCap: ROPE_PUNCH.launchCap,
@@ -134,8 +132,8 @@ class MegaPunchAbility implements ActiveAbility {
     this.ring.clear();
     const alpha = now >= this.impactAt ? 0.12 : 0.45;
     this.ring.fillStyle(COLORS.orange, alpha * 0.14);
-    this.ring.fillCircle(caster.x + this.dirX * 18, caster.y + this.dirY * 18, ROPE_PUNCH.radius);
+    this.ring.fillCircle(caster.x, caster.y, ROPE_PUNCH.radius);
     this.ring.lineStyle(2, COLORS.orange, alpha);
-    this.ring.strokeCircle(caster.x + this.dirX * 18, caster.y + this.dirY * 18, ROPE_PUNCH.radius);
+    this.ring.strokeCircle(caster.x, caster.y, ROPE_PUNCH.radius);
   }
 }

@@ -11,7 +11,7 @@ export const SHADOW_ATTACK = {
 export const SHADOW_MARK = {
   durationMs: 3000,
   tickMs: 1000,
-  healthPerSecond: 0.0125,
+  healthPerSecond: 0.0225,
 } as const;
 
 export const SHADOW_CLAW = {

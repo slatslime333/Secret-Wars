@@ -9,10 +9,10 @@ export const ROPE_SHOT = {
   speed: Math.round(DEATH_GUN.speed * 1.2),
   radius: 4.5,
   lifetimeMs: 5000,
-  /** Tighter than Gun Barrage's 0.13 rad cone. */
-  spreadRad: 0.045,
-  /** Visible left/right trajectory split, still accurate. */
-  armOffsetRad: 0.055,
+  /** Tighter grouping around the aim line. */
+  spreadRad: 0.018,
+  /** Small left/right split so alternating shots still hug aim. */
+  armOffsetRad: 0.028,
   armReach: 16,
   knockbackMul: 1.15,
   staminaDamage: 3,
@@ -36,26 +36,30 @@ export const ROPE_GRAB = {
   cooldownMs: 7000,
   range: Math.round(440 * 1.08),
   speed: Math.round(DEATH_GUN.speed * 1.35 * 1.4),
-  radius: Math.round(7 * 1.12),
+  radius: Math.round(7 * 1.12 * 1.7),
+  /** Extra capsule width so the grab does not need a pixel-perfect hit. */
+  forgive: 22,
   /** Thicker than light-shot projectiles (4.5 radius). */
-  width: 6.6,
+  width: 8,
   lifetimeMs: 900,
   slingMs: 160,
+  hitSlowMul: 0.5,
+  hitSlowMs: 2500,
 } as const;
 
 export const ROPE_PUNCH = {
   cooldownMs: 8000,
   animMs: 620,
   impactAt: 280,
-  /** Slightly smaller / shorter than Bat Smash (~137). */
-  radius: Math.round(DEATH_SMASH.radius * 0.86),
+  /** Previous live punch, then 25% larger, and a full 360 burst. */
+  radius: Math.round(DEATH_SMASH.radius * 0.86 * 1.25),
   damageRating: 54,
   damage: abilityDamage(54),
   knockback: 760,
   launchCap: 860,
   staminaDamage: 7,
   slowMul: 0.65,
-  slowMs: 2000,
+  slowMs: 3500,
   jumpHeight: 36,
 } as const;
 

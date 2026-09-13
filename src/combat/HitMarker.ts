@@ -207,15 +207,15 @@ export class HitMarker {
     const alpha = aiming ? 0.9 : 0.5;
     const nx = Math.cos(angle);
     const ny = Math.sin(angle);
-    g.lineStyle(4, 0x5a3014, alpha * 0.2);
+    g.lineStyle(6, 0x5a3014, alpha * 0.18);
     g.lineBetween(nx * 8, ny * 8, nx * length, ny * length);
-    g.lineStyle(aiming ? 2.2 : 1.8, 0xc4894a, alpha);
+    g.lineStyle(aiming ? 3.2 : 2.4, 0xc4894a, alpha);
     g.lineBetween(nx * 8, ny * 8, nx * length, ny * length);
     g.fillStyle(0xf0d0a0, alpha);
-    g.fillCircle(nx * length, ny * length, 4);
+    g.fillCircle(nx * length, ny * length, 7);
   }
 
-  /** Mega Punch forward burst. */
+  /** Mega Punch 360 burst. */
   syncPunchAim(
     x: number,
     y: number,
@@ -229,19 +229,12 @@ export class HitMarker {
     g.clear();
     g.setPosition(x, y);
     const alpha = aiming ? 0.88 : 0.5;
-    const cx = Math.cos(angle) * 18;
-    const cy = Math.sin(angle) * 18;
-    g.fillStyle(0xc4894a, alpha * 0.14);
-    g.fillCircle(cx, cy, radius);
+    g.fillStyle(0xc4894a, alpha * 0.16);
+    g.fillCircle(0, 0, radius);
     g.lineStyle(aiming ? 2.4 : 2, 0xd4a06a, alpha);
-    g.strokeCircle(cx, cy, radius);
+    g.strokeCircle(0, 0, radius);
     g.lineStyle(aiming ? 2.5 : 2, 0xffc028, alpha);
-    g.lineBetween(
-      Math.cos(angle) * 8,
-      Math.sin(angle) * 8,
-      Math.cos(angle) * (radius + 8),
-      Math.sin(angle) * (radius + 8),
-    );
+    g.lineBetween(0, 0, Math.cos(angle) * 28, Math.sin(angle) * 28);
   }
 
   /** Bat Smash sweep fan. Matches smashCrashOffsets + smash radius. */
