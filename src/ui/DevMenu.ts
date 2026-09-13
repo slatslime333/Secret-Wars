@@ -3,6 +3,7 @@ import { COLORS, FONTS, hex } from './theme';
 import { adoptHud, hudPointer } from './layout/hudCamera';
 import { isTouchPrimary } from '../device';
 import { measureViewport } from './layout/viewport';
+import { layoutHudChrome } from './layout/hudChrome';
 import { DEV_CHEATS } from '../debug/devCheats';
 import type { HeroId } from '../heroes/roster';
 import type { MinionKind } from '../config/minion';
@@ -58,7 +59,6 @@ export class DevMenu {
   private readonly title: Phaser.GameObjects.Text;
   private readonly hint: Phaser.GameObjects.Text;
   private readonly rows: Row[] = [];
-  private readonly maskShape: Phaser.GameObjects.Rectangle;
   private readonly scrollTrack: Phaser.GameObjects.Rectangle;
   private readonly scrollThumb: Phaser.GameObjects.Rectangle;
   private open = false;
@@ -109,7 +109,7 @@ export class DevMenu {
         color: hex(COLORS.yellow),
         letterSpacing: 2,
       })
-      .setOrigin(1, 0)
+      .setOrigin(0, 0)
       .setScrollFactor(0)
       .setDepth(222)
       .setVisible(false);
@@ -122,14 +122,7 @@ export class DevMenu {
         color: hex(COLORS.muted),
         letterSpacing: 1,
       })
-      .setOrigin(1, 0)
-      .setScrollFactor(0)
-      .setDepth(222)
-      .setVisible(false);
-
-    this.maskShape = scene.add
-      .rectangle(width - 12, 134, 280, 370, 0xffffff, 0)
-      .setOrigin(1, 0)
+      .setOrigin(0, 0)
       .setScrollFactor(0)
       .setDepth(222)
       .setVisible(false);
@@ -246,23 +239,23 @@ export class DevMenu {
     });
     add(() => 'CLEAR FIELD', () => options.onClearBattlefield());
 
-    const mask = this.maskShape.createGeometryMask();
+    const innerPad = 12;
     for (const row of this.rows) {
       const head = row.kind === 'head';
       const text = scene.add
-        .text(width - 24, 0, row.label(), {
+        .text(innerPad, 0, row.label(), {
           fontFamily: FONTS.body,
           fontSize: head ? '10px' : mobile ? '13px' : '12px',
           fontStyle: 'bold',
           color: head ? hex(COLORS.yellow) : hex(COLORS.ink),
           backgroundColor: head ? undefined : hex(COLORS.paper),
-          padding: head ? { x: 0, y: 4 } : { x: 10, y: mobile ? 6 : 4 },
+          padding: head ? { x: 2, y: 4 } : { x: 10, y: mobile ? 6 : 4 },
+          align: 'left',
         })
-        .setOrigin(1, 0)
+        .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(223)
-        .setVisible(false)
-        .setMask(mask);
+        .setVisible(false);
       if (!head && row.onPress) {
         text.setInteractive({ useHandCursor: true });
         text.on(Phaser.Input.Events.POINTER_DOWN, this.beginDrag, this);
@@ -308,7 +301,6 @@ export class DevMenu {
       this.panel,
       this.title,
       this.hint,
-      this.maskShape,
       this.scrollTrack,
       this.scrollThumb,
       ...this.rows.flatMap((row) => (row.text ? [row.text] : [])),
@@ -317,30 +309,39 @@ export class DevMenu {
 
   layout(width: number, height = 540): void {
     const frame = measureViewport(width, height);
+    const chrome = layoutHudChrome(frame);
     const mobile = frame.isMobile;
-    this.rowH = mobile ? (frame.isPortrait ? 32 : 28) : 24;
-    this.headH = mobile ? 24 : 20;
+    this.rowH = mobile ? (frame.isPortrait ? 38 : 34) : 28;
+    this.headH = mobile ? 26 : 22;
     this.panelW = Math.round(
-      mobile ? clamp(frame.isPortrait ? width * 0.72 : Math.min(320, width * 0.42), 220, 340) : 280,
+      mobile ? clamp(frame.isPortrait ? width * 0.78 : Math.min(300, width * 0.4), 230, 340) : 268,
     );
-    const top = Math.max(frame.safe.top + 8, mobile ? 52 : 64);
-    this.panelY = top + (mobile ? 40 : 28);
-    this.panelH = Math.max(220, height - this.panelY - Math.max(frame.safe.bottom, 12) - 8);
-    this.panelX = width - Math.max(frame.contentInset.right, 12);
-    this.toggle.setPosition(this.panelX, top);
+    this.panelX = width - Math.max(frame.contentInset.right, 10);
+    const toggleY = chrome.minimap.y + chrome.minimap.height + (mobile ? 8 : 6);
+    this.toggle.setPosition(this.panelX, toggleY);
+    this.panelY = toggleY + (mobile ? 36 : 28);
+    this.panelH = Math.max(200, height - this.panelY - Math.max(frame.safe.bottom, frame.controlInset.bottom * 0.15, 12) - 8);
     this.panel.setPosition(this.panelX, this.panelY).setSize(this.panelW, this.panelH);
-    this.title.setPosition(this.panelX - 12, this.panelY + 6);
-    this.hint.setPosition(this.panelX - 12, this.panelY + 24);
-    const listTop = this.panelY + 44;
-    const listH = this.panelH - 52;
-    this.maskShape.setPosition(this.panelX, listTop).setSize(this.panelW - 8, listH);
+    const innerX = this.panelX - this.panelW + 12;
+    const innerW = this.panelW - 28;
+    this.title.setPosition(innerX, this.panelY + 8);
+    this.hint.setPosition(innerX, this.panelY + 24);
+    const listTop = this.panelY + 42;
+    const listH = this.panelH - 50;
     this.scroll = Phaser.Math.Clamp(this.scroll, 0, this.maxScroll());
     let y = listTop - this.scroll;
     for (const row of this.rows) {
-      row.text?.setPosition(this.panelX - 12, y);
-      y += row.kind === 'head' ? this.headH : this.rowH;
+      const h = row.kind === 'head' ? this.headH : this.rowH;
+      const gap = row.kind === 'head' ? 2 : 4;
+      const inView = this.open && y + h > listTop && y < listTop + listH;
+      row.text?.setPosition(innerX, y);
+      if (row.kind === 'item') {
+        row.text?.setFixedSize(innerW, h - 2);
+      }
+      row.text?.setVisible(inView);
+      y += h + gap;
     }
-    const trackX = this.panelX - 7;
+    const trackX = this.panelX - 8;
     this.scrollTrack.setPosition(trackX, listTop).setSize(3, listH);
     const range = this.maxScroll();
     const thumbH = range <= 0 ? listH : Math.max(28, listH * (listH / (listH + range)));
@@ -401,7 +402,10 @@ export class DevMenu {
   }
 
   private maxScroll(): number {
-    const content = this.rows.reduce((sum, row) => sum + (row.kind === 'head' ? this.headH : this.rowH), 0);
+    const content = this.rows.reduce(
+      (sum, row) => sum + (row.kind === 'head' ? this.headH + 2 : this.rowH + 4),
+      0,
+    );
     return Math.max(0, content - (this.panelH - 56));
   }
 
@@ -409,12 +413,8 @@ export class DevMenu {
     this.panel.setVisible(open);
     this.title.setVisible(open);
     this.hint.setVisible(open);
-    this.maskShape.setVisible(open);
     this.scrollTrack.setVisible(open);
     this.scrollThumb.setVisible(open);
-    for (const row of this.rows) {
-      row.text?.setVisible(open);
-    }
     this.layout(this.scene.scale.width, this.scene.scale.height);
     if (open) {
       this.sync();
