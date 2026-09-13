@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { ARENA } from '../../config/arena';
-import { cameraPrefs } from '../../config/cameraPrefs';
+import { CAMERA_ZOOM_MAX, CAMERA_ZOOM_MIN, cameraPrefs } from '../../config/cameraPrefs';
 import { getViewportSize, isTouchPrimary } from '../../device';
 
 /** iPad-class short side. Phones stay phones even in landscape. */
@@ -178,9 +178,9 @@ export const applyGameplayCamera = (
   height: number,
 ): void => {
   const frame = measureViewport(width, height);
-    camera.setSize(width, height);
-    cameraPrefs.load();
-    camera.setZoom(clamp(frame.cameraZoom * cameraPrefs.zoomMultiplier(), 0.28, 1.35));
+  camera.setSize(width, height);
+  cameraPrefs.load();
+  camera.setZoom(clamp(frame.cameraZoom * cameraPrefs.zoomMultiplier(), CAMERA_ZOOM_MIN, CAMERA_ZOOM_MAX));
   camera.removeBounds();
   camera.setBackgroundColor(ARENA.wallColor);
   camera.setDeadzone(0, 0);
