@@ -187,8 +187,9 @@ export const applyGameplayCamera = (
   height: number,
 ): void => {
   const frame = measureViewport(width, height);
-  camera.setSize(width, height);
-  camera.setZoom(clamp(frame.cameraZoom * cameraPrefs.zoomMultiplier(), 0.28, 1.35));
+    camera.setSize(width, height);
+    cameraPrefs.load();
+    camera.setZoom(clamp(frame.cameraZoom * cameraPrefs.zoomMultiplier(), 0.28, 1.35));
   camera.removeBounds();
   camera.setBackgroundColor(ARENA.wallColor);
   camera.setDeadzone(0, 0);

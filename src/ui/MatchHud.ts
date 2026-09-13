@@ -121,9 +121,10 @@ export class MatchHud {
     this.xpFill.setPosition(hud.barLeft, hud.xpY).setSize(this.xpFill.width || hud.barWidth, PC_COMBAT_HUD.xpHeight);
     this.level.setPosition(hud.barLeft, hud.xpY + 10).setOrigin(0, 0);
     this.xpText.setPosition(hud.barLeft + hud.barWidth, hud.xpY + 10).setOrigin(1, 0);
-    this.score.setOrigin(0.5, 1).setX(width / 2).setY(hud.hpY - 48).setFontSize(16);
-    this.timer.setOrigin(0.5, 1).setX(width / 2).setY(hud.hpY - 26).setFontSize(22);
-    this.phase.setOrigin(0.5, 1).setX(width / 2).setY(hud.hpY - 68).setFontSize(11);
+    const hpTop = hud.hpY - hud.hpHeight / 2;
+    this.timer.setOrigin(0.5, 1).setX(width / 2).setY(hpTop - 12).setFontSize(20);
+    this.score.setOrigin(0.5, 1).setX(width / 2).setY(hpTop - 34).setFontSize(16);
+    this.phase.setOrigin(0.5, 1).setX(width / 2).setY(hpTop - 52).setFontSize(11);
   }
 
   setVisible(visible: boolean): void {
