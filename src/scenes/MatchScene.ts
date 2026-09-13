@@ -626,6 +626,13 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private togglePauseMenu = (): void => {
+    if (this.returning) {
+      return;
+    }
+    if (this.match.finished || this.results.isOpen) {
+      this.returnToMenu();
+      return;
+    }
     if (this.match.paused) {
       this.closePause();
     } else {

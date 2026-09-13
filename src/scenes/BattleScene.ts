@@ -55,6 +55,7 @@ export class BattleScene extends Phaser.Scene {
   private minionTeam: TeamId = 'alpha';
   private minionQty = 1;
   private sandboxPaused = false;
+  private pauseOwnedSandbox = false;
   private progression!: Progression;
   private sandboxStats = new CombatStatsTracker();
   private offDamage?: () => void;
@@ -818,6 +819,13 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private togglePauseMenu = (): void => {
+    if (this.returning) {
+      return;
+    }
+    if (this.round.isLocked) {
+      this.returnToMenu();
+      return;
+    }
     if (this.pauseOverlay?.isOpen) {
       this.closePauseMenu();
     } else {
@@ -829,6 +837,7 @@ export class BattleScene extends Phaser.Scene {
     if (this.returning || this.round.isLocked || this.pauseOverlay.isOpen) {
       return;
     }
+    this.pauseOwnedSandbox = !this.sandboxPaused;
     if (!this.sandboxPaused) {
       this.toggleSandboxPause();
     }
@@ -842,9 +851,10 @@ export class BattleScene extends Phaser.Scene {
     }
     this.pauseOverlay.hide();
     this.time.paused = false;
-    if (this.sandboxPaused) {
+    if (this.pauseOwnedSandbox && this.sandboxPaused) {
       this.toggleSandboxPause();
     }
+    this.pauseOwnedSandbox = false;
   }
 
   private returnToMenu(): void {

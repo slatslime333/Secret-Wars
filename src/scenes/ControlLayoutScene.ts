@@ -34,16 +34,26 @@ export class ControlLayoutScene extends Phaser.Scene {
   private selected: ControlId = 'ability1';
   private dummies: DummyControl[] = [];
   private hint?: Phaser.GameObjects.Text;
+  private restoreWorking?: SavedControlLayout;
+  private restoreSelected?: ControlId;
 
   constructor() {
     super('ControlLayout');
+  }
+
+  init(data: { working?: SavedControlLayout; selected?: ControlId } = {}): void {
+    this.restoreWorking = data.working;
+    this.restoreSelected = data.selected;
   }
 
   create(): void {
     this.returning = false;
     createBackdrop(this, { accent: COLORS.orange });
     this.cameras.main.fadeIn(180, 7, 10, 18);
-    this.working = { ...loadControlLayout() };
+    this.working = this.restoreWorking ? { ...this.restoreWorking } : { ...loadControlLayout() };
+    if (this.restoreSelected) {
+      this.selected = this.restoreSelected;
+    }
     this.drawLockedHud();
     this.rebuildDummies();
     this.drawChrome();
@@ -51,7 +61,7 @@ export class ControlLayoutScene extends Phaser.Scene {
 
     const onResize = () => {
       if (!this.returning) {
-        this.scene.restart();
+        this.scene.restart({ working: this.working, selected: this.selected });
       }
     };
     this.scale.on(Phaser.Scale.Events.RESIZE, onResize);
