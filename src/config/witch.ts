@@ -1,5 +1,5 @@
 import { HeroCombatConfig } from './hero';
-import { COLE } from './cole';
+import { COLE_CONVERTED_RANGE } from './cole';
 import { NINJA } from './ninja';
 import { gameplayFromRatings, type CoreRatings } from './ratings';
 
@@ -23,7 +23,7 @@ export const WITCH_RATINGS = {
 const witchGameplay = gameplayFromRatings(WITCH_RATINGS);
 
 /** Previous live light-attack range (Cole × 1.2). Hex and ult keep this radius base. */
-export const WITCH_KIT_RANGE = Math.round(COLE.attackRange * 1.2);
+export const WITCH_KIT_RANGE = Math.round(COLE_CONVERTED_RANGE * 1.2);
 
 export const WITCH = {
   id: 'witch',

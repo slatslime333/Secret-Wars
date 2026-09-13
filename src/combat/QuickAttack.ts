@@ -159,7 +159,7 @@ export class QuickAttack {
         spawnShockwaveRing(this.scene, attacker.x, attacker.y, COLE_SHOCKWAVE.radius);
       } else {
         const half = (attacker.stats.attackArcDegrees * Math.PI) / 360;
-        spawnLightningArc(this.scene, attacker.x, attacker.y, attacker.aim.x, attacker.aim.y, attacker.stats.attackRange, half);
+        spawnLightningArc(this.scene, attacker.x, attacker.y, attacker.aim.x, attacker.aim.y, COLE_ATTACK.range, half);
       }
     } else if (attacker.heroId === 'death') {
       this.playDeathLightSwing(attacker, now, step);
@@ -370,7 +370,8 @@ export class QuickAttack {
       attacker,
       now,
       damage: attacker.stats.attackDamage * profile.damageMultiplier,
-      reach: attacker.stats.attackRange + COMBAT.hitForgiveness,
+      reach:
+        (attacker.heroId === 'cole' ? COLE_ATTACK.range : attacker.stats.attackRange) + COMBAT.hitForgiveness,
       kind: 'melee',
     });
 
@@ -442,7 +443,7 @@ export class QuickAttack {
           attacker.aim.y,
           enemy.x,
           enemy.y,
-          attacker.stats.attackRange + COMBAT.hitForgiveness,
+          COLE_ATTACK.range + COMBAT.hitForgiveness,
           half,
           enemy.stats.bodyRadius,
         )

@@ -20,7 +20,7 @@ import { AbilityController } from '../heroes/abilities/AbilityController';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { AbilityContext } from '../heroes/abilities/types';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
-import { COLE_BALL } from '../heroes/abilities/cole/tunables';
+import { COLE_ATTACK, COLE_BALL } from '../heroes/abilities/cole/tunables';
 import { DEATH_GUN, DEATH_SMASH } from '../heroes/abilities/death/tunables';
 import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
 import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
@@ -426,12 +426,13 @@ export class BattleScene extends Phaser.Scene {
     } else if (this.ninja.heroId === 'rope') {
       this.marker.clearRange();
     } else {
+      const range = this.ninja.heroId === 'cole' ? COLE_ATTACK.range : this.ninja.stats.attackRange;
       this.marker.sync(
         this.ninja.x,
         this.ninja.y,
         this.ninja.aim.x,
         this.ninja.aim.y,
-        this.ninja.stats.attackRange,
+        range,
         this.ninja.stats.attackArcDegrees,
       );
     }

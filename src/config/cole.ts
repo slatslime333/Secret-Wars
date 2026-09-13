@@ -18,12 +18,19 @@ export const COLE_RATINGS = {
   knockback: 52,
 } as const satisfies CoreRatings;
 
+const coleGameplay = gameplayFromRatings(COLE_RATINGS);
+
+/** Converted Cole reach before the 25% light-attack tighten. Derived kits keep this. */
+export const COLE_CONVERTED_RANGE = coleGameplay.attackRange;
+
 export const COLE = {
   id: 'cole',
   displayName: 'Cole',
   role: 'frontliner',
   ratings: COLE_RATINGS,
-  ...gameplayFromRatings(COLE_RATINGS),
+  ...coleGameplay,
+  /** Light-attack / hit-marker reach. 25% tighter than the converted range. */
+  attackRange: Math.round(COLE_CONVERTED_RANGE * 0.75),
   /** 20% tighter than the previous 81° Cole wedge. */
   attackArcDegrees: 65,
   bodyRadius: NINJA.bodyRadius,

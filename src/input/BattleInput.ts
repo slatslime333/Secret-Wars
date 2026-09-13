@@ -59,13 +59,13 @@ export class BattleInput {
   private readonly rightStick?: VirtualThumbstick;
   private readonly blockPad?: VirtualAimPad;
   private readonly dashButton?: CombatButton;
-  private readonly ability1Button?: AbilityButton;
-  private readonly ability1Pad?: VirtualAimPad;
+  private ability1Button?: AbilityButton;
+  private ability1Pad?: VirtualAimPad;
   private readonly ability1Aim = new Phaser.Math.Vector2();
   private ability1AimActive = false;
   private ability1AimingHeld = false;
-  private readonly ability2Button?: AbilityButton;
-  private readonly ability2Pad?: VirtualAimPad;
+  private ability2Button?: AbilityButton;
+  private ability2Pad?: VirtualAimPad;
   private readonly ability2Aim = new Phaser.Math.Vector2();
   private ability2AimActive = false;
   private ability2AimingHeld = false;
@@ -76,7 +76,8 @@ export class BattleInput {
   private pcAim: 'ability1' | 'ability2' | null = null;
   private uiPointerAt = -1;
   private suppressAttack = false;
-  private readonly ultimateButton?: AbilityButton;
+  private ultimateButton?: AbilityButton;
+  private readonly combatHud: boolean;
   private readonly keys?: KeyMap;
   private readonly cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private readonly lastAim = new Phaser.Math.Vector2(1, 0);
@@ -100,6 +101,7 @@ export class BattleInput {
     this.scene = scene;
     this.isRoundLocked = isRoundLocked;
     this.touch = isTouchPrimary();
+    this.combatHud = combatHud;
     this.ability1AimOnRelease = Boolean(kit?.ability1.aimOnRelease);
     this.ability2AimOnRelease = Boolean(kit?.ability2.aimOnRelease);
 
@@ -148,6 +150,7 @@ export class BattleInput {
             label: kit.ability1.padLabel ?? 'AIM',
             accent: kit.ability1.accent,
             radius: layout.ability1.r,
+            iconKey: kit.ability1.iconKey,
             onPress: () => {
               if (!this.ability1Ready || this.abilitiesLocked) {
                 return;
@@ -182,6 +185,7 @@ export class BattleInput {
             label: kit.ability2.padLabel ?? 'AIM',
             accent: kit.ability2.accent,
             radius: layout.ability2.r,
+            iconKey: kit.ability2.iconKey,
             onPress: () => {
               if (!this.ability2Ready || this.abilitiesLocked) {
                 return;
@@ -542,6 +546,7 @@ export class BattleInput {
     if (states[0]) {
       this.ability1Ready = states[0].ready;
       this.ability1Button?.sync(states[0]);
+      this.ability1Pad?.sync(states[0]);
       this.ability1Pad?.setRecovered(states[0].ready ? 1 : 1 - states[0].cooldownRatio);
       this.ability1Button?.setDimmed(!states[0].ready || states[0].consumed || this.abilitiesLocked);
       this.ability1Pad?.setDimmed(!states[0].ready || states[0].consumed || this.abilitiesLocked);
@@ -552,6 +557,7 @@ export class BattleInput {
     if (states[1]) {
       this.ability2Ready = states[1].ready;
       this.ability2Button?.sync(states[1]);
+      this.ability2Pad?.sync(states[1]);
       this.ability2Pad?.setRecovered(states[1].ready ? 1 : 1 - states[1].cooldownRatio);
       this.ability2Pad?.setDimmed(!states[1].ready || states[1].consumed || this.abilitiesLocked);
       this.ability2Button?.setDimmed(!states[1].ready || states[1].consumed || this.abilitiesLocked);
@@ -610,6 +616,104 @@ export class BattleInput {
     this.ability2Latched = false;
     this.dashLatched = false;
     this.dashButton?.setCharges(dashMaxCharges, dashMaxCharges);
+    if (this.touch) {
+      this.remountAbilities(kit);
+    }
+  }
+
+  private remountAbilities(kit: HeroAbilityKit): void {
+    if (!this.combatHud) {
+      return;
+    }
+    this.ability1Button?.destroy();
+    this.ability1Pad?.destroy();
+    this.ability2Button?.destroy();
+    this.ability2Pad?.destroy();
+    this.ultimateButton?.destroy();
+    this.ability1Button = undefined;
+    this.ability1Pad = undefined;
+    this.ability2Button = undefined;
+    this.ability2Pad = undefined;
+    this.ultimateButton = undefined;
+    const layout = resolveControls(this.scene.scale.width, this.scene.scale.height);
+    if (kit.ability1.aimOnRelease) {
+      this.ability1Pad = new VirtualAimPad(this.scene, layout.ability1.x, layout.ability1.y, {
+        label: kit.ability1.padLabel ?? 'AIM',
+        accent: kit.ability1.accent,
+        radius: layout.ability1.r,
+        iconKey: kit.ability1.iconKey,
+        onPress: () => {
+          if (!this.ability1Ready || this.abilitiesLocked) {
+            return;
+          }
+          this.ability1AimingHeld = true;
+        },
+        onRelease: (aim) => {
+          if (!this.ability1AimingHeld || this.abilitiesLocked) {
+            this.ability1AimingHeld = false;
+            return;
+          }
+          this.ability1AimingHeld = false;
+          this.ability1AimActive = aim.length() >= INPUT.aimPadDeadzone;
+          if (this.ability1AimActive) {
+            this.ability1Aim.copy(aim).normalize();
+          }
+          this.latchAbility('ability1');
+        },
+      });
+    } else {
+      this.ability1Button = new AbilityButton(
+        this.scene,
+        layout.ability1.x,
+        layout.ability1.y,
+        layout.ability1.r,
+        kit.ability1.iconKey,
+        { onPress: () => { this.latchAbility('ability1'); } },
+      );
+    }
+    if (kit.ability2.aimOnRelease) {
+      this.ability2Pad = new VirtualAimPad(this.scene, layout.ability2.x, layout.ability2.y, {
+        label: kit.ability2.padLabel ?? 'AIM',
+        accent: kit.ability2.accent,
+        radius: layout.ability2.r,
+        iconKey: kit.ability2.iconKey,
+        onPress: () => {
+          if (!this.ability2Ready || this.abilitiesLocked) {
+            return;
+          }
+          this.ability2AimingHeld = true;
+        },
+        onRelease: (aim) => {
+          if (!this.ability2AimingHeld || this.abilitiesLocked) {
+            this.ability2AimingHeld = false;
+            return;
+          }
+          this.ability2AimingHeld = false;
+          this.ability2AimActive = aim.length() >= INPUT.aimPadDeadzone;
+          if (this.ability2AimActive) {
+            this.ability2Aim.copy(aim).normalize();
+          }
+          this.latchAbility('ability2');
+        },
+      });
+    } else {
+      this.ability2Button = new AbilityButton(
+        this.scene,
+        layout.ability2.x,
+        layout.ability2.y,
+        layout.ability2.r,
+        kit.ability2.iconKey,
+        { onPress: () => { this.latchAbility('ability2'); } },
+      );
+    }
+    this.ultimateButton = new AbilityButton(
+      this.scene,
+      layout.ultimate.x,
+      layout.ultimate.y,
+      layout.ultimate.r,
+      kit.ultimate.iconKey,
+      { ultimate: true, onPress: () => { this.latchAbility('ultimate'); } },
+    );
   }
 
   destroy(): void {

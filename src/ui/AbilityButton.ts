@@ -113,6 +113,11 @@ export class AbilityButton {
     this.drawArt();
   }
 
+  setIcon(iconKey: string): void {
+    this.icon.setTexture(iconKey);
+    this.fitIcon();
+  }
+
   sync(state: AbilitySlotState): void {
     this.ready = state.ready;
     this.consumed = state.consumed;
