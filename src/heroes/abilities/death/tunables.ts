@@ -34,6 +34,8 @@ export const DEATH_GUN = {
   damageRating: 16,
   damage: abilityDamage(16),
   knockbackMul: 0.35,
+  /** Aim laser length while the barrage is firing. */
+  laserLength: 720,
   /** Radians of random aim cone. ~7.5° either side — readable spray, not a laser. */
   spreadRad: 0.13,
 } as const;
@@ -48,11 +50,10 @@ export const DEATH_SMASH = {
   damageRating: 66,
   damage: abilityDamage(66),
   /**
-   * Set launch for any bat contact. ~250px of travel — far enough to read,
-   * well short of a map-width send.
+   * Hard shove on bat contact. Launch speed, not a map-width send.
    */
-  knockback: 460,
-  launchCap: 460,
+  knockback: 980,
+  launchCap: 1040,
   stunMs: 1300,
   batScale: 2.55,
   windupRad: 2.15,

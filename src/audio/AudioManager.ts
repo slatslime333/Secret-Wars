@@ -1,4 +1,5 @@
 import { audioSettings } from './AudioSettings';
+import { AUDIO } from '../config/audio';
 import { BUS_GAIN, PRIORITY_BUDGET, SOUND_CATALOG } from './catalog';
 import { LOOP_PERIOD_MS, synthesize } from './synth';
 import type { AudioPriority, PlayOptions, SoundId } from './types';
@@ -27,11 +28,13 @@ const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
 
 /**
  * One AudioContext, one SFX master (AudioSettings), plus bus / priority /
- * cooldown / distance. Music volume is read-ready for a later music layer.
+ * cooldown / distance. Music is a looping bed on its own gain node.
  */
 class AudioManager {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
+  private musicEl: HTMLAudioElement | null = null;
+  private musicGain: GainNode | null = null;
   private listenerX = 0;
   private listenerY = 0;
   private hasListener = false;
@@ -42,6 +45,29 @@ class AudioManager {
 
   unlock(): void {
     this.ensureContext();
+    this.startMusic();
+  }
+
+  /** Loop the bed at 75% of the music slider so it sits under combat. */
+  startMusic(): void {
+    const ctx = this.ensureContext();
+    if (!ctx || !this.musicGain) {
+      return;
+    }
+    this.syncMusicVolume();
+    if (!this.musicEl) {
+      return;
+    }
+    if (this.musicEl.paused) {
+      void this.musicEl.play().catch(() => undefined);
+    }
+  }
+
+  syncMusicVolume(): void {
+    if (!this.musicGain) {
+      return;
+    }
+    this.musicGain.gain.value = AUDIO.musicPeakGain * audioSettings.getMusicVolume();
   }
 
   setListener(x: number, y: number): void {
@@ -50,7 +76,7 @@ class AudioManager {
     this.hasListener = true;
   }
 
-  /** Reserved for a future music bus. Does not play music. */
+  /** Music slider. Playback peaks at AUDIO.musicPeakGain. */
   getMusicVolume(): number {
     return audioSettings.getMusicVolume();
   }
@@ -185,8 +211,27 @@ class AudioManager {
     this.master ??= this.context.createGain();
     this.master.connect(this.context.destination);
     this.master.gain.value = 1;
+    this.ensureMusicGraph(this.context);
     void this.context.resume();
     return this.context;
+  }
+
+  private ensureMusicGraph(ctx: AudioContext): void {
+    if (this.musicEl && this.musicGain) {
+      return;
+    }
+    this.musicEl = new Audio(new URL(AUDIO.musicSrc, document.baseURI).href);
+    this.musicEl.loop = true;
+    this.musicEl.preload = 'auto';
+    this.musicEl.crossOrigin = 'anonymous';
+    this.musicEl.setAttribute('data-secret-wars-music', 'bed');
+    this.musicEl.style.display = 'none';
+    document.body.appendChild(this.musicEl);
+    this.musicGain = ctx.createGain();
+    this.musicGain.gain.value = AUDIO.musicPeakGain * audioSettings.getMusicVolume();
+    const source = ctx.createMediaElementSource(this.musicEl);
+    source.connect(this.musicGain);
+    this.musicGain.connect(ctx.destination);
   }
 }
 

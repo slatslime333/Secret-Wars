@@ -103,7 +103,11 @@ export class RivalBrain {
     }
 
     if (cpu.status.shouldLockMovement(now) || this.block.isActive(now)) {
-      if (!cpu.status.isHitReacting(now) && !cpu.status.isLunging(now)) {
+      if (
+        !cpu.status.isHitReacting(now) &&
+        !cpu.status.isLunging(now) &&
+        !cpu.status.isHitStopping(now)
+      ) {
         cpu.stop();
       }
     } else {

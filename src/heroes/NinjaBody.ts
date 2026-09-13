@@ -355,6 +355,9 @@ export class NinjaBody {
       ease: comboStep === 3 ? 'Back.Out' : 'Cubic.Out',
       yoyo: true,
       onUpdate: () => {
+        if (!this.present) {
+          return;
+        }
         this.drawHero(this.art, {
           facing: this.facing,
           attacking: true,
@@ -372,6 +375,9 @@ export class NinjaBody {
         this.art.setScale(1 + (comboStep - 1) * 0.06 * swordAnimState.lungeFrac);
       },
       onComplete: () => {
+        if (!this.present) {
+          return;
+        }
         this.art.setPosition(0, 0);
         this.art.setRotation(0);
         this.art.setScale(1);
@@ -403,6 +409,9 @@ export class NinjaBody {
       duration: durationMs,
       ease,
       onUpdate: () => {
+        if (!this.present) {
+          return;
+        }
         const pose = frame(anim.frac);
         this.armLiftLeft = pose.armLiftLeft ?? 0;
         this.armLiftRight = pose.armLiftRight ?? 0;
@@ -423,6 +432,9 @@ export class NinjaBody {
         this.art.setPosition(pose.swayX ?? 0, 0);
       },
       onComplete: () => {
+        if (!this.present) {
+          return;
+        }
         this.armLiftLeft = 0;
         this.armLiftRight = 0;
         this.art.setPosition(0, 0);
@@ -655,8 +667,10 @@ export class NinjaBody {
   }
 
   destroy(): void {
+    this.present = false;
     this.scene.physics.world?.off('worldstep', this.containInArena, this);
     this.currentAttackTween?.stop();
+    this.currentAttackTween = undefined;
     this.scene.tweens.killTweensOf(this.view);
     this.scene.tweens.killTweensOf(this.art);
     this.sprite.destroy();

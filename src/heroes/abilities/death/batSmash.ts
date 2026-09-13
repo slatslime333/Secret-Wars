@@ -155,6 +155,9 @@ class BatSmashAbility implements ActiveAbility {
       if (!smashBatHits(caster.x, caster.y, angle, enemy.x, enemy.y, enemy.stats.bodyRadius)) {
         continue;
       }
+      const awayX = enemy.x - caster.x;
+      const awayY = enemy.y - caster.y;
+      const awayLen = Math.hypot(awayX, awayY) || 1;
       this.hit.add(enemy);
       const kind = resolveAbilityHit(
         scene,
@@ -165,8 +168,8 @@ class BatSmashAbility implements ActiveAbility {
           rawDamage: DEATH_SMASH.damage,
           knockback: DEATH_SMASH.knockback,
           staminaDamage: 8,
-          dirX: this.dirX,
-          dirY: this.dirY,
+          dirX: awayX / awayLen + this.dirX * 0.35,
+          dirY: awayY / awayLen + this.dirY * 0.35,
           step: 3,
           heavy: true,
           launchCap: DEATH_SMASH.launchCap,
