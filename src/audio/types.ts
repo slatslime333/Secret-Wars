@@ -17,6 +17,7 @@ export type SoundId =
   | 'ui-victory'
   | 'ui-defeat'
   | 'ui-draw'
+  | 'ability-ready'
   | 'ninja-light'
   | 'cole-light'
   | 'death-light'

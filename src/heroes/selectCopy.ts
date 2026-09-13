@@ -34,13 +34,13 @@ const ROLE_LABEL: Record<string, string> = {
 
 const ABILITY_TEXT: Record<string, string> = {
   'ninja-smoke-bomb': 'Throws a smoke cloud that damages and blinds enemies inside it.',
-  'ninja-backflip-kick': 'Hold to aim, then dash-kick the target and backflip away.',
+  'ninja-backflip-kick': 'Click to aim with the mouse, then left-click to dash-kick and backflip away.',
   'ninja-tornado': 'Spin in a damaging wind burst. Recharges after 45 seconds.',
-  'cole-electric-ball': 'Hold to aim, then fire a ball that explodes on impact.',
+  'cole-electric-ball': 'Click to aim with the mouse, then left-click to fire a ball that explodes on impact.',
   'cole-discharge': 'Release a close electric burst around Cole.',
   'cole-thunderstorm': 'Call lightning strikes onto nearby enemies. Recharges after 45 seconds.',
-  'death-gun-barrage': 'Hold to aim along the laser, then spray a burst of SMG fire.',
-  'death-bat-smash': 'Hold to aim, then sweep the bat through that arc.',
+  'death-gun-barrage': 'Click to aim along the laser, then left-click to spray a burst of SMG fire.',
+  'death-bat-smash': 'Click to aim, then left-click to sweep the bat through that arc.',
   'death-bat-sweep': 'Sweep the bat in a wide damaging arc. Recharges after 45 seconds.',
 };
 
@@ -51,7 +51,7 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
   },
   cole: {
     description: 'Frontliner who holds space with long punches and electric pressure.',
-    light: 'Long-reach punches. Third hit sends a shockwave.',
+    light: 'Long-reach punches with a slower cadence. Third hit sends a shockwave.',
   },
   death: {
     description: 'Heavy tank who mixes SMG fire with bat slams and sweeps.',

@@ -71,7 +71,7 @@ export type AbilityDef = {
   maxCharges: number;
   iconKey: string;
   accent: number;
-  /** Hold to aim, fire on release. Mobile uses the aim pad; PC holds the key. */
+  /** Hold to aim on mobile. On PC, click the ability then left-click to fire. */
   aimOnRelease?: boolean;
   /** Short label on the mobile aim pad. */
   padLabel?: string;

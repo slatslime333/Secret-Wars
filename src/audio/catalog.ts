@@ -131,6 +131,16 @@ export const SOUND_CATALOG: Record<SoundId, SoundDef> = {
     spatial: false,
     asset: 'assets/audio/ui/draw.wav',
   }),
+  'ability-ready': def({
+    id: 'ability-ready',
+    bus: 'ui',
+    priority: 'medium',
+    volume: 0.3,
+    cooldownMs: 80,
+    spatial: false,
+    group: 'ability-ready',
+    asset: 'assets/audio/ui/ability-ready.wav',
+  }),
   'ninja-light': def({
     id: 'ninja-light',
     bus: 'hero',

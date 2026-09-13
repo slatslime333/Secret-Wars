@@ -541,7 +541,13 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       attack += 4;
     }
     if (self.hpRatio < personality.retreatHp && pile < 0.4 && !finishable) {
-      attack -= 14;
+      const poke =
+        d > self.attackRange * 0.55 && d <= self.attackRange * 1.2 && risk < 0.6 && self.attackRange > 120;
+      if (poke) {
+        attack += 10;
+      } else {
+        attack -= 14;
+      }
     }
     if (fleeing && d > range * 2.2) {
       attack -= 16;
@@ -690,6 +696,9 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (support) {
       assist += 6;
     }
+    if (self.hpRatio < 0.34 && d > self.attackRange * 0.5 && d < self.attackRange * 1.35) {
+      assist += 10;
+    }
     const focus = foes.reduce((best, foe) => (foe.hpRatio < best.hpRatio ? foe : best), foes[0]);
     count = write(out, count, 'assist_ally', assist, foes.length > allyHelp + 1 ? 'outnumbered ally' : 'help the fight', focus.id, ally.id);
 
@@ -748,10 +757,6 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (self.hpRatio < TACTIC.criticalHp && !closeHero) {
       recover += 12;
     }
-    const homeGap = Math.hypot(self.x - situation.homeX, self.y - situation.homeY);
-    if (homeGap < 170 && !closeHero) {
-      recover += 14;
-    }
     count = write(out, count, 'recover', recover, closeHero ? 'need space first' : 'recover');
   }
 
@@ -774,14 +779,14 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       (enemy) => enemy.kind === 'hero' && enemy.visible && dist(enemy, pack) < 210,
     );
     let farmScore = 12 + (handledNearby ? 8 : 0) - (minionGap / situation.vision) * 10;
-    if (self.hpRatio > 0.16 && self.hpRatio < 0.72 && !heroThreat) {
-      farmScore += 12;
+    if (self.hpRatio > 0.12 && self.hpRatio < 0.72 && !heroThreat) {
+      farmScore += 16;
     }
     if (heroThreat) {
       farmScore -= 16;
     }
-    if (self.hpRatio < 0.2) {
-      farmScore -= 8;
+    if (self.hpRatio < 0.14 && heroThreat) {
+      farmScore -= 10;
     }
     if (stuckAtEdge) {
       farmScore += 28;

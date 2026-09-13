@@ -12,9 +12,9 @@ export const COLE_RATINGS = {
   damage: 55,
   defense: 50,
   speed: 48,
-  attackSpeed: 36,
+  attackSpeed: 26,
   attackRange: 74,
-  knockback: 67,
+  knockback: 52,
 } as const satisfies CoreRatings;
 
 export const COLE = {

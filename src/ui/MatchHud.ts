@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
+import { isTouchPrimary } from '../device';
 import { formatMatchClock } from '../match/MatchManager';
 import type { MatchSnapshot } from '../match/MatchManager';
 import type { TeamScore } from '../match/ScoreManager';
 import type { Progression } from '../match/Progression';
+import { layoutPcCombatHud, PC_COMBAT_HUD } from './pcCombatHud';
 import { COLORS, FONTS, hex } from './theme';
 
 /** Live match chrome: clock, score, player level / XP. */
@@ -87,12 +89,25 @@ export class MatchHud {
       .setOrigin(1, 0)
       .setScrollFactor(0)
       .setDepth(102);
+    this.layout(width, scene.scale.height);
   }
 
-  layout(width: number): void {
+  layout(width: number, height = 0): void {
     this.timer.setX(width / 2);
     this.phase.setX(width / 2);
     this.score.setX(width / 2);
+    if (height <= 0 || isTouchPrimary()) {
+      this.xpTrack.setPosition(148, 84).setSize(224, 6);
+      this.xpFill.setPosition(36, 84);
+      this.level.setPosition(36, 92).setOrigin(0, 0);
+      this.xpText.setPosition(260, 92).setOrigin(1, 0);
+      return;
+    }
+    const hud = layoutPcCombatHud(width, height);
+    this.xpTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.xpY).setSize(hud.barWidth, PC_COMBAT_HUD.xpHeight);
+    this.xpFill.setPosition(hud.barLeft, hud.xpY).setSize(this.xpFill.width || hud.barWidth, PC_COMBAT_HUD.xpHeight);
+    this.level.setPosition(hud.barLeft, hud.xpY + 10).setOrigin(0, 0);
+    this.xpText.setPosition(hud.barLeft + hud.barWidth, hud.xpY + 10).setOrigin(1, 0);
   }
 
   setVisible(visible: boolean): void {
@@ -113,6 +128,6 @@ export class MatchHud {
     this.level.setText(`LV ${progression.level}`);
     const need = progression.xpToNext;
     this.xpText.setText(progression.atCap ? 'MAX' : `${Math.floor(progression.xp)} / ${need} XP`);
-    this.xpFill.width = 224 * progression.xpRatio;
+    this.xpFill.width = (isTouchPrimary() ? 224 : PC_COMBAT_HUD.barWidth) * progression.xpRatio;
   }
 }

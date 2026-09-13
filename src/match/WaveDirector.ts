@@ -11,7 +11,7 @@ export type WaveInfo = {
 };
 
 /**
- * Timed, lane-tagged wave spawner. Same 6 sword + 4 ranger composition
+ * Timed, lane-tagged wave spawner. Same 5 sword + 3 ranger composition
  * each pulse, split across top / mid / bottom. Caps living minions per team.
  */
 export class WaveDirector {
