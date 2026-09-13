@@ -3,6 +3,8 @@ import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { isTouchPrimary } from '../device';
 import { NinjaBody } from '../heroes/NinjaBody';
+import { layoutHudChrome } from './layout/hudChrome';
+import { measureViewport } from './layout/viewport';
 import { isPcCombatHud, layoutPcCombatHud } from './pcCombatHud';
 import { COLORS, FONTS, hex } from './theme';
 
@@ -100,14 +102,18 @@ export class BattleHud {
   layout(width: number, height: number): void {
     this.comboText.setX(width / 2);
     if (!isPcCombatHud()) {
-      this.barWidth = 224;
-      this.hpTrack.setPosition(148, 56).setSize(224, 10);
-      this.staminaTrack.setPosition(148, 70).setSize(224, 8);
-      this.ninjaFill.setPosition(36, 56).setSize(this.ninjaFill.width || 224, 10);
-      this.shieldFill.setPosition(36, 56).setSize(this.shieldFill.width || 0, 10);
-      this.staminaFill.setPosition(36, 70).setSize(this.staminaFill.width || 224, 8);
+      const chrome = layoutHudChrome(measureViewport(width, height));
+      this.barWidth = chrome.bars.width;
+      const cx = chrome.bars.x + chrome.bars.width / 2;
+      this.hpTrack.setPosition(cx, chrome.bars.hpY).setSize(chrome.bars.width, chrome.bars.hpH);
+      this.staminaTrack.setPosition(cx, chrome.bars.staminaY).setSize(chrome.bars.width, chrome.bars.stamH);
+      this.ninjaFill.setPosition(chrome.bars.x, chrome.bars.hpY).setSize(this.ninjaFill.width || chrome.bars.width, chrome.bars.hpH);
+      this.shieldFill.setPosition(chrome.bars.x, chrome.bars.hpY).setSize(this.shieldFill.width || 0, chrome.bars.hpH);
+      this.staminaFill.setPosition(chrome.bars.x, chrome.bars.staminaY).setSize(this.staminaFill.width || chrome.bars.width, chrome.bars.stamH);
       this.hpText.setVisible(false);
-      this.verbText.setPosition(width - 30, 82).setOrigin(1, 0);
+      this.comboText.setY(chrome.comboY).setFontSize(chrome.titleVisible ? 18 : 15);
+      this.verbText.setVisible(chrome.verbVisible);
+      this.verbText.setPosition(width - 30, chrome.bars.xpY).setOrigin(1, 0);
       return;
     }
     const hud = layoutPcCombatHud(width, height);
@@ -118,7 +124,7 @@ export class BattleHud {
     this.shieldFill.setPosition(hud.barLeft, hud.hpY).setSize(this.shieldFill.width || 0, hud.hpHeight);
     this.staminaFill.setPosition(hud.barLeft, hud.staminaY).setSize(this.staminaFill.width || hud.barWidth, hud.staminaHeight);
     this.hpText.setVisible(true).setPosition(hud.barLeft, hud.hpY - 22).setOrigin(0, 0.5);
-    this.verbText.setPosition(width / 2, hud.hpY - 42).setOrigin(0.5, 1);
+    this.verbText.setVisible(true).setPosition(width / 2, hud.hpY - 42).setOrigin(0.5, 1);
   }
 
   placeCombo(x: number, y: number): void {
@@ -133,7 +139,7 @@ export class BattleHud {
     this.staminaFill.setVisible(visible);
     this.hpText.setVisible(visible && isPcCombatHud());
     this.comboText.setVisible(visible);
-    this.verbText.setVisible(visible);
+    this.verbText.setVisible(visible && !this.touch);
     if (!visible) {
       this.foeBar.setVisible(false);
     }

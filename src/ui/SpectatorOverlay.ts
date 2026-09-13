@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { isTouchPrimary } from '../device';
 import { ActionButton } from './ActionButton';
 import { COLORS, FONTS, hex } from './theme';
+import { measureViewport } from './layout/viewport';
 
 export type SpectatorOverlayState = {
   remainingMs: number;
@@ -86,10 +87,12 @@ export class SpectatorOverlay {
 
   sync(state: SpectatorOverlayState, width: number, height: number): void {
     this.root.setVisible(true);
-    const plateW = PLATE_WIDTH;
+    const frame = measureViewport(width, height);
+    const plateW = Math.min(PLATE_WIDTH, width - frame.contentInset.left - frame.contentInset.right - 8);
     const plateH = state.remainingMs > 0 ? 82 : PLATE_HEIGHT;
-    const cx = width - MARGIN - plateW / 2;
-    const bottom = height - MARGIN;
+    const margin = Math.max(MARGIN, frame.contentInset.right);
+    const cx = width - margin - plateW / 2;
+    const bottom = height - Math.max(MARGIN, frame.contentInset.bottom) - (frame.isMobile ? 8 : 0);
     this.plate.setPosition(cx, bottom - plateH / 2);
     this.plate.setSize(plateW, plateH);
     this.prevButton.setPosition(cx - 40, bottom - 14);

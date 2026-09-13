@@ -1,6 +1,7 @@
 import type { TeamId } from '../config/hero';
 import { MATCH } from '../config/match';
 import { isHeroFighter, type CombatDamageEvent, type DamageSourceKind } from '../combat/damageEvents';
+import { ownerOfWitchSkeleton } from '../heroes/abilities/witch/skeletonPack';
 import type { NinjaBody } from '../heroes/NinjaBody';
 
 export type HeroStatLine = {
@@ -73,9 +74,15 @@ export class CombatStatsTracker {
     if (!attacker || event.amount <= 0) {
       return;
     }
-    const attackerLine = this.lines.get(attacker);
+    const skeletonOwner = ownerOfWitchSkeleton(attacker);
+    const credited = skeletonOwner ?? attacker;
+    const attackerLine = this.lines.get(credited);
     if (attackerLine) {
-      this.addSourceDamage(attackerLine, event.kind, event.amount);
+      if (skeletonOwner) {
+        attackerLine.abilityDamage += event.amount;
+      } else {
+        this.addSourceDamage(attackerLine, event.kind, event.amount);
+      }
       if (isHeroFighter(victim)) {
         attackerLine.playerDamage += event.amount;
       } else {
@@ -83,12 +90,12 @@ export class CombatStatsTracker {
       }
     }
     const victimLine = this.lines.get(victim);
-    if (victimLine && isHeroFighter(attacker)) {
+    if (victimLine && (isHeroFighter(credited) || skeletonOwner)) {
       victimLine.playerDamageReceived += event.amount;
     }
-    if (isHeroFighter(attacker) && isHeroFighter(victim) && attacker.team !== victim.team) {
+    if (isHeroFighter(credited) && isHeroFighter(victim) && credited.team !== victim.team) {
       const list = this.marks.get(victim) ?? [];
-      list.push({ attacker, at: event.at });
+      list.push({ attacker: credited, at: event.at });
       this.marks.set(victim, list);
     }
   }

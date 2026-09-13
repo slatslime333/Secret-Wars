@@ -4,7 +4,9 @@ import { MATCH } from '../config/match';
 import type { TeamId } from '../config/hero';
 import type { HeroStatLine } from '../match/CombatStatsTracker';
 import { ActionButton } from './ActionButton';
-import { addScoreboard } from './ScoreboardView';
+import { ScrollPanel } from './layout/ScrollPanel';
+import { measureViewport } from './layout/viewport';
+import { addScoreboardSized } from './ScoreboardView';
 import { COLORS, FONTS, hex } from './theme';
 
 export type PostMatchHandlers = {
@@ -15,6 +17,7 @@ export type PostMatchHandlers = {
 export class PostMatchOverlay {
   private readonly root: Phaser.GameObjects.Container;
   private visible = false;
+  private scroller?: ScrollPanel;
 
   constructor(private readonly scene: Phaser.Scene, private readonly handlers: PostMatchHandlers) {
     this.root = scene.add.container(0, 0).setDepth(240).setScrollFactor(0).setVisible(false);
@@ -25,9 +28,13 @@ export class PostMatchOverlay {
   }
 
   show(winner: TeamId | 'draw' | null, playerTeam: TeamId, lines: HeroStatLine[]): void {
+    this.scroller?.destroy();
+    this.scroller = undefined;
     this.root.removeAll(true);
-    const width = this.scene.scale.width;
-    const height = this.scene.scale.height;
+    const frame = measureViewport(this.scene.scale.width, this.scene.scale.height);
+    const width = frame.width;
+    const height = frame.height;
+    const inset = frame.contentInset;
     const result =
       winner === 'draw' || winner === null
         ? 'DRAW'
@@ -38,9 +45,9 @@ export class PostMatchOverlay {
 
     const veil = this.scene.add.rectangle(width / 2, height / 2, width, height, COLORS.ink, 0.82);
     const title = this.scene.add
-      .text(width / 2, 36, result, {
+      .text(width / 2, inset.top + 8, result, {
         fontFamily: FONTS.display,
-        fontSize: '34px',
+        fontSize: frame.isPortrait ? '28px' : '34px',
         color: hex(resultColor),
         letterSpacing: 4,
         stroke: hex(COLORS.ink),
@@ -48,7 +55,7 @@ export class PostMatchOverlay {
       })
       .setOrigin(0.5, 0);
     const sub = this.scene.add
-      .text(width / 2, 76, 'MATCH REPORT', {
+      .text(width / 2, inset.top + 48, 'MATCH REPORT', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
@@ -58,11 +65,23 @@ export class PostMatchOverlay {
       .setOrigin(0.5, 0);
 
     this.root.add([veil, title, sub]);
-    addScoreboard(this.scene, this.root, lines, 104, width);
 
-    const rematch = new ActionButton(this.scene, width / 2 - 110, height - 48, {
+    const footerH = 72;
+    const scrollY = inset.top + 78;
+    const scrollH = Math.max(80, height - scrollY - footerH - inset.bottom);
+    this.scroller = new ScrollPanel(this.scene, inset.left, scrollY, width - inset.left - inset.right, scrollH, {
+      depth: 241,
+      scrollFactor: 0,
+    });
+    const board = addScoreboardSized(this.scene, this.scroller.content, lines, 0, width - inset.left - inset.right);
+    this.scroller.setContentSize(board.width, board.height + 8);
+    this.root.add(this.scroller.root);
+
+    const btnW = Math.min(190, (width - inset.left - inset.right - 16) / 2);
+    const btnY = height - inset.bottom - 28;
+    const rematch = new ActionButton(this.scene, width / 2 - btnW / 2 - 8, btnY, {
       label: 'REMATCH',
-      width: 190,
+      width: btnW,
       height: 48,
       primary: true,
       compact: true,
@@ -71,9 +90,9 @@ export class PostMatchOverlay {
     rematch.setScrollFactor(0).setDepth(241);
     rematch.disableInteractive();
     rematch.setVisible(false);
-    const menu = new ActionButton(this.scene, width / 2 + 110, height - 48, {
+    const menu = new ActionButton(this.scene, width / 2 + btnW / 2 + 8, btnY, {
       label: 'MENU',
-      width: 190,
+      width: btnW,
       height: 48,
       compact: true,
       onPress: () => this.handlers.onMenu(),
@@ -97,6 +116,7 @@ export class PostMatchOverlay {
   }
 
   destroy(): void {
+    this.scroller?.destroy();
     this.root.destroy();
   }
 }

@@ -76,8 +76,8 @@ const paletteFor = (rival: boolean, hitFlash: boolean): Palette => {
 };
 
 /**
- * Cole-sized pale schoolgirl with a huge supernatural right shadow arm.
- * Slightly smaller than Witch; bangs cover about half the face.
+ * Cole-sized pale schoolgirl: large oval face, tapered blouse, slim waist,
+ * flared skirt, huge supernatural right shadow arm.
  */
 export const drawShadow = (
   graphics: Phaser.GameObjects.Graphics,
@@ -91,7 +91,7 @@ export const drawShadow = (
 
   graphics.clear();
   graphics.fillStyle(COLORS.ink, 0.45);
-  graphics.fillEllipse(facing === 'east' ? 1 : facing === 'west' ? -1 : 0, 16, 18, 6);
+  graphics.fillEllipse(facing === 'east' ? 1 : facing === 'west' ? -1 : 0, 16, 16, 5);
 
   if (facing === 'east') {
     drawEast(graphics, palette, liftL, liftR);
@@ -104,111 +104,69 @@ export const drawShadow = (
   drawFront(graphics, palette, facing === 'north', liftL, liftR);
 };
 
+const drawTorso = (g: Phaser.GameObjects.Graphics, p: Palette): void => {
+  g.fillStyle(p.skinDark);
+  g.fillRoundedRect(-6.5, 10, 4.5, 7, 2);
+  g.fillRoundedRect(2, 10, 4.5, 7, 2);
+  g.fillStyle(p.skin);
+  g.fillRect(-5.5, 10, 3, 5);
+  g.fillRect(2.5, 10, 3, 5);
+
+  g.fillStyle(p.skirtDark);
+  g.fillTriangle(-3.5, 3, 3.5, 3, -11, 12);
+  g.fillTriangle(-3.5, 3, 3.5, 3, 11, 12);
+  g.fillRoundedRect(-11, 6, 22, 6, 3);
+  g.fillStyle(p.skirt);
+  g.fillTriangle(-3, 3, 3, 3, -10, 11);
+  g.fillTriangle(-3, 3, 3, 3, 10, 11);
+  g.fillRoundedRect(-10, 5, 20, 5, 3);
+  g.fillStyle(p.trim);
+  g.fillRect(-10, 5, 20, 1);
+
+  g.fillStyle(p.skin);
+  g.fillRect(-3, 1, 6, 3);
+
+  g.fillStyle(p.blouseDark);
+  g.fillTriangle(-4.5, -8, 4.5, -8, -7, 0);
+  g.fillTriangle(-4.5, -8, 4.5, -8, 7, 0);
+  g.fillStyle(p.blouse);
+  g.fillTriangle(-3.5, -8, 3.5, -8, -5.5, 1);
+  g.fillTriangle(-3.5, -8, 3.5, -8, 5.5, 1);
+  g.fillEllipse(0, -3.6, 13, 7.5);
+  g.fillRoundedRect(-4.5, -2, 9, 4, 2);
+  g.fillStyle(p.trim);
+  g.fillRect(-5, -1, 10, 2);
+  g.fillStyle(p.band);
+  g.fillRect(-5.5, -8, 11, 2);
+};
+
 const drawEast = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, liftR: number): void => {
   const leftY = 1 - liftL * 7;
   const rightY = 2 - liftR * 11;
+  drawTorso(g, p);
 
   g.fillStyle(p.skinDark);
-  g.fillRoundedRect(-8, 9, 5, 7, 2);
-  g.fillRoundedRect(2, 9, 5, 7, 2);
+  g.fillRoundedRect(-11, leftY, 3.5, 10, 2);
   g.fillStyle(p.skin);
-  g.fillRect(-7, 9, 4, 5);
-  g.fillRect(3, 9, 4, 5);
+  g.fillRoundedRect(-10.5, leftY + 0.5, 2.6, 8, 2);
 
-  g.fillStyle(p.skirtDark);
-  g.fillRoundedRect(-10, 5, 20, 7, 3);
-  g.fillStyle(p.skirt);
-  g.fillRoundedRect(-9, 4, 18, 6, 3);
-  g.fillStyle(p.trim);
-  g.fillRect(-9, 4, 18, 1);
-
-  g.fillStyle(p.skin);
-  g.fillRect(-4, 1, 8, 4);
-
-  g.fillStyle(p.blouseDark);
-  g.fillRoundedRect(-8, -7, 16, 10, 3);
-  g.fillStyle(p.blouse);
-  g.fillRoundedRect(-7, -6, 14, 8, 3);
-  g.fillStyle(p.trim);
-  g.fillRect(-7, -2, 14, 2);
-  g.fillStyle(p.band);
-  g.fillRect(-7, -7, 14, 2);
-
-  g.fillStyle(p.skinDark);
-  g.fillRoundedRect(-12, leftY - 1, 4, 10, 2);
-  g.fillStyle(p.skin);
-  g.fillRoundedRect(-11, leftY, 3, 8, 2);
-
-  g.fillStyle(p.hairDark);
-  g.fillEllipse(1, -15.5, 10, 11);
-  g.fillStyle(p.hair);
-  g.fillEllipse(1, -15.5, 8.5, 9.5);
-
-  g.fillStyle(p.skinDark);
-  g.fillEllipse(2, -13.6, 5.4, 8);
-  g.fillStyle(p.skin);
-  g.fillEllipse(2, -13.6, 4.5, 7);
-
-  g.fillStyle(p.hair);
-  g.fillTriangle(-6, -16, 4, -18, -7, -7);
-  g.fillTriangle(-2, -17, 8, -16, 2, -8);
-  g.fillRect(-5, -21, 12, 5);
-
-  drawEye(g, p, 4, -13.2);
+  drawHairAndHead(g, p, 2.2, 1);
+  drawEye(g, p, 5, -15.4);
   drawShadowArm(g, p, 8, rightY, 1, liftR);
 };
 
 const drawWest = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, liftR: number): void => {
   const leftY = 1 - liftL * 7;
   const rightY = 2 - liftR * 11;
+  drawTorso(g, p);
 
   g.fillStyle(p.skinDark);
-  g.fillRoundedRect(-7, 9, 5, 7, 2);
-  g.fillRoundedRect(3, 9, 5, 7, 2);
+  g.fillRoundedRect(7.5, leftY, 3.5, 10, 2);
   g.fillStyle(p.skin);
-  g.fillRect(-6, 9, 4, 5);
-  g.fillRect(4, 9, 4, 5);
+  g.fillRoundedRect(8, leftY + 0.5, 2.6, 8, 2);
 
-  g.fillStyle(p.skirtDark);
-  g.fillRoundedRect(-10, 5, 20, 7, 3);
-  g.fillStyle(p.skirt);
-  g.fillRoundedRect(-9, 4, 18, 6, 3);
-  g.fillStyle(p.trim);
-  g.fillRect(-9, 4, 18, 1);
-
-  g.fillStyle(p.skin);
-  g.fillRect(-4, 1, 8, 4);
-
-  g.fillStyle(p.blouseDark);
-  g.fillRoundedRect(-8, -7, 16, 10, 3);
-  g.fillStyle(p.blouse);
-  g.fillRoundedRect(-7, -6, 14, 8, 3);
-  g.fillStyle(p.trim);
-  g.fillRect(-7, -2, 14, 2);
-  g.fillStyle(p.band);
-  g.fillRect(-7, -7, 14, 2);
-
-  g.fillStyle(p.skinDark);
-  g.fillRoundedRect(8, leftY - 1, 4, 10, 2);
-  g.fillStyle(p.skin);
-  g.fillRoundedRect(8, leftY, 3, 8, 2);
-
-  g.fillStyle(p.hairDark);
-  g.fillEllipse(-1, -15.5, 10, 11);
-  g.fillStyle(p.hair);
-  g.fillEllipse(-1, -15.5, 8.5, 9.5);
-
-  g.fillStyle(p.skinDark);
-  g.fillEllipse(-2, -13.6, 5.4, 8);
-  g.fillStyle(p.skin);
-  g.fillEllipse(-2, -13.6, 4.5, 7);
-
-  g.fillStyle(p.hair);
-  g.fillTriangle(6, -16, -4, -18, 7, -7);
-  g.fillTriangle(2, -17, -8, -16, -2, -8);
-  g.fillRect(-7, -21, 12, 5);
-
-  drawEye(g, p, -4, -13.2);
+  drawHairAndHead(g, p, -2.2, -1);
+  drawEye(g, p, -5, -15.4);
   drawShadowArm(g, p, -8, rightY, -1, liftR);
 };
 
@@ -219,63 +177,57 @@ const drawFront = (
   liftL: number,
   liftR: number,
 ): void => {
-  g.fillStyle(p.skinDark);
-  g.fillRoundedRect(-7, 9, 5, 7, 2);
-  g.fillRoundedRect(2, 9, 5, 7, 2);
-  g.fillStyle(p.skin);
-  g.fillRect(-6, 9, 4, 5);
-  g.fillRect(3, 9, 4, 5);
-
-  g.fillStyle(p.skirtDark);
-  g.fillRoundedRect(-10, 5, 20, 7, 3);
-  g.fillStyle(p.skirt);
-  g.fillRoundedRect(-9, 4, 18, 6, 3);
-
-  g.fillStyle(p.skin);
-  g.fillRect(-4, 1, 8, 4);
-
-  g.fillStyle(p.blouseDark);
-  g.fillRoundedRect(-8, -7, 16, 10, 3);
-  g.fillStyle(p.blouse);
-  g.fillRoundedRect(-7, -6, 14, 8, 3);
-  g.fillStyle(p.trim);
-  g.fillRect(-7, -2, 14, 2);
-  g.fillStyle(p.band);
-  g.fillRect(-7, -7, 14, 2);
-
+  drawTorso(g, p);
   const leftY = 0 - liftL * 7;
   const rightY = 0 - liftR * 10;
   const shadowDir = north ? 1 : -1;
   g.fillStyle(p.skin);
-  g.fillRoundedRect(north ? -12 : 8, leftY, 4, 10, 2);
+  g.fillRoundedRect(north ? -11 : 8, leftY, 3.5, 10, 2);
 
   g.fillStyle(p.hairDark);
-  g.fillEllipse(0, -15.5, 10, 11);
+  g.fillEllipse(0, -17.2, 22, 21);
   g.fillStyle(p.hair);
-  g.fillEllipse(0, -15.5, 8.5, 9.5);
+  g.fillEllipse(0, -17.2, 19.5, 18.5);
 
   if (!north) {
     g.fillStyle(p.skinDark);
-    g.fillEllipse(0, -13.6, 5.2, 7.8);
+    g.fillEllipse(0, -15.4, 18.4, 22.4);
     g.fillStyle(p.skin);
-    g.fillEllipse(0, -13.6, 4.3, 6.8);
-    drawEye(g, p, -2.2, -13.2);
-    drawEye(g, p, 2.4, -13.2);
+    g.fillEllipse(0, -15.4, 16.6, 20.6);
+    drawEye(g, p, -2.6, -15.4);
+    drawEye(g, p, 2.8, -15.4);
     g.fillStyle(p.hair);
-    g.fillTriangle(-8, -16, -1, -17, -8, -6);
-    g.fillTriangle(-4, -17, 6, -16, 0, -7);
+    g.fillTriangle(-10, -18, -1, -19, -10, -7);
+    g.fillTriangle(-4, -19, 7, -18, 1, -8);
   } else {
     g.fillStyle(p.hair);
-    g.fillEllipse(0, -15.5, 8.5, 9.5);
+    g.fillEllipse(0, -17.2, 19.5, 18.5);
   }
   drawShadowArm(g, p, north ? 8 : -8, rightY, shadowDir, liftR);
 };
 
+const drawHairAndHead = (g: Phaser.GameObjects.Graphics, p: Palette, faceX: number, dir: number): void => {
+  g.fillStyle(p.hairDark);
+  g.fillEllipse(dir, -17.2, 22, 21);
+  g.fillStyle(p.hair);
+  g.fillEllipse(dir, -17.2, 19.5, 18.5);
+
+  g.fillStyle(p.skinDark);
+  g.fillEllipse(faceX, -15.4, 18.6, 22.6);
+  g.fillStyle(p.skin);
+  g.fillEllipse(faceX, -15.4, 16.8, 20.8);
+
+  g.fillStyle(p.hair);
+  g.fillTriangle(-7 * dir, -18, 4 * dir, -20, -8 * dir, -8);
+  g.fillTriangle(-2 * dir, -19, 9 * dir, -18, 2 * dir, -9);
+  g.fillRect(-6 + dir, -24, 13, 6);
+};
+
 const drawEye = (g: Phaser.GameObjects.Graphics, p: Palette, x: number, y: number): void => {
   g.fillStyle(p.eye);
-  g.fillEllipse(x, y, 1.5, 2.1);
+  g.fillEllipse(x, y, 2.2, 3);
   g.fillStyle(0xf8f0ea);
-  g.fillCircle(x + 0.3, y - 0.4, 0.45);
+  g.fillCircle(x + 0.4, y - 0.5, 0.6);
 };
 
 const drawShadowArm = (

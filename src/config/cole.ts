@@ -8,8 +8,8 @@ import { gameplayFromRatings, type CoreRatings } from './ratings';
  */
 export const COLE_RATINGS = {
   health: 60,
-  stamina: 60,
-  damage: 55,
+  stamina: 48,
+  damage: 57,
   defense: 50,
   speed: 48,
   attackSpeed: 26,

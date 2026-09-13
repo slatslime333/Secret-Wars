@@ -30,6 +30,7 @@ import { PauseOverlay } from '../ui/PauseOverlay';
 import { SpectatorOverlay } from '../ui/SpectatorOverlay';
 import { Minimap } from '../ui/Minimap';
 import { COLORS, FONTS, hex } from '../ui/theme';
+import { applyGameplayCamera, layoutHudChrome, measureViewport } from '../ui/layout';
 import { Battlefield, rememberPlayTestSeed, resolvePlayTestSeed } from '../map';
 import { HeroPilot } from '../ai/HeroPilot';
 import { TacticalField } from '../ai/tactical/field';
@@ -181,7 +182,7 @@ export class MatchScene extends Phaser.Scene {
       });
     }
     this.hud = new BattleHud(this);
-    this.hud.placeCombo(this.scale.width / 2, 88);
+    this.hud.placeCombo(this.scale.width / 2, layoutHudChrome(measureViewport(this.scale.width, this.scale.height)).comboY);
     this.matchHud = new MatchHud(this);
     this.layoutAbilityTray(this.scale.width, this.scale.height);
     this.minimap = new Minimap(this);
@@ -205,8 +206,7 @@ export class MatchScene extends Phaser.Scene {
       this.cameras.main.startFollow(this.player.body.sprite, true, 0.16, 0.16);
     }
     this.cameras.main.setRoundPixels(true);
-    this.cameras.main.setSize(this.scale.width, this.scale.height);
-    this.cameras.main.setZoom(1);
+    applyGameplayCamera(this.cameras.main, this.scale.width, this.scale.height);
     this.cameras.main.fadeIn(220, 7, 10, 18);
 
     this.createChrome();
@@ -822,13 +822,13 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private createChrome(): void {
-    const width = this.scale.width;
-    this.chromeBar = this.add.rectangle(width / 2, 22, width, 44, COLORS.ink, 0.78);
-    this.chromeBar.setStrokeStyle(2, COLORS.paper).setScrollFactor(0).setDepth(99);
+    const chrome = layoutHudChrome(measureViewport(this.scale.width, this.scale.height));
+    this.chromeBar = this.add.rectangle(this.scale.width / 2, chrome.barY, this.scale.width, Math.max(1, chrome.barH), COLORS.ink, 0.78);
+    this.chromeBar.setStrokeStyle(2, COLORS.paper).setScrollFactor(0).setDepth(99).setVisible(chrome.barH > 8);
     this.titleText = this.add
-      .text(22, 22, `SECRET WARS  //  ${this.player.body.stats.displayName.toUpperCase()}`, {
+      .text(chrome.titleX, chrome.titleY, `SECRET WARS  //  ${this.player.body.stats.displayName.toUpperCase()}`, {
         fontFamily: FONTS.display,
-        fontSize: '15px',
+        fontSize: `${chrome.titleSize}px`,
         color: hex(COLORS.paper),
         letterSpacing: 2,
         stroke: hex(COLORS.ink),
@@ -836,26 +836,32 @@ export class MatchScene extends Phaser.Scene {
       })
       .setOrigin(0, 0.5)
       .setScrollFactor(0)
-      .setDepth(100);
-    this.menuButton = new ActionButton(this, width - 108, 22, {
+      .setDepth(100)
+      .setVisible(chrome.titleVisible);
+    this.menuButton = new ActionButton(this, chrome.menuX, chrome.menuY, {
       label: 'MENU',
-      width: 150,
-      height: 40,
+      width: chrome.menuW,
+      height: chrome.menuH,
+      compact: chrome.menuH < 40,
+      fontSize: chrome.menuH < 36 ? '13px' : undefined,
+      letterSpacing: 1,
       onPress: () => this.openPause(),
     });
-    this.menuButton.setScrollFactor(0).setDepth(120);
+    this.menuButton.setScrollFactor(0).setDepth(220);
   }
 
   private onResize(gameSize: Phaser.Structs.Size): void {
     const width = gameSize.width;
     const height = gameSize.height;
-    this.chromeBar?.setPosition(width / 2, 22).setSize(width, 44);
-    this.titleText?.setPosition(22, 22);
-    this.menuButton?.setPosition(width - 108, 22);
+    const chrome = layoutHudChrome(measureViewport(width, height));
+    this.chromeBar?.setPosition(width / 2, chrome.barY).setSize(width, Math.max(1, chrome.barH));
+    this.chromeBar?.setVisible(chrome.barH > 8);
+    this.titleText?.setPosition(chrome.titleX, chrome.titleY).setVisible(chrome.titleVisible);
+    this.menuButton?.setPosition(chrome.menuX, chrome.menuY);
     this.hud?.layout(width, height);
-    this.hud?.placeCombo(width / 2, 88);
+    this.hud?.placeCombo(width / 2, chrome.comboY);
     this.matchHud?.layout(width, height);
-    this.minimap?.layout(width);
+    this.minimap?.layout(width, height);
     this.inputReader?.layout(width, height);
     this.layoutAbilityTray(width, height);
     if ((this.simulator || (this.player && !this.player.alive)) && this.spectatorOverlay) {
@@ -872,7 +878,7 @@ export class MatchScene extends Phaser.Scene {
         height,
       );
     }
-    this.cameras.main.setSize(width, height);
+    applyGameplayCamera(this.cameras.main, width, height);
     if (this.pauseOverlay?.isOpen) {
       this.pauseOverlay.show(this.stats.allLines());
     }

@@ -34,50 +34,80 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 const ABILITY_TEXT: Record<string, string> = {
-  'ninja-smoke-bomb': 'Throws a smoke cloud that damages and blinds enemies inside it.',
-  'ninja-backflip-kick': 'Click to aim, then left-click to dash-kick. Two charges, each with a cooldown.',
-  'ninja-tornado': 'Spin in a damaging wind burst. Recharges after 45 seconds.',
-  'cole-electric-ball': 'Click to aim with the mouse, then left-click to fire a ball that explodes on impact.',
-  'cole-discharge': 'Release a close electric burst around Cole.',
-  'cole-thunderstorm': 'Call lightning strikes onto nearby enemies. Recharges after 45 seconds.',
-  'death-gun-barrage': 'Click to aim along the laser, then left-click to spray a burst of SMG fire.',
-  'death-bat-smash': 'Click to aim, then left-click to sweep the bat through that arc.',
-  'death-bat-sweep': 'Sweep the bat in a wide damaging arc. Recharges after 45 seconds.',
-  'rope-grab': 'Click to aim, then fire a long rope. A hit flings you in for a backflip kick. Misses cost nothing.',
-  'rope-mega-punch': 'Jump into a close uppercut with strong knockback and a movement slow.',
-  'rope-spray': 'Spin and spray ropes in random directions. Hits paralyze. Recharges after 45 seconds.',
-  'witch-tombstone': 'Raise your staff and summon two skeleton bodyguards. Blocked at four living skeletons.',
-  'witch-hex': 'Buff yourself and one nearby teammate with a green shield plus speed and attack speed.',
-  'witch-tombstone-ult': 'Summon skeletons up to the cap of four and pulse a slowing purple aura. Recharges after 45 seconds.',
-  'shadow-claw': 'A giant directional shadow claw with strong knockback. Much larger than a basic swipe.',
-  'shadow-dash': 'Dash through the aimed line. Enemies are knocked sideways and slowed.',
-  'shadow-rage': 'Lock in place, then fight faster and harder for 7 seconds. Recharges after 45 seconds.',
+  'ninja-smoke-bomb':
+    'Tosses a smoke cloud a step ahead. Enemies inside move slower and attack slower for a few seconds. Ninja blasts backward out of the cloud as it appears.',
+  'ninja-backflip-kick':
+    'Aim, then dash-kick through the line. Hits launch enemies with powerful knockback and slow them for a couple of seconds. Two charges.',
+  'ninja-tornado':
+    'Ninja becomes a bouncing whirlwind for a few seconds, cutting through nearby enemies with light knockback and a brief stun.',
+  'cole-electric-ball':
+    'Aim, then fire a ball that explodes on impact. The blast launches the first target with powerful knockback and slows them for a couple of seconds, then chains to nearby enemies with a lighter slow.',
+  'cole-discharge':
+    'A close electric burst around Cole. Hits with strong knockback and paralyzes enemies for about a second.',
+  'cole-thunderstorm':
+    'Cole plants himself and calls lightning around him for several seconds. Strikes deal moderate knockback and slow survivors for about a second. Cole himself is heavily slowed while the storm lasts.',
+  'death-gun-barrage':
+    'Aim along the laser, then spray a burst of SMG fire. Individual shots have light knockback.',
+  'death-bat-smash':
+    'Aim, then sweep the bat through that arc. Contact stuns for just over a second and sends enemies flying with powerful knockback.',
+  'death-bat-sweep':
+    'Death spins the bat in a wide damaging arc for several seconds. Hits carry strong knockback, and Death moves slower while sweeping.',
+  'rope-grab':
+    'Aim, then fire a long rope. A hit flings you in for a backflip kick with powerful knockback. Misses cost nothing.',
+  'rope-mega-punch':
+    'Jump into a close uppercut with strong knockback that also slows movement for a couple of seconds.',
+  'rope-spray':
+    'Spin and spray ropes in every direction for several seconds. Hits paralyze for a couple of seconds and carry light knockback. Rope Man moves slower while spraying.',
+  'witch-tombstone':
+    'Raise the staff and summon two skeleton bodyguards. They stay close and fight for her. No more than four living skeletons at once.',
+  'witch-hex':
+    'Buff Witch and one nearby teammate with a green shield plus faster movement and attack speed for several seconds.',
+  'witch-tombstone-ult':
+    'Fill the skeleton pack up to four and pulse a purple aura. Nearby enemies move slower and attack slower for several seconds.',
+  'shadow-claw':
+    'A giant directional claw swipe with powerful knockback. Much larger than a basic swipe, but not a full-screen reach.',
+  'shadow-dash':
+    'Dash through the aimed line. Enemies are knocked sideways with strong knockback and both move and attack slower for a couple of seconds.',
+  'shadow-rage':
+    'Lock in place to transform, then fight faster and harder for several seconds — quicker movement and attacks, extra stamina, faster stamina recovery, and a defense boost.',
 };
 
 const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
   ninja: {
-    description: 'Fast disruptor who blinds, kicks, and creates space for the team.',
-    light: 'Close 3-hit sword combo with extra reach.',
+    description:
+      'A fast close-range disruptor. Ninja darts in to harass, drops smoke to break a fight, and kicks through the line to create space for teammates.',
+    light:
+      'Three-hit sword combo with extra reach. Keep tapping to chain into a heavier finisher.',
   },
   cole: {
-    description: 'Frontliner who holds space with long punches and electric pressure.',
-    light: 'Long-reach punches with a slower cadence. Third hit sends a shockwave.',
+    description:
+      'A frontliner who holds space with long punches, then punishes clumps with electricity.',
+    light:
+      'Long-reach punches at a slower cadence. Hits slow the target for about a second. The third punch sends a shockwave with stronger knockback up close.',
   },
   death: {
-    description: 'Heavy tank who mixes SMG fire with bat slams and sweeps.',
-    light: 'Heavy close-range swings.',
+    description:
+      'A heavy tank who crowds the lane with bat swings, then mixes in SMG fire and bone-cracking slams.',
+    light:
+      'Close-range bat swings in fast pairs, then a short pause. The third hit reaches farther, hits harder, and carries stronger knockback.',
   },
   rope: {
-    description: 'Mobile support who pokes from long range and disrupts movement with ropes.',
-    light: 'Alternating rope shots every 0.4 seconds. Low damage, very long range.',
+    description:
+      'Mobile support who pokes from very long range, then yanks into the fight or locks people down with ropes.',
+    light:
+      'Alternating rope shots from each arm. Low damage, very long range, and moderate knockback.',
   },
   witch: {
-    description: 'Slow ranged tank/support who bombards with skulls, summons skeletons, and hexes the fight.',
-    light: 'Four-skull barrage every 0.5 seconds. Small hits add up. 20% slow on connect.',
+    description:
+      'A slow ranged tank and support. She bombards from far away, raises skeleton bodyguards, and hexes her side of the fight.',
+    light:
+      'Four-skull barrage. Small hits add up, with light knockback and a movement slow that lasts a couple of seconds.',
   },
   shadow: {
-    description: 'Committed melee bruiser who claws into the fight, marks wounds, and rages up close.',
-    light: 'Fast shadow-claw swipes every 0.5 seconds. Low knockback. Leaves a lingering claw mark.',
+    description:
+      'A committed melee bruiser. She claws into the fight, marks wounds, and rages when she can stay in close.',
+    light:
+      'Fast shadow-claw swipes with light knockback. Each hit leaves a lingering wound that drains health for a few seconds.',
   },
 };
 

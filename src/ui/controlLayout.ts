@@ -1,3 +1,4 @@
+import { measureViewport } from './layout/viewport';
 import { getTouchControlLayout, type Point, type TouchControlLayout } from './touchLayout';
 
 export const CONTROL_LAYOUT_STORAGE_KEY = 'secret-wars-control-layout';
@@ -34,7 +35,6 @@ export const CONTROL_LABEL: Record<ControlId, string> = {
 
 const MIN_SCALE = 0.65;
 const MAX_SCALE = 1.75;
-const EDGE = 10;
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
@@ -141,13 +141,14 @@ export const resolveControls = (
 ): Record<ControlId, ResolvedControl> => {
   const base = getTouchControlLayout(width, height);
   const merged = mergeControlLayout(width, height, saved);
+  const inset = measureViewport(width, height).controlInset;
   const resolved = {} as Record<ControlId, ResolvedControl>;
   for (const id of CONTROL_IDS) {
     const entry = merged[id];
     const r = radiusOf(id, base, entry.scale);
     resolved[id] = {
-      x: Math.round(clamp(entry.nx * width, r + EDGE, width - r - EDGE)),
-      y: Math.round(clamp(entry.ny * height, r + EDGE, height - r - EDGE)),
+      x: Math.round(clamp(entry.nx * width, r + inset.left, width - r - inset.right)),
+      y: Math.round(clamp(entry.ny * height, r + inset.top, height - r - inset.bottom)),
       r,
     };
   }

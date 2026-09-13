@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { audioSettings } from './audio';
 import './style.css';
 import { getViewportSize } from './device';
-import { initOrientationHandling } from './orientation';
 import { BattleScene } from './scenes/BattleScene';
 import { BootScene } from './scenes/BootScene';
 import { CharacterSelectScene } from './scenes/CharacterSelectScene';
@@ -14,7 +13,6 @@ import { SimulatorSetupScene } from './scenes/SimulatorSetupScene';
 import { TitleScene } from './scenes/TitleScene';
 import { getGameSize } from './ui/theme';
 
-initOrientationHandling();
 audioSettings.load();
 
 const gameRoot = document.getElementById('game');

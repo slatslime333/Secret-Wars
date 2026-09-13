@@ -24,7 +24,7 @@ export const WITCH_SKULL = {
 
 export const WITCH_TOMBSTONE = {
   cooldownMs: 15000,
-  castMs: 2000,
+  castMs: 1400,
   emergeMs: 520,
   summonCount: 2,
   cap: 4,

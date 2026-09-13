@@ -5,12 +5,15 @@ import { isTouchPrimary } from '../device';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
 import { SettingSlider } from '../ui/SettingSlider';
+import { ScrollPanel } from '../ui/layout/ScrollPanel';
+import { measureViewport } from '../ui/layout/viewport';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
 
 export class SettingsScene extends Phaser.Scene {
   private returning = false;
   private fullscreenButton?: ActionButton;
+  private bodyScroll?: ScrollPanel;
 
   constructor() {
     super('Settings');
@@ -21,15 +24,19 @@ export class SettingsScene extends Phaser.Scene {
     createBackdrop(this, { accent: COLORS.cyan });
     this.cameras.main.fadeIn(220, 7, 10, 18);
 
-    const width = this.scale.width;
-    const height = this.scale.height;
-    const isPortrait = width < height;
+    const frame = measureViewport(this.scale.width, this.scale.height);
+    const width = frame.width;
+    const height = frame.height;
+    const inset = frame.contentInset;
+    const footerH = frame.isPortrait ? 120 : 64;
 
-    this.createHeader();
-    this.createSliders(width, height, isPortrait);
-    this.createFullscreenRow(height, isPortrait);
-    this.createControlsHelp(width, height, isPortrait);
-    this.createBackButton(width, height, isPortrait);
+    this.createHeader(inset.top, frame.isPortrait);
+    const scrollY = inset.top + (frame.isPortrait ? 72 : 88);
+    const scrollH = Math.max(120, height - scrollY - footerH - inset.bottom);
+    this.bodyScroll = new ScrollPanel(this, inset.left, scrollY, width - inset.left - inset.right, scrollH);
+    this.createBody(this.bodyScroll, width - inset.left - inset.right, frame.isPortrait);
+    this.createBackButton(width, height, frame.isPortrait, inset.bottom);
+
     this.input.keyboard?.on('keydown-ESC', this.returnToMenu, this);
 
     const onResize = () => {
@@ -39,84 +46,86 @@ export class SettingsScene extends Phaser.Scene {
     };
     this.scale.on(Phaser.Scale.Events.RESIZE, onResize);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.bodyScroll?.destroy();
       this.scale.off(Phaser.Scale.Events.RESIZE, onResize);
       this.input.keyboard?.off('keydown-ESC', this.returnToMenu, this);
     });
   }
 
-  private createHeader(): void {
+  private createHeader(top: number, isPortrait: boolean): void {
     this.add
-      .text(40, 28, 'SETTINGS', {
+      .text(this.scale.width / 2, top, 'SETTINGS', {
         fontFamily: FONTS.display,
-        fontSize: '36px',
+        fontSize: isPortrait ? '28px' : '36px',
         color: hex(COLORS.paper),
         letterSpacing: 4,
         stroke: hex(COLORS.ink),
         strokeThickness: 6,
       })
-      .setOrigin(0, 0);
+      .setOrigin(isPortrait ? 0.5 : 0, 0)
+      .setX(isPortrait ? this.scale.width / 2 : 40);
 
     this.add
-      .text(42, 72, 'AUDIO  //  DISPLAY  //  CONTROLS', {
+      .text(isPortrait ? this.scale.width / 2 : 42, top + 40, 'AUDIO  //  DISPLAY  //  CONTROLS', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
         color: hex(COLORS.muted),
         letterSpacing: 3,
       })
-      .setOrigin(0, 0);
+      .setOrigin(isPortrait ? 0.5 : 0, 0);
   }
 
-  private createSliders(width: number, height: number, isPortrait: boolean): void {
-    const sliderX = isPortrait ? width / 2 : Math.min(270, width * 0.28);
-    const musicY = isPortrait ? Math.min(130, height * 0.16) : Math.min(128, height * 0.28);
-    const sfxY = musicY + Math.min(70, height * 0.14);
-
-    new SettingSlider(this, sliderX, musicY, {
+    private createBody(scroll: ScrollPanel, innerW: number, isPortrait: boolean): void {
+    const sliderX = innerW / 2;
+    const music = new SettingSlider(this, sliderX, 36, {
       label: 'MUSIC',
       value: audioSettings.getMusicVolume(),
+      trackWidth: Math.min(360, innerW - 80),
       onChange: (value) => {
         audioSettings.setMusicVolume(value);
         audio.syncMusicVolume();
       },
     });
-
-    new SettingSlider(this, sliderX, sfxY, {
+    const sfx = new SettingSlider(this, sliderX, 106, {
       label: 'SFX',
       value: audioSettings.getSfxVolume(),
+      trackWidth: Math.min(360, innerW - 80),
       onChange: (value) => audioSettings.setSfxVolume(value),
       onRelease: () => audioSettings.playUiTick(),
     });
-  }
+    scroll.add(music);
+    scroll.add(sfx);
 
-  private createFullscreenRow(height: number, isPortrait: boolean): void {
-    if (isTouchPrimary() || isPortrait) {
-      return;
-    }
-
-    this.add
-      .text(40, Math.min(258, height * 0.48), 'DISPLAY', {
+    let y = 160;
+    if (!isTouchPrimary() && !isPortrait) {
+      const display = this.add.text(8, y, 'DISPLAY', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
         color: hex(COLORS.muted),
         letterSpacing: 3,
-      })
-      .setOrigin(0, 0);
+      });
+      scroll.add(display);
+      this.fullscreenButton = new ActionButton(this, 128, y + 44, {
+        label: this.fullscreenLabel(),
+        width: 250,
+        height: 48,
+        attachToScene: false,
+        onPress: () => this.toggleFullscreen(),
+      });
+      scroll.add(this.fullscreenButton);
+      this.scale.on(Phaser.Scale.Events.ENTER_FULLSCREEN, this.syncFullscreenLabel, this);
+      this.scale.on(Phaser.Scale.Events.LEAVE_FULLSCREEN, this.syncFullscreenLabel, this);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        this.scale.off(Phaser.Scale.Events.ENTER_FULLSCREEN, this.syncFullscreenLabel, this);
+        this.scale.off(Phaser.Scale.Events.LEAVE_FULLSCREEN, this.syncFullscreenLabel, this);
+      });
+      y += 110;
+    }
 
-    this.fullscreenButton = new ActionButton(this, 168, Math.min(302, height * 0.58), {
-      label: this.fullscreenLabel(),
-      width: 250,
-      height: 48,
-      onPress: () => this.toggleFullscreen(),
-    });
-
-    this.scale.on(Phaser.Scale.Events.ENTER_FULLSCREEN, this.syncFullscreenLabel, this);
-    this.scale.on(Phaser.Scale.Events.LEAVE_FULLSCREEN, this.syncFullscreenLabel, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off(Phaser.Scale.Events.ENTER_FULLSCREEN, this.syncFullscreenLabel, this);
-      this.scale.off(Phaser.Scale.Events.LEAVE_FULLSCREEN, this.syncFullscreenLabel, this);
-    });
+    y += this.createControlsHelp(scroll, innerW, y, isPortrait);
+    scroll.setContentSize(innerW, y + 24);
   }
 
   private fullscreenLabel(): string {
@@ -135,11 +144,15 @@ export class SettingsScene extends Phaser.Scene {
     }
   }
 
-  private createControlsHelp(width: number, height: number, isPortrait: boolean): void {
-    const cardW = isPortrait ? Math.min(360, width - 40) : Math.min(360, width * 0.4);
-    const cardH = Math.min(280, isPortrait ? height * 0.36 : height - 80);
-    const x = isPortrait ? (width - cardW) / 2 : Math.max(width * 0.52, width - cardW - 24);
-    const y = isPortrait ? Math.min(260, height * 0.3) : Math.max(16, (height - cardH - 60) / 2);
+  private createControlsHelp(
+    scroll: ScrollPanel,
+    innerW: number,
+    y: number,
+    isPortrait: boolean,
+  ): number {
+    const cardW = Math.min(isPortrait ? innerW : 420, innerW);
+    const cardH = 250;
+    const x = (innerW - cardW) / 2;
     const graphics = this.add.graphics();
     graphics.fillStyle(COLORS.ink, 0.72);
     graphics.fillPoints(
@@ -171,14 +184,12 @@ export class SettingsScene extends Phaser.Scene {
       ],
       true,
     );
-
-    this.add.text(x + 22, y + 16, 'CONTROLS', {
+    const heading = this.add.text(x + 22, y + 16, 'CONTROLS', {
       fontFamily: FONTS.display,
       fontSize: '20px',
       color: hex(COLORS.paper),
       letterSpacing: 3,
     });
-
     const { keyboard } = INPUT;
     const lines = isTouchPrimary()
       ? [
@@ -199,23 +210,27 @@ export class SettingsScene extends Phaser.Scene {
           'ESC  back / menu',
           'EDIT BUTTONS  move / resize',
         ];
-
-    this.add.text(x + 22, y + 48, lines.join('\n'), {
+    const body = this.add.text(x + 22, y + 48, lines.join('\n'), {
       fontFamily: FONTS.body,
       fontSize: '13px',
       fontStyle: 'bold',
       color: hex(COLORS.paper),
       lineSpacing: 5,
     });
+    scroll.add(graphics);
+    scroll.add(heading);
+    scroll.add(body);
+    return cardH + 16;
   }
 
-  private createBackButton(width: number, height: number, isPortrait: boolean): void {
+  private createBackButton(width: number, height: number, isPortrait: boolean, bottomInset: number): void {
+    const btnY = height - bottomInset - 28;
     const btnX = isPortrait ? width / 2 : 140;
     const editX = isPortrait ? width / 2 : 340;
-    const editY = isPortrait ? height - 100 : height - 48;
+    const editY = isPortrait ? btnY - 56 : btnY;
     new ActionButton(this, editX, editY, {
       label: 'EDIT BUTTONS',
-      width: isPortrait ? 220 : 200,
+      width: isPortrait ? Math.min(220, width - 48) : 200,
       height: 52,
       onPress: () => {
         if (this.returning) {
@@ -225,7 +240,7 @@ export class SettingsScene extends Phaser.Scene {
         fadeToScene(this, 'ControlLayout');
       },
     });
-    new ActionButton(this, btnX, height - 48, {
+    new ActionButton(this, btnX, btnY, {
       label: 'BACK',
       width: 180,
       height: 52,
