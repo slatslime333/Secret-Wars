@@ -1,7 +1,13 @@
 import Phaser from 'phaser';
+import { audio } from '../audio';
 import { ABILITY_ICON } from '../heroes/abilities/icons';
-import { AbilitySlotState } from '../heroes/abilities/types';
+import { AbilitySlot, AbilitySlotState } from '../heroes/abilities/types';
 import { COLORS, FONTS, hex } from './theme';
+
+export type AbilityTrayHandlers = {
+  onSlotPress?: (slot: AbilitySlot) => void;
+  aimingSlot?: () => AbilitySlot | null;
+};
 
 /**
  * Compact PC cooldown cluster. Mobile uses the large thumb buttons instead.
@@ -12,13 +18,17 @@ export class AbilityTray {
   private readonly labels: Phaser.GameObjects.Text[] = [];
   private readonly keys: Phaser.GameObjects.Text[] = [];
   private readonly rings: Phaser.GameObjects.Graphics;
+  private readonly slots: AbilitySlot[] = ['ability1', 'ability2', 'ultimate'];
+  private readonly handlers?: AbilityTrayHandlers;
 
   constructor(
     scene: Phaser.Scene,
     private x: number,
     private y: number,
     private scale = 1,
+    handlers?: AbilityTrayHandlers,
   ) {
+    this.handlers = handlers;
     this.rings = scene.add.graphics().setScrollFactor(0).setDepth(112);
     const keyHints = ['Q', 'E', 'F'];
     for (let i = 0; i < 3; i += 1) {
@@ -27,10 +37,10 @@ export class AbilityTray {
       const label = scene.add
         .text(0, 0, '', {
           fontFamily: FONTS.display,
-          fontSize: '10px',
+          fontSize: '12px',
           color: hex(COLORS.paper),
           stroke: hex(COLORS.ink),
-          strokeThickness: 3,
+          strokeThickness: 4,
         })
         .setOrigin(0.5)
         .setScrollFactor(0)
@@ -38,13 +48,20 @@ export class AbilityTray {
       const key = scene.add
         .text(0, 0, keyHints[i], {
           fontFamily: FONTS.body,
-          fontSize: '9px',
+          fontSize: '11px',
           fontStyle: 'bold',
           color: hex(COLORS.muted),
         })
         .setOrigin(0.5, 0)
         .setScrollFactor(0)
         .setDepth(115);
+      icon.setInteractive({ useHandCursor: true });
+      icon.on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
+        pointer.event?.stopPropagation?.();
+        audio.unlock();
+        audio.play('ui-click');
+        this.handlers?.onSlotPress?.(this.slots[i]);
+      });
       this.icons.push(icon);
       this.overlays.push(overlay);
       this.labels.push(label);
@@ -69,6 +86,7 @@ export class AbilityTray {
   sync(states: AbilitySlotState[]): void {
     const gap = 52 * this.scale;
     const radius = 18 * this.scale;
+    const aiming = this.handlers?.aimingSlot?.() ?? null;
     this.rings.clear();
     states.forEach((state, i) => {
       const px = this.x + i * gap;
@@ -77,21 +95,22 @@ export class AbilityTray {
       icon.setTexture(state.def.iconKey).setVisible(true).setPosition(px, py);
       icon.setDisplaySize(radius * 2, radius * 2);
       icon.setAlpha(state.consumed ? 0.28 : state.ready ? 1 : 0.45);
-      this.keys[i].setPosition(px, py + radius + 2).setScale(this.scale);
+      this.keys[i].setPosition(px, py + radius + 4).setScale(this.scale);
       this.labels[i].setPosition(px, py).setScale(this.scale);
-      this.rings.fillStyle(COLORS.ink, 0.55);
-      this.rings.fillCircle(px, py, radius + 3);
-      const ring = state.consumed ? COLORS.muted : state.def.accent;
-      this.rings.lineStyle(state.def.slot === 'ultimate' && state.ready ? 3 : 2, ring, state.ready ? 1 : 0.5);
-      this.rings.strokeCircle(px, py, radius + 2);
+      this.rings.fillStyle(COLORS.ink, 0.62);
+      this.rings.fillCircle(px, py, radius + 4);
+      const aimed = aiming === state.def.slot;
+      const ring = state.consumed ? COLORS.muted : aimed ? COLORS.yellow : state.def.accent;
+      this.rings.lineStyle(aimed || (state.def.slot === 'ultimate' && state.ready) ? 4 : 2.5, ring, state.ready || aimed ? 1 : 0.5);
+      this.rings.strokeCircle(px, py, radius + 3);
 
       const overlay = this.overlays[i];
       overlay.clear();
       if (state.consumed) {
         overlay.lineStyle(2, COLORS.redBright, 0.9);
         overlay.beginPath();
-        overlay.moveTo(px - 7, py - 7);
-        overlay.lineTo(px + 7, py + 7);
+        overlay.moveTo(px - 8, py - 8);
+        overlay.lineTo(px + 8, py + 8);
         overlay.strokePath();
         this.labels[i].setText('');
         return;
@@ -105,7 +124,7 @@ export class AbilityTray {
         overlay.fillPath();
         this.labels[i].setText((state.cooldownRemainingMs / 1000).toFixed(state.cooldownRemainingMs >= 10000 ? 0 : 1));
       } else {
-        this.labels[i].setText('');
+        this.labels[i].setText(aimed ? 'AIM' : '');
       }
     });
   }

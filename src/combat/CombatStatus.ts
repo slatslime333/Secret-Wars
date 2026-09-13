@@ -20,6 +20,7 @@ export class CombatStatus {
   private slowUntil = 0;
   private slowMul = 1;
   private paralyzeUntil = 0;
+  private stunUntil = 0;
   private zone: AreaModifier = OPEN_ZONE;
   private lastSwingAt = -9999;
   private lastSwingStep: ComboStep = 1;
@@ -45,6 +46,7 @@ export class CombatStatus {
   }
 
   applyStun(now: number, durationMs: number): void {
+    this.stunUntil = Math.max(this.stunUntil, now + durationMs);
     this.applyHitReaction(now, 1, durationMs);
   }
 
@@ -105,6 +107,10 @@ export class CombatStatus {
 
   isParalyzed(now: number): boolean {
     return now < this.paralyzeUntil;
+  }
+
+  isStunned(now: number): boolean {
+    return now < this.stunUntil;
   }
 
   isHitReacting(now: number): boolean {

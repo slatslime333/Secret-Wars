@@ -144,6 +144,17 @@ export function synthesize(ctx: AudioContext, dest: AudioNode, id: SoundId): voi
       playRecipe(ctx, dest, [{ kind: 'triangle', freq: 220, endFreq: 90, duration: 0.28, gain: 0.18 }]);
       return;
     case 'ui-draw':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 330, duration: 0.1, gain: 0.14 },
+        { kind: 'sine', freq: 247, duration: 0.14, gain: 0.12, delay: 0.08 },
+      ]);
+      return;
+    case 'ability-ready':
+      playRecipe(ctx, dest, [
+        { kind: 'sine', freq: 740, duration: 0.07, gain: 0.16 },
+        { kind: 'triangle', freq: 1175, duration: 0.1, gain: 0.13, delay: 0.045 },
+      ]);
+      return;
       playRecipe(ctx, dest, [{ kind: 'sine', freq: 300, duration: 0.16, gain: 0.14 }]);
       return;
 

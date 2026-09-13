@@ -3,31 +3,47 @@ import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { isTouchPrimary } from '../device';
 import { NinjaBody } from '../heroes/NinjaBody';
+import { isPcCombatHud, layoutPcCombatHud } from './pcCombatHud';
 import { COLORS, FONTS, hex } from './theme';
 
 export class BattleHud {
   private readonly ninjaFill: Phaser.GameObjects.Rectangle;
   private readonly staminaFill: Phaser.GameObjects.Rectangle;
+  private readonly hpTrack: Phaser.GameObjects.Rectangle;
+  private readonly staminaTrack: Phaser.GameObjects.Rectangle;
+  private readonly hpText: Phaser.GameObjects.Text;
   private readonly foeFill: Phaser.GameObjects.Rectangle;
   private readonly foeStaminaFill: Phaser.GameObjects.Rectangle;
   private readonly foeBar: Phaser.GameObjects.Container;
   private readonly comboText: Phaser.GameObjects.Text;
   private readonly verbText: Phaser.GameObjects.Text;
   private readonly foeCaption: Phaser.GameObjects.Text;
-  private readonly tracks: Phaser.GameObjects.Rectangle[];
   private readonly touch: boolean;
+  private barWidth = 224;
 
   constructor(scene: Phaser.Scene) {
     this.touch = isTouchPrimary();
     const width = scene.scale.width;
-    this.tracks = [
-      scene.add.rectangle(148, 56, 224, 10, COLORS.inkSoft).setScrollFactor(0).setDepth(101),
-      scene.add.rectangle(148, 70, 224, 8, COLORS.inkSoft).setScrollFactor(0).setDepth(101),
-    ];
+    const height = scene.scale.height;
+    this.hpTrack = scene.add.rectangle(148, 56, 224, 10, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
+    this.staminaTrack = scene.add.rectangle(148, 70, 224, 8, COLORS.inkSoft).setScrollFactor(0).setDepth(101);
     this.ninjaFill = scene.add.rectangle(36, 56, 224, 10, COLORS.redBright).setOrigin(0, 0.5);
     this.ninjaFill.setScrollFactor(0).setDepth(102);
     this.staminaFill = scene.add.rectangle(36, 70, 224, 8, COLORS.cyan).setOrigin(0, 0.5);
     this.staminaFill.setScrollFactor(0).setDepth(102);
+    this.hpText = scene.add
+      .text(36, 42, '', {
+        fontFamily: FONTS.body,
+        fontSize: '13px',
+        fontStyle: 'bold',
+        color: hex(COLORS.paper),
+        stroke: hex(COLORS.ink),
+        strokeThickness: 4,
+      })
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(103)
+      .setVisible(false);
 
     this.comboText = scene.add
       .text(width / 2, 22, '', {
@@ -43,7 +59,7 @@ export class BattleHud {
       .setDepth(102);
 
     this.verbText = scene.add
-      .text(width - 30, 82, this.touch ? 'HOLD SHIELD   DASH 3/3' : 'HOLD SPACE SHIELD   SHIFT DASH   Q/E/F ABILITIES', {
+      .text(width - 30, 82, this.touch ? 'HOLD SHIELD   DASH 3/3' : 'WASD MOVE   SPACE SHIELD   SHIFT DASH   Q E F  ·  CLICK TO AIM', {
         fontFamily: FONTS.body,
         fontSize: '11px',
         fontStyle: 'bold',
@@ -73,11 +89,29 @@ export class BattleHud {
       .setOrigin(0.5, 1);
     this.foeBar.add([track, this.foeFill, foeStaminaTrack, this.foeStaminaFill, this.foeCaption]);
     this.foeBar.setVisible(false);
+    this.layout(width, height);
   }
 
-  layout(width: number): void {
+  layout(width: number, height: number): void {
     this.comboText.setX(width / 2);
-    this.verbText.setX(width - 30);
+    if (!isPcCombatHud()) {
+      this.barWidth = 224;
+      this.hpTrack.setPosition(148, 56).setSize(224, 10);
+      this.staminaTrack.setPosition(148, 70).setSize(224, 8);
+      this.ninjaFill.setPosition(36, 56).setSize(this.ninjaFill.width || 224, 10);
+      this.staminaFill.setPosition(36, 70).setSize(this.staminaFill.width || 224, 8);
+      this.hpText.setVisible(false);
+      this.verbText.setPosition(width - 30, 82).setOrigin(1, 0);
+      return;
+    }
+    const hud = layoutPcCombatHud(width, height);
+    this.barWidth = hud.barWidth;
+    this.hpTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.hpY).setSize(hud.barWidth, 18);
+    this.staminaTrack.setPosition(hud.barLeft + hud.barWidth / 2, hud.staminaY).setSize(hud.barWidth, 13);
+    this.ninjaFill.setPosition(hud.barLeft, hud.hpY).setSize(this.ninjaFill.width || hud.barWidth, 18);
+    this.staminaFill.setPosition(hud.barLeft, hud.staminaY).setSize(this.staminaFill.width || hud.barWidth, 13);
+    this.hpText.setVisible(true).setPosition(hud.barLeft, hud.hpY - 18).setOrigin(0, 0.5);
+    this.verbText.setPosition(width / 2, hud.hpY - 36).setOrigin(0.5, 1);
   }
 
   placeCombo(x: number, y: number): void {
@@ -85,9 +119,11 @@ export class BattleHud {
   }
 
   setVisible(visible: boolean): void {
-    this.tracks.forEach((track) => track.setVisible(visible));
+    this.hpTrack.setVisible(visible);
+    this.staminaTrack.setVisible(visible);
     this.ninjaFill.setVisible(visible);
     this.staminaFill.setVisible(visible);
+    this.hpText.setVisible(visible && isPcCombatHud());
     this.comboText.setVisible(visible);
     this.verbText.setVisible(visible);
     if (!visible) {
@@ -104,9 +140,12 @@ export class BattleHud {
     dash: DashController,
     spectator = false,
   ): void {
-    this.ninjaFill.width = 224 * (ninja.health / ninja.stats.maxHealth);
-    this.staminaFill.width = 224 * (ninja.stamina / ninja.stats.maxStamina);
+    const hpRatio = ninja.health / ninja.stats.maxHealth;
+    const stamRatio = ninja.stamina / ninja.stats.maxStamina;
+    this.ninjaFill.width = this.barWidth * hpRatio;
+    this.staminaFill.width = this.barWidth * stamRatio;
     this.staminaFill.setFillStyle(ninja.staminaDeniedRecently(now) ? COLORS.orange : COLORS.cyan);
+    this.hpText.setText(`${Math.max(0, Math.ceil(ninja.health))} / ${ninja.stats.maxHealth}`);
 
     if (!rival) {
       this.foeBar.setVisible(false);
@@ -130,7 +169,7 @@ export class BattleHud {
       : this.touch
         ? `DASH ${dash.chargeCount}/${dash.maxCharges}`
         : `SHIFT DASH ${dash.chargeCount}/${dash.maxCharges}`;
-    const abilityBit = this.touch ? '' : '   Q E F';
+    const abilityBit = this.touch ? '' : '   Q E F AIM  ·  LMB FIRE';
     this.verbText.setText(`${shieldBit}   ${dashBit}${abilityBit}`);
   }
 }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { isTouchPrimary } from '../device';
 import { COLORS } from './theme';
 import type { MapLayout } from '../map/types';
 import type { NinjaBody } from '../heroes/NinjaBody';
@@ -18,12 +19,15 @@ export class Minimap {
   private readonly root: Phaser.GameObjects.Container;
   private readonly frame: Phaser.GameObjects.Rectangle;
   private readonly art: Phaser.GameObjects.Graphics;
-  private readonly width = 148;
-  private readonly height = 108;
+  private width: number;
+  private height: number;
   private readonly rangeX = 640;
   private readonly rangeY = 460;
 
   constructor(scene: Phaser.Scene) {
+    const pc = !isTouchPrimary();
+    this.width = pc ? 214 : 148;
+    this.height = pc ? 156 : 108;
     const x = scene.scale.width - 12;
     const y = 52;
     this.root = scene.add.container(x, y).setScrollFactor(0).setDepth(108);

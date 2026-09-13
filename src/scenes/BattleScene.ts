@@ -42,6 +42,9 @@ import {
 import { RoundOverlay } from '../ui/RoundOverlay';
 import { PauseOverlay } from '../ui/PauseOverlay';
 import { spawnKillPopup } from '../ui/KillPopup';
+import { spawnStatusPopup } from '../ui/StatusPopup';
+import { isPcCombatHud, layoutPcCombatHud } from '../ui/pcCombatHud';
+import { cueAbilityReady } from '../audio/abilityReady';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { isTouchPrimary } from '../device';
 import { audio } from '../audio';
@@ -80,6 +83,8 @@ export class BattleScene extends Phaser.Scene {
   private tactics = new TacticalField();
   private aiOverlay?: TacticalOverlay;
   private hud!: BattleHud;
+  private wasStunned = false;
+  private wasParalyzed = false;
   private round!: RoundOverlay;
   private pauseOverlay!: PauseOverlay;
   private devMenu?: DevMenu;
@@ -147,9 +152,13 @@ export class BattleScene extends Phaser.Scene {
     this.abilities = new AbilityController(hero.kit);
     this.inputReader = new BattleInput(this, () => this.round.isLocked, hero.kit, hero.stats.dashMaxCharges);
     if (!isTouchPrimary()) {
-      this.abilityTray = new AbilityTray(this, 52, 128);
+      this.abilityTray = new AbilityTray(this, 52, 128, 1, {
+        onSlotPress: (slot) => this.inputReader.togglePcAim(slot),
+        aimingSlot: () => this.inputReader.pcAimSlot(),
+      });
     }
     this.hud = new BattleHud(this);
+    this.layoutAbilityTray(this.scale.width, this.scale.height);
     this.round = new RoundOverlay(this, {
       onRestart: () => this.restartBattle(),
       onMenu: () => this.returnToMenu(),
@@ -273,6 +282,7 @@ export class BattleScene extends Phaser.Scene {
     this.drawSandboxDebug(now);
     if (this.sandboxPaused) {
       this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
+      this.cuePlayerCrowdControl(now);
       this.syncAbilityUi(now);
       return;
     }
@@ -286,6 +296,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.round.isLocked) {
       this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
+      this.cuePlayerCrowdControl(now);
       this.syncAbilityUi(now);
       return;
     }
@@ -453,6 +464,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
+    this.cuePlayerCrowdControl(now);
     this.inputReader.syncButtons({
       dashCharges: this.dash.chargeCount,
       dashMax: this.dash.maxCharges,
@@ -619,9 +631,9 @@ export class BattleScene extends Phaser.Scene {
     this.chromeBar?.setPosition(width / 2, 22).setSize(width, 44);
     this.titleText?.setPosition(22, 22).setScale(1);
     this.menuButton?.setScale(1).setPosition(width - 108, 22);
-    this.hud?.layout(width);
+    this.hud?.layout(width, height);
     this.inputReader?.layout(width, height);
-    this.abilityTray?.layout(52, 128, 1);
+    this.layoutAbilityTray(width, height);
     this.devMenu?.layout(width, height);
     this.minimap?.layout(width);
     this.cameras.main.setSize(width, height);
@@ -793,6 +805,31 @@ export class BattleScene extends Phaser.Scene {
     const states = this.abilities.allStates(now);
     this.inputReader.syncAbilities(states);
     this.abilityTray?.sync(states);
+    cueAbilityReady(this, states);
+  }
+
+  private layoutAbilityTray(width: number, height: number): void {
+    if (!this.abilityTray) {
+      return;
+    }
+    if (!isPcCombatHud()) {
+      this.abilityTray.layout(52, 128, 1);
+      return;
+    }
+    const hud = layoutPcCombatHud(width, height);
+    this.abilityTray.layout(hud.abilityXs[0], hud.abilityY, hud.abilityScale);
+  }
+
+  private cuePlayerCrowdControl(now: number): void {
+    const paralyzed = this.ninja.status.isParalyzed(now);
+    const stunned = this.ninja.status.isStunned(now);
+    if (paralyzed && !this.wasParalyzed) {
+      spawnStatusPopup(this, 'PARALYZED');
+    } else if (stunned && !paralyzed && !this.wasStunned) {
+      spawnStatusPopup(this, 'STUNNED');
+    }
+    this.wasParalyzed = paralyzed;
+    this.wasStunned = stunned;
   }
 
   private bindDebugApi(): void {

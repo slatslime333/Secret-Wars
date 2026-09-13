@@ -25,14 +25,14 @@ export const MATCH = {
   waves: {
     firstDelayMs: 1_400,
     intervalMs: 24_000,
-    maxActivePerTeam: 20,
-    sword: 6,
-    ranger: 4,
+    maxActivePerTeam: 16,
+    sword: 5,
+    ranger: 3,
     jitter: 28,
     lanes: {
       top: { sword: 2, ranger: 1 },
-      mid: { sword: 2, ranger: 2 },
-      bottom: { sword: 2, ranger: 1 },
+      mid: { sword: 2, ranger: 1 },
+      bottom: { sword: 1, ranger: 1 },
     } satisfies LaneWaveShare,
   },
   xp: {

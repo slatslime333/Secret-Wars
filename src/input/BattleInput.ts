@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { COMBAT } from '../config/combat';
 import { INPUT } from '../config/input';
 import { isTouchPrimary } from '../device';
-import { AbilitySlotState, HeroAbilityKit } from '../heroes/abilities/types';
+import { AbilitySlot, AbilitySlotState, HeroAbilityKit } from '../heroes/abilities/types';
 import { AbilityButton } from '../ui/AbilityButton';
 import { CombatButton } from '../ui/CombatButton';
 import { COLORS } from '../ui/theme';
@@ -70,6 +70,10 @@ export class BattleInput {
   private ability2AimActive = false;
   private ability2AimingHeld = false;
   private ability2AimOnRelease = false;
+  private ability1AimOnRelease = false;
+  private pcAim: 'ability1' | 'ability2' | null = null;
+  private uiPointerAt = -1;
+  private suppressAttack = false;
   private readonly ultimateButton?: AbilityButton;
   private readonly keys?: KeyMap;
   private readonly cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -93,6 +97,7 @@ export class BattleInput {
     this.scene = scene;
     this.isRoundLocked = isRoundLocked;
     this.touch = isTouchPrimary();
+    this.ability1AimOnRelease = Boolean(kit?.ability1.aimOnRelease);
     this.ability2AimOnRelease = Boolean(kit?.ability2.aimOnRelease);
 
     if (this.touch) {
@@ -227,37 +232,19 @@ export class BattleInput {
         this.dashLatched = true;
       });
       this.keys.ability1.on('down', () => {
-        this.ability1Latched = true;
+        this.handleAbilityKey('ability1');
       });
       this.keys.ability2.on('down', () => {
-        if (!this.ability2AimOnRelease) {
-          this.ability2Latched = true;
-        }
-      });
-      this.keys.ability2.on('up', () => {
-        if (this.ability2AimOnRelease) {
-          this.ability2Aim.copy(this.lastAim);
-          this.ability2AimActive = this.lastAim.lengthSq() > 0.01;
-          this.ability2Latched = true;
-        }
+        this.handleAbilityKey('ability2');
       });
       this.keys.ultimate.on('down', () => {
         this.ultimateLatched = true;
       });
       this.keys.ability1Alt.on('down', () => {
-        this.ability1Latched = true;
+        this.handleAbilityKey('ability1');
       });
       this.keys.ability2Alt.on('down', () => {
-        if (!this.ability2AimOnRelease) {
-          this.ability2Latched = true;
-        }
-      });
-      this.keys.ability2Alt.on('up', () => {
-        if (this.ability2AimOnRelease) {
-          this.ability2Aim.copy(this.lastAim);
-          this.ability2AimActive = this.lastAim.lengthSq() > 0.01;
-          this.ability2Latched = true;
-        }
+        this.handleAbilityKey('ability2');
       });
       this.keys.ultimateAlt.on('down', () => {
         this.ultimateLatched = true;
@@ -275,9 +262,76 @@ export class BattleInput {
     if (this.isRoundLocked()) {
       return;
     }
-    if (pointer.leftButtonDown()) {
-      this.attackLatched = true;
+    if (!pointer.leftButtonDown()) {
+      return;
     }
+    if (this.scene.time.now - this.uiPointerAt < 120) {
+      return;
+    }
+    if (this.pcAim === 'ability1') {
+      this.firePcAim('ability1');
+      return;
+    }
+    if (this.pcAim === 'ability2') {
+      this.firePcAim('ability2');
+      return;
+    }
+    this.attackLatched = true;
+  }
+
+  pcAimSlot(): AbilitySlot | null {
+    return this.pcAim;
+  }
+
+  noteUiPointer(): void {
+    this.uiPointerAt = this.scene.time.now;
+  }
+
+  togglePcAim(slot: AbilitySlot): void {
+    this.noteUiPointer();
+    if (slot === 'ultimate') {
+      this.ultimateLatched = true;
+      this.pcAim = null;
+      return;
+    }
+    const aimable = slot === 'ability1' ? this.ability1AimOnRelease : this.ability2AimOnRelease;
+    if (!aimable || this.touch) {
+      if (slot === 'ability1') {
+        this.ability1Latched = true;
+      } else {
+        this.ability2Latched = true;
+      }
+      this.pcAim = null;
+      return;
+    }
+    this.pcAim = this.pcAim === slot ? null : slot;
+  }
+
+  private handleAbilityKey(slot: 'ability1' | 'ability2'): void {
+    if (this.touch) {
+      if (slot === 'ability1') {
+        this.ability1Latched = true;
+      } else if (!this.ability2AimOnRelease) {
+        this.ability2Latched = true;
+      }
+      return;
+    }
+    this.togglePcAim(slot);
+  }
+
+  private firePcAim(slot: 'ability1' | 'ability2'): void {
+    const aim = this.lastAim.lengthSq() > 0.01 ? this.lastAim : new Phaser.Math.Vector2(1, 0);
+    if (slot === 'ability1') {
+      this.ability1Aim.copy(aim);
+      this.ability1AimActive = true;
+      this.ability1Latched = true;
+    } else {
+      this.ability2Aim.copy(aim);
+      this.ability2AimActive = true;
+      this.ability2Latched = true;
+    }
+    this.pcAim = null;
+    this.suppressAttack = true;
   }
 
   layout(width: number, height: number): void {
@@ -330,15 +384,19 @@ export class BattleInput {
 
     this.lastAim.copy(aim);
 
+    const aimingAbility = this.pcAim !== null;
     const attackHeld =
-      rightActive ||
-      Boolean(this.keys?.attack.isDown) ||
-      (!this.touch && this.scene.input.activePointer.leftButtonDown());
+      !aimingAbility &&
+      (rightActive ||
+        Boolean(this.keys?.attack.isDown) ||
+        (!this.touch && this.scene.input.activePointer.leftButtonDown()));
     const attackPressed =
-      this.consumeLatch('attackLatched') ||
-      Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.attack)) ||
-      (attackHeld && !this.wasAttackHeld);
+      !this.suppressAttack &&
+      (this.consumeLatch('attackLatched') ||
+        Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.attack)) ||
+        (attackHeld && !this.wasAttackHeld));
     this.wasAttackHeld = attackHeld;
+    this.suppressAttack = false;
 
     const now = this.scene.time.now;
     const attackEdge = attackPressed && now - this.lastAttackPressAt >= 90;
@@ -367,10 +425,14 @@ export class BattleInput {
       }
     }
     const ability2KeyAiming =
+      this.touch &&
       this.ability2AimOnRelease &&
       Boolean(this.keys?.ability2.isDown || this.keys?.ability2Alt.isDown);
-    if (ability2KeyAiming) {
+    if (ability2KeyAiming || this.pcAim === 'ability2') {
       this.ability2Aim.copy(this.lastAim);
+    }
+    if (this.pcAim === 'ability1') {
+      this.ability1Aim.copy(this.lastAim);
     }
     const ability1 = this.consumeLatch('ability1Latched');
     const ability2 = this.consumeLatch('ability2Latched');
@@ -384,9 +446,15 @@ export class BattleInput {
       this.ability2AimActive = false;
     }
     const ability1Aiming =
-      this.ability1AimingHeld || Boolean(this.ability1Pad?.active) || Boolean(this.keys?.ability1.isDown);
+      this.pcAim === 'ability1' ||
+      this.ability1AimingHeld ||
+      Boolean(this.ability1Pad?.active) ||
+      (this.touch && Boolean(this.keys?.ability1.isDown));
     const ability2Aiming =
-      this.ability2AimingHeld || Boolean(this.ability2Pad?.active) || ability2KeyAiming;
+      this.pcAim === 'ability2' ||
+      this.ability2AimingHeld ||
+      Boolean(this.ability2Pad?.active) ||
+      ability2KeyAiming;
 
     return {
       move,
@@ -452,7 +520,9 @@ export class BattleInput {
   }
 
   rebindHero(kit: HeroAbilityKit, dashMaxCharges: number = COMBAT.dashMaxCharges): void {
+    this.ability1AimOnRelease = Boolean(kit.ability1.aimOnRelease);
     this.ability2AimOnRelease = Boolean(kit.ability2.aimOnRelease);
+    this.pcAim = null;
     this.ability1AimingHeld = false;
     this.ability2AimingHeld = false;
     this.ability1AimActive = false;

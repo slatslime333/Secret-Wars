@@ -18,9 +18,12 @@ import { ActionButton } from '../ui/ActionButton';
 import { AbilityTray } from '../ui/AbilityTray';
 import { BattleHud } from '../ui/BattleHud';
 import { MatchHud } from '../ui/MatchHud';
+import { spawnKillPopup } from '../ui/KillPopup';
+import { spawnStatusPopup } from '../ui/StatusPopup';
+import { isPcCombatHud, layoutPcCombatHud } from '../ui/pcCombatHud';
+import { cueAbilityReady } from '../audio/abilityReady';
 import { PostMatchOverlay } from '../ui/PostMatchOverlay';
 import { PauseOverlay } from '../ui/PauseOverlay';
-import { spawnKillPopup } from '../ui/KillPopup';
 import { SpectatorOverlay } from '../ui/SpectatorOverlay';
 import { Minimap } from '../ui/Minimap';
 import { COLORS, FONTS, hex } from '../ui/theme';
@@ -78,6 +81,8 @@ export class MatchScene extends Phaser.Scene {
   private abilityWorld!: AbilityWorld;
   private abilityTray?: AbilityTray;
   private hud!: BattleHud;
+  private wasStunned = false;
+  private wasParalyzed = false;
   private matchHud!: MatchHud;
   private results!: PostMatchOverlay;
   private pauseOverlay!: PauseOverlay;
@@ -166,11 +171,15 @@ export class MatchScene extends Phaser.Scene {
       !this.simulator,
     );
     if (!isTouchPrimary() && !this.simulator) {
-      this.abilityTray = new AbilityTray(this, 52, 148);
+      this.abilityTray = new AbilityTray(this, 52, 148, 1, {
+        onSlotPress: (slot) => this.inputReader.togglePcAim(slot),
+        aimingSlot: () => this.inputReader.pcAimSlot(),
+      });
     }
     this.hud = new BattleHud(this);
     this.hud.placeCombo(this.scale.width / 2, 88);
     this.matchHud = new MatchHud(this);
+    this.layoutAbilityTray(this.scale.width, this.scale.height);
     this.minimap = new Minimap(this);
     this.results = new PostMatchOverlay(this, {
       onRematch: () => this.restartMatch(),
@@ -679,6 +688,37 @@ export class MatchScene extends Phaser.Scene {
     const states = this.player.abilities.allStates(now);
     this.inputReader.syncAbilities(states);
     this.abilityTray?.sync(states);
+    cueAbilityReady(this, states);
+    this.cuePlayerCrowdControl(now);
+  }
+
+  private layoutAbilityTray(width: number, height: number): void {
+    if (!this.abilityTray) {
+      return;
+    }
+    if (!isPcCombatHud()) {
+      this.abilityTray.layout(52, 148, 1);
+      return;
+    }
+    const hud = layoutPcCombatHud(width, height);
+    this.abilityTray.layout(hud.abilityXs[0], hud.abilityY, hud.abilityScale);
+  }
+
+  private cuePlayerCrowdControl(now: number): void {
+    if (this.simulator || !this.player?.alive) {
+      this.wasStunned = false;
+      this.wasParalyzed = false;
+      return;
+    }
+    const paralyzed = this.player.body.status.isParalyzed(now);
+    const stunned = this.player.body.status.isStunned(now);
+    if (paralyzed && !this.wasParalyzed) {
+      spawnStatusPopup(this, 'PARALYZED');
+    } else if (stunned && !paralyzed && !this.wasStunned) {
+      spawnStatusPopup(this, 'STUNNED');
+    }
+    this.wasParalyzed = paralyzed;
+    this.wasStunned = stunned;
   }
 
   private allCombatants(): NinjaBody[] {
@@ -746,12 +786,12 @@ export class MatchScene extends Phaser.Scene {
     this.chromeBar?.setPosition(width / 2, 22).setSize(width, 44);
     this.titleText?.setPosition(22, 22);
     this.menuButton?.setPosition(width - 108, 22);
-    this.hud?.layout(width);
+    this.hud?.layout(width, height);
     this.hud?.placeCombo(width / 2, 88);
-    this.matchHud?.layout(width);
+    this.matchHud?.layout(width, height);
     this.minimap?.layout(width);
     this.inputReader?.layout(width, height);
-    this.abilityTray?.layout(52, 148, 1);
+    this.layoutAbilityTray(width, height);
     if ((this.simulator || (this.player && !this.player.alive)) && this.spectatorOverlay) {
       const focus = this.hudFocus();
       this.spectatorOverlay.sync(
