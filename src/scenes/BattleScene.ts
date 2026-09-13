@@ -236,6 +236,7 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.ninja.sprite, true, 0.16, 0.16);
     this.cameras.main.setRoundPixels(true);
     applyGameplayCamera(this.cameras.main, this.scale.width, this.scale.height);
+    resizeHudCamera(this, this.scale.width, this.scale.height);
     this.cameras.main.fadeIn(220, 7, 10, 18);
     audio.unlock();
     audio.play('ui-match-start');

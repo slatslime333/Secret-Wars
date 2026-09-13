@@ -224,6 +224,7 @@ export class MatchScene extends Phaser.Scene {
     }
     this.cameras.main.setRoundPixels(true);
     applyGameplayCamera(this.cameras.main, this.scale.width, this.scale.height);
+    resizeHudCamera(this, this.scale.width, this.scale.height);
     this.cameras.main.fadeIn(220, 7, 10, 18);
 
     this.createChrome();

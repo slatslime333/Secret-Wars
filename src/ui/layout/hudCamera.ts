@@ -16,6 +16,12 @@ export const installHudCamera = (scene: Phaser.Scene): Phaser.Cameras.Scene2D.Ca
   }
   const ui = scene.cameras.add(0, 0, scene.scale.width, scene.scale.height, false, HUD_CAMERA_NAME);
   ui.setZoom(1).setScroll(0, 0).setRoundPixels(true);
+  syncHudCameraViewport(scene, scene.scale.width, scene.scale.height);
+  scene.time.delayedCall(0, () => {
+    if (scene.cameras.getCamera(HUD_CAMERA_NAME)) {
+      syncHudCameraViewport(scene, scene.scale.width, scene.scale.height);
+    }
+  });
   for (const go of scene.sys.displayList.list) {
     if (isHud(go)) {
       adoptHud(scene, go);
@@ -32,7 +38,22 @@ export const installHudCamera = (scene: Phaser.Scene): Phaser.Cameras.Scene2D.Ca
 
 export const resizeHudCamera = (scene: Phaser.Scene, width: number, height: number): void => {
   const ui = scene.cameras.getCamera(HUD_CAMERA_NAME);
-  ui?.setViewport(0, 0, width, height).setSize(width, height).setZoom(1).setScroll(0, 0);
+  if (!ui) {
+    return;
+  }
+  ui.setViewport(0, 0, width, height).setSize(width, height).setZoom(1).setScroll(0, 0);
+  syncHudCameraViewport(scene, width, height);
+};
+
+const syncHudCameraViewport = (scene: Phaser.Scene, width: number, height: number): void => {
+  const manager = scene.game.scene;
+  const cameras = scene.cameras.cameras;
+  const anyCustom = cameras.some(
+    (camera) => camera.x !== 0 || camera.y !== 0 || camera.width !== width || camera.height !== height,
+  );
+  if (!anyCustom && manager.customViewports !== 0) {
+    manager.customViewports = 0;
+  }
 };
 
 export const adoptHud = (scene: Phaser.Scene, ...objects: Phaser.GameObjects.GameObject[]): void => {
