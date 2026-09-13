@@ -27,7 +27,7 @@ export class GoldenPiggyBankObjective implements MatchObjective {
   private readonly scene: Phaser.Scene;
   private readonly root: Phaser.GameObjects.Container;
   private readonly body: Phaser.GameObjects.Arc;
-  private readonly snout: Phaser.GameObjects.Arc;
+  private readonly snout: Phaser.GameObjects.Shape;
   private readonly coin: Phaser.GameObjects.Arc;
   private readonly spark: Phaser.GameObjects.Arc;
   private readonly barRoot: Phaser.GameObjects.Container;
@@ -46,48 +46,81 @@ export class GoldenPiggyBankObjective implements MatchObjective {
     this.scene = deps.scene;
     this.x = deps.x;
     this.y = deps.y;
-    this.body = deps.scene.add.circle(0, 4, this.radius * 0.78, GOLD, 1);
-    this.body.setStrokeStyle(4, GOLD_DEEP, 1);
-    this.snout = deps.scene.add.circle(this.radius * 0.42, 10, this.radius * 0.28, 0xffe08a, 1);
-    this.snout.setStrokeStyle(2, GOLD_DEEP, 0.95);
-    const earL = deps.scene.add.ellipse(-this.radius * 0.38, -this.radius * 0.48, 18, 22, GOLD, 1);
-    const earR = deps.scene.add.ellipse(this.radius * 0.18, -this.radius * 0.52, 16, 20, GOLD, 1);
-    earL.setStrokeStyle(2, GOLD_DEEP, 0.9);
-    earR.setStrokeStyle(2, GOLD_DEEP, 0.9);
-    const slot = deps.scene.add.rectangle(0, -8, this.radius * 0.7, 5, COLORS.ink, 0.85);
-    this.coin = deps.scene.add.circle(-this.radius * 0.12, -this.radius * 0.12, 8, 0xffe37a, 1);
-    this.coin.setStrokeStyle(1.5, GOLD_DEEP, 1);
-    this.spark = deps.scene.add.circle(this.radius * 0.3, -this.radius * 0.2, 4, 0xfff4c4, 0.9);
-    const blushL = deps.scene.add.circle(-this.radius * 0.28, 16, 7, 0xf03b45, 0.28);
-    const blushR = deps.scene.add.circle(this.radius * 0.08, 18, 6, 0xf03b45, 0.22);
+    this.body = deps.scene.add.circle(0, 8, this.radius * 0.82, GOLD, 1);
+    this.body.setStrokeStyle(5, GOLD_DEEP, 1);
+    const belly = deps.scene.add.ellipse(0, 18, this.radius * 1.15, this.radius * 0.7, 0xffe08a, 0.55);
+    this.snout = deps.scene.add.ellipse(this.radius * 0.58, 14, 34, 26, 0xffe08a, 1);
+    this.snout.setStrokeStyle(3, GOLD_DEEP, 1);
+    const nostrilL = deps.scene.add.circle(this.radius * 0.5, 14, 3.2, COLORS.ink, 0.75);
+    const nostrilR = deps.scene.add.circle(this.radius * 0.68, 16, 3.2, COLORS.ink, 0.75);
+    const earL = deps.scene.add.ellipse(-this.radius * 0.42, -this.radius * 0.42, 22, 28, GOLD, 1);
+    const earR = deps.scene.add.ellipse(this.radius * 0.22, -this.radius * 0.48, 20, 26, GOLD, 1);
+    earL.setStrokeStyle(3, GOLD_DEEP, 0.95);
+    earR.setStrokeStyle(3, GOLD_DEEP, 0.95);
+    const innerL = deps.scene.add.ellipse(-this.radius * 0.42, -this.radius * 0.4, 10, 14, 0xf03b45, 0.35);
+    const innerR = deps.scene.add.ellipse(this.radius * 0.22, -this.radius * 0.46, 9, 12, 0xf03b45, 0.32);
+    const slot = deps.scene.add.rectangle(0, -6, this.radius * 0.85, 7, COLORS.ink, 0.9);
+    slot.setStrokeStyle(1, GOLD_DEEP, 0.8);
+    this.coin = deps.scene.add.circle(-4, -this.radius * 0.55, 10, 0xffe37a, 1);
+    this.coin.setStrokeStyle(2, GOLD_DEEP, 1);
+    this.spark = deps.scene.add.circle(this.radius * 0.38, -this.radius * 0.18, 5, 0xfff4c4, 0.95);
+    const eyeL = deps.scene.add.circle(-this.radius * 0.18, 2, 5, COLORS.ink, 1);
+    const eyeR = deps.scene.add.circle(this.radius * 0.16, 0, 5, COLORS.ink, 1);
+    const shineL = deps.scene.add.circle(-this.radius * 0.2, 0, 1.8, 0xfff4c4, 1);
+    const shineR = deps.scene.add.circle(this.radius * 0.14, -2, 1.8, 0xfff4c4, 1);
+    const legL = deps.scene.add.rectangle(-18, this.radius * 0.72, 12, 16, GOLD_DEEP, 1);
+    const legR = deps.scene.add.rectangle(16, this.radius * 0.72, 12, 16, GOLD_DEEP, 1);
+    const blushL = deps.scene.add.circle(-this.radius * 0.32, 18, 8, 0xf03b45, 0.32);
+    const blushR = deps.scene.add.circle(this.radius * 0.12, 20, 7, 0xf03b45, 0.24);
     this.root = deps.scene.add
-      .container(this.x, this.y, [earL, earR, this.body, blushL, blushR, this.snout, slot, this.coin, this.spark])
+      .container(this.x, this.y, [
+        earL,
+        earR,
+        innerL,
+        innerR,
+        legL,
+        legR,
+        this.body,
+        belly,
+        blushL,
+        blushR,
+        eyeL,
+        eyeR,
+        shineL,
+        shineR,
+        this.snout,
+        nostrilL,
+        nostrilR,
+        slot,
+        this.coin,
+        this.spark,
+      ])
       .setDepth(8);
 
-    const alphaTrack = deps.scene.add.rectangle(0, -12, 100, 9, COLORS.ink, 0.84).setStrokeStyle(1.4, COLORS.cyan, 0.9);
-    const bravoTrack = deps.scene.add.rectangle(0, 2, 100, 9, COLORS.ink, 0.84).setStrokeStyle(1.4, COLORS.redBright, 0.9);
-    this.alphaFill = deps.scene.add.rectangle(-48, -12, 2, 5, COLORS.cyan).setOrigin(0, 0.5);
-    this.bravoFill = deps.scene.add.rectangle(-48, 2, 2, 5, COLORS.redBright).setOrigin(0, 0.5);
+    const alphaTrack = deps.scene.add.rectangle(18, -16, 128, 12, COLORS.ink, 0.88).setStrokeStyle(1.6, COLORS.cyan, 0.95);
+    const bravoTrack = deps.scene.add.rectangle(18, 4, 128, 12, COLORS.ink, 0.88).setStrokeStyle(1.6, COLORS.redBright, 0.95);
+    this.alphaFill = deps.scene.add.rectangle(-44, -16, 2, 8, COLORS.cyan).setOrigin(0, 0.5);
+    this.bravoFill = deps.scene.add.rectangle(-44, 4, 2, 8, COLORS.redBright).setOrigin(0, 0.5);
     const aLabel = deps.scene.add
-      .text(-52, -12, 'A', {
+      .text(-50, -16, 'ALPHA', {
         fontFamily: FONTS.display,
-        fontSize: '12px',
+        fontSize: '13px',
         color: hex(COLORS.cyan),
         stroke: hex(COLORS.ink),
-        strokeThickness: 4,
+        strokeThickness: 5,
       })
       .setOrigin(1, 0.5);
     const bLabel = deps.scene.add
-      .text(-52, 2, 'B', {
+      .text(-50, 4, 'BRAVO', {
         fontFamily: FONTS.display,
-        fontSize: '12px',
+        fontSize: '13px',
         color: hex(COLORS.redBright),
         stroke: hex(COLORS.ink),
-        strokeThickness: 4,
+        strokeThickness: 5,
       })
       .setOrigin(1, 0.5);
     this.barRoot = deps.scene.add
-      .container(this.x, this.y - this.radius - 22, [alphaTrack, bravoTrack, this.alphaFill, this.bravoFill, aLabel, bLabel])
+      .container(this.x, this.y - this.radius - 28, [alphaTrack, bravoTrack, this.alphaFill, this.bravoFill, aLabel, bLabel])
       .setDepth(24);
   }
 
@@ -107,7 +140,7 @@ export class GoldenPiggyBankObjective implements MatchObjective {
     }
     this.wobble += ctx.delta * 0.006;
     this.root.y = this.y + Math.sin(this.wobble) * 3;
-    this.coin.y = -this.radius * 0.12 + Math.sin(this.wobble * 1.6) * 3;
+    this.coin.y = -this.radius * 0.55 + Math.sin(this.wobble * 1.6) * 4;
     this.spark.setAlpha(0.45 + Math.sin(this.wobble * 2.2) * 0.4);
     this.collectProjectiles();
     this.syncBars();
@@ -276,7 +309,7 @@ export class GoldenPiggyBankObjective implements MatchObjective {
   }
 
   private syncBars(): void {
-    this.alphaFill.setSize(Math.max(2, 96 * this.alpha), 5);
-    this.bravoFill.setSize(Math.max(2, 96 * this.bravo), 5);
+    this.alphaFill.setSize(Math.max(2, 124 * this.alpha), 8);
+    this.bravoFill.setSize(Math.max(2, 124 * this.bravo), 8);
   }
 }
