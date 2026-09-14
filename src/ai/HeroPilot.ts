@@ -10,6 +10,7 @@ import { TacticalField } from './tactical/field';
 import { TacticalMind } from './tactical/mind';
 import { MovementCommit } from './tactical/locomotion';
 import { moveGoal } from './tactical/move';
+import { SwingIntent } from './tactical/swingIntent';
 import type { TacticalDebugInfo } from './tactical/types';
 
 /**
@@ -17,14 +18,11 @@ import type { TacticalDebugInfo } from './tactical/types';
  * the shared tactical layer rather than nearest-enemy chase.
  */
 export class HeroPilot {
-  private tapQueued = false;
-  private holdUntil = 0;
-  private pauseUntil = 0;
-  private hitsIntoBlock = 0;
   private readonly move = new Phaser.Math.Vector2();
   private readonly foes: NinjaBody[] = [];
   readonly mind: TacticalMind;
   private readonly combat = new CombatDriver();
+  private readonly swing = new SwingIntent();
   private readonly loco: MovementCommit;
 
   constructor(unit: HeroRuntime) {
@@ -65,7 +63,8 @@ export class HeroPilot {
     const target = this.mind.target;
     const objective = this.mind.situationView().objective;
     if (target) {
-      body.setAim(target.x - body.x, target.y - body.y);
+      const lead = this.combat.sense.aimLead(target, Math.random);
+      body.setAim(lead.x - body.x, lead.y - body.y);
     } else if (this.mind.action === 'contest_objective' && objective) {
       body.setAim(objective.x - body.x, objective.y - body.y);
     } else {
@@ -108,15 +107,29 @@ export class HeroPilot {
     }
 
     this.walk(now, body, scene);
-    this.queueSwing(now, body, target, objective);
+    this.swing.decide({
+      now,
+      body,
+      target,
+      objective,
+      action: this.mind.action,
+      wantsAttack: this.mind.wantsAttack(),
+      personality: this.mind.personality,
+      kit: this.mind.situationView().kit,
+      sense: this.combat.sense,
+      blocking: unit.block.isActive(now),
+      rng: Math.random,
+    });
 
     const smashRange = objectiveInHitRange(body, objective, this.mind.action);
     const inRange = target
-      ? distance(body, target) <= body.stats.attackRange * 1.08
+      ? distance(body, target) <= body.stats.attackRange * 1.32
       : smashRange;
-    const held = now < this.holdUntil && inRange && body.canAttack(now) && this.mind.wantsAttack();
-    const pressed = this.tapQueued && body.canAttack(now) && this.mind.wantsAttack();
-    this.tapQueued = false;
+    const committed =
+      this.mind.wantsAttack() ||
+      this.combat.sense.chaining(now) ||
+      this.combat.sense.counterReady(now);
+    const buttons = this.swing.buttons(now, inRange, body.canAttack(now), committed);
     if (
       !control.attack &&
       !body.down &&
@@ -124,71 +137,10 @@ export class HeroPilot {
       !unit.dash.isActive(now) &&
       !body.status.cannotAttack(now)
     ) {
-      unit.attacks.update(now, held, pressed, body, foes, foeBlock);
+      unit.attacks.update(now, buttons.held, buttons.pressed, body, foes, foeBlock);
     } else {
       unit.attacks.update(now, false, false, body, foes, foeBlock);
     }
-  }
-
-  private queueSwing(
-    now: number,
-    body: NinjaBody,
-    target: NinjaBody | undefined,
-    objective?: { kind: string; x: number; y: number; radius: number },
-  ): void {
-    if (!this.mind.wantsAttack() || !body.canAttack(now) || now < this.pauseUntil) {
-      return;
-    }
-    const smash = objectiveInHitRange(body, objective, this.mind.action);
-    if (!target) {
-      if (!smash) {
-        return;
-      }
-      if (now < this.holdUntil) {
-        return;
-      }
-      const roll = Math.random();
-      this.tapQueued = roll > 0.5;
-      this.holdUntil = now + (this.tapQueued ? 90 : 130 + Math.random() * 120);
-      return;
-    }
-    const targetReachable = distance(body, target) <= body.stats.attackRange * 1.08;
-    if (!targetReachable) {
-      if (!smash) {
-        return;
-      }
-      if (now < this.holdUntil) {
-        return;
-      }
-      const roll = Math.random();
-      this.tapQueued = roll > 0.5;
-      this.holdUntil = now + (this.tapQueued ? 90 : 130 + Math.random() * 120);
-      return;
-    }
-    if (now < this.holdUntil) {
-      return;
-    }
-    if (target.blocking) {
-      this.hitsIntoBlock += 1;
-      const notice = 0.4 + this.mind.personality.reactionQuality * 0.4 + this.mind.personality.caution * 0.15;
-      if (this.hitsIntoBlock >= 1 && Math.random() < notice) {
-        this.pauseUntil = now + 160 + Math.random() * 220;
-        this.holdUntil = this.pauseUntil;
-        return;
-      }
-    } else {
-      this.hitsIntoBlock = 0;
-    }
-    if (this.mind.action === 'wait_for_opening' && !isOpening(now, body, target)) {
-      return;
-    }
-    const roll = Math.random();
-    if (roll < 0.16 + this.mind.personality.caution * 0.12 + (target.blocking ? 0.22 : 0)) {
-      this.pauseUntil = now + 80 + Math.random() * 140;
-      return;
-    }
-    this.tapQueued = roll > 0.58 + this.mind.personality.aggression * 0.12;
-    this.holdUntil = now + (this.tapQueued ? 90 : 140 + Math.random() * 140 + this.mind.personality.patience * 40);
   }
 
   private walk(now: number, body: NinjaBody, scene: Phaser.Scene): void {
@@ -269,18 +221,4 @@ const objectiveInHitRange = (
     return false;
   }
   return Math.hypot(body.x - objective.x, body.y - objective.y) <= body.stats.attackRange + objective.radius + 10;
-};
-
-const isOpening = (now: number, self: NinjaBody, target: NinjaBody): boolean => {
-  if (target.status.isBlockStunned(now) || target.status.isHitReacting(now)) {
-    return true;
-  }
-  const sinceSwing = now - target.status.lastAttackAt;
-  if (sinceSwing > 140 && sinceSwing < 400) {
-    return Math.random() < 0.7;
-  }
-  if (target.stamina < 12 && distance(self, target) <= self.stats.attackRange * 1.15) {
-    return Math.random() < 0.55;
-  }
-  return Math.random() < 0.16;
 };

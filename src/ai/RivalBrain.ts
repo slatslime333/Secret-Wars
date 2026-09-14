@@ -13,6 +13,7 @@ import { TacticalField } from './tactical/field';
 import { TacticalMind } from './tactical/mind';
 import { MovementCommit } from './tactical/locomotion';
 import { moveGoal } from './tactical/move';
+import { SwingIntent } from './tactical/swingIntent';
 import type { TacticalDebugInfo } from './tactical/types';
 import { stampKitPressure } from '../heroes/kitPressure';
 
@@ -21,14 +22,11 @@ import { stampKitPressure } from '../heroes/kitPressure';
  * battlefield decisions from the shared tactical layer and imperfect reflexes.
  */
 export class RivalBrain {
-  private tapQueued = false;
-  private holdUntil = 0;
-  private pauseUntil = 0;
-  private hitsIntoBlock = 0;
   private readonly chase = new Phaser.Math.Vector2();
   private readonly foes: NinjaBody[] = [];
   readonly mind: TacticalMind;
   private readonly combat = new CombatDriver();
+  private readonly swing = new SwingIntent();
   private readonly loco: MovementCommit;
 
   constructor(
@@ -65,7 +63,8 @@ export class RivalBrain {
     const objective = this.mind.situationView().objective;
     const target = this.mind.action === 'contest_objective' ? this.mind.target : (this.mind.target ?? foes[0]);
     if (target) {
-      cpu.setAim(target.x - cpu.x, target.y - cpu.y);
+      const lead = this.combat.sense.aimLead(target, Math.random);
+      cpu.setAim(lead.x - cpu.x, lead.y - cpu.y);
     } else if (this.mind.action === 'contest_objective' && objective) {
       cpu.setAim(objective.x - cpu.x, objective.y - cpu.y);
     }
@@ -131,18 +130,32 @@ export class RivalBrain {
       this.walk(now, cpu, scene);
     }
 
-    this.queueSwing(now, cpu, target, objective);
+    this.swing.decide({
+      now,
+      body: cpu,
+      target,
+      objective,
+      action: this.mind.action,
+      wantsAttack: this.mind.wantsAttack(),
+      personality: this.mind.personality,
+      kit: this.mind.situationView().kit,
+      sense: this.combat.sense,
+      blocking: this.block.isActive(now),
+      rng: Math.random,
+    });
     const smashRange =
       this.mind.action === 'contest_objective' &&
       objective &&
       (objective.kind === 'golden_piggy' || objective.kind === 'executioner') &&
       Math.hypot(cpu.x - objective.x, cpu.y - objective.y) <= cpu.stats.attackRange + objective.radius + 10;
     const inRange = target
-      ? Math.hypot(target.x - cpu.x, target.y - cpu.y) <= cpu.stats.attackRange * 1.05
+      ? Math.hypot(target.x - cpu.x, target.y - cpu.y) <= cpu.stats.attackRange * 1.32
       : Boolean(smashRange);
-    const held = now < this.holdUntil && inRange && cpu.canAttack(now) && this.mind.wantsAttack();
-    const pressed = this.tapQueued && cpu.canAttack(now) && this.mind.wantsAttack();
-    this.tapQueued = false;
+    const committed =
+      this.mind.wantsAttack() ||
+      this.combat.sense.chaining(now) ||
+      this.combat.sense.counterReady(now);
+    const buttons = this.swing.buttons(now, inRange, cpu.canAttack(now), committed);
     if (
       !control?.attack &&
       !cpu.down &&
@@ -150,67 +163,10 @@ export class RivalBrain {
       !this.dash.isActive(now) &&
       !cpu.status.cannotAttack(now)
     ) {
-      this.attacks.update(now, held, pressed, cpu, foes, this.playerBlock);
+      this.attacks.update(now, buttons.held, buttons.pressed, cpu, foes, this.playerBlock);
     } else {
       this.attacks.update(now, false, false, cpu, foes, this.playerBlock);
     }
-  }
-
-  private queueSwing(now: number, cpu: NinjaBody, target: NinjaBody | undefined, objective?: { kind: string; x: number; y: number; radius: number }): void {
-    if (!this.mind.wantsAttack() || !cpu.canAttack(now) || now < this.pauseUntil) {
-      return;
-    }
-    const smash =
-      this.mind.action === 'contest_objective' &&
-      objective &&
-      (objective.kind === 'golden_piggy' || objective.kind === 'executioner') &&
-      Math.hypot(cpu.x - objective.x, cpu.y - objective.y) <= cpu.stats.attackRange + objective.radius + 10;
-    if (!target) {
-      if (!smash || now < this.holdUntil) {
-        return;
-      }
-      this.tapQueued = Math.random() > 0.5;
-      this.holdUntil = now + (this.tapQueued ? 90 : 140);
-      return;
-    }
-    const distance = Math.hypot(target.x - cpu.x, target.y - cpu.y);
-    if (distance > cpu.stats.attackRange * 1.05) {
-      if (!smash || now < this.holdUntil) {
-        return;
-      }
-      this.tapQueued = Math.random() > 0.5;
-      this.holdUntil = now + (this.tapQueued ? 90 : 140);
-      return;
-    }
-    if (now < this.holdUntil) {
-      return;
-    }
-    if (target.blocking) {
-      this.hitsIntoBlock += 1;
-      const notice = 0.42 + this.mind.personality.reactionQuality * 0.38;
-      if (this.hitsIntoBlock >= 1 && Math.random() < notice) {
-        this.pauseUntil = now + 140 + Math.random() * 200;
-        this.holdUntil = this.pauseUntil;
-        return;
-      }
-    } else {
-      this.hitsIntoBlock = 0;
-    }
-    const roll = Math.random();
-    if (target.status.isBlockStunned(now) && roll < 0.7) {
-      this.tapQueued = true;
-      this.holdUntil = now + 90;
-      return;
-    }
-    if (this.mind.action === 'wait_for_opening' && !isOpening(now, cpu, target, distance)) {
-      return;
-    }
-    if (roll < 0.22 + this.mind.personality.caution * 0.12 + (target.blocking ? 0.2 : 0)) {
-      this.pauseUntil = now + 70 + Math.random() * 130;
-      return;
-    }
-    this.tapQueued = roll > 0.7;
-    this.holdUntil = now + (this.tapQueued ? 90 : 150 + Math.random() * 140);
   }
 
   private walk(now: number, cpu: NinjaBody, scene: Phaser.Scene): void {
@@ -270,17 +226,3 @@ export class RivalBrain {
     cpu.applyMove(this.chase);
   }
 }
-
-const isOpening = (now: number, self: NinjaBody, target: NinjaBody, distance: number): boolean => {
-  if (target.status.isBlockStunned(now) || target.status.isHitReacting(now)) {
-    return true;
-  }
-  const sinceSwing = now - target.status.lastAttackAt;
-  if (sinceSwing > 140 && sinceSwing < 400) {
-    return Math.random() < 0.7;
-  }
-  if (target.stamina < 12 && distance <= self.stats.attackRange * 1.15) {
-    return Math.random() < 0.55;
-  }
-  return Math.random() < 0.16;
-};

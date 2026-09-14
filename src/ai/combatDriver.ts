@@ -9,6 +9,7 @@ import type { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import type { NinjaBody } from '../heroes/NinjaBody';
 import { scoreKitSlot } from './tactical/kitTactics';
 import { isShadowDry } from './tactical/kitProfile';
+import { FightSense } from './tactical/fightSense';
 import type { TacticalMind } from './tactical/mind';
 import { dodgeDirFor, scanProjectileThreat } from './tactical/shots';
 
@@ -56,6 +57,7 @@ export class CombatDriver {
   private blockUntil = 0;
   private nextDashAt = 0;
   private nextAbilityAt = 0;
+  private nextShieldAt = 0;
   private lastSwingSeen = -9999;
   private pending?: PendingReact;
   private readonly strafe = new Phaser.Math.Vector2();
@@ -64,6 +66,7 @@ export class CombatDriver {
   private readonly dashDir = new Phaser.Math.Vector2();
   readonly reactions = { block: 0, dash: 0, strafe: 0 };
   private pattern = emptyPattern();
+  readonly sense = new FightSense();
 
   tick(args: {
     now: number;
@@ -81,6 +84,7 @@ export class CombatDriver {
     const { now, body, mind, block, dash, abilities, abilityCtx, world, scene, foes, rng } = args;
     const p = mind.personality;
     let usedAbility = false;
+    this.sense.observe(now, body, mind.target);
 
     if (abilities && abilityCtx) {
       abilities.update(abilityCtx);
@@ -114,11 +118,18 @@ export class CombatDriver {
 
     this.noticeSwing(now, body, mind, dash, foes, rng);
     this.noticeShot(now, body, mind, dash, rng);
+    this.noticeApproach(now, body, mind, rng);
     this.resolvePending(now, body, mind, dash, world, scene, foes, rng);
+    this.finishGuard(now, body, mind, rng);
 
     const holding = now < this.blockUntil && body.canRaiseBlock() && !dash.isActive(now) && !abilities?.control.block;
     if (!holding) {
       this.blockUntil = 0;
+    }
+    if (this.sense.counterReady(now)) {
+      this.blockUntil = 0;
+      block.setHeld(now, body, false);
+      return { blocking: false, usedAbility };
     }
     block.setHeld(now, body, holding);
     return { blocking: holding, usedAbility };
@@ -269,28 +280,36 @@ export class CombatDriver {
     const p = mind.personality;
     const delay = 55 + (1 - p.reactionQuality) * 150 + rng() * (60 + (1 - p.reactionQuality) * 90) + p.caution * 20;
     const disruptor = body.stats.role === 'disruptor' || body.stats.role === 'support';
-    const staminaOk = body.stamina > 14;
+    const canBlock = body.canRaiseBlock();
     const familiar = this.lightFamiliarity();
     const dirFamiliar = this.dirFamiliarity(threat);
     const hp = body.health / Math.max(1, body.stats.maxHealth);
-    const notice = 0.42 + p.reactionQuality * 0.4 + familiar * 0.12;
+    const aggression = this.sense.aggressionOf(threat);
+    const notice = 0.48 + p.reactionQuality * 0.36 + familiar * 0.14 + aggression * 0.08;
     if (rng() > notice) {
       return;
     }
     const dodgeChance =
-      (0.18 + p.caution * 0.16 + (disruptor ? 0.14 : 0) + (staminaOk ? 0.06 : -0.08)) *
-      (this.reactions.dash + this.reactions.strafe > this.reactions.block ? 0.5 : 1);
+      (0.16 + p.caution * 0.14 + (disruptor ? 0.12 : 0)) *
+      (this.reactions.dash + this.reactions.strafe > this.reactions.block * 2 ? 0.55 : 1);
     const blockChance = Math.min(
-      0.7,
-      0.16 + p.blockTendency * 0.28 + familiar * 0.2 + dirFamiliar * 0.12 + p.caution * 0.08 + (hp < 0.32 ? 0.1 : 0),
+      0.82,
+      0.28 +
+        p.blockTendency * 0.32 +
+        familiar * 0.18 +
+        dirFamiliar * 0.12 +
+        p.caution * 0.1 +
+        aggression * 0.16 +
+        (hp < 0.36 ? 0.12 : 0) +
+        (this.sense.momentum === 'losing' ? 0.12 : 0),
     );
     const roll = rng();
     let kind: PendingReact['kind'] = 'block';
-    if (roll < dodgeChance * 0.4 && dash.chargeCount > 0) {
+    if (roll < dodgeChance * 0.35 && dash.chargeCount > 0) {
       kind = 'dash';
     } else if (roll < dodgeChance) {
       kind = 'strafe';
-    } else if (roll < dodgeChance + blockChance && staminaOk) {
+    } else if (roll < dodgeChance + blockChance && canBlock) {
       kind = 'block';
     } else {
       return;
@@ -308,7 +327,7 @@ export class CombatDriver {
   private resolvePending(
     now: number,
     body: NinjaBody,
-    _mind: TacticalMind,
+    mind: TacticalMind,
     dash: DashController,
     world: AbilityWorld | undefined,
     scene: Phaser.Scene,
@@ -321,8 +340,9 @@ export class CombatDriver {
     const pending = this.pending;
     this.pending = undefined;
     if (pending.kind === 'block') {
-      if (body.stamina > 14) {
-        this.blockUntil = now + 260 + rng() * 220;
+      if (body.canRaiseBlock()) {
+        this.blockUntil = now + 280 + rng() * 260 + mind.personality.caution * 80;
+        this.sense.noteBlocked(now);
       }
       return;
     }
@@ -340,6 +360,93 @@ export class CombatDriver {
     }
     this.strafe.set(pending.x, pending.y);
     this.strafeUntil = now + 180 + rng() * 90;
+  }
+
+  /** Raise before the swing when approach + aggression make an attack likely. */
+  private noticeApproach(now: number, body: NinjaBody, mind: TacticalMind, rng: () => number): void {
+    if (this.pending || now < this.nextShieldAt || now < this.blockUntil) {
+      return;
+    }
+    const foe = mind.target;
+    if (!foe || foe.down || !body.canRaiseBlock()) {
+      return;
+    }
+    const d = Math.hypot(foe.x - body.x, foe.y - body.y);
+    const theirRange = foe.stats.attackRange;
+    const closing = this.sense.closingOn(body, foe);
+    const aggression = this.sense.aggressionOf(foe);
+    const hp = body.health / Math.max(1, body.stats.maxHealth);
+    const stam = body.stamina / Math.max(1, body.stats.maxStamina);
+    const p = mind.personality;
+    const kit = mind.situationView().kit;
+    const front = kit?.stance === 'melee' || body.stats.role === 'tank' || body.stats.role === 'frontliner';
+    const ranged = kit?.stance === 'ranged' || kit?.stance === 'support';
+    const inDanger =
+      (closing && d < theirRange * 1.35) ||
+      (aggression > 0.42 && d < theirRange * 1.5) ||
+      (this.sense.momentum === 'losing' && d < theirRange * 1.6) ||
+      (hp < 0.34 && closing);
+    if (!inDanger) {
+      return;
+    }
+    if (this.sense.chaining(now) && this.sense.momentum === 'winning' && hp > 0.4) {
+      return;
+    }
+    const chance =
+      0.18 +
+      p.blockTendency * 0.28 +
+      aggression * 0.22 +
+      p.caution * 0.12 +
+      (this.sense.momentum === 'losing' ? 0.16 : 0) +
+      (stam < 0.22 ? 0.1 : 0) +
+      (front ? 0.08 : 0) +
+      (ranged ? 0.06 : 0);
+    if (rng() > Math.min(0.72, chance)) {
+      this.nextShieldAt = now + 90 + rng() * 140;
+      return;
+    }
+    const delay = 40 + (1 - p.reactionQuality) * 140 + rng() * 120;
+    this.reactions.block += 1;
+    this.nextShieldAt = now + 220 + rng() * 180;
+    this.pending = { at: now + delay, kind: 'block', x: 0, y: 0 };
+  }
+
+  private finishGuard(now: number, body: NinjaBody, mind: TacticalMind, rng: () => number): void {
+    if (now >= this.blockUntil) {
+      return;
+    }
+    const foe = mind.target;
+    const p = mind.personality;
+    const kit = mind.situationView().kit;
+    const front = kit?.stance === 'melee' || body.stats.role === 'frontliner' || body.stats.role === 'tank';
+    const ranged = kit?.stance === 'ranged' || kit?.stance === 'support';
+    const hp = body.health / Math.max(1, body.stats.maxHealth);
+    if (foe && now - foe.status.lastAttackAt < 220 && body.blocking) {
+      this.sense.noteBlocked(now);
+      const counterChance =
+        0.28 + p.aggression * 0.28 + (front ? 0.16 : 0) - p.caution * 0.08 + (this.sense.momentum === 'winning' ? 0.1 : 0);
+      if (rng() < counterChance && this.sense.inStrikeRange(body, foe, 1.2)) {
+        const delay = 70 + rng() * 200 + (1 - p.reactionQuality) * 80;
+        this.sense.openCounter(now, delay);
+        this.nextShieldAt = now + 180 + rng() * 160;
+        return;
+      }
+    }
+    const stillHot = foe
+      ? this.sense.aggressionOf(foe) > 0.5 && this.sense.closingOn(body, foe)
+      : false;
+    if ((this.sense.momentum === 'losing' || hp < 0.32 || (ranged && stillHot)) && stillHot) {
+      this.sense.openSpace(now, 280 + rng() * 180);
+      const dx = foe ? body.x - foe.x : -body.aim.x;
+      const dy = foe ? body.y - foe.y : -body.aim.y;
+      const len = Math.hypot(dx, dy) || 1;
+      this.strafe.set(dx / len, dy / len);
+      this.strafeUntil = now + 240 + rng() * 140;
+    }
+    if (!stillHot && now - (foe?.status.lastAttackAt ?? 0) > 260 && rng() < 0.35 + p.decisionConfidence * 0.2) {
+      this.blockUntil = Math.min(this.blockUntil, now + 40);
+      this.nextShieldAt = now + 140 + rng() * 220;
+    }
   }
 
   private noteLight(now: number, foe: NinjaBody): void {

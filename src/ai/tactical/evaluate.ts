@@ -634,12 +634,26 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       attack += personality.aggression * 5;
     }
     const lull = inferredLull(enemy, self, situation.homeX);
+    const inStrike = d <= range * 1.14;
     if (!finishable && !victim) {
-      attack -= strain * (12 + personality.caution * 8);
-      attack -= clusterRisk * 8;
+      const cheapStrain = inStrike && (enemy.hpRatio < 0.4 || enemy.recentlyHit || enemy.stunned);
+      const strainMul = cheapStrain ? 3 + personality.caution * 3 : 12 + personality.caution * 8;
+      attack -= strain * strainMul;
+      attack -= clusterRisk * (inStrike && cheapStrain ? 3 : 8);
     } else {
-      attack -= strain * 3;
+      attack -= strain * 2;
       attack -= clusterRisk * 3;
+    }
+    if (inStrike && pile < 0.55) {
+      const commitBonus =
+        strain > 0.7 && enemy.hpRatio > 0.32 ? 2 : 8 + (kit?.pressureBias ?? personality.aggression) * 8;
+      attack += commitBonus;
+      if (enemy.recentlyHit || enemy.stunned) {
+        attack += 8;
+      }
+      if (self.heroId === 'shadow' && !isShadowDry(self.heroId, self) && (strain < 0.72 || enemy.hpRatio < 0.3)) {
+        attack += 10;
+      }
     }
     if (lull > 0.28) {
       if (strain < 0.48 && self.hpRatio > 0.26) {
@@ -970,7 +984,12 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     const finishNear = enemies.some(
       (enemy) => enemy.hpRatio < 0.12 && dist(self, enemy) < self.attackRange * 1.5,
     );
-    if (!finishNear) {
+    const meleeCommit = enemies.some(
+      (enemy) =>
+        dist(self, enemy) <= self.attackRange * 1.12 &&
+        (enemy.hpRatio < 0.34 || enemy.recentlyHit || enemy.stunned || (kit?.stance === 'melee' && strain < 0.78)),
+    );
+    if (!finishNear && !meleeCommit) {
       let recover = 6 + strain * 16 + personality.caution * 6;
       if (!closeHero) {
         recover += 10;
@@ -1046,6 +1065,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
   const standEnemy = enemies.find((enemy) => standoff(self, enemy, allies, enemies) && dist(self, enemy) < self.attackRange * 2.1);
   if (standEnemy) {
     const d = dist(self, standEnemy);
+    const inStrike = d <= self.attackRange * 1.12;
     let wait = 20 + personality.caution * 10;
     if (self.hpRatio > 0.6 && standEnemy.hpRatio > 0.55) {
       wait += 12;
@@ -1062,8 +1082,13 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (standEnemy.blocking) {
       wait += 14 + personality.patience * 8;
     }
-    count = write(out, count, 'wait_for_opening', wait, standEnemy.blocking ? 'wait out the shield' : 'size them up', standEnemy.id);
-    count = write(out, count, 'hold_position', wait - 3, 'hold range', standEnemy.id);
+    if (inStrike && !ranged) {
+      wait -= 16 + (kit?.pressureBias ?? 0.5) * 10;
+    }
+    if (!inStrike || ranged || wait > 14) {
+      count = write(out, count, 'wait_for_opening', wait, standEnemy.blocking ? 'wait out the shield' : 'size them up', standEnemy.id);
+      count = write(out, count, 'hold_position', wait - 3, 'hold range', standEnemy.id);
+    }
     let repo = 16 + (ranged ? 8 : 0);
     if (d < self.attackRange * 0.5 && ranged) {
       repo += 10;
