@@ -5,7 +5,7 @@ const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
 
 /** Hard camera zoom floor / ceiling after FOV is applied. */
 export const CAMERA_ZOOM_MIN = 0.22;
-export const CAMERA_ZOOM_MAX = 3.2;
+export const CAMERA_ZOOM_MAX = 5.2;
 
 /**
  * Persistent camera / FOV preference. 0.5 is the default battlefield zoom.
@@ -40,12 +40,12 @@ class CameraPrefsController {
 
   /**
    * Multiplier on the layout camera zoom. 1 at the default slider.
-   * Low FOV zooms in hard (up to 3×); high FOV still opens the battlefield.
+   * Low FOV zooms in hard (up to 5×); high FOV still opens the battlefield.
    */
   zoomMultiplier(): number {
     const t = this.fov;
     if (t <= 0.5) {
-      return 3 - t * 4;
+      return 5 - t * 8;
     }
     return 1.28 - t * 0.56;
   }

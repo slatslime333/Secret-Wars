@@ -1,12 +1,12 @@
 import { COLE_STORM } from '../cole/tunables';
-import { DEATH_GUN, DEATH_SMASH } from '../death/tunables';
+import { GUN_BARRAGE_SPEED_BASE, DEATH_SMASH } from '../death/tunables';
 import { abilityDamage } from '../../../config/ratings';
 
 /** Rope Man combat numbers. Light shots reuse converted ratings. */
 export const ROPE_SHOT = {
   intervalMs: 400,
-  /** 20% faster than Gun Barrage. */
-  speed: Math.round(DEATH_GUN.speed * 1.2),
+  /** 20% faster than the original Gun Barrage speed. */
+  speed: Math.round(GUN_BARRAGE_SPEED_BASE * 1.2),
   radius: 4.5,
   lifetimeMs: 5000,
   /** Tighter grouping around the aim line. */
@@ -35,7 +35,7 @@ export const ROPE_DASH = {
 export const ROPE_GRAB = {
   cooldownMs: 7000,
   range: Math.round(440 * 1.08),
-  speed: Math.round(DEATH_GUN.speed * 1.35 * 1.4),
+  speed: Math.round(GUN_BARRAGE_SPEED_BASE * 1.35 * 1.4),
   radius: Math.round(7 * 1.12 * 1.7),
   /** Extra capsule width so the grab does not need a pixel-perfect hit. */
   forgive: 22,
@@ -69,7 +69,7 @@ export const ROPE_SPRAY = {
   range: COLE_STORM.radius,
   intervalMs: 300,
   shotsPerPulse: 2,
-  speed: Math.round(DEATH_GUN.speed * 1.2),
+  speed: Math.round(GUN_BARRAGE_SPEED_BASE * 1.2),
   radius: 4.5,
   damageRating: 36,
   damage: abilityDamage(36),
