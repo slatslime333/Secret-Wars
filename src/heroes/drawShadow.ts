@@ -140,35 +140,42 @@ const drawTorso = (g: Phaser.GameObjects.Graphics, p: Palette): void => {
   g.fillRect(-4.8, -8, 9.6, 2);
 };
 
-/** Shoulder-to-upper-chest length. No mullet tails. */
+/** Head volume only — hanging locks are drawn in front so they frame the body. */
 const drawHair = (g: Phaser.GameObjects.Graphics, p: Palette, dir: number, north: boolean): void => {
   g.fillStyle(p.hairDark);
-  g.fillEllipse(dir * 0.4, -15.2, 17.8, 20);
-  g.fillEllipse(-7.2 + dir * 0.8, -2, 6.4, 11);
-  g.fillEllipse(7.2 + dir * 0.8, -2, 6.4, 11);
+  g.fillEllipse(dir * 0.4, -15.2, 17.2, 19.4);
   g.fillStyle(p.hair);
-  g.fillEllipse(dir * 0.4, -15.8, 15.8, 18);
-  g.fillEllipse(-6.4 + dir * 0.8, -1.4, 5.4, 9.6);
-  g.fillEllipse(6.4 + dir * 0.8, -1.4, 5.4, 9.6);
+  g.fillEllipse(dir * 0.4, -15.8, 15.2, 17.4);
   if (north) {
-    g.fillEllipse(0, -17.4, 16, 18);
+    g.fillEllipse(0, -17.4, 15.6, 18);
   }
+};
+
+/** Medium-long locks to upper/mid torso. Drawn after the body so they stay visible. */
+const drawFrameHair = (g: Phaser.GameObjects.Graphics, p: Palette, dir: number): void => {
+  g.fillStyle(p.hairDark);
+  g.fillEllipse(-8.6 + dir * 0.5, 1.8, 6.6, 14.4);
+  g.fillEllipse(8.6 + dir * 0.5, 1.8, 6.6, 14.4);
+  g.fillStyle(p.hair);
+  g.fillEllipse(-7.8 + dir * 0.5, 1.2, 5.6, 13);
+  g.fillEllipse(7.8 + dir * 0.5, 1.2, 5.6, 13);
 };
 
 const drawSwoopBangs = (g: Phaser.GameObjects.Graphics, p: Palette, dir: number): void => {
   g.fillStyle(p.hairDark);
-  g.fillEllipse(dir * 2.4, -21.4, 16.5, 9);
+  g.fillEllipse(dir * 3.4, -21, 15.6, 8.2);
   g.fillStyle(p.hair);
-  g.fillEllipse(dir * 2.6, -21.8, 15, 7.8);
-  g.fillTriangle(-7.4, -22, 10.5 + dir * 2, -19, 4.2 + dir * 3, -9);
-  g.fillEllipse(dir * 5.2, -16.6, 10.5, 7.4);
+  g.fillEllipse(dir * 3.6, -21.4, 14.2, 7.2);
+  g.fillTriangle(-8, -21.4, 11.4 + dir * 1.6, -18.2, 5.8 + dir * 2.4, -8.2);
+  g.fillEllipse(dir * 6.4, -15.4, 9.6, 8.4);
+  g.fillEllipse(dir * 7.6, -11.2, 5.4, 8);
 };
 
 const drawFace = (g: Phaser.GameObjects.Graphics, p: Palette, faceX: number): void => {
   g.fillStyle(p.skinDark);
-  g.fillEllipse(faceX, -13.8, 13.8, 16.6);
+  g.fillEllipse(faceX, -13.8, 13.2, 16.4);
   g.fillStyle(p.skin);
-  g.fillEllipse(faceX, -13.6, 12.2, 15);
+  g.fillEllipse(faceX, -13.6, 11.6, 14.8);
 };
 
 const drawEast = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, liftR: number): void => {
@@ -181,7 +188,8 @@ const drawEast = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, lif
   g.fillStyle(p.skin);
   g.fillRoundedRect(-9.5, leftY + 0.4, 2.4, 7, 2);
   drawFace(g, p, 1.8);
-  drawOvalEye(g, 4.4, -13.4, p.eye);
+  drawOvalEye(g, 4.4, -13.2, p.eye);
+  drawFrameHair(g, p, 1);
   drawSwoopBangs(g, p, 1);
   drawShadowArm(g, p, 7.5, rightY, 1, liftR);
 };
@@ -196,7 +204,8 @@ const drawWest = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, lif
   g.fillStyle(p.skin);
   g.fillRoundedRect(7.2, leftY + 0.4, 2.4, 7, 2);
   drawFace(g, p, -1.8);
-  drawOvalEye(g, -4.4, -13.4, p.eye);
+  drawOvalEye(g, -4.4, -13.2, p.eye);
+  drawFrameHair(g, p, -1);
   drawSwoopBangs(g, p, -1);
   drawShadowArm(g, p, -7.5, rightY, -1, liftR);
 };
@@ -216,12 +225,14 @@ const drawFront = (
   g.fillRoundedRect(north ? -10 : 7.2, leftY, 3.2, 9, 2);
   if (!north) {
     drawFace(g, p, 0);
-    drawOvalEye(g, -2.7, -13.2, p.eye);
-    drawOvalEye(g, 2.7, -13.2, p.eye);
+    drawOvalEye(g, -2.6, -13, p.eye);
+    drawOvalEye(g, 2.6, -13, p.eye);
+    drawFrameHair(g, p, 0);
     drawSwoopBangs(g, p, 1);
   } else {
     g.fillStyle(p.hair);
-    g.fillEllipse(0, -17, 16, 18);
+    g.fillEllipse(0, -17, 15.6, 18);
+    drawFrameHair(g, p, 0);
   }
   drawShadowArm(g, p, north ? 7.5 : -7.5, rightY, north ? 1 : -1, liftR);
 };
@@ -237,10 +248,10 @@ const drawShadowArm = (
   const reach = 16 + lift * 8;
   const hx = x + dir * (5 + lift * 4);
   const hy = y - 3 - lift * 5;
-  g.fillStyle(p.shadow, 0.22);
-  g.fillEllipse(hx + dir * 3, hy + 3, 22, 26);
+  g.fillStyle(p.shadow, 0.2);
+  g.fillEllipse(hx + dir * 2.4, hy + 2.4, 16, 20);
   g.fillStyle(p.shadow, 0.42);
-  g.fillEllipse(hx + dir * 2, hy + 1, 18, 22);
+  g.fillEllipse(hx + dir * 1.6, hy + 1, 14, 18);
   g.fillStyle(p.shadow, 0.78);
   g.fillEllipse(hx, hy, 12, 17);
   g.fillStyle(p.shadowLite, 0.5);

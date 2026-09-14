@@ -32,5 +32,5 @@ export const drawOvalEye = (
   scale = 1,
 ): void => {
   graphics.fillStyle(color);
-  graphics.fillEllipse(x, y, 2.5 * scale, 4.2 * scale);
+  graphics.fillEllipse(x, y, 2.8 * scale, 4.6 * scale);
 };

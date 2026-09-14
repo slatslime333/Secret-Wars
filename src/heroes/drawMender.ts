@@ -110,50 +110,69 @@ export const menderArmOrigin = (
 
 const drawSuitBody = (g: Phaser.GameObjects.Graphics, p: Palette): void => {
   g.fillStyle(p.suitDark);
-  g.fillRoundedRect(-5.2, 9, 4, 7, 2);
-  g.fillRoundedRect(1.2, 9, 4, 7, 2);
+  g.fillRoundedRect(-4.8, 9, 3.8, 7, 2);
+  g.fillRoundedRect(1, 9, 3.8, 7, 2);
   g.fillStyle(p.suit);
-  g.fillRoundedRect(-4.7, 9, 3.2, 6, 2);
-  g.fillRoundedRect(1.5, 9, 3.2, 6, 2);
+  g.fillRoundedRect(-4.4, 9, 3, 6, 2);
+  g.fillRoundedRect(1.4, 9, 3, 6, 2);
 
   g.fillStyle(p.suitDark);
-  g.fillEllipse(0, 7.2, 12.5, 6.2);
+  g.fillEllipse(0, 7.4, 12.2, 6);
   g.fillStyle(p.suit);
-  g.fillEllipse(0, 6.6, 11, 5.2);
+  g.fillEllipse(0, 6.8, 10.6, 5);
 
   g.fillStyle(p.suitDark);
-  g.fillTriangle(-4.2, -8, 4.2, -8, -6.2, 2);
-  g.fillTriangle(-4.2, -8, 4.2, -8, 6.2, 2);
+  g.fillTriangle(-3.8, -8, 3.8, -8, -5.2, 2);
+  g.fillTriangle(-3.8, -8, 3.8, -8, 5.2, 2);
   g.fillStyle(p.suit);
-  g.fillTriangle(-3.4, -8, 3.4, -8, -5, 2);
-  g.fillTriangle(-3.4, -8, 3.4, -8, 5, 2);
-  g.fillRoundedRect(-4, -1, 8, 8, 3);
+  g.fillTriangle(-3, -8, 3, -8, -4.2, 2);
+  g.fillTriangle(-3, -8, 3, -8, 4.2, 2);
+  g.fillRoundedRect(-3.4, -1, 6.8, 8, 3);
   g.fillStyle(p.white);
-  g.fillRect(-1.7, -6, 3.4, 12);
-  g.fillEllipse(0, -4, 7.5, 5);
+  g.fillRect(-1.5, -6, 3, 12);
+  g.fillEllipse(0, -4.2, 6.8, 4.8);
   g.fillStyle(p.band);
-  g.fillRect(-4.5, -5, 9, 2);
+  g.fillRect(-4, -5, 8, 2);
 };
 
+/** Head volume only — hanging locks are drawn in front so they frame the body. */
 const drawHair = (g: Phaser.GameObjects.Graphics, p: Palette, dir: number, north: boolean): void => {
   g.fillStyle(p.hairDark);
-  g.fillEllipse(dir * 0.3, -16, 17.5, 20);
-  g.fillEllipse(-7.4 + dir, -1, 6.4, 15);
-  g.fillEllipse(7.4 + dir, -1, 6.4, 15);
+  g.fillEllipse(dir * 0.3, -16, 16.8, 19.4);
   g.fillStyle(p.hair);
-  g.fillEllipse(dir * 0.3, -16.6, 15.4, 18);
-  g.fillEllipse(-6.6 + dir, -0.4, 5.4, 13.5);
-  g.fillEllipse(6.6 + dir, -0.4, 5.4, 13.5);
+  g.fillEllipse(dir * 0.3, -16.6, 14.8, 17.4);
   if (north) {
-    g.fillEllipse(dir, -18, 15, 16);
+    g.fillEllipse(dir, -18, 14.6, 16);
   }
+};
+
+/** Slightly longer than the head mass; frames upper/mid torso. */
+const drawFrameHair = (g: Phaser.GameObjects.Graphics, p: Palette, dir: number): void => {
+  g.fillStyle(p.hairDark);
+  g.fillEllipse(-8.2 + dir * 0.6, 1.4, 6.2, 15.2);
+  g.fillEllipse(8.2 + dir * 0.6, 1.4, 6.2, 15.2);
+  g.fillStyle(p.hair);
+  g.fillEllipse(-7.4 + dir * 0.6, 0.8, 5.2, 13.8);
+  g.fillEllipse(7.4 + dir * 0.6, 0.8, 5.2, 13.8);
 };
 
 const drawHead = (g: Phaser.GameObjects.Graphics, p: Palette, faceX: number): void => {
   g.fillStyle(p.skinDark);
-  g.fillEllipse(faceX, -14.6, 14.2, 17.4);
+  g.fillEllipse(faceX, -14.6, 13.4, 17);
   g.fillStyle(p.skin);
-  g.fillEllipse(faceX, -14.6, 12.6, 15.8);
+  g.fillEllipse(faceX, -14.6, 11.8, 15.4);
+};
+
+const drawBangs = (g: Phaser.GameObjects.Graphics, p: Palette): void => {
+  g.fillStyle(p.hairDark);
+  g.fillEllipse(-5.4, -19.8, 5.8, 6.8);
+  g.fillEllipse(5.4, -19.8, 5.8, 6.8);
+  g.fillStyle(p.hair);
+  g.fillEllipse(-5, -20.2, 5, 6);
+  g.fillEllipse(5, -20.2, 5, 6);
+  g.fillEllipse(0, -22.8, 10.6, 5.4);
+  g.fillTriangle(-8.2, -17.4, -1.2, -19.2, -8.6, -6.4);
+  g.fillTriangle(8.2, -17.4, 1.2, -19.2, 8.6, -6.4);
 };
 
 const drawUzi = (g: Phaser.GameObjects.Graphics, p: Palette, x: number, y: number, angle: number): void => {
@@ -179,7 +198,8 @@ const drawEast = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, lif
   g.fillRoundedRect(7.4, rightY, 3, 8, 2);
   drawUzi(g, p, -9, leftY + 1, -0.28 - liftL * 0.3);
   drawHead(g, p, 1.6);
-  drawOvalEye(g, 4.2, -14.4, p.eye);
+  drawOvalEye(g, 4.2, -14.2, p.eye);
+  drawFrameHair(g, p, 2);
   g.fillStyle(p.hair);
   g.fillEllipse(1.2, -21, 12, 6);
   g.fillTriangle(-6, -16, 2, -18, -7, -6);
@@ -196,7 +216,8 @@ const drawWest = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, lif
   g.fillRoundedRect(6.8, rightY, 3.2, 9, 2);
   drawUzi(g, p, 9, rightY + 1, Math.PI + 0.28 + liftR * 0.3);
   drawHead(g, p, -1.6);
-  drawOvalEye(g, -4.2, -14.4, p.eye);
+  drawOvalEye(g, -4.2, -14.2, p.eye);
+  drawFrameHair(g, p, -2);
   g.fillStyle(p.hair);
   g.fillEllipse(-1.2, -21, 12, 6);
   g.fillTriangle(6, -16, -2, -18, 7, -6);
@@ -219,20 +240,14 @@ const drawFront = (
   g.fillRoundedRect(7.2, rightY, 3.2, 10, 2);
   if (!north) {
     drawHead(g, p, 0);
-    drawOvalEye(g, -2.7, -14.4, p.eye);
-    drawOvalEye(g, 2.7, -14.4, p.eye);
-    g.fillStyle(p.hairDark);
-    g.fillEllipse(-5.6, -19.6, 6, 7);
-    g.fillEllipse(5.6, -19.6, 6, 7);
-    g.fillStyle(p.hair);
-    g.fillEllipse(-5.2, -20, 5.2, 6.2);
-    g.fillEllipse(5.2, -20, 5.2, 6.2);
-    g.fillEllipse(0, -22.8, 11, 5.6);
-    g.fillTriangle(-8, -17, -1, -19, -8.4, -7);
-    g.fillTriangle(8, -17, 1, -19, 8.4, -7);
+    drawOvalEye(g, -2.6, -14.2, p.eye);
+    drawOvalEye(g, 2.6, -14.2, p.eye);
+    drawFrameHair(g, p, 0);
+    drawBangs(g, p);
   } else {
     g.fillStyle(p.hair);
-    g.fillEllipse(0, -17, 15, 16);
+    g.fillEllipse(0, -17, 14.6, 16);
+    drawFrameHair(g, p, 0);
   }
   drawUzi(g, p, -11, leftY + 4, -0.35 - liftL * 0.35);
   drawUzi(g, p, 11, rightY + 4, 0.35 + liftR * 0.35);

@@ -63,8 +63,8 @@ const paletteFor = (rival: boolean, hitFlash: boolean): Palette => {
   return {
     skin: 0xc8a0e8,
     skinDark: 0x9a70c0,
-    hair: 0x4a1a6a,
-    hairDark: 0x2a0c40,
+    hair: 0x5c2482,
+    hairDark: 0x341058,
     eye: 0x3cdb5c,
     top: 0xc42838,
     topDark: 0x1a0c12,
@@ -146,19 +146,25 @@ const drawTorso = (g: Phaser.GameObjects.Graphics, p: Palette): void => {
   g.fillRect(-5.2, -9, 10.4, 2.6);
 };
 
-/** Medium-long: frames the upper/mid torso, not the whole body. */
+/** Head volume only — hanging locks are drawn in front so they frame the body. */
 const drawHair = (g: Phaser.GameObjects.Graphics, p: Palette, dir: number, north: boolean): void => {
   g.fillStyle(p.hairDark);
-  g.fillEllipse(dir * 0.4, -16, 18.4, 21);
-  g.fillEllipse(-7.6 + dir, 0, 6.8, 12.5);
-  g.fillEllipse(7.6 + dir, 0, 6.8, 12.5);
+  g.fillEllipse(dir * 0.4, -16, 17.6, 20);
   g.fillStyle(p.hair);
-  g.fillEllipse(dir * 0.4, -16.5, 16.4, 19);
-  g.fillEllipse(-6.8 + dir, 0.4, 5.7, 11.2);
-  g.fillEllipse(6.8 + dir, 0.4, 5.7, 11.2);
+  g.fillEllipse(dir * 0.4, -16.5, 15.6, 18);
   if (north) {
-    g.fillEllipse(dir, -18, 16, 17);
+    g.fillEllipse(dir, -18, 15.4, 17);
   }
+};
+
+/** Long witch hair to upper/mid torso — not floor-length. */
+const drawFrameHair = (g: Phaser.GameObjects.Graphics, p: Palette, dir: number): void => {
+  g.fillStyle(p.hairDark);
+  g.fillEllipse(-9 + dir * 0.5, 2.6, 7, 15.6);
+  g.fillEllipse(9 + dir * 0.5, 2.6, 7, 15.6);
+  g.fillStyle(p.hair);
+  g.fillEllipse(-8.2 + dir * 0.5, 2, 6, 14.2);
+  g.fillEllipse(8.2 + dir * 0.5, 2, 6, 14.2);
 };
 
 const drawEast = (
@@ -177,9 +183,10 @@ const drawEast = (
   g.fillStyle(p.skin);
   g.fillRoundedRect(-10.6, leftY, 2.8, 8, 2);
   drawHead(g, p, 1.6);
-  drawOvalEye(g, 4.2, -14.8, p.eye);
+  drawOvalEye(g, 4.2, -13.2, p.eye, 1.12);
+  drawFrameHair(g, p, 1);
   drawBangs(g, p, 1);
-  drawHat(g, p, 1, -26);
+  drawHat(g, p, 1, -29);
   drawStaff(g, p, 10.5, rightY - 2, -1.15 - staffRaise * 0.7);
 };
 
@@ -199,9 +206,10 @@ const drawWest = (
   g.fillStyle(p.skin);
   g.fillRoundedRect(7.8, rightY, 2.8, 8, 2);
   drawHead(g, p, -1.6);
-  drawOvalEye(g, -4.2, -14.8, p.eye);
+  drawOvalEye(g, -4.2, -13.2, p.eye, 1.12);
+  drawFrameHair(g, p, -1);
   drawBangs(g, p, -1);
-  drawHat(g, p, -1, -26);
+  drawHat(g, p, -1, -29);
   drawStaff(g, p, -10.5, leftY - 2, -1.95 + staffRaise * 0.7);
 };
 
@@ -223,23 +231,25 @@ const drawFront = (
 
   if (!north) {
     drawHead(g, p, 0);
-    drawOvalEye(g, -2.8, -14.8, p.eye);
-    drawOvalEye(g, 2.8, -14.8, p.eye);
+    drawOvalEye(g, -2.6, -13.2, p.eye, 1.12);
+    drawOvalEye(g, 2.6, -13.2, p.eye, 1.12);
+    drawFrameHair(g, p, 0);
     drawBangs(g, p, 0);
   } else {
     g.fillStyle(p.hair);
-    g.fillEllipse(0, -17.4, 16, 17);
+    g.fillEllipse(0, -17.4, 15.4, 17);
+    drawFrameHair(g, p, 0);
   }
 
-  drawHat(g, p, 0, -26);
+  drawHat(g, p, 0, -29);
   drawStaff(g, p, 11.2, rightY + 2, -1.2 - staffRaise * 0.55);
 };
 
 const drawHead = (g: Phaser.GameObjects.Graphics, p: Palette, faceX: number): void => {
   g.fillStyle(p.skinDark);
-  g.fillEllipse(faceX, -14.8, 14.6, 17.8);
+  g.fillEllipse(faceX, -14.4, 13.6, 17.2);
   g.fillStyle(p.skin);
-  g.fillEllipse(faceX, -14.8, 13, 16.2);
+  g.fillEllipse(faceX, -14.4, 12, 15.6);
 };
 
 const drawBangs = (g: Phaser.GameObjects.Graphics, p: Palette, dir: number): void => {
@@ -254,12 +264,12 @@ const drawBangs = (g: Phaser.GameObjects.Graphics, p: Palette, dir: number): voi
 
 const drawHat = (g: Phaser.GameObjects.Graphics, p: Palette, x: number, y: number): void => {
   g.fillStyle(COLORS.ink);
-  g.fillEllipse(x, y + 8, 30, 8.4);
+  g.fillEllipse(x, y + 8, 24, 7);
   g.fillStyle(p.hat);
-  g.fillEllipse(x, y + 7.2, 28, 7.4);
-  g.fillTriangle(x - 8, y + 6, x + 8, y + 6, x + 1, y - 16);
+  g.fillEllipse(x, y + 7.4, 22, 6.2);
+  g.fillTriangle(x - 7, y + 6, x + 7, y + 6, x + 0.8, y - 15);
   g.fillStyle(p.hatBand);
-  g.fillRect(x - 7.4, y + 2, 15.6, 2);
+  g.fillRect(x - 6.6, y + 2.2, 13.6, 2);
 };
 
 const drawStaff = (g: Phaser.GameObjects.Graphics, p: Palette, x: number, y: number, angle: number): void => {
