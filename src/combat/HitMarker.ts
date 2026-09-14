@@ -158,6 +158,32 @@ export class HitMarker {
     g.fillCircle(nx * length, ny * length, 3);
   }
 
+  /** Cyan dual-uzi aim line for Mender Pulse. */
+  syncPulseAim(
+    x: number,
+    y: number,
+    aimX: number,
+    aimY: number,
+    length: number,
+    aiming: boolean,
+    arm: -1 | 1 = -1,
+    offsetRad = 0.028,
+  ): void {
+    const angle = Math.atan2(aimY, aimX) + arm * offsetRad;
+    const g = this.graphics;
+    g.clear();
+    g.setPosition(x, y);
+    const alpha = aiming ? 0.84 : 0.5;
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    g.lineStyle(3.2, 0x1a4060, alpha * 0.24);
+    g.lineBetween(nx * 10, ny * 10, nx * length, ny * length);
+    g.lineStyle(aiming ? 1.8 : 1.4, 0x4ec8ff, alpha);
+    g.lineBetween(nx * 10, ny * 10, nx * length, ny * length);
+    g.fillStyle(0xdff4ff, alpha);
+    g.fillCircle(nx * length, ny * length, 3);
+  }
+
   /** Thin purple aim line plus persistent light-attack and Hex range auras. */
   syncWitchAim(
     x: number,

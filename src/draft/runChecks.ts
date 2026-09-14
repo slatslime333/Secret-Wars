@@ -28,6 +28,7 @@ const scenarioClassMap = (): CheckResult => {
     HERO_DRAFT_CLASS.shadow === 'frontliner' &&
     HERO_DRAFT_CLASS.ninja === 'support' &&
     HERO_DRAFT_CLASS.rope === 'support' &&
+    HERO_DRAFT_CLASS.mender === 'support' &&
     HERO_DRAFT_CLASS.witch === 'tank' &&
     HERO_DRAFT_CLASS.death === 'tank' &&
     otherHeroOfClass('cole') === 'shadow' &&
@@ -94,10 +95,22 @@ const scenarioPlaceUsesSpawn = (): CheckResult => {
   return { name: 'placed roster follows spawn side', ok, detail: `player=${playerHero} alpha=${placed.roster.alpha.join(',')} bravo=${placed.roster.bravo.join(',')}` };
 };
 
+const scenarioMenderUniqueTeam = (): CheckResult => {
+  const draft = randomizeDraft('mender', rngOf([0.2, 0.5, 0.8, 0.1, 0.9]));
+  const cole = randomizeDraft('cole', rngOf([0.15, 0.45, 0.75, 0.25, 0.6]));
+  const ok = draftIsValid(draft) && draftIsValid(cole) && draft.playerId === 'mender';
+  return {
+    name: 'mender three-support draft',
+    ok,
+    detail: `menderAllies=${draft.allies.join(',')} coleAllies=${cole.allies.join(',')}`,
+  };
+};
+
 export const runDraftChecks = (): CheckResult[] => [
   scenarioClassMap(),
   scenarioRandomUnique(),
   scenarioPickCycles(),
   scenarioSpawnNeverSame(),
   scenarioPlaceUsesSpawn(),
+  scenarioMenderUniqueTeam(),
 ];

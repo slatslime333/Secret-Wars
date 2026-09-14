@@ -4,7 +4,6 @@ import type { HeroId } from '../heroes/roster';
 import type { MatchRoster, TeamRoster } from '../match/rosterSetup';
 import {
   DRAFT_CLASSES,
-  DRAFT_HERO_IDS,
   HEROES_BY_CLASS,
   draftClassOf,
   otherHeroOfClass,
@@ -58,7 +57,7 @@ export const teamHasUniqueClasses = (heroes: readonly HeroId[]): boolean => {
 export const draftIsValid = (draft: PlayDraft): boolean => {
   const playerTeam = [draft.playerId, ...draft.allies];
   const all = [...playerTeam, ...draft.enemies];
-  if (new Set(all).size !== DRAFT_HERO_IDS.length) {
+  if (new Set(all).size !== 6) {
     return false;
   }
   return teamHasUniqueClasses(playerTeam) && teamHasUniqueClasses(draft.enemies);
@@ -73,8 +72,8 @@ export const defaultEnemyPicks = (playerId: HeroId, rng: () => number): Record<D
       picks[cls] = enemyOfPlayerClass(playerId);
       continue;
     }
-    const pair = HEROES_BY_CLASS[cls];
-    picks[cls] = pair[Math.floor(rng() * pair.length)] ?? pair[0];
+    const pool = HEROES_BY_CLASS[cls];
+    picks[cls] = pool[Math.floor(rng() * pool.length)] ?? pool[0];
   }
   return picks;
 };
@@ -85,15 +84,20 @@ export const cycleEnemyPick = (playerId: HeroId, picks: Record<DraftClass, HeroI
     next[cls] = enemyOfPlayerClass(playerId);
     return next;
   }
-  const pair = HEROES_BY_CLASS[cls];
-  next[cls] = pair[0] === picks[cls] ? pair[1] : pair[0];
+  const pool = HEROES_BY_CLASS[cls].filter((id) => id !== playerId);
+  const idx = pool.indexOf(picks[cls]);
+  next[cls] = pool[(idx + 1) % pool.length] ?? pool[0];
   return next;
 };
 
 export const draftFromEnemyPicks = (playerId: HeroId, picks: Record<DraftClass, HeroId>): PlayDraft => {
   const enemies = DRAFT_CLASSES.map((cls) => (cls === draftClassOf(playerId) ? enemyOfPlayerClass(playerId) : picks[cls])) as TeamRoster;
   const used = new Set<HeroId>([playerId, ...enemies]);
-  const allies = DRAFT_HERO_IDS.filter((id) => !used.has(id)) as [HeroId, HeroId];
+  const playerClass = draftClassOf(playerId);
+  const allies = DRAFT_CLASSES.filter((cls) => cls !== playerClass).map((cls) => {
+    const leftover = HEROES_BY_CLASS[cls].find((id) => !used.has(id));
+    return leftover ?? HEROES_BY_CLASS[cls][0];
+  }) as [HeroId, HeroId];
   return { playerId, allies, enemies };
 };
 

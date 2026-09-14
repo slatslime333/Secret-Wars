@@ -12,6 +12,7 @@ import { DEATH } from '../config/death';
 import { ROPE } from '../config/rope';
 import { WITCH } from '../config/witch';
 import { SHADOW } from '../config/shadow';
+import { MENDER } from '../config/mender';
 import { NINJA_KICK, NINJA_SMOKE, NINJA_TORNADO } from './abilities/ninja/tunables';
 import { COLE_ATTACK, COLE_BALL, COLE_DISCHARGE, COLE_STORM } from './abilities/cole/tunables';
 import { DEATH_ATTACK, DEATH_GUN, DEATH_SMASH, DEATH_SWEEP } from './abilities/death/tunables';
@@ -25,6 +26,7 @@ import {
   witchHexAllyRange,
 } from './abilities/witch/tunables';
 import { SHADOW_CLAW, SHADOW_DASH, SHADOW_MARK, SHADOW_RAGE } from './abilities/shadow/tunables';
+import { MENDER_ANGEL, MENDER_SOUL, MENDER_WIND } from './abilities/mender/tunables';
 
 export type HeroSelectCopy = {
   id: HeroId;
@@ -119,6 +121,12 @@ const ABILITY_TEXT: Record<string, string> = {
     `Shadow dashes through the aimed line, dealing ${hit(SHADOW_DASH.damage)} damage. Enemies are knocked sideways, move ${slower(SHADOW_DASH.slowMul)}, and attack ${cooldownSlower(SHADOW_DASH.attackSlowMul)} for ${seconds(SHADOW_DASH.slowMs)}.`,
   'shadow-rage':
     `Shadow locks in place for ${seconds(SHADOW_RAGE.castMs)} to transform, then fights harder for ${seconds(SHADOW_RAGE.durationMs)}: ${faster(SHADOW_RAGE.moveMul)} movement, ${faster(SHADOW_RAGE.attackSpeedMul)} attacks, +${rageStamina} max stamina, ${faster(SHADOW_RAGE.staminaRegenMul)} stamina recovery, and ${more(SHADOW_RAGE.defenseMul)} defense.`,
+  'mender-guardian-angel':
+    `Mender fires a Cole-style energy ball at an ally. The shield lasts ${seconds(MENDER_ANGEL.durationMs)} and converts incoming damage into a Discharge-like knockback burst, ${Math.round(MENDER_ANGEL.healRatio * 100)}% of absorbed damage as healing, and stamina. The ${seconds(MENDER_ANGEL.cooldownMs)} cooldown starts when the shield ends.`,
+  'mender-soul-dash':
+    `Dash to an ally (same range as Backflip Kick), become a fairy, and grant ${Math.round(MENDER_SOUL.healMaxHp * 100)}% max HP plus ${faster(MENDER_SOUL.moveMul)} movement, ${faster(MENDER_SOUL.attackSpeedMul)} attack speed, and ${faster(MENDER_SOUL.staminaRegenMul)} stamina recovery for ${seconds(MENDER_SOUL.buffMs)}. Press again to backflip out. The cooldown starts on exit.`,
+  'mender-second-wind':
+    `Plant a large yellow field for ${seconds(MENDER_WIND.durationMs)}. Allies inside slowly regenerate health and recover stamina faster. Mender takes reduced damage while she holds the circle. Enemies inside are slowed ${slower(MENDER_WIND.enemySlowMul)}.`,
 };
 
 const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
@@ -157,6 +165,12 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
       'A committed melee bruiser. Shadow claws into the fight, marks wounds, and rages when she can stay in close.',
     light:
       `Fast shadow-claw swipes dealing ${shadowHit(1)}, ${shadowHit(2)}, then a ${shadowHit(3)}-damage finisher with light knockback. Each hit leaves a wound that drains ${markPct}% of their max health each second for ${seconds(SHADOW_MARK.durationMs)}.`,
+  },
+  mender: {
+    description:
+      'A fragile ranged support. Mender pokes with dual uzis, then spends her kit protecting teammates instead of finishing fights herself.',
+    light:
+      `Pulse: alternating cyan SMG shots. Each shot deals ${hit(MENDER.attackDamage)} damage at long range with light knockback and a brief slow. Fast, readable dual-uzi fire — support pressure, not a finisher.`,
   },
 };
 

@@ -84,6 +84,7 @@ export class HeroRuntime {
     aimOverride?: { x: number; y: number },
     allies: NinjaBody[] = [],
   ): AbilityContext {
+    const abilities = this.abilities;
     return {
       scene: this.scene,
       now,
@@ -98,6 +99,8 @@ export class HeroRuntime {
         this.block.setHeld(now, this.body, false);
       },
       aimOverride,
+      holdAbilitySlot: (slot) => abilities.holdAbilitySlot(slot),
+      releaseAbilitySlot: (slot, at, startCooldown) => abilities.releaseAbilitySlot(slot, at, startCooldown),
     };
   }
 

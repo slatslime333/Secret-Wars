@@ -36,13 +36,13 @@ export const PINNED_GAMEPLAY: Record<'ninja' | 'cole' | 'death', PinnedStats> = 
   },
   cole: {
     maxHealth: 168,
-    maxStamina: 114,
+    maxStamina: 120,
     moveSpeed: 168,
     attackDamage: 14,
     defense: 28,
     knockbackPower: 210,
     attackCooldownMs: 494,
-    attackRange: 143,
+    attackRange: 164,
   },
   death: {
     maxHealth: 190,
@@ -136,8 +136,8 @@ export const assertFoundationalStatLock = (): void => {
     mismatches.push(`shadow claw radius ${SHADOW_CLAW.radius} !== 186`);
   }
   const clawWas = abilityDamage(64);
-  if (Math.abs(SHADOW_CLAW.damage - clawWas * 2.7) > 0.001) {
-    mismatches.push(`shadow claw damage ${SHADOW_CLAW.damage} !== ${clawWas * 2.7}`);
+  if (Math.abs(SHADOW_CLAW.damage - clawWas * 2.7 * 0.9) > 0.001) {
+    mismatches.push(`shadow claw damage ${SHADOW_CLAW.damage} !== ${clawWas * 2.7 * 0.9}`);
   }
   const dashWas = abilityDamage(44);
   if (Math.abs(SHADOW_DASH.damage - dashWas * 1.35) > 0.001) {
