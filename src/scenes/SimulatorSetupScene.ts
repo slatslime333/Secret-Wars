@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { LANES, type LaneId } from '../config/arena';
 import type { TeamId } from '../config/hero';
-import { PLAYABLE_HEROES } from '../heroes/roster';
+import { addHeroPortrait } from '../heroes/pixel';
 import { heroSelectCopy } from '../heroes/selectCopy';
 import {
   DEFAULT_SIMULATOR_ROSTER,
@@ -157,10 +157,11 @@ export class SimulatorSetupScene extends Phaser.Scene {
     row.setInteractive({ useHandCursor: true });
     row.on(Phaser.Input.Events.POINTER_UP, () => this.cycle(team, lane));
 
-    const art = this.add.graphics();
-    art.setPosition(x - width / 2 + 36, y + 30);
-    art.setScale(1.15);
-    PLAYABLE_HEROES[heroId].draw(art, { facing: team === 'alpha' ? 'east' : 'west', team });
+    const art = addHeroPortrait(this, x - width / 2 + 36, y + 30, heroId, {
+      team,
+      scale: 0.34,
+      facing: team === 'alpha' ? 'east' : 'west',
+    });
 
     const laneLabel = this.add
       .text(x - width / 2 + 64, y + 8, lane.toUpperCase(), {
