@@ -2,8 +2,8 @@ import type { TeamId } from '../../config/hero';
 import type { CardinalFacing } from '../drawNinja';
 import { HERO_IDS, type HeroId } from '../roster';
 
-/** Matches `scripts/renderHeroPixels.py`. */
-export const HERO_FRAME = 64;
+/** Matches `scripts/renderRpgSprites.py`. */
+export const HERO_FRAME = 48;
 export const HERO_SHEET_COLS = [
   'idle0',
   'idle1',
@@ -20,20 +20,19 @@ export const HERO_SHEET_ROWS = ['south', 'north', 'east', 'west'] as const;
 
 export type HeroPoseName = (typeof HERO_SHEET_COLS)[number];
 
-/** ~34px on-screen height so fighters stay the same world size as the old graphics. */
-export const HERO_PIXEL_SCALE = 0.85;
-export const HERO_PIXEL_ORIGIN = { x: 0.5, y: 0.61 };
+/** Compact 48px frames; ~34px on-screen character height. */
+export const HERO_PIXEL_SCALE = 1.2;
+export const HERO_PIXEL_ORIGIN = { x: 0.5, y: 0.72 };
 
-/** Style test: only Witch uses the new painted sheet until the look is approved. */
-export const LIVE_PIXEL_HEROES: readonly HeroId[] = ['witch'];
+/** All playable heroes use the compact RPG sheets. */
+export const LIVE_PIXEL_HEROES: readonly HeroId[] = HERO_IDS;
 
 export const usesHeroPixels = (id: string): id is HeroId =>
   (LIVE_PIXEL_HEROES as readonly string[]).includes(id);
 
-export const heroFramePx = (id: string): number => (id === 'witch' ? 160 : 64);
-export const heroDrawScale = (id: string): number => (id === 'witch' ? 0.24 : HERO_PIXEL_SCALE);
-export const heroDrawOrigin = (id: string): { x: number; y: number } =>
-  id === 'witch' ? { x: 0.5, y: 0.58 } : HERO_PIXEL_ORIGIN;
+export const heroFramePx = (_id: string): number => HERO_FRAME;
+export const heroDrawScale = (_id: string): number => HERO_PIXEL_SCALE;
+export const heroDrawOrigin = (_id: string): { x: number; y: number } => HERO_PIXEL_ORIGIN;
 
 export const HERO_WALK_FRAME_MS = 140;
 export const HERO_IDLE_FRAME_MS = 480;
