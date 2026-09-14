@@ -187,6 +187,8 @@ export type Situation = {
   allyHeroCount?: number;
   now?: number;
   objective?: ObjectiveHint;
+  teamScore?: { self: number; enemy: number; lastKillAt?: number };
+  teamMomentum?: number;
 };
 
 export type TacticalDebugInfo = {
@@ -206,6 +208,8 @@ export type TacticalDebugInfo = {
   projectile: boolean;
   regrouping: boolean;
   savedUlt: boolean;
+  team?: string;
+  objective?: string;
 };
 
 export const NEUTRAL_PERSONALITY: Personality = {

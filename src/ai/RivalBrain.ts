@@ -59,9 +59,12 @@ export class RivalBrain {
     cpu.regenStamina(delta, now);
     cpu.regenBlockShield(delta, now);
     this.mind.think(now, cpu, field, scene);
-    const target = this.mind.target ?? foes[0];
+    const objective = this.mind.situationView().objective;
+    const target = this.mind.action === 'contest_objective' ? this.mind.target : (this.mind.target ?? foes[0]);
     if (target) {
       cpu.setAim(target.x - cpu.x, target.y - cpu.y);
+    } else if (this.mind.action === 'contest_objective' && objective) {
+      cpu.setAim(objective.x - cpu.x, objective.y - cpu.y);
     }
 
     this.dash.apply(now, cpu);
@@ -121,8 +124,15 @@ export class RivalBrain {
       this.walk(now, cpu, scene);
     }
 
-    this.queueSwing(now, cpu, target);
-    const inRange = target ? Math.hypot(target.x - cpu.x, target.y - cpu.y) <= cpu.stats.attackRange * 1.05 : false;
+    this.queueSwing(now, cpu, target, objective);
+    const smashRange =
+      this.mind.action === 'contest_objective' &&
+      objective &&
+      (objective.kind === 'golden_piggy' || objective.kind === 'executioner') &&
+      Math.hypot(cpu.x - objective.x, cpu.y - objective.y) <= cpu.stats.attackRange + objective.radius + 10;
+    const inRange = target
+      ? Math.hypot(target.x - cpu.x, target.y - cpu.y) <= cpu.stats.attackRange * 1.05
+      : Boolean(smashRange);
     const held = now < this.holdUntil && inRange && cpu.canAttack(now) && this.mind.wantsAttack();
     const pressed = this.tapQueued && cpu.canAttack(now) && this.mind.wantsAttack();
     this.tapQueued = false;
@@ -139,12 +149,30 @@ export class RivalBrain {
     }
   }
 
-  private queueSwing(now: number, cpu: NinjaBody, target: NinjaBody | undefined): void {
-    if (!target || !this.mind.wantsAttack() || !cpu.canAttack(now) || now < this.pauseUntil) {
+  private queueSwing(now: number, cpu: NinjaBody, target: NinjaBody | undefined, objective?: { kind: string; x: number; y: number; radius: number }): void {
+    if (!this.mind.wantsAttack() || !cpu.canAttack(now) || now < this.pauseUntil) {
+      return;
+    }
+    const smash =
+      this.mind.action === 'contest_objective' &&
+      objective &&
+      (objective.kind === 'golden_piggy' || objective.kind === 'executioner') &&
+      Math.hypot(cpu.x - objective.x, cpu.y - objective.y) <= cpu.stats.attackRange + objective.radius + 10;
+    if (!target) {
+      if (!smash || now < this.holdUntil) {
+        return;
+      }
+      this.tapQueued = Math.random() > 0.5;
+      this.holdUntil = now + (this.tapQueued ? 90 : 140);
       return;
     }
     const distance = Math.hypot(target.x - cpu.x, target.y - cpu.y);
     if (distance > cpu.stats.attackRange * 1.05) {
+      if (!smash || now < this.holdUntil) {
+        return;
+      }
+      this.tapQueued = Math.random() > 0.5;
+      this.holdUntil = now + (this.tapQueued ? 90 : 140);
       return;
     }
     if (now < this.holdUntil) {
@@ -194,7 +222,16 @@ export class RivalBrain {
       now,
       this.mind.homeX,
       this.mind.homeY,
-      target ? { x: target.x, y: target.y, aimX: target.aim.x, aimY: target.aim.y } : undefined,
+      target
+        ? {
+            x: target.x,
+            y: target.y,
+            aimX: target.aim.x,
+            aimY: target.aim.y,
+            vx: target.body?.velocity.x,
+            vy: target.body?.velocity.y,
+          }
+        : undefined,
       ally ? { x: ally.x, y: ally.y, aimX: ally.aim.x, aimY: ally.aim.y } : undefined,
       this.mind.intent.flankSign,
       cpu.x,

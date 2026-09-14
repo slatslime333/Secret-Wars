@@ -482,7 +482,7 @@ export class MatchScene extends Phaser.Scene {
       }
       const result = this.stats.registerHeroDeath(unit.body, now);
       if (result.killer && result.killer.team !== unit.team) {
-        this.score.addKill(result.killer.team);
+        this.score.addKill(result.killer.team, now);
       }
       this.objectives?.notifyHeroDeath(now, unit, result.killer ?? undefined);
       unit.markDead(now);

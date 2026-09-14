@@ -1,6 +1,9 @@
 import { atFarEdge } from '../../config/arena';
 import { TACTIC } from './constants';
 import { isRangedLike } from './kitProfile';
+import { assessObjective, isZoneObjective } from './objectiveIntel';
+import type { ObjectiveIntel } from './objectiveIntel';
+import { assessTeam, biasAction, type TeamIntel } from './teamIntel';
 import type {
   CombatantView,
   GamePlan,
@@ -11,7 +14,7 @@ import type {
   ThreatLevel,
 } from './types';
 
-const MAX_SCORED = 48;
+const MAX_SCORED = 64;
 
 export const threatFromRisk = (risk: number): ThreatLevel => {
   if (risk >= 0.78) {
@@ -473,7 +476,6 @@ export const riskOfSituation = (situation: Situation): number => {
  */
 export const scoreSituation = (situation: Situation, out: ScoredAction[]): number => {
   const { self, allies, enemies, personality, kind } = situation;
-  const risk = riskOfSituation(situation);
   const clusters = buildClusters(self, allies, enemies);
   let urgent: Cluster | undefined;
   let handledNearby = false;
@@ -485,6 +487,9 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       handledNearby = true;
     }
   }
+  const team = assessTeam(situation, handledNearby);
+  const risk = clamp(riskOfSituation(situation) + team.riskDelta, 0, 1);
+  const objIntel = kind === 'hero' ? assessObjective(situation, { handledNearby, risk }) : undefined;
 
   const ranged = isRangedOf(self, situation.kit);
   const front = self.role === 'frontliner' || self.role === 'tank';
@@ -495,6 +500,8 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     situation.visibleHeroes ?? enemies.filter((enemy) => enemy.kind === 'hero' && enemy.visible).length;
   const allyHeroes = situation.allyHeroCount ?? allies.filter((ally) => ally.kind === 'hero').length;
   let count = 0;
+  const tune = (action: TacticalAction, score: number): number =>
+    biasAction(action, score, team, personality, self);
 
   const persist = (enemy: CombatantView, score: number): number =>
     enemy.id === situation.currentTargetId
@@ -575,7 +582,19 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (self.staminaRatio < 0.22) {
       attack -= 10 + personality.caution * 6;
     }
-    count = write(out, count, 'attack', persist(enemy, attack * vis), pile > 0.7 ? 'already handled' : enemy.blocking ? 'shield up' : victim ? 'press the threat' : 'take the fight', enemy.id);
+    if (objIntel && enemy.kind === 'hero') {
+      const enemyOnObj = Math.hypot(enemy.x - objIntel.x, enemy.y - objIntel.y) < objIntel.radius + 90;
+      if (isZoneObjective(objIntel.kind) && objIntel.inside && !enemyOnObj) {
+        attack -= 12;
+      }
+      if (objIntel.free && handledNearby) {
+        attack -= 10;
+      }
+      if (objIntel.play === 'defend_objective' && enemyOnObj) {
+        attack += 10;
+      }
+    }
+    count = write(out, count, 'attack', tune('attack', persist(enemy, attack * vis)), pile > 0.7 ? 'already handled' : enemy.blocking ? 'shield up' : victim ? 'press the threat' : 'take the fight', enemy.id);
 
     if (enemy.hpRatio <= TACTIC.finishHp) {
       let finish = 26 + (TACTIC.finishHp - enemy.hpRatio) * 90 + iso * 18;
@@ -590,7 +609,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         finish -= 16;
       }
       finish += personality.aggression * 6;
-      count = write(out, count, 'finish_target', persist(enemy, finish * vis), pile > 0.7 ? 'already handled' : 'finishable', enemy.id);
+      count = write(out, count, 'finish_target', tune('finish_target', persist(enemy, finish * vis)), pile > 0.7 ? 'already handled' : 'finishable', enemy.id);
     }
 
     if ((distracted || press.allies.length >= 1) && self.hpRatio > 0.22 && pile < 0.75) {
@@ -636,13 +655,26 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         chase -= 12;
       }
       chase += personality.aggression * 8 + personality.persistence * 6;
-      count = write(out, count, 'chase', persist(enemy, chase * vis), 'pursue', enemy.id);
+      if (objIntel && isZoneObjective(objIntel.kind) && objIntel.inside) {
+        const enemyOnObj = Math.hypot(enemy.x - objIntel.x, enemy.y - objIntel.y) < objIntel.radius + 80;
+        if (!enemyOnObj) {
+          chase -= 24;
+        }
+      }
+      count = write(out, count, 'chase', tune('chase', persist(enemy, chase * vis)), 'pursue', enemy.id);
     }
 
     const incomingAlly = allies.find((ally) => movingToward(enemy, ally.x, ally.y) && dist(enemy, ally) < 420 && !engagedWith(enemy, ally));
     const incomingSelf = movingToward(enemy, self.x, self.y) && d < 460 && d > range * 1.1;
-    if (incomingAlly || incomingSelf) {
-      let intercept = 24 + (incomingAlly ? 14 : 6) - (d / situation.vision) * 16;
+    const incomingObj =
+      Boolean(objIntel) &&
+      enemy.kind === 'hero' &&
+      enemy.visible &&
+      movingToward(enemy, objIntel!.x, objIntel!.y) &&
+      Math.hypot(enemy.x - objIntel!.x, enemy.y - objIntel!.y) > objIntel!.radius &&
+      Math.hypot(enemy.x - objIntel!.x, enemy.y - objIntel!.y) < 540;
+    if (incomingAlly || incomingSelf || incomingObj) {
+      let intercept = 24 + (incomingAlly ? 14 : incomingObj ? 12 : 6) - (d / situation.vision) * 16;
       intercept -= pile * 8;
       if (handledNearby && incomingAlly) {
         intercept += 12;
@@ -651,12 +683,25 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         intercept += 16;
       }
       intercept += personality.assistTendency * 8;
+      if (incomingObj && objIntel) {
+        intercept += 10 + objIntel.urgency * 12;
+        const toObj = Math.hypot(objIntel.x - enemy.x, objIntel.y - enemy.y) || 1;
+        const cutX = enemy.x + ((objIntel.x - enemy.x) / toObj) * Math.min(180, toObj * 0.45);
+        const cutY = enemy.y + ((objIntel.y - enemy.y) / toObj) * Math.min(180, toObj * 0.45);
+        const toCut = Math.hypot(cutX - self.x, cutY - self.y);
+        if (toCut + 40 < objIntel.dist) {
+          intercept += 10;
+        }
+        if (objIntel.alliesHandling || objIntel.inside) {
+          intercept += 6;
+        }
+      }
       count = write(
         out,
         count,
         'intercept',
-        intercept * vis,
-        incomingAlly ? 'cut off reinforcement' : 'meet the approach',
+        tune('intercept', intercept * vis),
+        incomingObj ? 'cut off objective run' : incomingAlly ? 'cut off reinforcement' : 'meet the approach',
         enemy.id,
         incomingAlly?.id ?? -1,
       );
@@ -724,7 +769,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       assist += 10;
     }
     const focus = foes.reduce((best, foe) => (foe.hpRatio < best.hpRatio ? foe : best), foes[0]);
-    count = write(out, count, 'assist_ally', assist, foes.length > allyHelp + 1 ? 'outnumbered ally' : 'help the fight', focus.id, ally.id);
+    count = write(out, count, 'assist_ally', tune('assist_ally', assist), foes.length > allyHelp + 1 ? 'outnumbered ally' : 'help the fight', focus.id, ally.id);
 
     const pursuers = foes.filter((foe) => movingToward(foe, ally.x, ally.y) || engagedWith(foe, ally));
     if (ally.hpRatio < 0.34 && pursuers.length > 0) {
@@ -734,16 +779,16 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       if (self.hpRatio < 0.18) {
         protect -= 12;
       }
-      count = write(out, count, 'protect_ally', protect, 'cover retreat', pursuers[0].id, ally.id);
+      count = write(out, count, 'protect_ally', tune('protect_ally', protect), 'cover retreat', pursuers[0].id, ally.id);
     }
   }
 
-  if (urgent && urgent.urgency > 28 && urgent.allies.length <= urgent.enemies.length) {
+  if (urgent && urgent.urgency > 28 && urgent.allies.length > 0 && urgent.allies.length <= urgent.enemies.length) {
     const focus = urgent.enemies[0];
     const already = urgent.allies.some((ally) => ally.id === self.id);
     if (!already && dist(self, { ...self, x: urgent.x, y: urgent.y }) < situation.vision * 1.15) {
       const extra = 10 + urgent.urgency * 0.35 - (Math.hypot(urgent.x - self.x, urgent.y - self.y) / situation.vision) * 12;
-      count = write(out, count, 'assist_ally', extra, 'urgent fight', focus?.id ?? -1, urgent.allies[0]?.id ?? -1);
+      count = write(out, count, 'assist_ally', tune('assist_ally', extra), 'urgent fight', focus?.id ?? -1, urgent.allies[0]?.id ?? -1);
     }
   }
 
@@ -763,12 +808,18 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
   }
   disengage -= personality.aggression * 8;
   disengage += (personality.retreatWillingness - 0.5) * 10;
-  if ((self.role === 'tank' || self.role === 'frontliner') && self.hpRatio > 0.4) {
+  if (team.outnumbered && team.localEnemies >= 2) {
+    disengage += 10;
+  }
+  if (team.outnumbered && team.localEnemies >= 3) {
+    disengage += 12;
+  }
+  if ((self.role === 'tank' || self.role === 'frontliner') && self.hpRatio > 0.4 && !(team.outnumbered && team.localEnemies >= 3)) {
     disengage -= 14;
   }
-  count = write(out, count, 'retreat', disengage, risk >= 0.54 ? 'bad fight' : 'reset');
-  if (risk >= 0.7 || (self.hpRatio < TACTIC.criticalHp && risk >= 0.45)) {
-    count = write(out, count, 'escape', disengage + 8 + (self.recentlyHit ? 6 : 0), 'survive');
+  count = write(out, count, 'retreat', tune('retreat', disengage), risk >= 0.54 ? 'bad fight' : 'reset');
+  if (risk >= 0.7 || (self.hpRatio < TACTIC.criticalHp && risk >= 0.45) || (team.outnumbered && team.localEnemies >= 3 && self.hpRatio < 0.85)) {
+    count = write(out, count, 'escape', tune('escape', disengage + 8 + (self.recentlyHit ? 6 : 0)), 'survive');
   }
 
   if (kind === 'hero' && self.hpRatio < TACTIC.recoverHp) {
@@ -819,12 +870,25 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (stuckAtEdge) {
       farmScore += 28;
     }
+    if (objIntel && objIntel.free && objIntel.canArriveInTime && self.hpRatio > 0.26 && !stuckAtEdge) {
+      farmScore -= 22 + objIntel.urgency * 10;
+    } else if (objIntel && objIntel.urgency >= 0.72 && objIntel.canArriveInTime && !objIntel.tooLate) {
+      farmScore -= 14;
+    } else if (objIntel && objIntel.alliesHandling) {
+      farmScore += 4;
+    }
     count = write(
       out,
       count,
       'farm_minions',
-      farmScore,
-      heroThreat ? 'minions are hot' : stuckAtEdge ? 'farm instead of the wall' : 'farm and recover',
+      tune('farm_minions', farmScore),
+      objIntel?.free && !stuckAtEdge
+        ? 'objective beats farm'
+        : heroThreat
+          ? 'minions are hot'
+          : stuckAtEdge
+            ? 'farm instead of the wall'
+            : 'farm and recover',
       nearestMinion.id,
     );
   }
@@ -927,7 +991,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         const d = dist(self, ally);
         return !best || d < best.d ? { ally, d } : best;
       }, undefined as { ally: CombatantView; d: number } | undefined);
-    count = write(out, count, 'regroup', regroup, 'find spacing with the team', -1, buddy?.ally.id ?? -1);
+    count = write(out, count, 'regroup', tune('regroup', regroup), 'find spacing with the team', -1, buddy?.ally.id ?? -1);
   }
 
   if (situation.lastSurvivor) {
@@ -940,8 +1004,8 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     count = write(out, count, 'escape', 24 + (self.hpRatio < 0.35 ? 8 : 0), 'shot incoming');
   }
 
-  if (kind === 'hero' && situation.objective) {
-    count = scoreObjective(out, count, situation, risk, ranged, front, support);
+  if (kind === 'hero' && objIntel) {
+    count = scoreObjective(out, count, situation, objIntel, team, risk, ranged, front, support, tune);
   }
 
   if (plan && kind === 'hero') {
@@ -955,23 +1019,26 @@ const scoreObjective = (
   out: ScoredAction[],
   count: number,
   situation: Situation,
+  intel: ObjectiveIntel,
+  team: TeamIntel,
   risk: number,
   ranged: boolean,
   front: boolean,
   support: boolean,
+  tune: (action: TacticalAction, score: number) => number,
 ): number => {
   const obj = situation.objective;
   if (!obj) {
     return count;
   }
   const { self, personality, allies, enemies } = situation;
-  const d = Math.hypot(obj.x - self.x, obj.y - self.y);
+  const d = intel.dist;
   const between = enemies.filter((enemy) => {
     if (enemy.kind !== 'hero' || !enemy.visible) {
       return false;
     }
-    const toObjX = obj.x - self.x;
-    const toObjY = obj.y - self.y;
+    const toObjX = intel.x - self.x;
+    const toObjY = intel.y - self.y;
     const span = Math.hypot(toObjX, toObjY) || 1;
     const t = ((enemy.x - self.x) * toObjX + (enemy.y - self.y) * toObjY) / (span * span);
     if (t <= 0.08 || t >= 0.92) {
@@ -981,71 +1048,114 @@ const scoreObjective = (
     const py = self.y + toObjY * t;
     return Math.hypot(enemy.x - px, enemy.y - py) < 70;
   }).length;
-  let contest = 16 + obj.urgency * 22 - (d / Math.max(180, situation.vision)) * 14;
-  contest += (personality.aggression - 0.5) * 12;
-  contest += (personality.opportunism - 0.5) * 8;
-  contest -= (personality.caution - 0.5) * 10;
-  contest -= risk * 26;
+
+  let contest = 18 + intel.urgency * 28 - (d / Math.max(180, situation.vision)) * 12;
+  contest += (personality.aggression - 0.5) * 10;
+  contest += (personality.opportunism - 0.5) * 10;
+  contest -= (personality.caution - 0.5) * 8;
+  contest -= risk * 18;
+  contest -= intel.risk * 10;
   if (self.hpRatio < personality.retreatHp) {
-    contest -= 20;
-  }
-  if (self.hpRatio < TACTIC.criticalHp) {
     contest -= 18;
   }
-  if (situation.isolated && obj.occupyingAllies === 0) {
-    contest -= 10 + personality.caution * 8;
-  }
-  if (between >= 2 && self.hpRatio < 0.45) {
+  if (self.hpRatio < TACTIC.criticalHp) {
     contest -= 16;
   }
-  if (between >= 3 && self.hpRatio < 0.28) {
-    contest -= 22;
+  if (self.staminaRatio < 0.12) {
+    contest -= 10;
   }
-  if (obj.occupyingEnemies >= obj.occupyingAllies + 2 && self.hpRatio < 0.55 && personality.caution > 0.55) {
+  if (situation.isolated && intel.occAllies === 0 && intel.dangerous) {
+    contest -= 12 + personality.caution * 8;
+  }
+  if (between >= 2 && self.hpRatio < 0.45) {
+    contest -= 14;
+  }
+  if (between >= 3 && self.hpRatio < 0.28) {
+    contest -= 20;
+  }
+  if (intel.tooLate) {
+    contest -= 28;
+  }
+  if (intel.dangerous && personality.caution > 0.55) {
+    contest -= 10 + (1 - personality.bravery) * 8;
+  } else if (intel.dangerous && personality.aggression > 0.62) {
+    contest -= 4;
+  }
+  if (intel.free && intel.canArriveInTime && self.hpRatio > 0.26) {
+    contest += 22 + personality.opportunism * 8;
+  }
+  if (intel.alliesHandling && !intel.inside && intel.alliesCloser >= 1) {
+    contest -= 16 + personality.teamwork * 6 - personality.independence * 4;
+  }
+  if (intel.alliesCloser >= 2 && intel.contested) {
+    contest -= 10;
+  } else if (intel.alliesCloser >= 1 && !intel.contested && !intel.inside && intel.family !== 'bounty') {
+    contest -= 8 + personality.independence * 4;
+  }
+  if (intel.inside && intel.family === 'capture') {
+    contest += 10;
+    if (intel.occEnemies > 0) {
+      contest += 8;
+    }
+  }
+  if (intel.play === 'too_late' || intel.play === 'hold_back') {
     contest -= 12;
   }
-  if (obj.kind === 'capture_zone') {
+
+  if (intel.family === 'capture') {
     if (front) {
       contest += 8;
     }
-    if (ranged) {
-      contest -= 3;
-      if (d < obj.radius * 0.35) {
-        contest -= 6;
-      }
+    if (ranged && d < obj.radius * 0.28 && intel.occEnemies > 0) {
+      contest -= 4;
     }
-    if (support && obj.occupyingAllies > 0) {
-      contest += 8 + personality.protectionInstinct * 6;
+    if (support && intel.occAllies > 0) {
+      contest += 6 + personality.protectionInstinct * 5;
     }
-    if (obj.occupyingAllies === 0 && personality.teamwork > 0.6 && situation.allyHeroCount) {
-      contest -= 6;
+    if (intel.decaying && obj.owner === self.team) {
+      contest += 12;
     }
-    if (obj.owner === self.team && obj.decaying) {
-      contest += 10;
+    if (intel.enemyCapturing && intel.canArriveInTime) {
+      contest += 10 + intel.enemyProgress * 16;
     }
-    if (obj.contested && personality.aggression > 0.6) {
+    if (intel.selfCapturing && intel.selfProgress >= 0.55) {
+      contest += 12;
+    }
+    if (intel.contested && personality.aggression > 0.6) {
       contest += 8;
     }
-    if (obj.contested && personality.caution > 0.65 && obj.occupyingEnemies > obj.occupyingAllies) {
-      contest -= 10;
-    }
-  } else if (obj.kind === 'golden_piggy') {
-    if (obj.selfProgress >= 0.75 && self.hpRatio > 0.22) {
-      contest += 16;
-    }
-    if (obj.enemyProgress >= 0.75) {
-      contest += 14 + personality.aggression * 6;
-    }
-    if (obj.enemyProgress < 0.35 && obj.selfProgress < 0.2 && d > 380 && self.hpRatio < 0.5) {
-      contest -= 10;
-    }
-    if (ranged) {
-      contest += 2;
-    }
-    if (obj.occupyingEnemies >= 2 && self.hpRatio < 0.4 && personality.caution > 0.55) {
+    if (intel.contested && personality.caution > 0.65 && intel.occEnemies > intel.occAllies + (intel.inside ? 1 : 0)) {
       contest -= 8;
     }
-  } else if (obj.kind === 'bounty_target') {
+  } else if (intel.family === 'destroy') {
+    if (intel.selfProgress >= 0.75 && self.hpRatio > 0.22) {
+      contest += 16;
+    }
+    if (intel.enemyProgress >= 0.75 && intel.canArriveInTime) {
+      contest += 14 + personality.aggression * 6;
+    }
+    if (intel.play === 'defend_objective') {
+      contest += 14;
+    }
+    if (intel.play === 'pressure_defenders') {
+      contest += 8;
+    }
+    if (intel.play === 'attack_objective' && intel.free) {
+      contest += 14;
+    }
+    if (ranged) {
+      contest += 3;
+    }
+    if (obj.kind === 'executioner' && d < obj.radius + 50 && self.hpRatio < 0.35) {
+      contest -= 12;
+    }
+    if (intel.occEnemies >= 2 && self.hpRatio < 0.4 && personality.caution > 0.55) {
+      contest -= 8;
+    }
+    if (d > 420 && intel.selfProgress < 0.2 && intel.enemyProgress < 0.35 && self.hpRatio < 0.5) {
+      contest -= 10;
+    }
+  } else if (intel.family === 'bounty') {
     const selfMarked =
       obj.allyX !== undefined && Math.hypot(obj.allyX - self.x, (obj.allyY ?? self.y) - self.y) < 40;
     const huntD =
@@ -1053,7 +1163,11 @@ const scoreObjective = (
     const allyD =
       obj.allyX !== undefined ? Math.hypot(obj.allyX - self.x, (obj.allyY ?? self.y) - self.y) : 999;
     const hunt = enemies.find(
-      (enemy) => enemy.kind === 'hero' && enemy.visible && obj.enemyX !== undefined && Math.hypot(enemy.x - obj.enemyX, enemy.y - (obj.enemyY ?? enemy.y)) < 48,
+      (enemy) =>
+        enemy.kind === 'hero' &&
+        enemy.visible &&
+        obj.enemyX !== undefined &&
+        Math.hypot(enemy.x - obj.enemyX, enemy.y - (obj.enemyY ?? enemy.y)) < 48,
     );
     const isolatedHunt = hunt ? isolation(hunt, enemies) : 0;
     contest -= 4;
@@ -1078,7 +1192,7 @@ const scoreObjective = (
       contest -= 8;
     }
     contest -= (huntD / Math.max(180, situation.vision)) * 6;
-  } else if (obj.kind === 'healing_shrine') {
+  } else if (intel.family === 'shrine') {
     const tanky = front || self.role === 'ranged-tank';
     if (self.hpRatio < 0.62) {
       contest += 10 + (1 - self.hpRatio) * 16;
@@ -1092,44 +1206,26 @@ const scoreObjective = (
     if (ranged && d < obj.radius * 0.4) {
       contest -= 5;
     }
-    if (support && obj.occupyingAllies > 0) {
+    if (support && intel.occAllies > 0) {
       contest += 7 + personality.protectionInstinct * 5;
     }
-    if (obj.contested && self.hpRatio < 0.4 && personality.caution > 0.55) {
+    if (intel.contested && self.hpRatio < 0.4 && personality.caution > 0.55) {
       contest -= 14;
     }
-    if (obj.contested && tanky && self.hpRatio > 0.45) {
+    if (intel.contested && tanky && self.hpRatio > 0.45) {
       contest += 8;
     }
-    if (obj.occupyingEnemies >= obj.occupyingAllies + 2 && self.hpRatio < 0.5) {
-      contest -= 12;
-    }
-  } else if (obj.kind === 'executioner') {
-    if (obj.selfProgress >= 0.78 && self.hpRatio > 0.28) {
-      contest += 14;
-    }
-    if (obj.enemyProgress >= 0.78) {
-      contest += 12 + personality.aggression * 6;
-    }
-    if (obj.selfProgress + 0.12 < obj.enemyProgress && personality.caution > 0.6 && self.hpRatio < 0.4) {
-      contest -= 8;
-    }
-    if (ranged) {
-      contest += 3;
-    } else if (d < obj.radius + 50 && self.hpRatio < 0.35) {
-      contest -= 12;
-    }
-    if (obj.occupyingEnemies >= 2 && self.hpRatio < 0.38 && personality.caution > 0.55) {
-      contest -= 10;
-    }
-    if (d > 420 && obj.selfProgress < 0.2 && obj.enemyProgress < 0.35 && self.hpRatio < 0.5) {
+    if (intel.occEnemies >= intel.occAllies + 2 && self.hpRatio < 0.5) {
       contest -= 12;
     }
   }
-  if (situation.lastSurvivor && obj.occupyingEnemies >= 2) {
+  if (situation.lastSurvivor && intel.occEnemies >= 2) {
     contest -= 14;
   }
-  const focus = enemies.find(
+  if (team.fightHandled && intel.free) {
+    contest += 8;
+  }
+  const focus = intel.focus ?? enemies.find(
     (enemy) =>
       enemy.kind === 'hero' &&
       enemy.visible &&
@@ -1137,7 +1233,7 @@ const scoreObjective = (
         ? Math.hypot(enemy.x - obj.enemyX, enemy.y - (obj.enemyY ?? enemy.y)) < 56
         : Math.hypot(enemy.x - obj.x, enemy.y - obj.y) < obj.radius + 80),
   );
-  const ally = allies.find(
+  const ally = intel.ally ?? allies.find(
     (friend) =>
       friend.kind === 'hero' &&
       (obj.allyX !== undefined
@@ -1148,8 +1244,8 @@ const scoreObjective = (
     out,
     count,
     'contest_objective',
-    contest,
-    obj.contested ? 'contest the zone' : 'play the zone',
+    tune('contest_objective', contest),
+    intel.reason,
     focus?.id ?? -1,
     ally?.id ?? -1,
   );
