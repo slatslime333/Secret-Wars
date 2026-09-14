@@ -80,6 +80,29 @@ if (reckless === 'rush_center') {
   console.log(`ok  cautious witch opening  ${reckless}`);
 }
 
+const execBody = {
+  x: 900,
+  y: ARENA.laneY.mid,
+  team: 'alpha' as const,
+  attackRange: 196,
+  role: 'ranged',
+  kind: 'hero' as const,
+};
+const execGoal = moveGoal('contest_objective', execBody, 0, 220, ARENA.laneY.mid, undefined, undefined, 1, 0, undefined, {
+  stance: 'ranged',
+  preferredRange: 172,
+  objective: { kind: 'executioner', x: 1100, y: ARENA.laneY.mid, radius: 48 },
+});
+const execGap = Math.hypot(execGoal.x - 1100, execGoal.y - ARENA.laneY.mid);
+const execStand = Math.max(48 + 18, Math.min(196 * 0.86, 196 + 48 * 0.2));
+const execOk = Math.abs(execGap - execStand) < 28 && execGap > 120;
+if (!execOk) {
+  failed += 1;
+  console.log(`FAIL  executioner standoff  gap=${execGap.toFixed(0)} stand=${execStand.toFixed(0)} halt=${execGoal.halt}`);
+} else {
+  console.log(`ok  executioner standoff  gap=${execGap.toFixed(0)} stand=${execStand.toFixed(0)}`);
+}
+
 const objectiveChecks = runObjectiveChecks();
 for (const result of objectiveChecks) {
   const mark = result.ok ? 'ok' : 'FAIL';

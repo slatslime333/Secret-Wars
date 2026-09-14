@@ -102,7 +102,7 @@ const ABILITY_TEXT: Record<string, string> = {
   'death-bat-sweep':
     `Death spins the bat in a wide damaging arc for ${seconds(DEATH_SWEEP.durationMs)}. Hits deal ${hit(DEATH_SWEEP.damage)} damage with strong knockback, and Death moves ${slower(DEATH_SWEEP.moveMul)} while sweeping.`,
   'rope-grab':
-    `Fire a long rope along your aim. A hit flings you in for a backflip kick that deals ${hit(NINJA_KICK.damage)} damage, launches with powerful knockback, and slows movement by 50% for ${seconds(ROPE_GRAB.hitSlowMs)}. Misses cost nothing.`,
+    `Fire a long rope along your aim. A hit flings you in for a backflip kick that deals ${hit(ROPE_GRAB.damage)} damage, launches with powerful knockback, and slows movement by 50% for ${seconds(ROPE_GRAB.hitSlowMs)}. Misses cost nothing.`,
   'rope-mega-punch':
     `Rope Man jumps into a 360 close burst that deals ${hit(ROPE_PUNCH.damage)} damage with strong knockback and slows movement ${slower(ROPE_PUNCH.slowMul)} for ${seconds(ROPE_PUNCH.slowMs)}.`,
   'rope-spray':

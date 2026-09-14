@@ -48,12 +48,14 @@ export const OBJECTIVE = {
   },
   executioner: {
     radius: 48,
-    breakDamage: Math.round(COLE.attackDamage * 40),
+    /** 20% less HP than the original 40 Cole-hit pool. */
+    breakDamage: Math.round(COLE.attackDamage * 40 * 0.8),
     projectileDamage: COLE.attackDamage,
     moveSpeed: 74,
-    attackMs: 1_550,
+    /** 25% slower swings than the original 1550ms cadence. */
+    attackMs: Math.round(1_550 / 0.75),
     attackRange: 88,
-    damage: Math.round(COLE.attackDamage * 2.15),
+    damage: Math.round(COLE.attackDamage * 2.15 * 0.9),
     knockback: 3.7,
     pursueRange: 440,
     buffMs: 20_000,

@@ -153,6 +153,8 @@ export type CombatantView = {
   lastAttackerId: number;
   visible: boolean;
   blocking: boolean;
+  abilityReady: boolean;
+  dashCharges: number;
 };
 
 export type UnitFact = CombatantView & {

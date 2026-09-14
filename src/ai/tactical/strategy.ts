@@ -1,4 +1,5 @@
 import { ARENA } from '../../config/arena';
+import { isShadowDry } from './kitProfile';
 import type {
   CombatantView,
   GamePlan,
@@ -240,6 +241,9 @@ const nextState = (situation: Situation, kit: KitProfile, opening: OpeningPlan, 
   if (nearest && nearest.enemy.hpRatio < 0.2 && p.opportunism > 0.35) {
     return 'finish';
   }
+  if (isShadowDry(situation.self.heroId, situation.self) && foes.length > 0) {
+    return nearest && nearest.d < 220 ? 'reposition' : 'recover';
+  }
   if (nearest && kit.stance === 'ranged' && nearest.d < kit.comfortMin) {
     return 'reposition';
   }
@@ -249,6 +253,15 @@ const nextState = (situation: Situation, kit: KitProfile, opening: OpeningPlan, 
     }
   }
   if (kit.stance === 'ranged' || kit.stance === 'support' || opening === 'stay_back_poke') {
+    if (
+      kit.wantsInitiate &&
+      nearest &&
+      nearest.d > kit.comfortMin &&
+      nearest.d < kit.comfortMax * 1.08 &&
+      situation.self.hpRatio > 0.38
+    ) {
+      return 'engage';
+    }
     return nearest && nearest.d <= kit.comfortMax ? 'poke' : 'hold';
   }
   if (opening === 'hold_near_spawn' || opening === 'defensive_hold' || opening === 'wait_for_team') {

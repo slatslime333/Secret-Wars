@@ -10,9 +10,9 @@ export const NINJA_BASE_RANGE = MELEE_BASE_RANGE;
  * tuned so movement, swing timing, and durability stay as they currently feel.
  */
 export const NINJA_RATINGS = {
-  health: 48,
-  stamina: 55,
-  staminaRegen: 76,
+  health: 45,
+  stamina: 46,
+  staminaRegen: 73,
   damage: 45,
   defense: 45,
   speed: 80,

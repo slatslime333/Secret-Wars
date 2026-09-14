@@ -29,6 +29,7 @@ import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT } from '../heroes/abilities/rope/tunab
 import { witchHexAllyRange } from '../heroes/abilities/witch/tunables';
 import { SHADOW_CLAW, SHADOW_DASH } from '../heroes/abilities/shadow/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
+import { stampKitPressure } from '../heroes/kitPressure';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
 import { AbilityTray } from '../ui/AbilityTray';
@@ -356,6 +357,10 @@ export class BattleScene extends Phaser.Scene {
     }
     this.abilities.update(this.makeAbilityContext(now, delta, this.liveAbilityAim(frame)));
     this.abilityWorld.update(now, everyone, delta);
+    stampKitPressure(this.ninja, now, this.abilities, this.dash);
+    if (this.rival) {
+      stampKitPressure(this.rival, now, this.rivalAbilities, this.rivalDash);
+    }
     this.tactics.refresh(now, this.livingFighters());
     this.minions.update(now, delta, this.abilityWorld, this.tactics);
     this.minions.drawDebug(DEV_CHEATS.showRanges, DEV_CHEATS.showAi, DEV_CHEATS.showHitboxes, now);

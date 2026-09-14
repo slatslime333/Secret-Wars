@@ -8,6 +8,7 @@ import { SLOT_ORDER, canStartAbility } from '../heroes/abilities/types';
 import type { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import type { NinjaBody } from '../heroes/NinjaBody';
 import { scoreKitSlot } from './tactical/kitTactics';
+import { isShadowDry } from './tactical/kitProfile';
 import type { TacticalMind } from './tactical/mind';
 import { dodgeDirFor, scanProjectileThreat } from './tactical/shots';
 
@@ -137,6 +138,9 @@ export class CombatDriver {
   ): boolean {
     const situation = mind.situationView();
     if (!situation) {
+      return false;
+    }
+    if (isShadowDry(situation.self.heroId, situation.self) && situation.self.staminaRatio < 0.22) {
       return false;
     }
     if (ctx.caster.status.isEnemyActionLocked(now)) {

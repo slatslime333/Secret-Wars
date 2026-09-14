@@ -44,6 +44,9 @@ export class NinjaBody {
   maxBlockShield: number;
   /** Live shield flag. Set by BlockController so AI and HUD share one source. */
   blocking = false;
+  /** CPU kit pressure. Defaults assume a full kit so tests and minions stay aggressive. */
+  kitAbilityReady = true;
+  kitDashCharges = 2;
   lastAttacker?: NinjaBody;
   lastAttackerAt = 0;
   /** Last time an enemy actually dealt HP damage. Minion heals / regen do not touch this. */

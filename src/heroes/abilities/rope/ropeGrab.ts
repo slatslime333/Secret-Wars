@@ -177,7 +177,7 @@ class RopeGrabAbility implements ActiveAbility {
       ctx.caster,
       enemy,
       {
-        rawDamage: NINJA_KICK.damage,
+        rawDamage: ROPE_GRAB.damage,
         knockback: NINJA.knockbackPower * NINJA_KICK.knockbackMul,
         staminaDamage: NINJA_KICK.staminaDamage,
         dirX: this.dir.x,

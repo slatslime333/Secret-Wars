@@ -9,7 +9,7 @@ import {
   threatFromRisk,
 } from './evaluate';
 import type { TacticalField } from './field';
-import { kitProfileOf } from './kitProfile';
+import { isRopeDisarmed, isShadowDry, kitProfileOf } from './kitProfile';
 import { personalityFromSeed } from './personality';
 import { pickRetreatGoal, type RetreatGoal } from './retreat';
 import { scanProjectileThreat } from './shots';
@@ -221,7 +221,11 @@ export class TacticalMind {
     }
 
     this.gather(now, selfFact, field, scene);
-    this.kit = kitProfileOf(self.stats.id, String(self.stats.role), self.stats.attackRange);
+    this.kit = kitProfileOf(self.stats.id, String(self.stats.role), self.stats.attackRange, {
+      staminaRatio: selfFact.staminaRatio,
+      abilityReady: selfFact.abilityReady,
+      dashCharges: selfFact.dashCharges,
+    });
     this.situation.kit = this.kit;
     if (!this.director) {
       this.director = new GamePlanController(
@@ -483,6 +487,24 @@ export class TacticalMind {
       return true;
     }
     const hp = self.health / Math.max(1, self.stats.maxHealth);
+    const kitLive = {
+      staminaRatio: self.stamina / Math.max(1, self.stats.maxStamina),
+      abilityReady: self.kitAbilityReady,
+      dashCharges: self.kitDashCharges,
+    };
+    if (isShadowDry(self.heroId, kitLive) && AGGRESSIVE.has(intent.action)) {
+      return true;
+    }
+    if (
+      isRopeDisarmed(self.heroId, kitLive) &&
+      (intent.action === 'chase' ||
+        intent.action === 'flank' ||
+        intent.action === 'finish_target' ||
+        intent.action === 'intercept' ||
+        intent.action === 'assist_ally')
+    ) {
+      return true;
+    }
     if (intent.hpAtCommit - hp > 0.2) {
       return true;
     }
@@ -636,6 +658,8 @@ const blankView = (): CombatantView => ({
   lastAttackerId: -1,
   visible: true,
   blocking: false,
+  abilityReady: true,
+  dashCharges: 2,
 });
 
 const copyView = (dest: CombatantView, src: CombatantView): void => {
@@ -663,6 +687,8 @@ const copyView = (dest: CombatantView, src: CombatantView): void => {
   dest.lastAttackerId = src.lastAttackerId;
   dest.visible = src.visible;
   dest.blocking = src.blocking;
+  dest.abilityReady = src.abilityReady;
+  dest.dashCharges = src.dashCharges;
 };
 
 const cloneView = (src: CombatantView): CombatantView => {

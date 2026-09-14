@@ -12,6 +12,7 @@ import { AbilityContext } from '../heroes/abilities/types';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { Progression } from './Progression';
 import { HeroPlate } from '../ui/world/HeroPlate';
+import { stampKitPressure } from '../heroes/kitPressure';
 
 export type HeroRuntimeOptions = {
   instanceId: string;
@@ -141,6 +142,10 @@ export class HeroRuntime {
       this.body.syncView();
     }
     this.plate.sync();
+  }
+
+  syncKitPressure(now: number): void {
+    stampKitPressure(this.body, now, this.abilities, this.dash);
   }
 
   destroy(): void {

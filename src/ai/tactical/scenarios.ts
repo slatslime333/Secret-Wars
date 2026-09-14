@@ -27,6 +27,8 @@ const unit = (partial: Partial<CombatantView> & Pick<CombatantView, 'id' | 'team
   lastAttackerId: -1,
   visible: true,
   blocking: false,
+  abilityReady: true,
+  dashCharges: 2,
   ...partial,
 });
 
@@ -652,6 +654,63 @@ const scenarioAF = (): ScenarioResult => {
   return { name: 'AF winning still refuses a 1v3', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
 };
 
+const scenarioAG = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 400,
+    y: 750,
+    heroId: 'shadow',
+    role: 'frontliner',
+    attackRange: 145,
+    hpRatio: 0.88,
+    staminaRatio: 0.12,
+    abilityReady: false,
+    dashCharges: 0,
+    canAttack: false,
+  });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 460, y: 750, hpRatio: 0.9, attackRange: 70 })];
+  const kit = kitProfileOf('shadow', 'frontliner', 145, {
+    staminaRatio: 0.12,
+    abilityReady: false,
+    dashCharges: 0,
+  });
+  const rows = rankActions(situationOf(self, [], enemies, { kit }));
+  const ok =
+    among(rows, ['recover', 'reposition', 'retreat', 'escape', 'wait_for_opening', 'hold_position'], 2) &&
+    !['attack', 'chase', 'flank', 'finish_target'].includes(best(rows));
+  return {
+    name: 'AG dry shadow does not overcommit',
+    ok,
+    detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}`,
+  };
+};
+
+const scenarioAH = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 400,
+    y: 750,
+    heroId: 'rope',
+    role: 'support',
+    attackRange: 248,
+    hpRatio: 0.9,
+    staminaRatio: 1,
+    abilityReady: false,
+    dashCharges: 2,
+  });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 470, y: 750, hpRatio: 0.9, attackRange: 70 })];
+  const kit = kitProfileOf('rope', 'support', 248, { staminaRatio: 1, abilityReady: false, dashCharges: 2 });
+  const rows = rankActions(situationOf(self, [], enemies, { kit }));
+  const ok = among(rows, ['reposition', 'hold_position', 'wait_for_opening', 'retreat'], 3);
+  return {
+    name: 'AH disarmed rope keeps distance',
+    ok,
+    detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}`,
+  };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -685,4 +744,6 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioAD(),
   scenarioAE(),
   scenarioAF(),
+  scenarioAG(),
+  scenarioAH(),
 ];

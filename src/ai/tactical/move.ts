@@ -222,7 +222,13 @@ export const moveGoal = (
     const gap = Math.hypot(dx, dy) || 1;
     const nx = dx / gap;
     const ny = dy / gap;
-    const stand = obj.radius + range * (ranged ? 0.85 : 0.55);
+    const stand =
+      obj.kind === 'executioner'
+        ? Math.max(
+            obj.radius + 18,
+            Math.min(body.attackRange * (ranged ? 0.86 : 0.9), body.attackRange + obj.radius * 0.2),
+          )
+        : obj.radius + range * (ranged ? 0.85 : 0.55);
     let gx = destX - nx * stand + -ny * 22 * flankSign;
     let gy = destY - ny * stand + nx * 22 * flankSign;
     if (target && Math.hypot(target.x - destX, target.y - destY) < obj.radius + 140) {
@@ -232,7 +238,7 @@ export const moveGoal = (
     return {
       x: gx,
       y: gy,
-      halt: Math.abs(gap - stand) < 16,
+      halt: Math.abs(gap - stand) < (obj.kind === 'executioner' ? 22 : 16),
       ...aim,
     };
   }
