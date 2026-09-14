@@ -5,7 +5,7 @@ import type { MapLayout } from './types';
 
 /**
  * Static collision bodies that match gameplay obstacle AABBs.
- * Visuals can extend past these (tree canopies) but movement / shots cannot.
+ * Visuals can extend past these (tree canopies, ruined roofs) but movers cannot.
  */
 export class MapWorld {
   readonly query: MapQuery;
@@ -21,8 +21,12 @@ export class MapWorld {
     this.staticGroup = scene.physics.add.staticGroup();
     this.addPerimeterWalls();
     for (const obs of layout.obstacles) {
+      if (!obs.blocksMovement) {
+        continue;
+      }
       const { x, y, w, h } = obs.collision;
       const block = scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0x000000, 0);
+      block.setData('obstacleId', obs.id);
       scene.physics.add.existing(block, true);
       this.staticGroup.add(block);
       this.blockers.push(block);
@@ -36,6 +40,21 @@ export class MapWorld {
 
   attachGroup(group: Phaser.Physics.Arcade.Group): void {
     this.colliders.push(this.scene.physics.add.collider(group, this.staticGroup));
+  }
+
+  removeObstacle(id: string): void {
+    const index = this.blockers.findIndex((block) => block.getData('obstacleId') === id);
+    if (index < 0) {
+      return;
+    }
+    const block = this.blockers[index];
+    this.staticGroup.remove(block, true, true);
+    block.destroy();
+    this.blockers.splice(index, 1);
+    const layoutIndex = this.layout.obstacles.findIndex((obs) => obs.id === id);
+    if (layoutIndex >= 0) {
+      this.layout.obstacles.splice(layoutIndex, 1);
+    }
   }
 
   private addPerimeterWalls(): void {
@@ -65,4 +84,4 @@ export class MapWorld {
     this.blockers.length = 0;
     this.staticGroup.destroy(true);
   }
-}
+};

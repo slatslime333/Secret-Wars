@@ -20,6 +20,8 @@ export type SoundId =
   | 'objective-contested'
   | 'piggy-hit'
   | 'piggy-break'
+  | 'crate-hit'
+  | 'crate-break'
   | 'ui-xp'
   | 'ui-level-up'
   | 'ui-victory'

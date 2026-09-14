@@ -14,38 +14,31 @@ const scoreContest = (x: number, y: number): number => {
   return midBias * 0.7 + vertical * 0.3;
 };
 
-const valid = (query: MapQuery, x: number, y: number, clearRadius: number): boolean => {
-  if (query.inSpawnExclusion(x, y, SPAWN_PAD - MAP.spawnHeroRadius)) {
-    return false;
-  }
-  if (query.blocksMovement(x, y, Math.max(18, clearRadius))) {
-    return false;
-  }
-  return true;
-};
-
 /**
  * Random walkable point that is not in either spawn and still contestable.
- * Falls back to open-area centers if rejection sampling fails.
+ * Environmental keepout and approach tests keep objectives off props.
  */
 export const pickObjectiveLocation = (query: MapQuery, clearRadius: number, rng: () => number): Point => {
   const areas = query.openAreas();
   let best: Point | undefined;
   let bestScore = -1;
-  const tries = 48;
+  const tries = 64;
   for (let i = 0; i < tries; i += 1) {
     let x: number;
     let y: number;
     if (areas.length > 0) {
       const area = areas[Math.floor(rng() * areas.length)];
-      const pad = Math.min(36, Math.max(8, Math.min(area.w, area.h) * 0.2));
+      const pad = Math.min(48, Math.max(12, Math.min(area.w, area.h) * 0.22));
       x = area.x + pad + rng() * Math.max(8, area.w - pad * 2);
       y = area.y + pad + rng() * Math.max(8, area.h - pad * 2);
     } else {
       x = query.layout.playable.x + 80 + rng() * Math.max(40, query.layout.playable.w - 160);
       y = query.layout.playable.y + 80 + rng() * Math.max(40, query.layout.playable.h - 160);
     }
-    if (!valid(query, x, y, clearRadius)) {
+    if (query.inSpawnExclusion(x, y, SPAWN_PAD - MAP.spawnHeroRadius)) {
+      continue;
+    }
+    if (!query.clearForObjective(x, y, clearRadius)) {
       continue;
     }
     const jitter = rng() * 0.22;
@@ -62,7 +55,7 @@ export const pickObjectiveLocation = (query: MapQuery, clearRadius: number, rng:
     return best;
   }
   for (const point of query.objectiveCandidates()) {
-    if (valid(query, point.x, point.y, clearRadius)) {
+    if (query.clearForObjective(point.x, point.y, clearRadius)) {
       return point;
     }
   }

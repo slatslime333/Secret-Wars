@@ -7,6 +7,7 @@ import { COMBAT } from '../config/combat';
 import { MATCH } from '../config/match';
 import { Progression } from '../match/Progression';
 import { CombatStatsTracker } from '../match/CombatStatsTracker';
+import { XpOrbWorld } from '../match/XpOrbWorld';
 import { onCombatDamage, onCombatBlocked } from '../combat/damageEvents';
 import type { TeamId } from '../config/hero';
 import { RivalBrain } from '../ai/RivalBrain';
@@ -102,6 +103,7 @@ export class BattleScene extends Phaser.Scene {
   private battlefield?: Battlefield;
   private minimap?: Minimap;
   private mapSeed = 1;
+  private orbs?: XpOrbWorld;
 
   constructor() {
     super('Battle');
@@ -134,6 +136,16 @@ export class BattleScene extends Phaser.Scene {
     });
     this.battlefield.attachMover(this.ninja.sprite);
     this.progression = new Progression(this.ninja);
+    this.orbs = new XpOrbWorld(this, () => undefined);
+    this.battlefield.configureCrates({
+      heroes: () => (this.rival ? [this.ninja, this.rival] : [this.ninja]),
+      orbs: this.orbs,
+      grantXp: (body, amount) => {
+        if (body === this.ninja) {
+          this.progression.grantXp(amount);
+        }
+      },
+    });
     this.sandboxStats = new CombatStatsTracker();
     this.sandboxStats.register(this.ninja, { instanceId: 'playtest-player', player: true });
     this.offDamage = onCombatDamage((event) => this.sandboxStats.recordDamage(event));
@@ -282,6 +294,7 @@ export class BattleScene extends Phaser.Scene {
       this.minimap?.destroy();
       this.aiOverlay?.destroy();
       this.battlefield?.destroy();
+      this.orbs?.destroy();
       this.unbindDebugApi();
       audio.stopAllLoops();
     });
@@ -299,6 +312,8 @@ export class BattleScene extends Phaser.Scene {
     }
     this.ninja.syncView();
     this.rival?.syncView();
+    this.battlefield?.update(now, delta);
+    this.orbs?.update(now, delta);
     this.syncMinimap();
     const everyone = this.allCombatants();
     if (this.rival && this.rivalBlock) {

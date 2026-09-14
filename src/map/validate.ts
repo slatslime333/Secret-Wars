@@ -51,6 +51,9 @@ const buildGrid = (layout: MapLayout): Grid => {
     for (let col = 0; col < cols; col += 1) {
       const { x, y } = cellCenter(grid, col, row);
       const blocked = layout.obstacles.some((obs) => {
+        if (!obs.blocksMovement) {
+          return false;
+        }
         const fat = inflate(obs.collision, MAP.agentRadius);
         return x >= fat.x && x <= fat.x + fat.w && y >= fat.y && y <= fat.y + fat.h;
       });
@@ -121,7 +124,8 @@ export const scoreLayout = (layout: MapLayout, issues: ValidationIssue[]): MapQu
   const open = walkRatio(grid);
   const chokes = authoredChokes(layout);
   const area = rectArea(layout.playable);
-  const blocked = layout.obstacles.reduce((sum, obs) => sum + rectArea(obs.collision), 0) / area;
+  const blocked =
+    layout.obstacles.filter((obs) => obs.blocksMovement).reduce((sum, obs) => sum + rectArea(obs.collision), 0) / area;
   const mid = { x: ARENA.width / 2, y: ARENA.height / 2 };
   const alpha = ARENA.laneSpawns.alpha.mid;
   const bravo = ARENA.laneSpawns.bravo.mid;
@@ -135,9 +139,9 @@ export const scoreLayout = (layout: MapLayout, issues: ValidationIssue[]): MapQu
   const routeQuality = clampScore(layout.routes.length >= 3 ? 88 : 50);
   const obstacleDistribution = clampScore(100 - Math.abs(blocked - 0.08) * 500);
   const openSpace = clampScore(70 + (open - 0.7) * 80);
-  const cover = clampScore(40 + layout.obstacles.length * 1.6);
+  const cover = clampScore(40 + layout.obstacles.filter((obs) => obs.blocksMovement).length * 1.5);
   const regionalConnectivity = clampScore((northOk ? 34 : 0) + 32 + (southOk ? 34 : 0));
-  const readability = clampScore(92 - chokes * 8 - Math.max(0, layout.obstacles.length - 36) * 2);
+  const readability = clampScore(92 - chokes * 8 - Math.max(0, layout.obstacles.length - 72) * 1.2);
   const total = clampScore(
     connectivity * 0.18 +
       spawnSafety * 0.14 +
@@ -214,6 +218,9 @@ export const validateLayout = (layout: MapLayout): ValidationIssue[] => {
       issues.push({ code: 'spawn-trap', message: `Spawn at ${zone.team} ${zone.lane} is trapped.` });
     }
     const overlapping = layout.obstacles.some((obs) => {
+      if (!obs.blocksMovement) {
+        return false;
+      }
       const dx = Math.max(Math.abs(zone.x - (obs.collision.x + obs.collision.w / 2)) - obs.collision.w / 2, 0);
       const dy = Math.max(Math.abs(zone.y - (obs.collision.y + obs.collision.h / 2)) - obs.collision.h / 2, 0);
       return Math.hypot(dx, dy) < zone.radius * 0.55;
@@ -233,15 +240,16 @@ export const validateLayout = (layout: MapLayout): ValidationIssue[] => {
   if (authoredChokes(layout) > MAP.maxChokeChunks) {
     issues.push({ code: 'choke-many', message: 'Too many choke points.' });
   }
-  if (layout.obstacles.length < MAP.minObstacles) {
+  const blocking = layout.obstacles.filter((obs) => obs.blocksMovement);
+  if (blocking.length < MAP.minObstacles) {
     issues.push({ code: 'cover-low', message: 'Not enough obstacles.' });
   }
-  if (layout.obstacles.length > MAP.maxObstacles) {
+  if (blocking.length > MAP.maxObstacles) {
     issues.push({ code: 'cover-high', message: 'Excessive obstacle density.' });
   }
 
   const area = rectArea(playable);
-  const blocked = layout.obstacles.reduce((sum, obs) => sum + rectArea(obs.collision), 0) / area;
+  const blocked = blocking.reduce((sum, obs) => sum + rectArea(obs.collision), 0) / area;
   if (blocked > MAP.obstacleAreaMax) {
     issues.push({ code: 'density-high', message: 'Obstacle area is too high.' });
   }
@@ -254,14 +262,33 @@ export const validateLayout = (layout: MapLayout): ValidationIssue[] => {
       const a = layout.obstacles[i];
       const b = layout.obstacles[j];
       if (rectsOverlap(a.collision, b.collision, -2) && !(a.kind === 'crate' && b.kind === 'crate')) {
-        issues.push({ code: 'overlap', message: 'Obstacles overlap incorrectly.' });
+        if (a.blocksMovement && b.blocksMovement) {
+          issues.push({ code: 'overlap', message: 'Obstacles overlap incorrectly.' });
+        }
       }
-      if (a.kind === 'wall' && b.kind === 'wall' && wallsColinear(a.collision, b.collision)) {
+      if (
+        (a.kind === 'wall' || a.kind === 'barricade' || a.kind === 'sandbag') &&
+        (b.kind === 'wall' || b.kind === 'barricade' || b.kind === 'sandbag') &&
+        wallsColinear(a.collision, b.collision)
+      ) {
         const gap = gapBetween(a.collision, b.collision);
         if (gap > 6 && gap < MAP.minPassage) {
           issues.push({ code: 'gap-narrow', message: 'A passage is too narrow for heroes.' });
         }
       }
+    }
+  }
+
+  for (const zone of layout.reserved) {
+    if (zone.kind !== 'objective') {
+      continue;
+    }
+    const inner = inflate(zone.rect, -28);
+    const blockedObjective = layout.obstacles.some(
+      (obs) => obs.blocksMovement && rectsOverlap(obs.collision, inner),
+    );
+    if (blockedObjective) {
+      issues.push({ code: 'objective-block', message: `Objective zone ${zone.id} is occupied.` });
     }
   }
 
@@ -291,6 +318,10 @@ export const floodFrom = flood;
 export const isReachable = reachable;
 
 export const largestOpenRects = (layout: MapLayout): Rect[] => {
+  const reserved = layout.reserved.filter((zone) => zone.kind === 'objective').map((zone) => zone.rect);
+  if (reserved.length > 0) {
+    return reserved;
+  }
   const mid = layout.regions.center;
   return [
     { x: mid.x + mid.w * 0.2, y: mid.y + mid.h * 0.22, w: mid.w * 0.6, h: mid.h * 0.56 },

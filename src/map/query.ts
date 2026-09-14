@@ -42,7 +42,9 @@ export class MapQuery {
   }
 
   obstacleAt(x: number, y: number, radius = 0): MapObstacle | undefined {
-    return this.layout.obstacles.find((obs) => circleHitsRect(x, y, radius, obs.collision));
+    return this.layout.obstacles.find(
+      (obs) => obs.blocksMovement && circleHitsRect(x, y, radius, obs.collision),
+    );
   }
 
   blocksMovement(x: number, y: number, radius: number = MAP.agentRadius): boolean {
@@ -56,7 +58,9 @@ export class MapQuery {
     if (x < 0 || y < 0 || x > ARENA.width || y > ARENA.height) {
       return true;
     }
-    return this.layout.obstacles.some((obs) => obs.blocksProjectiles && circleHitsRect(x, y, radius, obs.collision));
+    return this.layout.obstacles.some(
+      (obs) => obs.blocksProjectiles && circleHitsRect(x, y, radius, obs.collision),
+    );
   }
 
   blocksLos(x1: number, y1: number, x2: number, y2: number): boolean {
@@ -76,6 +80,48 @@ export class MapQuery {
       }
     }
     return false;
+  }
+
+  occupiesKeepout(x: number, y: number, radius: number): boolean {
+    return this.layout.obstacles.some((obs) => circleHitsRect(x, y, radius, obs.keepout ?? obs.collision));
+  }
+
+  /** Enough open approaches so an objective is not trapped in a corner. */
+  hasApproaches(x: number, y: number, radius: number): boolean {
+    const dist = radius + 36;
+    let open = 0;
+    for (let i = 0; i < 8; i += 1) {
+      const ang = (Math.PI / 4) * i;
+      const px = x + Math.cos(ang) * dist;
+      const py = y + Math.sin(ang) * dist;
+      if (!this.blocksMovement(px, py, 14) && !this.occupiesKeepout(px, py, 10)) {
+        open += 1;
+      }
+    }
+    return open >= 3;
+  }
+
+  clearForObjective(x: number, y: number, radius: number): boolean {
+    const clear = Math.max(22, radius);
+    if (this.inSpawnExclusion(x, y, 72)) {
+      return false;
+    }
+    if (this.blocksMovement(x, y, clear)) {
+      return false;
+    }
+    if (this.occupiesKeepout(x, y, clear)) {
+      return false;
+    }
+    const edge = 56;
+    if (
+      x < this.layout.playable.x + edge ||
+      y < this.layout.playable.y + edge ||
+      x > this.layout.playable.x + this.layout.playable.w - edge ||
+      y > this.layout.playable.y + this.layout.playable.h - edge
+    ) {
+      return false;
+    }
+    return this.hasApproaches(x, y, radius);
   }
 
   /** Nudge a desired walk vector around nearby solids. */

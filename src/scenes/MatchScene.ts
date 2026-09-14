@@ -203,6 +203,21 @@ export class MatchScene extends Phaser.Scene {
     this.heroGroup = this.physics.add.group(this.heroes.map((unit) => unit.body.sprite));
     this.physics.add.collider(this.heroGroup, this.heroGroup);
     this.battlefield.attachGroup(this.heroGroup);
+    this.battlefield.configureCrates({
+      heroes: () => this.heroes.map((unit) => unit.body),
+      orbs: this.orbs,
+      grantXp: (body, amount) => {
+        const runtime = this.heroes.find((unit) => unit.body === body);
+        if (!runtime || !body.isPresent || body.down) {
+          return;
+        }
+        const leveled = runtime.progression.grantXp(amount);
+        audio.play('ui-xp');
+        if (leveled.leveled) {
+          audio.play('ui-level-up');
+        }
+      },
+    });
     this.pilots.clear();
     for (const unit of this.heroes) {
       if (!unit.isPlayer) {
@@ -317,6 +332,7 @@ export class MatchScene extends Phaser.Scene {
 
     this.waves.update(now);
     this.objectives?.update(now, delta);
+    this.battlefield?.update(now, delta);
     this.orbs.update(now, delta);
     this.abilityWorld.update(now, this.allCombatants(), delta);
     this.tactics.refresh(now, this.livingFighters());

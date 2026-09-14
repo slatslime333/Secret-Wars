@@ -2,6 +2,7 @@ import { NEUTRAL_PERSONALITY, type CombatantView, type ScoredAction, type Situat
 import { ensureScoreBuffer, scoreSituation } from './evaluate';
 import { kitProfileOf } from './kitProfile';
 import { OBJECTIVE } from '../../config/objective';
+import { ARENA } from '../../config/arena';
 
 const buffer = ensureScoreBuffer();
 
@@ -237,15 +238,15 @@ const scenarioL = (): ScenarioResult => {
 };
 
 const scenarioM = (): ScenarioResult => {
-  const self = unit({ id: 1, team: 'alpha', x: 2040, y: 750, hpRatio: 0.82 });
+  const self = unit({ id: 1, team: 'alpha', x: ARENA.width - 80, y: ARENA.laneY.mid, hpRatio: 0.82 });
   const rows = rankActions(situationOf(self, [], []));
   const ok = !['advance', 'push_lane'].includes(best(rows)) && among(rows, ['search_for_target', 'farm_minions', 'recover'], 2);
   return { name: 'M far edge hunt', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
 };
 
 const scenarioN = (): ScenarioResult => {
-  const self = unit({ id: 1, team: 'alpha', x: 2040, y: 750, hpRatio: 0.7 });
-  const enemies = [unit({ id: 20, team: 'bravo', x: 1880, y: 750, kind: 'minion', role: 'minion', hpRatio: 0.8, power: 0.3, attackRange: 44 })];
+  const self = unit({ id: 1, team: 'alpha', x: ARENA.width - 80, y: ARENA.laneY.mid, hpRatio: 0.7 });
+  const enemies = [unit({ id: 20, team: 'bravo', x: ARENA.width - 240, y: ARENA.laneY.mid, kind: 'minion', role: 'minion', hpRatio: 0.8, power: 0.3, attackRange: 44 })];
   const rows = rankActions(situationOf(self, [], enemies));
   const farm = scoreOf(rows, 'farm_minions', 20);
   const advance = scoreOf(rows, 'advance');

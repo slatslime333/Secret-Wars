@@ -1,11 +1,25 @@
 import Phaser from 'phaser';
 import { COLORS } from '../ui/theme';
 import { createCalmGround, type GroundView } from './ground';
-import { ensureObstacleTextures, textureKeyFor } from './obstacles';
+import { ensureObstacleTextures, fireTextureKey, textureKeyFor } from './obstacles';
 import type { MapLayout } from './types';
 
 export type MapView = {
+  crateSprites: Map<string, Phaser.GameObjects.Image>;
   destroy: () => void;
+};
+
+const depthFor = (kind: string, hierarchy: string): number => {
+  if (kind === 'building') {
+    return 6;
+  }
+  if (kind === 'vehicle' || kind === 'tree') {
+    return 5;
+  }
+  if (hierarchy === 'cover' || kind === 'crate' || kind === 'barricade' || kind === 'sandbag') {
+    return 4;
+  }
+  return 3;
 };
 
 const drawSpawnPads = (scene: Phaser.Scene, layout: MapLayout): Phaser.GameObjects.Graphics => {
@@ -30,34 +44,59 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
   const ground = createCalmGround(scene, layout);
   const pads = drawSpawnPads(scene, layout);
   const sprites: Phaser.GameObjects.GameObject[] = [];
+  const crateSprites = new Map<string, Phaser.GameObjects.Image>();
+  const fires: Phaser.GameObjects.Image[] = [];
 
   for (const obs of layout.obstacles) {
     const key = textureKeyFor(obs);
-    const variant = obs.variant;
-    const image = scene.add.image(obs.x, obs.y, key).setDepth(obs.kind === 'tree' ? 5 : 4);
-    if (obs.kind === 'wall') {
-      if (obs.collision.h > obs.collision.w) {
-        image.setRotation(Math.PI / 2);
-        image.setDisplaySize(Math.max(18, obs.collision.h), 18);
-      } else {
-        image.setDisplaySize(obs.collision.w, Math.max(16, obs.collision.h));
-      }
-    } else if (obs.kind === 'tree') {
+    const image = scene.add.image(obs.x, obs.y, key).setDepth(depthFor(obs.kind, obs.hierarchy));
+    image.setDisplaySize(obs.visual.w, obs.visual.h);
+    if (obs.kind === 'tree') {
       image.setOrigin(0.5, 0.86);
-      image.setScale(variant === 'broad' ? 1.25 : variant === 'medium' ? 1.2 : 1.15);
-    } else if (obs.kind === 'crate') {
-      image.setScale(variant === 'pair' ? 1.15 : 1.2);
+    } else if (obs.kind === 'building') {
+      image.setOrigin(0.5, 0.78);
+    } else if (obs.kind === 'fence') {
+      image.setOrigin(0.5, 0.82);
+    }
+    if (obs.kind === 'wall' && obs.collision.h > obs.collision.w) {
+      image.setRotation(Math.PI / 2);
+      image.setDisplaySize(Math.max(22, obs.collision.h), Math.max(18, obs.collision.w));
+    }
+    if (obs.kind === 'crate') {
+      crateSprites.set(obs.id, image);
     }
     sprites.push(image);
   }
 
+  const fireKey = fireTextureKey();
+  for (const mark of layout.decorations) {
+    if (mark.kind !== 'fire') {
+      continue;
+    }
+    const flame = scene.add.image(mark.x, mark.y, fireKey).setDepth(3);
+    flame.setDisplaySize(14, 18);
+    flame.setAlpha(0.85);
+    scene.tweens.add({
+      targets: flame,
+      alpha: 0.45,
+      scaleY: 1.12,
+      duration: 240 + (mark.variant % 3) * 80,
+      yoyo: true,
+      repeat: -1,
+    });
+    fires.push(flame);
+    sprites.push(flame);
+  }
+
   return {
+    crateSprites,
     destroy: () => {
       ground.destroy();
       pads.destroy();
       for (const sprite of sprites) {
         sprite.destroy();
       }
+      crateSprites.clear();
     },
   };
 };

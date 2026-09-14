@@ -12,30 +12,30 @@ export type SpawnPad = {
 };
 
 /**
- * Wide battlefield (2200×1280). Height is a bit shorter so lanes stay
- * distinct without as much empty vertical space.
+ * Compact 3v3 field, ~17.5% larger than the previous 2200×1280 map.
+ * Extra room is for side routes, cover, and war-torn scenery — not a MOBA.
  */
-const WIDTH = 2200;
-const HEIGHT = 1280;
+const WIDTH = 2584;
+const HEIGHT = 1504;
 /** Stay this far inside the walls when pushing a lane with nobody to fight. */
 const EDGE_INSET = 180;
 
 export const laneFacing = (team: TeamId): number => (team === 'alpha' ? 1 : -1);
 
 export const ARENA_LANE_Y = {
-  top: 250,
-  mid: 640,
-  bottom: 1030,
+  top: 294,
+  mid: 752,
+  bottom: 1210,
 } as const;
 
 export const ARENA_TEAM_SPAWN_X = {
-  alpha: 220,
-  bravo: 1980,
+  alpha: 258,
+  bravo: 2326,
 } as const;
 
 export const ARENA_MINION_SPAWN_X = {
-  alpha: 400,
-  bravo: 1800,
+  alpha: 470,
+  bravo: 2114,
 } as const;
 
 export const laneSpawn = (team: TeamId, lane: LaneId): SpawnPad => ({

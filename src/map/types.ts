@@ -3,11 +3,26 @@ import type { TeamId } from '../config/hero';
 
 export type MapRegionId = 'north' | 'center' | 'south';
 
-export type ObstacleKind = 'wall' | 'tree' | 'crate';
+export type ObstacleKind =
+  | 'wall'
+  | 'tree'
+  | 'crate'
+  | 'building'
+  | 'vehicle'
+  | 'barricade'
+  | 'sandbag'
+  | 'rubble'
+  | 'fence';
 
 export type WallVariant = 'stone' | 'ruin' | 'wood';
 export type TreeVariant = 'small' | 'medium' | 'broad';
 export type CrateVariant = 'single' | 'stack' | 'pair';
+export type VehicleVariant = 'truck' | 'car';
+export type BuildingVariant = 'house' | 'stub';
+export type BarricadeVariant = 'wood' | 'metal';
+export type SandbagVariant = 'line' | 'corner';
+export type RubbleVariant = 'pile' | 'chunk';
+export type FenceVariant = 'wood' | 'wire';
 
 export type ChunkKind =
   | 'OPEN_FIELD'
@@ -20,6 +35,8 @@ export type ChunkKind =
   | 'WIDE_PATH'
   | 'SMALL_COURTYARD'
   | 'ROCK_CLUSTER';
+
+export type EnvHierarchy = 'landmark' | 'cover' | 'detail';
 
 export type Rect = {
   x: number;
@@ -41,14 +58,26 @@ export type MapObstacle = {
   y: number;
   collision: Rect;
   visual: Rect;
-  blocksMovement: true;
-  blocksProjectiles: true;
-  blocksLos: true;
-  /** Future hook. Crates stay solid until a destruction system lands. */
+  keepout: Rect;
+  blocksMovement: boolean;
+  blocksProjectiles: boolean;
+  blocksLos: boolean;
   destructible: boolean;
+  hierarchy: EnvHierarchy;
+  hp?: number;
 };
 
-export type DecorationKind = 'rock' | 'tuft' | 'flower' | 'dirt';
+export type DecorationKind =
+  | 'rock'
+  | 'tuft'
+  | 'flower'
+  | 'dirt'
+  | 'debris'
+  | 'burn'
+  | 'sign'
+  | 'fire'
+  | 'grassCrack'
+  | 'curbBit';
 
 export type MapDecoration = {
   kind: DecorationKind;
@@ -56,6 +85,42 @@ export type MapDecoration = {
   x: number;
   y: number;
   variant: number;
+};
+
+export type PavementKind = 'road' | 'sidewalk' | 'intersection';
+export type DamageLevel = 'worn' | 'cracked' | 'broken' | 'missing' | 'overgrown';
+
+export type PavementPatch = {
+  kind: PavementKind;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  heading: 'h' | 'v';
+  damage: DamageLevel;
+};
+
+export type RoadMark = {
+  kind: 'crack' | 'pothole' | 'spill' | 'grass' | 'burn' | 'hole';
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  variant: number;
+};
+
+export type RoadNetwork = {
+  patches: PavementPatch[];
+  marks: RoadMark[];
+  intersections: Point[];
+};
+
+export type ReservedKind = 'spawn' | 'objective' | 'lane-flow';
+
+export type ReservedZone = {
+  kind: ReservedKind;
+  id: string;
+  rect: Rect;
 };
 
 export type MapChunkInstance = {
@@ -107,6 +172,8 @@ export type MapLayout = {
   chunks: MapChunkInstance[];
   obstacles: MapObstacle[];
   decorations: MapDecoration[];
+  roads: RoadNetwork;
+  reserved: ReservedZone[];
   spawnZones: SpawnZone[];
   routes: MapRoute[];
   openAreas: Rect[];

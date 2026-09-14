@@ -50,8 +50,22 @@ export class MapDebugOverlay {
       this.graphics.strokeCircle(zone.x, zone.y, zone.radius);
     }
 
+    for (const zone of this.layout.reserved) {
+      const color = zone.kind === 'objective' ? 0xffc928 : zone.kind === 'lane-flow' ? 0x49dce1 : COLORS.paper;
+      this.graphics.lineStyle(1, color, zone.kind === 'objective' ? 0.55 : 0.25);
+      this.graphics.strokeRect(zone.rect.x, zone.rect.y, zone.rect.w, zone.rect.h);
+    }
+
     for (const obs of this.layout.obstacles) {
-      this.graphics.lineStyle(1, obs.kind === 'tree' ? 0x8ecb5a : obs.kind === 'wall' ? 0xc8c8c8 : 0xd4a050, 0.85);
+      const color =
+        obs.kind === 'tree'
+          ? 0x8ecb5a
+          : obs.kind === 'crate'
+            ? 0xd4a050
+            : obs.kind === 'vehicle' || obs.kind === 'building'
+              ? 0xc47a48
+              : 0xc8c8c8;
+      this.graphics.lineStyle(1, color, 0.85);
       this.graphics.strokeRect(obs.collision.x, obs.collision.y, obs.collision.w, obs.collision.h);
     }
 
