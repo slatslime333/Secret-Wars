@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { HERO_IDS, PLAYABLE_HEROES, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { HERO_IDS, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { addHeroPortrait } from '../heroes/pixel';
 import { heroSelectCopy } from '../heroes/selectCopy';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
@@ -157,7 +158,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     const roleY = Math.round(cardH * 0.62);
     const ovrY = Math.round(cardH * 0.73);
     const pwrY = Math.round(cardH * 0.85);
-    const artScale = cardH >= 140 ? 1.25 : cardH >= 110 ? 1.05 : 0.9;
+    const artScale = cardH >= 140 ? 0.58 : cardH >= 110 ? 0.5 : 0.42;
 
     HERO_ORDER.forEach((id, index) => {
       const copy = heroSelectCopy(id);
@@ -165,10 +166,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       const selected = this.selected === id;
       const panel = this.add.rectangle(cx, 0, cardW, cardH, COLORS.panel, 0.96).setOrigin(0.5, 0);
       panel.setStrokeStyle(3, selected ? COLORS.yellow : COLORS.cyan);
-      const art = this.add.graphics();
-      art.setPosition(cx, artY);
-      art.setScale(artScale);
-      PLAYABLE_HEROES[id].draw(art, { facing: 'east', team: 'alpha' });
+      const art = addHeroPortrait(this, cx, artY, id, { team: 'alpha', scale: artScale });
       const name = this.add
         .text(cx, nameY, copy.name.toUpperCase(), {
           fontFamily: FONTS.display,
