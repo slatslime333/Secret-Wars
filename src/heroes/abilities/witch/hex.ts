@@ -17,7 +17,7 @@ export const hexDef: AbilityDef = {
   iconKey: ABILITY_ICON.hex,
   accent: 0x9b4dff,
   padLabel: 'HEX',
-  tactics: { roles: ['defense', 'peel'], range: witchHexAllyRange() },
+  tactics: { roles: ['defense', 'peel', 'shield', 'buff'], range: witchHexAllyRange(), includesSelf: true },
   canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new HexAbility(ctx),
 };

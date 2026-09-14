@@ -12,6 +12,7 @@ import { isShadowDry } from './tactical/kitProfile';
 import { FightSense } from './tactical/fightSense';
 import type { TacticalMind } from './tactical/mind';
 import { dodgeDirFor, scanProjectileThreat } from './tactical/shots';
+import { pickBestSupportAlly, purposesOf } from './tactical/supportSense';
 
 const SLOTS: AbilitySlot[] = SLOT_ORDER;
 
@@ -141,7 +142,7 @@ export class CombatDriver {
 
   private tryAbility(
     now: number,
-    _body: NinjaBody,
+    body: NinjaBody,
     mind: TacticalMind,
     abilities: AbilityController,
     ctx: AbilityContext,
@@ -190,7 +191,17 @@ export class CombatDriver {
     if (bestSlot === 'ultimate') {
       mind.noteUltSaved(false);
     }
+    const def = abilities.slotState(bestSlot, now).def;
+    const purposes = purposesOf(def);
+    const prevAim = ctx.aimOverride;
+    if (purposes.length > 0) {
+      const ally = pickBestSupportAlly(situation, def.tactics?.range ?? 220, purposes, situation.supportFocusId ?? -1);
+      if (ally) {
+        ctx.aimOverride = { x: ally.x - body.x, y: ally.y - body.y };
+      }
+    }
     const fired = abilities.tryActivate(bestSlot, ctx);
+    ctx.aimOverride = prevAim;
     this.nextAbilityAt = now + (fired ? 640 + rng() * 420 : 180);
     return fired;
   }

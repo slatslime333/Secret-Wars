@@ -5,6 +5,7 @@ import { assessObjective, isZoneObjective } from './objectiveIntel';
 import type { ObjectiveIntel } from './objectiveIntel';
 import { clusterRiskOf } from './spacing';
 import { assessTeam, biasAction, type TeamIntel } from './teamIntel';
+import { assessSupport } from './supportSense';
 import type {
   CombatantView,
   GamePlan,
@@ -1203,10 +1204,86 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     count = scoreObjective(out, count, situation, objIntel, team, risk, ranged, front, support, tune);
   }
 
+  if (kind === 'hero') {
+    count = applySupportBias(out, count, situation, tune);
+  }
+
   if (plan && kind === 'hero') {
     count = applyPlanBias(out, count, plan, visibleHeroes, personality);
   }
 
+  return count;
+};
+
+const applySupportBias = (
+  out: ScoredAction[],
+  count: number,
+  situation: Situation,
+  tune: (action: TacticalAction, score: number) => number,
+): number => {
+  if (!situation.hasAllySupport) {
+    return count;
+  }
+  const read = assessSupport(situation);
+  const ally = read.ally;
+  for (let i = 0; i < count; i += 1) {
+    const row = out[i];
+    if (read.need > 14 && row.action === 'farm_minions') {
+      row.score -= 18 + read.need * 0.35;
+    }
+    if (read.mode === 'save' && (row.action === 'chase' || row.action === 'flank' || row.action === 'farm_minions')) {
+      row.score -= 16;
+    }
+    if (read.mode === 'attack' && read.need < 8 && row.action === 'protect_ally') {
+      row.score -= 10;
+    }
+    if (read.mode === 'save' && situation.self.hpRatio < 0.18 && (row.action === 'attack' || row.action === 'finish_target')) {
+      row.score -= 8;
+    }
+  }
+  if (!ally) {
+    return count;
+  }
+  const nearestFoe = situation.enemies.reduce((best, enemy) => {
+    if (!enemy.visible) {
+      return best;
+    }
+    const d = dist(situation.self, enemy);
+    return !best || d < best.d ? { enemy, d } : best;
+  }, undefined as { enemy: CombatantView; d: number } | undefined);
+  const foeId = nearestFoe?.enemy.id ?? -1;
+  if (read.mode === 'attack') {
+    if (nearestFoe && nearestFoe.d < situation.self.attackRange * 1.25) {
+      count = write(out, count, 'attack', tune('attack', 12 + situation.personality.aggression * 6), 'stable team poke', foeId, ally.id);
+    }
+    return count;
+  }
+  if (read.mode === 'mix') {
+    count = write(
+      out,
+      count,
+      'assist_ally',
+      tune('assist_ally', 18 + read.need * 0.45 + situation.personality.protectionInstinct * 6),
+      read.reason,
+      foeId,
+      ally.id,
+    );
+    count = write(
+      out,
+      count,
+      'attack',
+      tune('attack', 14 + situation.personality.aggression * 8),
+      'keep firing',
+      foeId,
+      ally.id,
+    );
+    return count;
+  }
+  const protect = 22 + read.need * 0.7 + situation.personality.protectionInstinct * 10;
+  count = write(out, count, 'protect_ally', tune('protect_ally', protect), read.reason, foeId, ally.id);
+  if (read.mode === 'support') {
+    count = write(out, count, 'assist_ally', tune('assist_ally', protect - 6), 'stay with the fight', foeId, ally.id);
+  }
   return count;
 };
 

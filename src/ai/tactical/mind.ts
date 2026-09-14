@@ -15,6 +15,7 @@ import { personalityFromSeed } from './personality';
 import { pickRetreatGoal, type RetreatGoal } from './retreat';
 import { scanProjectileThreat } from './shots';
 import { GamePlanController } from './strategy';
+import { assessSupport } from './supportSense';
 import { objectiveHintFor } from '../../match/objectives/board';
 import { scoreHintFor } from '../../match/scoreBoard';
 import { assessObjective } from './objectiveIntel';
@@ -243,6 +244,11 @@ export class TacticalMind {
       dashCharges: selfFact.dashCharges,
     });
     this.situation.kit = this.kit;
+    this.situation.hasAllySupport = self.kitHasAllySupport;
+    const support = assessSupport(this.situation);
+    this.situation.supportMode = support.mode;
+    this.situation.supportFocusId = support.ally?.id ?? -1;
+    this.situation.supportNeed = support.need;
     if (!this.director) {
       this.director = new GamePlanController(
         this.seed,
@@ -354,6 +360,8 @@ export class TacticalMind {
       action === 'wait_for_opening' ||
       action === 'farm_minions' ||
       action === 'contest_objective' ||
+      (action === 'protect_ally' &&
+        (this.kit?.stance === 'support' || this.kit?.stance === 'ranged' || this.situation.hasAllySupport)) ||
       (action === 'recover' && this.intent.goal?.kind === 'minions')
     );
   }

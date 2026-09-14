@@ -48,6 +48,7 @@ export class NinjaBody {
   /** CPU kit pressure. Defaults assume a full kit so tests and minions stay aggressive. */
   kitAbilityReady = true;
   kitDashCharges = 2;
+  kitHasAllySupport = false;
   lastAttacker?: NinjaBody;
   lastAttackerAt = 0;
   /** Last time an enemy actually dealt HP damage. Minion heals / regen do not touch this. */
@@ -208,6 +209,9 @@ export class NinjaBody {
 
   takeHit(options: TakeHitOptions): void {
     if (this.down || !this.present) {
+      return;
+    }
+    if (this.isInvulnerable(this.now())) {
       return;
     }
     if (DEV_CHEATS.godMode && this.stats.role !== 'minion') {

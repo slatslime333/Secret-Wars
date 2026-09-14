@@ -252,12 +252,12 @@ export class QuickAttack {
       MENDER_PULSE.lifetimeMs,
       MENDER_PULSE.color,
       'spark',
-      attacker.stats.attackRange,
-      { x: attacker.x, y: attacker.y },
+      Number.POSITIVE_INFINITY,
+      undefined,
       attacker.team,
     );
     this.menderShots.push(shot);
-    const flash = this.scene.add.circle(origin.x, origin.y, 5, MENDER_PULSE.color, 0.9).setDepth(16);
+    const flash = this.scene.add.circle(origin.x, origin.y, 3.4, MENDER_PULSE.color, 0.9).setDepth(16);
     this.scene.tweens.add({
       targets: flash,
       alpha: 0,

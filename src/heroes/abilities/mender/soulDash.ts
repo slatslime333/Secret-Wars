@@ -22,7 +22,7 @@ export const soulDashDef: AbilityDef = {
   aimOnRelease: true,
   padLabel: 'SOUL',
   deferCooldown: true,
-  tactics: { roles: ['defense', 'peel', 'mobility'], range: menderSoulRange() },
+  tactics: { roles: ['defense', 'peel', 'mobility', 'heal', 'buff'], range: menderSoulRange() },
   canActivate: (ctx) => {
     if (!canStartAbility(ctx)) {
       return false;
@@ -74,6 +74,7 @@ class SoulDashAbility implements ActiveAbility {
     const speed = MENDER_SOUL.dashDistance / (MENDER_SOUL.dashDurationMs / 1000);
     ctx.caster.setSpeedCap(speed);
     ctx.caster.status.applyControlLock(ctx.now, MENDER_SOUL.dashDurationMs);
+    this.lockInvulnerable(ctx.now);
     spawnCombatCallout(ctx.scene, ctx.caster.x, ctx.caster.y, 'SOUL', 0xe03040);
     playWorld('shadow-dash-whoosh', ctx.caster);
     attached.set(this.caster, this);
@@ -117,6 +118,7 @@ class SoulDashAbility implements ActiveAbility {
         return true;
       }
       this.followAlly(caster, now);
+      this.lockInvulnerable(now);
       const cpuDone = !caster.playerControlled && now >= this.attachedAt + MENDER_SOUL.buffMs;
       if (this.wantExit || cpuDone) {
         this.beginExit(ctx, false);
@@ -137,6 +139,7 @@ class SoulDashAbility implements ActiveAbility {
 
   destroy(): void {
     attached.delete(this.caster);
+    this.unlockInvulnerable();
     this.caster.setFairyForm(false);
     this.caster.setSpeedCap(COMBAT.physicsMaxSpeed);
   }
@@ -149,6 +152,7 @@ class SoulDashAbility implements ActiveAbility {
     ctx.caster.setSpeedCap(COMBAT.physicsMaxSpeed);
     ctx.caster.stop();
     ctx.caster.setFairyForm(true);
+    this.lockInvulnerable(ctx.now);
     this.applyBuff(ctx);
     spawnCombatCallout(ctx.scene, this.ally.x, this.ally.y, 'LINK', 0xe03040);
     playWorld('witch-hex-buff', this.ally);
@@ -181,6 +185,7 @@ class SoulDashAbility implements ActiveAbility {
     this.phase = 'exit';
     this.allowRecast = false;
     this.control = { move: true, attack: true, dash: true, block: true, abilities: true };
+    this.unlockInvulnerable();
     ctx.caster.setFairyForm(false);
     const aimLen = Math.hypot(this.ally.aim.x, this.ally.aim.y) || 1;
     const ex = -this.ally.aim.x / aimLen;
@@ -199,7 +204,16 @@ class SoulDashAbility implements ActiveAbility {
 
   private detach(ctx: AbilityContext): void {
     attached.delete(ctx.caster);
+    this.unlockInvulnerable();
     ctx.caster.setFairyForm(false);
     ctx.caster.setSpeedCap(COMBAT.physicsMaxSpeed);
+  }
+
+  private lockInvulnerable(now: number): void {
+    this.caster.grantInvulnerable(now + 120_000);
+  }
+
+  private unlockInvulnerable(): void {
+    this.caster.grantInvulnerable(0);
   }
 }

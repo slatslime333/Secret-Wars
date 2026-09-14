@@ -10,6 +10,8 @@ import { personalityFromSeed } from './personality';
 import { pickOpeningForTest } from './strategy';
 import { clusterRiskOf, guardHome, nudgeOffMates, protectStand, regroupStand } from './spacing';
 import { cameraPrefs } from '../../config/cameraPrefs';
+import { MENDER } from '../../config/mender';
+import { MENDER_PULSE } from '../../heroes/abilities/mender/tunables';
 
 const results = runTacticalScenarios();
 let failed = 0;
@@ -215,6 +217,29 @@ for (const result of mapChecks) {
     failed += 1;
   }
   console.log(`${mark}  ${result.name}  ${result.detail}`);
+}
+
+if (MENDER.attackDamage !== 19) {
+  failed += 1;
+  console.log(`FAIL  mender damage  ${MENDER.attackDamage} !== 19`);
+} else {
+  console.log('ok  mender damage  19');
+}
+if (MENDER.ratings.attackSpeed !== 80) {
+  failed += 1;
+  console.log(`FAIL  mender attack speed  ${MENDER.ratings.attackSpeed} !== 80`);
+} else {
+  console.log('ok  mender attack speed  80');
+}
+if (MENDER_PULSE.radius >= 5.6 || MENDER_PULSE.armOffsetRad >= 0.028 || MENDER_PULSE.spreadRad >= 0.07) {
+  failed += 1;
+  console.log(
+    `FAIL  mender pulse shape  r=${MENDER_PULSE.radius} offset=${MENDER_PULSE.armOffsetRad} spread=${MENDER_PULSE.spreadRad}`,
+  );
+} else {
+  console.log(
+    `ok  mender pulse shape  r=${MENDER_PULSE.radius} offset=${MENDER_PULSE.armOffsetRad} spread=${MENDER_PULSE.spreadRad}`,
+  );
 }
 
 if (failed > 0) {

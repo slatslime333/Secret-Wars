@@ -8,11 +8,12 @@ import { abilityDamage } from '../../../config/ratings';
 
 export const MENDER_PULSE = {
   speed: Math.round(GUN_BARRAGE_SPEED_BASE * 1.12),
-  radius: 5.6,
-  lifetimeMs: 1600,
-  /** Between Rope's tight grouping and Death's SMG cone. */
-  spreadRad: 0.07,
-  armOffsetRad: 0.028,
+  radius: 4.2,
+  /** Safety cap only. Shots are not range-limited; they fly until a hit or the map edge. */
+  lifetimeMs: 8000,
+  /** Dual uzis stay close to the aim line. */
+  spreadRad: 0.038,
+  armOffsetRad: 0.014,
   armReach: 14,
   knockbackMul: 0.42,
   staminaDamage: 2,

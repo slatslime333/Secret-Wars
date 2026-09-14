@@ -11,6 +11,7 @@ export { GamePlanController } from './strategy';
 export { FightSense } from './fightSense';
 export { SwingIntent } from './swingIntent';
 export { NEUTRAL_PERSONALITY } from './types';
+export { assessSupport, scoreAllyNeed, pickBestSupportAlly } from './supportSense';
 export type {
   CombatantView,
   GamePlan,
@@ -24,4 +25,5 @@ export type {
   TacticalDebugInfo,
   TacticalKind,
   ThreatLevel,
+  SupportMode,
 } from './types';

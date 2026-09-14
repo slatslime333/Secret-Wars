@@ -60,6 +60,9 @@ export type OpeningPlan =
 
 export type ThreatLevel = 'low' | 'medium' | 'high' | 'extreme';
 
+/** Ally-support kits mix offense vs peel from ability defs, not `role === 'support'`. */
+export type SupportMode = 'attack' | 'mix' | 'support' | 'save';
+
 export type TacticalKind = 'hero' | 'minion';
 
 export type Personality = {
@@ -195,6 +198,11 @@ export type Situation = {
   teamMomentum?: number;
   /** Own stamina change since last think. Positive = recovering. */
   staminaTrend?: number;
+  /** True when this fighter's kit defs include ally heal / shield / buff. */
+  hasAllySupport?: boolean;
+  supportMode?: SupportMode;
+  supportFocusId?: number;
+  supportNeed?: number;
 };
 
 export type TacticalDebugInfo = {

@@ -3,17 +3,17 @@ import { NINJA } from './ninja';
 import { gameplayFromRatings, type CoreRatings } from './ratings';
 
 /**
- * Ranged support. High range and attack speed, low HP / damage / knockback.
+ * Ranged support. High range, attack speed, and Pulse damage; low HP / knockback.
  * Pulse is a dual-SMG light attack; the kit is built around protecting allies.
  */
 export const MENDER_RATINGS = {
   health: 40,
   stamina: 62,
   staminaRegen: 78,
-  damage: 24,
+  damage: 87,
   defense: 32,
   speed: 62,
-  attackSpeed: 72,
+  attackSpeed: 80,
   attackRange: 88,
   knockback: 22,
 } as const satisfies CoreRatings;

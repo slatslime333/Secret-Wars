@@ -1,4 +1,5 @@
-import type { AbilityDef, AbilityRole, AbilitySlot, AbilityTactics } from '../../heroes/abilities/types';
+import { defHasAllySupport, type AbilityDef, type AbilityRole, type AbilitySlot, type AbilityTactics } from '../../heroes/abilities/types';
+import { scoreSupportAbility } from './supportSense';
 import type { CombatantView, Situation } from './types';
 
 const dist = (a: CombatantView, b: CombatantView): number => Math.hypot(a.x - b.x, a.y - b.y);
@@ -49,9 +50,13 @@ export const scoreKitSlot = (
   const setup = hasRole(tactics, 'setup') || Boolean(kit?.setupIds.includes(def.id));
   const defensive = hasRole(tactics, 'defense') || hasRole(tactics, 'peel') || Boolean(kit?.defensiveIds.includes(def.id));
   const escape = hasRole(tactics, 'escape') || Boolean(kit?.escapeIds.includes(def.id));
+  const allySupport = defHasAllySupport(def);
+  const supportDelta = allySupport ? scoreSupportAbility(def, situation, range) : 0;
   let score = 4 + personality.aggression * 3;
 
-  if (setup) {
+  if (allySupport && !setup) {
+    score += supportDelta;
+  } else if (setup) {
     const fightSoon = nearest && nearest.d < 420 && nearest.d > 90;
     const preparing =
       plan?.state === 'opening' ||
@@ -72,44 +77,25 @@ export const scoreKitSlot = (
     }
   } else if (escape || (defensive && !setup)) {
     const nearHeroes = countInRange(self, enemyHeroes, 200);
-    const allyNeed = allies.find(
-      (ally) =>
-        ally.kind === 'hero' &&
-        dist(self, ally) < range + 40 &&
-        (ally.hpRatio < 0.38 || (ally.recentlyHit && ally.hpRatio < 0.55)),
-    );
     const selfThreat =
       (nearest && nearest.d < 130 && nearest.unit.kind === 'hero') ||
       Boolean(situation.projectile?.willHit) ||
       hp < 0.42;
-    if (def.id === 'witch-hex' || kit?.defensiveIds.includes(def.id)) {
-      if (allyNeed) {
-        score += 24 + (1 - allyNeed.hpRatio) * 16 + personality.protectionInstinct * 10;
-      } else if (selfThreat) {
-        score += 18 + (1 - hp) * 12;
-      } else {
-        score -= 22;
-      }
-      if (hp > 0.78 && !allyNeed && !situation.projectile?.willHit) {
-        score -= 10;
-      }
-    } else {
-      if (hp < 0.38) {
-        score += 22;
-      }
-      if (hp < 0.22) {
-        score += 16;
-      }
-      if (nearHeroes >= 2) {
-        score += 14;
-      }
-      if (hp > 0.72 && nearHeroes === 0) {
-        score -= 24;
-      }
+    if (hp < 0.38) {
+      score += 22;
+    }
+    if (hp < 0.22) {
+      score += 16;
+    }
+    if (nearHeroes >= 2) {
+      score += 14;
+    }
+    if (hp > 0.72 && nearHeroes === 0 && !selfThreat) {
+      score -= 24;
     }
   }
 
-  if (hasRole(tactics, 'mobility') && !escape) {
+  if (hasRole(tactics, 'mobility') && !escape && !allySupport) {
     if (nearest && nearest.d > range * 0.4 && nearest.d < range * 1.2 && hp > 0.35) {
       score += 10;
     }
@@ -131,12 +117,12 @@ export const scoreKitSlot = (
     if (foes + minions >= 3) {
       score += 8;
     }
-    if (foes === 0 && minions < 2 && !setup) {
+    if (foes === 0 && minions < 2 && !setup && supportDelta < 8) {
       score -= 16;
     }
   }
 
-  if ((hasRole(tactics, 'peel') || hasRole(tactics, 'initiate')) && !setup) {
+  if ((hasRole(tactics, 'peel') || hasRole(tactics, 'initiate')) && !setup && !allySupport) {
     const allyInTrouble = allies.some((ally) => ally.kind === 'hero' && ally.hpRatio < 0.4 && dist(self, ally) < 240);
     if (allyInTrouble && foes >= 1) {
       score += 12;
@@ -148,7 +134,9 @@ export const scoreKitSlot = (
     const grouped = foes >= (kit?.ultSaveUntilFoes ?? 2);
     const finish = foes === 1 && nearest && nearest.unit.hpRatio < 0.32 && hp > 0.28;
     const panic = hp < 0.18 && (escape || hasRole(tactics, 'aoe') || defensive);
-    if (grouped) {
+    if (allySupport && supportDelta > 12) {
+      score += supportDelta > 22 ? 12 : 4;
+    } else if (grouped) {
       score += 16;
     } else if (finish) {
       score += 8;
@@ -157,7 +145,7 @@ export const scoreKitSlot = (
     } else {
       score -= 22 + saveBias;
     }
-    if (foes === 0) {
+    if (foes === 0 && supportDelta < 10) {
       score -= 30;
     }
     if (plan?.state === 'opening' || plan?.state === 'patrol' || plan?.state === 'search') {
@@ -172,7 +160,10 @@ export const scoreKitSlot = (
   }
 
   if (!nearest || nearest.d > range * 1.35) {
-    if (!(escape && hp < 0.34) && !setup) {
+    const allyInRange =
+      allySupport &&
+      allies.some((ally) => ally.kind === 'hero' && ally.visible && dist(self, ally) <= range + 24);
+    if (!(escape && hp < 0.34) && !setup && !allyInRange) {
       score -= 14;
     }
   }
