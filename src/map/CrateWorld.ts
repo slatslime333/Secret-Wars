@@ -7,6 +7,7 @@ import type { NinjaBody } from '../heroes/NinjaBody';
 import type { XpOrbWorld } from '../match/XpOrbWorld';
 import { onWorldStrike, type WorldStrikeEvent } from '../match/objectives/worldStrike';
 import { ENV } from './palette';
+import { FONTS, hex } from '../ui/theme';
 import type { MapObstacle } from './types';
 import type { MapView } from './render';
 import type { MapWorld } from './world';
@@ -168,32 +169,44 @@ export class CrateWorld {
 
   private burst(x: number, y: number): void {
     const stain = this.scene.add.graphics().setDepth(2);
-    stain.fillStyle(ENV.woodDark, 0.9);
-    stain.fillRect(x - 18, y + 4, 36, 10);
-    stain.fillStyle(ENV.dirt, 0.95);
-    stain.fillRect(x - 12, y + 2, 16, 8);
-    const puff = this.scene.add.rectangle(x, y, 34, 24, ENV.crateLite, 0.9).setDepth(22);
+    stain.fillStyle(ENV.woodDark, 0.95);
+    stain.fillRect(x - 20, y + 4, 40, 12);
+    stain.fillStyle(ENV.dirt, 1);
+    stain.fillRect(x - 12, y + 2, 18, 8);
+
+    const puff = this.scene.add.graphics().setDepth(22);
+    puff.fillStyle(ENV.crateLite, 0.95);
+    puff.fillRect(x - 16, y - 12, 32, 20);
+    for (let i = 0; i < CRATE.shardCount; i += 1) {
+      const ang = (Math.PI * 2 * i) / CRATE.shardCount;
+      puff.fillStyle(i % 2 === 0 ? ENV.crate : ENV.crateDark, 1);
+      puff.fillRect(x + Math.cos(ang) * 16 - 6, y + Math.sin(ang) * 12 - 3, 12, 7);
+    }
     this.scene.tweens.add({
       targets: puff,
       alpha: 0,
-      scaleX: 1.55,
-      scaleY: 1.4,
-      duration: 280,
+      duration: 560,
       onComplete: () => puff.destroy(),
     });
-    for (let i = 0; i < CRATE.shardCount; i += 1) {
-      const shard = this.scene.add.rectangle(x, y, 12, 7, i % 2 === 0 ? ENV.crate : ENV.crateDark, 1).setDepth(22);
-      const ang = (Math.PI * 2 * i) / CRATE.shardCount + Math.random() * 0.35;
-      this.scene.tweens.add({
-        targets: shard,
-        x: x + Math.cos(ang) * 42,
-        y: y + Math.sin(ang) * 30,
-        alpha: 0,
-        rotation: 1.6,
-        duration: 520,
-        onComplete: () => shard.destroy(),
-      });
-    }
+
+    const label = this.scene.add
+      .text(x, y - 30, `+${CRATE.xp} XP`, {
+        fontFamily: FONTS.body,
+        fontSize: '14px',
+        fontStyle: 'bold',
+        color: hex(0xe8e0cc),
+        stroke: hex(ENV.ink),
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(30);
+    this.scene.tweens.add({
+      targets: label,
+      y: y - 52,
+      alpha: 0,
+      duration: 720,
+      onComplete: () => label.destroy(),
+    });
   }
 
   private dropRewards(x: number, y: number, attacker?: NinjaBody): void {
@@ -201,10 +214,10 @@ export class CrateWorld {
     if (!target) {
       return;
     }
-    this.hooks.orbs?.spawn(x + 18, y - 16, target, 0, target.team, { visual: true });
+    this.hooks.orbs?.spawn(x + 28, y - 26, target, 0, target.team, { visual: true, delayMs: 360 });
     this.hooks.grantXp?.(target, CRATE.xp);
     if (Math.random() < CRATE.bonusXpChance) {
-      this.hooks.orbs?.spawn(x - 12, y - 10, target, 0, target.team, { visual: true });
+      this.hooks.orbs?.spawn(x - 22, y - 20, target, 0, target.team, { visual: true, delayMs: 420 });
       this.hooks.grantXp?.(target, CRATE.bonusXp);
     }
     if (Math.random() < CRATE.healthChance) {

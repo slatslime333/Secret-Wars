@@ -17,6 +17,7 @@ type Orb = {
   amount: number;
   team: TeamId;
   bornAt: number;
+  holdUntil: number;
   wobble: number;
   visual: boolean;
 };
@@ -41,23 +42,26 @@ export class XpOrbWorld {
     target: NinjaBody,
     amount: number,
     team: TeamId,
-    options: { visual?: boolean } = {},
+    options: { visual?: boolean; delayMs?: number } = {},
   ): void {
     if (amount <= 0 && !options.visual) {
       return;
     }
     const color = TEAM_COLOR[team];
-    const disc = this.scene.add.circle(0, 0, MATCH.orbs.radius, color, 0.95);
+    const radius = options.visual ? MATCH.orbs.radius + 3 : MATCH.orbs.radius;
+    const disc = this.scene.add.circle(0, 0, radius, color, 0.95);
     disc.setStrokeStyle(1.5, 0xf6f1de, 0.9);
-    const ring = this.scene.add.circle(0, 0, MATCH.orbs.radius + 3, color, 0.18);
+    const ring = this.scene.add.circle(0, 0, radius + 3, color, 0.18);
     const view = this.scene.add.container(x, y, [ring, disc]).setDepth(28);
+    const now = this.scene.time.now;
     this.orbs.push({
       view,
       disc,
       target,
       amount,
       team,
-      bornAt: this.scene.time.now,
+      bornAt: now,
+      holdUntil: now + (options.delayMs ?? 0),
       wobble: Math.random() * Math.PI * 2,
       visual: Boolean(options.visual),
     });
@@ -73,6 +77,11 @@ export class XpOrbWorld {
         continue;
       }
       orb.wobble += dt * 8;
+      if (now < orb.holdUntil) {
+        orb.view.y -= 22 * dt;
+        orb.disc.setScale(0.9 + Math.sin(orb.wobble * 1.4) * 0.12);
+        continue;
+      }
       const dx = orb.target.x - orb.view.x;
       const dy = orb.target.y - 10 - orb.view.y;
       const dist = Math.hypot(dx, dy);
