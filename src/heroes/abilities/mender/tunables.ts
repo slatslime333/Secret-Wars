@@ -8,7 +8,7 @@ import { abilityDamage } from '../../../config/ratings';
 
 export const MENDER_PULSE = {
   speed: Math.round(GUN_BARRAGE_SPEED_BASE * 1.12),
-  radius: 3.6,
+  radius: 5.6,
   lifetimeMs: 1600,
   /** Between Rope's tight grouping and Death's SMG cone. */
   spreadRad: 0.07,

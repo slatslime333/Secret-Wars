@@ -68,6 +68,16 @@ const startSecondWindField = (ctx: AbilityContext): void => {
       gfx.strokeCircle(0, 0, MENDER_WIND.radius);
       gfx.lineStyle(1.6, 0xffffff, 0.35);
       gfx.strokeCircle(0, 0, MENDER_WIND.radius * 0.72);
+      gfx.lineStyle(2, 0xfff2a0, 0.5 + Math.sin(now / 90) * 0.12);
+      for (const fighter of fighters) {
+        if (fighter.down || !fighter.isPresent || !isHeroFighter(fighter) || !inside(fighter)) {
+          continue;
+        }
+        if (fighter.team === owner.team) {
+          continue;
+        }
+        gfx.strokeCircle(fighter.x - originX, fighter.y - originY, 16);
+      }
 
       if (now - lastPulse < MENDER_WIND.pulseMs) {
         return true;

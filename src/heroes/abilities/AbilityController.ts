@@ -34,6 +34,7 @@ export class AbilityController {
   private readonly slots: Record<AbilitySlot, SlotRuntime>;
   private active?: ActiveAbility;
   private deferredSlot?: AbilitySlot;
+  private readonly heldSlots = new Set<AbilitySlot>();
   private loopKey?: string;
 
   constructor(private readonly kit: HeroAbilityKit) {
@@ -52,14 +53,37 @@ export class AbilityController {
     return Boolean(this.active);
   }
 
+  holdAbilitySlot(slot: AbilitySlot): void {
+    this.heldSlots.add(slot);
+  }
+
+  releaseAbilitySlot(slot: AbilitySlot, now: number, startCooldown: boolean): void {
+    const wasHeld = this.heldSlots.delete(slot);
+    if (wasHeld && startCooldown && !DEV_CHEATS.noCooldowns) {
+      const def = defForSlot(this.kit, slot);
+      this.slots[slot].readyAt = now + def.cooldownMs;
+    }
+  }
+
   tryActivate(slot: AbilitySlot, ctx: AbilityContext): boolean {
+    const def = defForSlot(this.kit, slot);
+    if (this.active && this.active.id === def.id) {
+      if (!this.active.allowRecast || !canStartAbility(ctx)) {
+        return false;
+      }
+      ctx.interruptCombat();
+      def.activate(ctx);
+      return true;
+    }
+    if (this.heldSlots.has(slot)) {
+      return false;
+    }
     if (this.active?.control.abilities) {
       return false;
     }
     if (!canStartAbility(ctx)) {
       return false;
     }
-    const def = defForSlot(this.kit, slot);
     const runtime = this.slots[slot];
     if (ctx.caster.down) {
       return false;
@@ -138,9 +162,14 @@ export class AbilityController {
     const remaining = DEV_CHEATS.noCooldowns ? 0 : Math.max(0, runtime.readyAt - now);
     const consumed = def.chargeMode === 'once' && runtime.charges <= 0 && !DEV_CHEATS.noCooldowns;
     const pooled = usesChargePool(def);
+    const recastable = Boolean(this.active?.allowRecast && this.active.id === def.id);
+    const channeling =
+      !recastable && (this.heldSlots.has(slot) || (this.deferredSlot === slot && Boolean(this.active)));
     const ready =
       DEV_CHEATS.noCooldowns ||
+      recastable ||
       (!consumed &&
+        !channeling &&
         (pooled
           ? runtime.charges > 0
           : def.chargeMode === 'cooldown'
@@ -164,6 +193,8 @@ export class AbilityController {
   }
 
   resetCooldowns(): void {
+    this.heldSlots.clear();
+    this.deferredSlot = undefined;
     for (const slot of SLOT_ORDER) {
       const def = defForSlot(this.kit, slot);
       this.slots[slot].readyAt = 0;
@@ -188,6 +219,7 @@ export class AbilityController {
   destroy(): void {
     this.active?.destroy();
     this.active = undefined;
+    this.heldSlots.clear();
     this.silence();
   }
 

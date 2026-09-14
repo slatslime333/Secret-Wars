@@ -297,7 +297,6 @@ export class NinjaBody {
       this.clearClawMark();
       this.clearRage();
       this.setFairyForm(false);
-      clearGuardian(this);
       dismissWitchSkeletons(this);
       if (applied > 0) {
         playDeath(this);
@@ -674,7 +673,6 @@ export class NinjaBody {
       this.clearClawMark();
       this.clearRage();
       this.setFairyForm(false);
-      clearGuardian(this);
       dismissWitchSkeletons(this);
     }
   }
@@ -799,7 +797,6 @@ export class NinjaBody {
       this.clearClawMark();
       this.clearRage();
       this.setFairyForm(false);
-      clearGuardian(this);
       dismissWitchSkeletons(this);
       if (applied > 0) {
         playDeath(this);

@@ -54,6 +54,9 @@ export type AbilityContext = {
   interruptCombat: () => void;
   rivalBlock?: BlockController;
   aimOverride?: { x: number; y: number };
+  /** Keep a slot unavailable after the active instance ends (Guardian Angel shield). */
+  holdAbilitySlot?: (slot: AbilitySlot) => void;
+  releaseAbilitySlot?: (slot: AbilitySlot, now: number, startCooldown: boolean) => void;
 };
 
 export type ActiveAbility = {
@@ -61,6 +64,8 @@ export type ActiveAbility = {
   readonly control: AbilityControlFlags;
   /** When `deferCooldown` is set, false skips the cooldown (missed Rope Grab). */
   consumeDeferred?: boolean;
+  /** Same-slot press while this instance is live (Soul Dash exit). */
+  allowRecast?: boolean;
   update(ctx: AbilityContext): boolean;
   destroy(): void;
 };

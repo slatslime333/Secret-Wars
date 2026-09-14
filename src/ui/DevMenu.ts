@@ -158,6 +158,7 @@ export class DevMenu {
     add(() => 'HERO ROPE', () => options.onSwapHero('rope'));
     add(() => 'HERO WITCH', () => options.onSwapHero('witch'));
     add(() => 'HERO SHADOW', () => options.onSwapHero('shadow'));
+    add(() => 'HERO MENDER', () => options.onSwapHero('mender'));
 
     addHead('CPU');
     add(

@@ -802,6 +802,7 @@ export class BattleScene extends Phaser.Scene {
     delta: number,
     aimOverride = this.abilityAim,
   ): AbilityContext {
+    const abilities = this.abilities;
     return {
       scene: this,
       now,
@@ -817,6 +818,8 @@ export class BattleScene extends Phaser.Scene {
       },
       rivalBlock: this.rivalBlock,
       aimOverride,
+      holdAbilitySlot: (slot) => abilities.holdAbilitySlot(slot),
+      releaseAbilitySlot: (slot, at, startCooldown) => abilities.releaseAbilitySlot(slot, at, startCooldown),
     };
   }
 

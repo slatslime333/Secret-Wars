@@ -4,6 +4,7 @@ import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { QuickAttack } from '../combat/QuickAttack';
 import type { AbilityController } from '../heroes/abilities/AbilityController';
+import type { AbilitySlot } from '../heroes/abilities/types';
 import type { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { battlefieldOf } from '../map';
@@ -70,7 +71,8 @@ export class RivalBrain {
     }
 
     this.dash.apply(now, cpu);
-    const abilityCtx = this.abilities && this.world
+    const abilities = this.abilities;
+    const abilityCtx = abilities && this.world
       ? {
           scene,
           now,
@@ -84,6 +86,9 @@ export class RivalBrain {
             this.block.setHeld(now, cpu, false);
           },
           rivalBlock: this.playerBlock,
+          holdAbilitySlot: (slot: AbilitySlot) => abilities.holdAbilitySlot(slot),
+          releaseAbilitySlot: (slot: AbilitySlot, at: number, startCooldown: boolean) =>
+            abilities.releaseAbilitySlot(slot, at, startCooldown),
         }
       : undefined;
     this.combat.tick({

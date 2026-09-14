@@ -138,13 +138,25 @@ export class CombatStatus {
   }
 
   applyDefenseBuff(now: number, durationMs: number, mul: number): void {
-    this.defenseUntil = now + durationMs;
-    this.defenseMul = mul;
+    const until = now + durationMs;
+    if (now >= this.defenseUntil) {
+      this.defenseMul = mul;
+      this.defenseUntil = until;
+      return;
+    }
+    this.defenseMul = Math.max(this.defenseMul, mul);
+    this.defenseUntil = Math.max(this.defenseUntil, until);
   }
 
   applyStaminaRegenBuff(now: number, durationMs: number, mul: number): void {
-    this.staminaRegenUntil = now + durationMs;
-    this.staminaRegenMul = mul;
+    const until = now + durationMs;
+    if (now >= this.staminaRegenUntil) {
+      this.staminaRegenMul = mul;
+      this.staminaRegenUntil = until;
+      return;
+    }
+    this.staminaRegenMul = Math.max(this.staminaRegenMul, mul);
+    this.staminaRegenUntil = Math.max(this.staminaRegenUntil, until);
   }
 
   defenseMultiplier(now: number): number {

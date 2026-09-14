@@ -34,10 +34,8 @@ class GuardianAngelAbility implements ActiveAbility {
   readonly id = guardianAngelDef.id;
   readonly control = { move: false, attack: false, dash: false, block: false, abilities: false };
   consumeDeferred = true;
-  private phase: 'shot' | 'shield' | 'done' = 'shot';
+  private phase: 'shot' | 'done' = 'shot';
   private readonly shot: Projectile;
-  private target?: NinjaBody;
-  private shieldUntil = 0;
 
   constructor(ctx: AbilityContext) {
     const aim = ctx.aimOverride ?? ctx.caster.aim;
@@ -77,17 +75,13 @@ class GuardianAngelAbility implements ActiveAbility {
       const allies = (ctx.allies ?? []).filter((ally) => ally !== ctx.caster && !ally.down && ally.isPresent);
       const result = this.shot.update(ctx.now, dt, allies);
       if (result === 'dead') {
+        this.consumeDeferred = true;
         this.phase = 'done';
         return false;
       }
       if (result) {
         this.beginShield(ctx, result.target);
-      }
-      return true;
-    }
-    if (this.phase === 'shield') {
-      const target = this.target;
-      if (!target || !guardianOf(target)) {
+        this.consumeDeferred = false;
         this.phase = 'done';
         return false;
       }
@@ -101,13 +95,11 @@ class GuardianAngelAbility implements ActiveAbility {
   }
 
   private beginShield(ctx: AbilityContext, ally: NinjaBody): void {
-    this.phase = 'shield';
-    this.target = ally;
-    this.shieldUntil = ctx.now + MENDER_ANGEL.durationMs;
     const existing = guardianOf(ally);
     existing?.gfx.destroy();
     const gfx = ctx.scene.add.graphics().setDepth(12);
-    setGuardian(ally, { until: this.shieldUntil, absorbed: 0, gfx, flashUntil: 0 });
+    setGuardian(ally, { until: ctx.now + MENDER_ANGEL.durationMs, absorbed: 0, gfx, flashUntil: 0 });
+    ctx.holdAbilitySlot?.('ability1');
     spawnCombatCallout(ctx.scene, ally.x, ally.y, 'SHIELD', 0x7ecbff);
     playWorld('witch-hex-buff', ally);
     startGuardianTicker(ctx, ally);
@@ -121,11 +113,13 @@ const startGuardianTicker = (ctx: AbilityContext, target: NinjaBody): void => {
     update: (now, _delta, fighters) => {
       const state = guardianOf(target);
       if (!state) {
+        ctx.releaseAbilitySlot?.('ability1', now, true);
         return false;
       }
       if (target.down || !target.isPresent || now >= state.until) {
         const absorbed = state.absorbed;
         clearGuardian(target);
+        ctx.releaseAbilitySlot?.('ability1', now, true);
         resolveGuardianBurst(
           {
             scene: ctx.scene,

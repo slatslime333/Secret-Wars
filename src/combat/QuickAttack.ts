@@ -257,6 +257,14 @@ export class QuickAttack {
       attacker.team,
     );
     this.menderShots.push(shot);
+    const flash = this.scene.add.circle(origin.x, origin.y, 5, MENDER_PULSE.color, 0.9).setDepth(16);
+    this.scene.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scale: 1.8,
+      duration: 90,
+      onComplete: () => flash.destroy(),
+    });
     attacker.playCustomAttack(now, 140, (frac) => ({
       armLiftLeft: arm === -1 ? Math.sin(frac * Math.PI) : 0.1,
       armLiftRight: arm === 1 ? Math.sin(frac * Math.PI) : 0.1,

@@ -197,9 +197,11 @@ const drawEast = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, lif
   drawSuitBody(g, p);
   g.fillStyle(p.skin);
   g.fillRoundedRect(-11, leftY, 3.5, 10, 2);
+  g.fillRoundedRect(8.2, rightY, 3.2, 9, 2);
+  drawUzi(g, p, -9, leftY + 3, -0.22 - liftL * 0.35);
   drawHead(g, p, 2, 1);
   drawEyes(g, p, 3.4, -15, 1);
-  drawUzi(g, p, 10, rightY, -0.12 - liftR * 0.4);
+  drawUzi(g, p, 11, rightY, -0.1 - liftR * 0.4);
 };
 
 const drawWest = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, liftR: number): void => {
@@ -208,10 +210,12 @@ const drawWest = (g: Phaser.GameObjects.Graphics, p: Palette, liftL: number, lif
   drawHair(g, p, -2, false);
   drawSuitBody(g, p);
   g.fillStyle(p.skin);
+  g.fillRoundedRect(-11.4, leftY, 3.2, 9, 2);
   g.fillRoundedRect(7.5, rightY, 3.5, 10, 2);
+  drawUzi(g, p, 9, rightY + 3, Math.PI + 0.22 + liftR * 0.35);
   drawHead(g, p, -2, -1);
   drawEyes(g, p, -3.4, -15, -1);
-  drawUzi(g, p, -10, leftY, Math.PI + 0.12 + liftL * 0.4);
+  drawUzi(g, p, -11, leftY, Math.PI + 0.1 + liftL * 0.4);
 };
 
 const drawFront = (

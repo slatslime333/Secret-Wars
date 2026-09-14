@@ -47,6 +47,7 @@ class SoulDashAbility implements ActiveAbility {
   readonly id = soulDashDef.id;
   control = { move: true, attack: true, dash: true, block: true, abilities: true };
   consumeDeferred = true;
+  allowRecast = false;
   private phase: 'dash' | 'attached' | 'exit' | 'done' = 'dash';
   private readonly dashUntil: number;
   private readonly dirX: number;
@@ -98,7 +99,10 @@ class SoulDashAbility implements ActiveAbility {
         caster.stats.bodyRadius + this.ally.stats.bodyRadius + MENDER_SOUL.pathPadding;
       if (now >= this.dashUntil || reached || this.ally.down) {
         caster.setSpeedCap(COMBAT.physicsMaxSpeed);
-        if (this.ally.down || !this.ally.isPresent) {
+        const closeEnough =
+          reached ||
+          Math.hypot(this.ally.x - caster.x, this.ally.y - caster.y) <= MENDER_SOUL.dashDistance * 0.35;
+        if (this.ally.down || !this.ally.isPresent || !closeEnough) {
           this.phase = 'done';
           this.detach(ctx);
           return false;
@@ -139,7 +143,8 @@ class SoulDashAbility implements ActiveAbility {
 
   private beginAttach(ctx: AbilityContext): void {
     this.phase = 'attached';
-    this.control = { move: true, attack: true, dash: true, block: true, abilities: false };
+    this.control = { move: true, attack: true, dash: true, block: true, abilities: true };
+    this.allowRecast = true;
     this.attachedAt = ctx.now;
     ctx.caster.setSpeedCap(COMBAT.physicsMaxSpeed);
     ctx.caster.stop();
@@ -174,6 +179,7 @@ class SoulDashAbility implements ActiveAbility {
 
   private beginExit(ctx: AbilityContext, forced: boolean): void {
     this.phase = 'exit';
+    this.allowRecast = false;
     this.control = { move: true, attack: true, dash: true, block: true, abilities: true };
     ctx.caster.setFairyForm(false);
     const aimLen = Math.hypot(this.ally.aim.x, this.ally.aim.y) || 1;
