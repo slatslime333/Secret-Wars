@@ -8,6 +8,8 @@ import { atFarEdge, roamHuntPoint, ARENA } from '../../config/arena';
 import { kitProfileOf } from './kitProfile';
 import { personalityFromSeed } from './personality';
 import { pickOpeningForTest } from './strategy';
+import { clusterRiskOf, guardHome, nudgeOffMates, protectStand, regroupStand } from './spacing';
+import { cameraPrefs } from '../../config/cameraPrefs';
 
 const results = runTacticalScenarios();
 let failed = 0;
@@ -101,6 +103,91 @@ if (!execOk) {
   console.log(`FAIL  executioner standoff  gap=${execGap.toFixed(0)} stand=${execStand.toFixed(0)} halt=${execGoal.halt}`);
 } else {
   console.log(`ok  executioner standoff  gap=${execGap.toFixed(0)} stand=${execStand.toFixed(0)}`);
+}
+
+const ally = { x: 400, y: 400 };
+const threat = { x: 520, y: 400 };
+const protectBody = { x: 360, y: 410, team: 'alpha' as const, attackRange: 70, role: 'frontliner', kind: 'hero' as const, id: 2 };
+const protectA = protectStand(protectBody, ally, threat, 1, false, 1);
+const protectB = protectStand({ ...protectBody, id: 3 }, ally, threat, -1, false, 2);
+const protectGapAlly = Math.hypot(protectA.x - ally.x, protectA.y - ally.y);
+const protectPair = Math.hypot(protectA.x - protectB.x, protectA.y - protectB.y);
+const protectOk = protectGapAlly > 28 && protectPair > 24;
+if (!protectOk) {
+  failed += 1;
+  console.log(
+    `FAIL  protect stand  allyGap=${protectGapAlly.toFixed(0)} pair=${protectPair.toFixed(0)} a=(${protectA.x.toFixed(0)},${protectA.y.toFixed(0)})`,
+  );
+} else {
+  console.log(`ok  protect stand  allyGap=${protectGapAlly.toFixed(0)} pair=${protectPair.toFixed(0)}`);
+}
+
+const regroupDest = regroupStand(protectBody, ally, false, 1, 0);
+const regroupGap = Math.hypot(regroupDest.x - ally.x, regroupDest.y - ally.y);
+const regroupOk = regroupGap > 28;
+if (!regroupOk) {
+  failed += 1;
+  console.log(`FAIL  regroup stand  gap=${regroupGap.toFixed(0)}`);
+} else {
+  console.log(`ok  regroup stand  gap=${regroupGap.toFixed(0)}`);
+}
+
+const home = guardHome({ x: 800, y: 500, team: 'alpha' }, 7);
+const homeGap = Math.hypot(home.x - 800, home.y - 500);
+const homeOk = homeGap > 16;
+if (!homeOk) {
+  failed += 1;
+  console.log(`FAIL  skeleton home  gap=${homeGap.toFixed(0)}`);
+} else {
+  console.log(`ok  skeleton home  gap=${homeGap.toFixed(0)}`);
+}
+
+const stacked = nudgeOffMates(400, 400, protectBody, [{ x: 400, y: 400, id: 9, kind: 'hero' }], 'regroup', 36);
+const stackedGap = Math.hypot(stacked.x - 400, stacked.y - 400);
+const stackedOk = stackedGap > 8;
+if (!stackedOk) {
+  failed += 1;
+  console.log(`FAIL  crowd nudge  gap=${stackedGap.toFixed(0)}`);
+} else {
+  console.log(`ok  crowd nudge  gap=${stackedGap.toFixed(0)}`);
+}
+
+const packedRisk = clusterRiskOf(
+  { x: 400, y: 400, kind: 'hero' },
+  [
+    { x: 408, y: 402, kind: 'hero' },
+    { x: 404, y: 396, kind: 'hero' },
+  ],
+  [{ x: 500, y: 400, kind: 'hero', visible: true, attacking: true, role: 'ranged-tank', heroId: 'witch', attackRange: 220 }],
+);
+const safeRisk = clusterRiskOf(
+  { x: 400, y: 400, kind: 'hero' },
+  [
+    { x: 408, y: 402, kind: 'hero' },
+    { x: 404, y: 396, kind: 'hero' },
+  ],
+  [{ x: 900, y: 400, kind: 'hero', visible: true, attacking: false, role: 'frontliner', heroId: 'ninja', attackRange: 70 }],
+);
+const clusterOk = packedRisk > 0.2 && safeRisk === 0;
+if (!clusterOk) {
+  failed += 1;
+  console.log(`FAIL  cluster risk  packed=${packedRisk.toFixed(2)} safe=${safeRisk.toFixed(2)}`);
+} else {
+  console.log(`ok  cluster risk  packed=${packedRisk.toFixed(2)} safe=${safeRisk.toFixed(2)}`);
+}
+
+const savedFov = cameraPrefs.getFov();
+cameraPrefs.setFov(0);
+const zoomIn = cameraPrefs.zoomMultiplier();
+cameraPrefs.setFov(1);
+const zoomOut = cameraPrefs.zoomMultiplier();
+cameraPrefs.setFov(savedFov);
+const gameplayZoomOk = zoomIn > 2 && zoomOut < 1.1 && zoomIn !== zoomOut;
+if (!gameplayZoomOk) {
+  failed += 1;
+  console.log(`FAIL  fov gameplay zoom  in=${zoomIn.toFixed(2)} out=${zoomOut.toFixed(2)}`);
+} else {
+  console.log(`ok  fov gameplay zoom  in=${zoomIn.toFixed(2)} out=${zoomOut.toFixed(2)}`);
 }
 
 const objectiveChecks = runObjectiveChecks();

@@ -13,6 +13,7 @@ export {
   lockCameraFollow,
   measureViewport,
   readSafeAreaInsets,
+  resetUiCamera,
   CAMERA_FOLLOW_LERP,
   TABLET_SHORT_EDGE,
   type Insets,

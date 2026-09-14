@@ -4,7 +4,7 @@ import type { HeroStatLine } from '../match/CombatStatsTracker';
 import { ActionButton } from './ActionButton';
 import { ScrollPanel } from './layout/ScrollPanel';
 import { applyGameplayCamera, measureViewport } from './layout/viewport';
-import { adoptHud } from './layout/hudCamera';
+import { adoptHud, resizeHudCamera } from './layout/hudCamera';
 import { addScoreboardSized } from './ScoreboardView';
 import { cameraPrefs } from '../config/cameraPrefs';
 import { SettingSlider } from './SettingSlider';
@@ -112,6 +112,7 @@ export class PauseOverlay {
         onChange: (value) => {
           cameraPrefs.setFov(value);
           applyGameplayCamera(this.scene.cameras.main, width, height);
+          resizeHudCamera(this.scene, width, height);
         },
       });
       fov.setScrollFactor(0).setDepth(232);

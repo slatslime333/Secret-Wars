@@ -220,6 +220,7 @@ export class RivalBrain {
         attackRange: cpu.stats.attackRange,
         role: cpu.stats.role,
         kind: 'hero',
+        id: this.mind.situationView().self.id,
       },
       now,
       this.mind.homeX,
@@ -236,7 +237,7 @@ export class RivalBrain {
         : undefined,
       ally ? { x: ally.x, y: ally.y, aimX: ally.aim.x, aimY: ally.aim.y } : undefined,
       this.mind.intent.flankSign,
-      cpu.x,
+      this.mind.situationView().self.id,
       this.mind.goal,
       this.mind.moveHint(),
     );

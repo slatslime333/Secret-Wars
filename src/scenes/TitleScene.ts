@@ -5,6 +5,7 @@ import { createLogo } from '../ui/createLogo';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { audio } from '../audio';
 import { fadeToScene } from './fadeToScene';
+import { resetUiCamera } from '../ui/layout/viewport';
 
 export class TitleScene extends Phaser.Scene {
   private continuing = false;
@@ -14,6 +15,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
+    resetUiCamera(this);
     const width = this.scale.width;
     const height = this.scale.height;
 

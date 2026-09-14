@@ -151,9 +151,7 @@ export class MatchScene extends Phaser.Scene {
     this.returning = false;
     resetDevCheats();
     ensureAbilityIcons(this);
-    if (isTouchPrimary()) {
-      installHudCamera(this);
-    }
+    installHudCamera(this);
     setSelectedHeroId(this.startHeroId);
     const hero = PLAYABLE_HEROES[this.startHeroId];
     const battlefield = Battlefield.install(this, { seed: resolvePlayTestSeed(), log: true });

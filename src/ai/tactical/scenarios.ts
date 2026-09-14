@@ -711,6 +711,112 @@ const scenarioAH = (): ScenarioResult => {
   };
 };
 
+const scenarioAI = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, staminaRatio: 0.08, hpRatio: 0.82, attackRange: 70 });
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 450, y: 750, hpRatio: 0.06, recentlyHit: true, power: 0.7 }),
+  ];
+  const rows = rankActions(situationOf(self, [], enemies));
+  const ok = among(rows, ['finish_target', 'attack'], 3) && best(rows) !== 'retreat' && best(rows) !== 'escape';
+  return {
+    name: 'AI low stamina still finishes',
+    ok,
+    detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}`,
+  };
+};
+
+const scenarioAJ = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, staminaRatio: 0.06, hpRatio: 0.78, attackRange: 70 });
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 460, y: 750, hpRatio: 0.92, attacking: true, attackRange: 70 }),
+  ];
+  const rows = rankActions(situationOf(self, [], enemies));
+  const ok = among(rows, ['retreat', 'reposition', 'wait_for_opening', 'recover', 'hold_position'], 4);
+  return {
+    name: 'AJ low stamina eases off a healthy foe',
+    ok,
+    detail: `best=${best(rows)} top=${rows.slice(0, 4).map((row) => row.action).join(',')}`,
+  };
+};
+
+const scenarioAK = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, role: 'frontliner', heroId: 'cole' });
+  const allies = [
+    unit({ id: 2, team: 'alpha', x: 410, y: 752, role: 'frontliner', heroId: 'ninja' }),
+    unit({ id: 3, team: 'alpha', x: 406, y: 744, role: 'support', heroId: 'rope' }),
+  ];
+  const enemies = [
+    unit({
+      id: 10,
+      team: 'bravo',
+      x: 520,
+      y: 750,
+      heroId: 'witch',
+      role: 'ranged-tank',
+      attackRange: 220,
+      attacking: true,
+    }),
+  ];
+  const rows = rankActions(situationOf(self, allies, enemies));
+  const ok = among(rows, ['reposition', 'retreat', 'hold_position', 'wait_for_opening'], 4);
+  return {
+    name: 'AK packed vs witch prefers spread',
+    ok,
+    detail: `best=${best(rows)} top=${rows.slice(0, 4).map((row) => row.action).join(',')}`,
+  };
+};
+
+const scenarioAL = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, staminaRatio: 0.9, hpRatio: 0.8 });
+  const enemies = [
+    unit({
+      id: 10,
+      team: 'bravo',
+      x: 500,
+      y: 750,
+      hpRatio: 0.42,
+      attacking: false,
+      recentlyHit: false,
+      vx: 90,
+      aimX: 1,
+    }),
+  ];
+  const rows = rankActions(situationOf(self, [], enemies, { homeX: 220 }));
+  const ok = among(rows, ['attack', 'chase', 'intercept', 'flank'], 3);
+  return {
+    name: 'AL visible retreat gets pressured',
+    ok,
+    detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}`,
+  };
+};
+
+const scenarioAM = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750 });
+  const visible = {
+    id: 10,
+    team: 'bravo' as const,
+    x: 500,
+    y: 750,
+    attacking: false,
+    recentlyHit: false,
+    vx: 0,
+    vy: 0,
+    blocking: false,
+  };
+  const full = rankActions(
+    situationOf(self, [], [unit({ ...visible, staminaRatio: 1, canAttack: true, abilityReady: true, dashCharges: 2 })]),
+  );
+  const empty = rankActions(
+    situationOf(self, [], [unit({ ...visible, staminaRatio: 0, canAttack: false, abilityReady: false, dashCharges: 0 })]),
+  );
+  const ok = best(full) === best(empty);
+  return {
+    name: 'AM hidden enemy meters do not change the call',
+    ok,
+    detail: `full=${best(full)} empty=${best(empty)}`,
+  };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -746,4 +852,9 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioAF(),
   scenarioAG(),
   scenarioAH(),
+  scenarioAI(),
+  scenarioAJ(),
+  scenarioAK(),
+  scenarioAL(),
+  scenarioAM(),
 ];

@@ -7,7 +7,7 @@ import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
 import { SettingSlider } from '../ui/SettingSlider';
 import { ScrollPanel } from '../ui/layout/ScrollPanel';
-import { measureViewport } from '../ui/layout/viewport';
+import { measureViewport, resetUiCamera } from '../ui/layout/viewport';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
 
@@ -22,6 +22,7 @@ export class SettingsScene extends Phaser.Scene {
 
   create(): void {
     this.returning = false;
+    resetUiCamera(this);
     createBackdrop(this, { accent: COLORS.cyan });
     this.cameras.main.fadeIn(220, 7, 10, 18);
 

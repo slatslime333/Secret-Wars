@@ -9,7 +9,8 @@ import {
   threatFromRisk,
 } from './evaluate';
 import type { TacticalField } from './field';
-import { isRopeDisarmed, isShadowDry, kitProfileOf } from './kitProfile';
+import { kitProfileOf, isRopeDisarmed, isShadowDry } from './kitProfile';
+import { clusterRiskOf } from './spacing';
 import { personalityFromSeed } from './personality';
 import { pickRetreatGoal, type RetreatGoal } from './retreat';
 import { scanProjectileThreat } from './shots';
@@ -102,6 +103,7 @@ export class TacticalMind {
   private readonly seed: string;
   private lastAllyCount = 0;
   private lastEnemyCount = 0;
+  private lastStaminaRatio = 1;
   private kit?: KitProfile;
   private director?: GamePlanController;
   private readonly teamBuf: UnitFact[] = [];
@@ -168,14 +170,28 @@ export class TacticalMind {
   moveHint(): MoveHint | undefined {
     const kit = this.kit;
     const director = this.director;
-    if (!kit && !director) {
+    const self = this.situation.self;
+    const mates = this.allies
+      .filter((ally) => Math.hypot(ally.x - self.x, ally.y - self.y) < 190)
+      .map((ally) => ({
+        x: ally.x,
+        y: ally.y,
+        id: ally.id,
+        kind: ally.kind,
+        role: String(ally.role),
+        attackRange: ally.attackRange,
+      }));
+    const clusterRisk = clusterRiskOf(self, this.allies, this.enemies);
+    if (!kit && !director && mates.length === 0) {
       return undefined;
     }
     return {
       stance: kit?.stance,
-      preferredRange: (kit?.preferredRange ?? this.situation.self.attackRange) * (0.92 + this.personality.preferredDistance * 0.16),
+      preferredRange: (kit?.preferredRange ?? self.attackRange) * (0.92 + this.personality.preferredDistance * 0.16),
       anchorX: director?.anchorX,
       anchorY: director?.anchorY,
+      mates,
+      clusterRisk,
       objective: this.situation.objective
         ? {
             kind: this.situation.objective.kind,
@@ -371,6 +387,8 @@ export class TacticalMind {
     this.bodyById.clear();
     copyView(this.situation.self, selfFact);
     this.situation.self.visible = true;
+    this.situation.staminaTrend = selfFact.staminaRatio - this.lastStaminaRatio;
+    this.lastStaminaRatio = selfFact.staminaRatio;
     this.situation.currentTargetId = -1;
     this.situation.escapeOpen = field.escapeOpen(selfFact.x, selfFact.y, this.homeX, this.homeY, scene);
     this.situation.homeX = this.homeX;
@@ -493,6 +511,15 @@ export class TacticalMind {
       dashCharges: self.kitDashCharges,
     };
     if (isShadowDry(self.heroId, kitLive) && AGGRESSIVE.has(intent.action)) {
+      return true;
+    }
+    if (
+      kitLive.staminaRatio < 0.12 &&
+      AGGRESSIVE.has(intent.action) &&
+      intent.action !== 'finish_target' &&
+      intent.action !== 'assist_ally' &&
+      !intent.allyDangerAtCommit
+    ) {
       return true;
     }
     if (

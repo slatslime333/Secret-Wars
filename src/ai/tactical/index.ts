@@ -4,6 +4,7 @@ export { TacticalMind } from './mind';
 export { TacticalOverlay } from './overlay';
 export { moveGoal } from './move';
 export { scoreSituation, pickScoredAction, threatFromRisk, riskOfSituation } from './evaluate';
+export { clusterRiskOf, protectStand, regroupStand, guardHome, nudgeOffMates } from './spacing';
 export { personalityFromSeed } from './personality';
 export { kitProfileOf, isRangedLike, isShadowDry, isRopeDisarmed } from './kitProfile';
 export { GamePlanController } from './strategy';

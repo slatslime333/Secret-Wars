@@ -39,8 +39,9 @@ class CameraPrefsController {
   }
 
   /**
-   * Multiplier on the layout camera zoom. 1 at the default slider.
+   * Multiplier on the *gameplay* camera zoom only. 1 at the default slider.
    * Low FOV zooms in hard (up to 5×); high FOV still opens the battlefield.
+   * Never apply this to menus, HUD, or other UI cameras.
    */
   zoomMultiplier(): number {
     const t = this.fov;
