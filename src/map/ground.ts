@@ -265,9 +265,13 @@ const drawDecorations = (graphics: Phaser.GameObjects.Graphics, layout: MapLayou
   const rng = new SeededRNG(layout.seed ^ 0x51c3);
   for (const mark of layout.decorations) {
     if (mark.kind === 'dirt') {
-      const w = 28 + mark.variant * 6;
-      const h = 12 + mark.variant * 3;
-      const count = 18 + mark.variant * 4;
+      const w = 42 + mark.variant * 10;
+      const h = 18 + mark.variant * 5;
+      graphics.fillStyle(0x4a4030, 0.42);
+      graphics.fillRect(Math.round(mark.x - w / 2), Math.round(mark.y - h / 2), w, h);
+      graphics.fillStyle(0x5a4e38, 0.32);
+      graphics.fillRect(Math.round(mark.x - w / 3), Math.round(mark.y - h / 3), Math.round(w * 0.55), Math.round(h * 0.5));
+      const count = 10 + mark.variant * 3;
       for (let i = 0; i < count; i += 1) {
         const px = Math.round(mark.x + rng.float(-w, w));
         const py = Math.round(mark.y + rng.float(-h, h));
@@ -301,10 +305,10 @@ const drawDecorations = (graphics: Phaser.GameObjects.Graphics, layout: MapLayou
       continue;
     }
     if (mark.kind === 'burn') {
-      graphics.fillStyle(0x2a1c14, 0.7);
-      graphics.fillRect(mark.x - 10, mark.y - 6, 22, 14);
-      graphics.fillStyle(0x3a2818, 0.5);
-      graphics.fillRect(mark.x - 4, mark.y - 2, 12, 8);
+      graphics.fillStyle(0x2a1c14, 0.55);
+      graphics.fillRect(mark.x - 16, mark.y - 8, 34, 18);
+      graphics.fillStyle(0x3a2818, 0.4);
+      graphics.fillRect(mark.x - 6, mark.y - 3, 16, 10);
       continue;
     }
     if (mark.kind === 'sign') {
@@ -335,15 +339,21 @@ const drawMidfieldDust = (graphics: Phaser.GameObjects.Graphics, layout: MapLayo
   const rng = new SeededRNG(layout.seed ^ 0x33aa);
   const cx = ARENA.width / 2;
   const cy = ARENA.height / 2;
+  for (let i = 0; i < 18; i += 1) {
+    const ang = rng.float(0, Math.PI * 2);
+    const rx = rng.float(0, 1) ** 0.55 * 220;
+    const ry = rng.float(0, 1) ** 0.55 * 110;
+    const x = Math.round(cx + Math.cos(ang) * rx);
+    const y = Math.round(cy + Math.sin(ang) * ry);
+    graphics.fillStyle(i % 4 === 0 ? 0x2a1c14 : 0x4a4030, 0.28);
+    graphics.fillRect(x - 10, y - 5, 22 + (i % 3) * 6, 9 + (i % 2) * 4);
+  }
   for (let i = 0; i < 70; i += 1) {
     const ang = rng.float(0, Math.PI * 2);
     const rx = rng.float(0, 1) ** 0.6 * 190;
     const ry = rng.float(0, 1) ** 0.6 * 78;
     const x = Math.round(cx + Math.cos(ang) * rx);
     const y = Math.round(cy + Math.sin(ang) * ry);
-    if (inKeepout(layout, x, y)) {
-      continue;
-    }
     drawDirtSpeck(graphics, x, y);
   }
 };

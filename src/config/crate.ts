@@ -18,7 +18,7 @@ export const CRATE = {
   shieldAmount: 18,
   shieldMs: 6_000,
   hitFlashMs: 70,
-  shardCount: 5,
+  shardCount: 8,
 } as const;
 
 export const crateXpAmount = (): number => Math.min(CRATE.xp, MATCH.xp.sword);

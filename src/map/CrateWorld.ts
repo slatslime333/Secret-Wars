@@ -168,25 +168,29 @@ export class CrateWorld {
 
   private burst(x: number, y: number): void {
     const stain = this.scene.add.graphics().setDepth(2);
-    stain.fillStyle(ENV.woodDark, 0.7);
-    stain.fillRect(x - 16, y + 6, 32, 8);
-    stain.fillStyle(ENV.dirt, 0.8);
-    stain.fillRect(x - 10, y + 4, 14, 6);
+    stain.fillStyle(ENV.woodDark, 0.85);
+    stain.fillRect(x - 18, y + 4, 36, 10);
+    stain.fillStyle(ENV.dirt, 0.9);
+    stain.fillRect(x - 12, y + 2, 16, 8);
+    const puff = this.scene.add.rectangle(x, y, 30, 22, ENV.crateLite, 0.75).setDepth(11);
     this.scene.tweens.add({
-      targets: stain,
-      alpha: 0.35,
-      duration: 2400,
+      targets: puff,
+      alpha: 0,
+      scaleX: 1.45,
+      scaleY: 1.3,
+      duration: 220,
+      onComplete: () => puff.destroy(),
     });
     for (let i = 0; i < CRATE.shardCount; i += 1) {
-      const shard = this.scene.add.rectangle(x, y, 8, 5, i % 2 === 0 ? ENV.crate : ENV.crateDark, 1).setDepth(12);
-      const ang = (Math.PI * 2 * i) / CRATE.shardCount + Math.random() * 0.4;
+      const shard = this.scene.add.rectangle(x, y, 10, 6, i % 2 === 0 ? ENV.crate : ENV.crateDark, 1).setDepth(12);
+      const ang = (Math.PI * 2 * i) / CRATE.shardCount + Math.random() * 0.35;
       this.scene.tweens.add({
         targets: shard,
-        x: x + Math.cos(ang) * 28,
-        y: y + Math.sin(ang) * 22,
+        x: x + Math.cos(ang) * 36,
+        y: y + Math.sin(ang) * 26,
         alpha: 0,
-        rotation: 1.2,
-        duration: 280,
+        rotation: 1.4,
+        duration: 420,
         onComplete: () => shard.destroy(),
       });
     }

@@ -84,31 +84,31 @@ const paintWheel = (ctx: CanvasRenderingContext2D, x: number, y: number): void =
 
 export const drawVehicle = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
   const truck = variant === 'truck';
-  fillPx(ctx, ENV.inkSoft, 6, h - 16, w - 12, 8);
-  fillPx(ctx, ENV.ink, 4, 10, w - 8, h - 20);
-  fillPx(ctx, truck ? ENV.oliveDark : ENV.metal, 6, 12, w - 12, h - 24);
-  fillPx(ctx, truck ? ENV.olive : ENV.metalLite, 8, 14, w - 16, h - 30);
+  fillPx(ctx, ENV.inkSoft, 8, h - 14, w - 16, 8);
+  fillPx(ctx, ENV.ink, 3, 8, w - 6, h - 16);
+  fillPx(ctx, truck ? ENV.rust : ENV.metal, 5, 10, w - 10, h - 20);
+  fillPx(ctx, truck ? ENV.rustLite : ENV.metalLite, 7, 12, w - 14, h - 26);
   const cab = truck ? Math.floor(w * 0.3) : Math.floor(w * 0.4);
-  fillPx(ctx, ENV.ink, 8, 8, cab, h - 24);
-  fillPx(ctx, truck ? ENV.oliveLite : ENV.metalLite, 10, 10, cab - 6, h - 30);
-  fillPx(ctx, ENV.glass, 14, 16, cab - 16, 14);
-  fillPx(ctx, ENV.paper, 16, 18, 6, 4);
-  fillPx(ctx, ENV.ink, 18, 22, cab - 28, 6);
-  fillPx(ctx, ENV.burn, cab + 6, 20, 24, 10);
-  fillPx(ctx, ENV.rust, w - 30, h - 30, 18, 10);
+  fillPx(ctx, ENV.ink, 7, 6, cab, h - 20);
+  fillPx(ctx, truck ? ENV.oliveDark : ENV.metalLite, 9, 8, cab - 4, h - 26);
+  fillPx(ctx, ENV.glass, 13, 14, cab - 14, 14);
+  fillPx(ctx, ENV.paper, 15, 16, 6, 4);
+  fillPx(ctx, ENV.ink, 17, 20, cab - 26, 6);
+  fillPx(ctx, ENV.burn, cab + 6, 18, 22, 10);
+  fillPx(ctx, ENV.rust, w - 32, h - 28, 18, 10);
   const wheelY = h - 16;
   paintWheel(ctx, 12, wheelY);
   paintWheel(ctx, w - 32, wheelY);
   if (truck) {
     paintWheel(ctx, Math.floor(w * 0.42), wheelY);
-    fillPx(ctx, ENV.oliveLite, cab + 4, 14, w - cab - 16, 8);
-    fillPx(ctx, ENV.crateDark, cab + 12, 26, 22, 16);
-    fillPx(ctx, ENV.crate, cab + 14, 28, 18, 12);
-    fillPx(ctx, ENV.inkSoft, cab + 36, 28, 10, 14);
-    fillPx(ctx, ENV.metalLite, cab + 8, h - 28, w - cab - 22, 4);
+    fillPx(ctx, ENV.oliveDark, cab + 4, 12, w - cab - 16, 8);
+    fillPx(ctx, ENV.crateDark, cab + 12, 24, 22, 16);
+    fillPx(ctx, ENV.crate, cab + 14, 26, 18, 12);
+    fillPx(ctx, ENV.inkSoft, cab + 36, 26, 10, 14);
+    fillPx(ctx, ENV.metalLite, cab + 8, h - 26, w - cab - 22, 4);
   } else {
-    fillPx(ctx, ENV.rustLite, cab + 8, 28, 18, 4);
-    fillPx(ctx, ENV.glass, cab + 12, 16, 18, 8);
+    fillPx(ctx, ENV.rustLite, cab + 8, 26, 18, 4);
+    fillPx(ctx, ENV.glass, cab + 12, 14, 18, 8);
   }
 };
 

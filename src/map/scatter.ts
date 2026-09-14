@@ -5,7 +5,7 @@ import type { MapDecoration, MapObstacle } from './types';
 const MARGIN = 64;
 const KINDS: readonly MapDecoration['kind'][] = [
   'dirt',
-  'debris',
+  'dirt',
   'debris',
   'burn',
   'grassCrack',
@@ -22,7 +22,7 @@ export const scatterFieldDetails = (rng: SeededRNG, obstacles: readonly MapObsta
     const y = rng.float(MARGIN, ARENA.height - MARGIN);
     const onObjectivePocket =
       Math.abs(x - ARENA.width / 2) < 150 && Math.abs(y - ARENA.height / 2) < 80;
-    if (onObjectivePocket && rng.chance(0.7)) {
+    if (onObjectivePocket && rng.chance(0.35)) {
       continue;
     }
     if (obstacles.some((obs) => Math.hypot(obs.x - x, obs.y - y) < 40)) {

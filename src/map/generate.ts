@@ -247,7 +247,7 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
     if (templateOf(approachKind).hasChoke) {
       chokeCount += 1;
     }
-    const centerPool = row === 1 ? (['OPEN_FIELD', 'WIDE_PATH', 'SCATTERED_COVER'] as const) : CENTER_KINDS;
+    const centerPool = row === 1 ? (['OPEN_FIELD'] as const) : CENTER_KINDS;
     const centerKind = pickKind(rng, centerPool, true);
 
     const plan: Array<{ col: number; kind: ChunkKind; mirror: boolean }> = [
