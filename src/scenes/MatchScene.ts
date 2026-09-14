@@ -3,7 +3,7 @@ import { ARENA, LANES, type LaneId } from '../config/arena';
 import { MATCH } from '../config/match';
 import { DEV_CHEATS, resetDevCheats } from '../debug/devCheats';
 import { MinionWorld } from '../minions/MinionWorld';
-import { PLAYABLE_HEROES, HERO_IDS, getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { PLAYABLE_HEROES, getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
 import { HitMarker } from '../combat/HitMarker';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
@@ -52,20 +52,24 @@ import {
   cloneRoster,
   type MatchRoster,
 } from '../match/rosterSetup';
+import {
+  pickPlayerSpawn,
+  placeDraft,
+  randomizeDraft,
+  rememberPlayerSpawn,
+  type PlayDraft,
+} from '../draft/rosterBuild';
 import { xpForMinion } from '../config/match';
 import { audio } from '../audio';
 import type { TeamId } from '../config/hero';
-
-const ENEMY_BY_LANE: Record<LaneId, HeroId> = {
-  top: 'ninja',
-  mid: 'cole',
-  bottom: 'death',
-};
 
 export type MatchSceneData = {
   heroId?: HeroId;
   simulator?: boolean;
   roster?: MatchRoster;
+  draft?: PlayDraft;
+  playerTeam?: TeamId;
+  playerLane?: LaneId;
 };
 
 /** Draft match. Allies fill the other two heroes; non-players use HeroPilot. */
@@ -74,6 +78,9 @@ export class MatchScene extends Phaser.Scene {
   private startHeroId: HeroId = 'ninja';
   private simulator = false;
   private roster: MatchRoster = cloneRoster(DEFAULT_SIMULATOR_ROSTER);
+  private playDraft?: PlayDraft;
+  private playerTeam: TeamId = 'alpha';
+  private playerLane: LaneId = 'mid';
   private player!: HeroRuntime;
   private heroes: HeroRuntime[] = [];
   private emptyAllySlots: { team: TeamId; lane: LaneId }[] = [];
@@ -116,8 +123,28 @@ export class MatchScene extends Phaser.Scene {
 
   init(data: MatchSceneData = {}): void {
     this.simulator = Boolean(data.simulator);
-    this.roster = cloneRoster(data.roster ?? DEFAULT_SIMULATOR_ROSTER);
     this.startHeroId = data.heroId ?? getSelectedHeroId();
+    this.playDraft = data.draft;
+    if (this.simulator) {
+      this.roster = cloneRoster(data.roster ?? DEFAULT_SIMULATOR_ROSTER);
+      return;
+    }
+    const draft = data.draft ?? randomizeDraft(this.startHeroId);
+    this.playDraft = draft;
+    if (data.roster && data.playerTeam && data.playerLane) {
+      this.roster = cloneRoster(data.roster);
+      this.playerTeam = data.playerTeam;
+      this.playerLane = data.playerLane;
+      this.startHeroId = this.roster[this.playerTeam][LANES.indexOf(this.playerLane)];
+      rememberPlayerSpawn({ team: data.playerTeam, lane: data.playerLane });
+      return;
+    }
+    const spawn = pickPlayerSpawn();
+    rememberPlayerSpawn(spawn);
+    const placed = placeDraft(draft, spawn);
+    this.roster = placed.roster;
+    this.playerTeam = placed.playerTeam;
+    this.playerLane = placed.playerLane;
   }
 
   create(): void {
@@ -457,6 +484,7 @@ export class MatchScene extends Phaser.Scene {
       if (result.killer && result.killer.team !== unit.team) {
         this.score.addKill(result.killer.team);
       }
+      this.objectives?.notifyHeroDeath(now, unit, result.killer ?? undefined);
       unit.markDead(now);
       this.match.notifyHeroKill();
       const popupHero =
@@ -477,33 +505,25 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private spawnDraft(): void {
-    this.player = this.spawnHero({
-      instanceId: 'alpha-mid-player',
-      heroId: this.startHeroId,
-      team: 'alpha',
-      lane: 'mid',
-      isPlayer: true,
-    });
-    const leftover = HERO_IDS.filter((id) => id !== this.startHeroId);
-    const allyLanes: LaneId[] = ['top', 'bottom'];
-    leftover.forEach((heroId, index) => {
-      const lane = allyLanes[index];
-      if (!lane) {
-        return;
-      }
-      this.spawnHero({
-        instanceId: `alpha-${lane}`,
-        heroId,
-        team: 'alpha',
+    const foe: TeamId = this.playerTeam === 'alpha' ? 'bravo' : 'alpha';
+    for (const lane of LANES) {
+      const isPlayer = lane === this.playerLane;
+      const unit = this.spawnHero({
+        instanceId: `${this.playerTeam}-${lane}${isPlayer ? '-player' : ''}`,
+        heroId: this.roster[this.playerTeam][LANES.indexOf(lane)],
+        team: this.playerTeam,
         lane,
-        isPlayer: false,
+        isPlayer,
       });
-    });
+      if (isPlayer) {
+        this.player = unit;
+      }
+    }
     for (const lane of LANES) {
       this.spawnHero({
-        instanceId: `bravo-${lane}`,
-        heroId: ENEMY_BY_LANE[lane],
-        team: 'bravo',
+        instanceId: `${foe}-${lane}`,
+        heroId: this.roster[foe][LANES.indexOf(lane)],
+        team: foe,
         lane,
         isPlayer: false,
       });
@@ -970,7 +990,8 @@ export class MatchScene extends Phaser.Scene {
     this.scene.restart({
       heroId: this.startHeroId,
       simulator: this.simulator,
-      roster: this.roster,
+      roster: this.simulator ? this.roster : undefined,
+      draft: this.playDraft,
     });
   }
 

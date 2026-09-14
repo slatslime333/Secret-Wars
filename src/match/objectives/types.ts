@@ -25,6 +25,12 @@ export type ObjectiveHint = {
   nearbyAllies: number;
   nearbyEnemies: number;
   urgency: number;
+  allyHeroId?: string;
+  enemyHeroId?: string;
+  allyX?: number;
+  allyY?: number;
+  enemyX?: number;
+  enemyY?: number;
 };
 
 export type ObjectiveUiState = {
@@ -52,7 +58,13 @@ export type ObjectiveContext = {
 
 export type ObjectiveCompleteEvent = {
   kind: ObjectiveKind;
-  winner: TeamId;
+  winner?: TeamId;
+};
+
+export type ObjectiveDeathEvent = {
+  now: number;
+  victim: HeroRuntime;
+  killer?: HeroRuntime['body'];
 };
 
 /** One live battlefield event. Manager owns timing; the instance owns rules. */
@@ -66,4 +78,5 @@ export interface MatchObjective {
   hint(team: TeamId, heroes: readonly HeroRuntime[]): ObjectiveHint;
   ui(): ObjectiveUiState;
   cleanup(): void;
+  onHeroDeath?(event: ObjectiveDeathEvent, heroes: readonly HeroRuntime[]): void;
 }

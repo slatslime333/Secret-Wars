@@ -17,6 +17,12 @@ export type ObjectiveWorld = {
   nearbyAlpha: number;
   nearbyBravo: number;
   urgency: number;
+  alphaHeroId?: string;
+  bravoHeroId?: string;
+  alphaX?: number;
+  alphaY?: number;
+  bravoX?: number;
+  bravoY?: number;
 };
 
 let world: ObjectiveWorld | undefined;
@@ -47,5 +53,11 @@ export const objectiveHintFor = (team: TeamId): ObjectiveHint | undefined => {
     nearbyAllies: team === 'alpha' ? world.nearbyAlpha : world.nearbyBravo,
     nearbyEnemies: foe === 'alpha' ? world.nearbyAlpha : world.nearbyBravo,
     urgency: world.urgency,
+    allyHeroId: team === 'alpha' ? world.alphaHeroId : world.bravoHeroId,
+    enemyHeroId: foe === 'alpha' ? world.alphaHeroId : world.bravoHeroId,
+    allyX: team === 'alpha' ? world.alphaX : world.bravoX,
+    allyY: team === 'alpha' ? world.alphaY : world.bravoY,
+    enemyX: foe === 'alpha' ? world.alphaX : world.bravoX,
+    enemyY: foe === 'alpha' ? world.alphaY : world.bravoY,
   };
 };

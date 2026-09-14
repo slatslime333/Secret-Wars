@@ -6,8 +6,10 @@ import { audio } from '../../audio';
 import { listProjectilePoses } from '../../combat/projectileRegistry';
 import { isInAttackArc } from '../../combat/hitDetection';
 import type { HeroRuntime } from '../HeroRuntime';
+import type { XpOrbWorld } from '../XpOrbWorld';
 import type { NinjaBody } from '../../heroes/NinjaBody';
 import { onWorldStrike, type WorldStrikeEvent } from './worldStrike';
+import { grantTeamLevels } from './rewards';
 import type { MatchObjective, ObjectiveCompleteEvent, ObjectiveContext, ObjectiveHint, ObjectiveUiState } from './types';
 
 const GOLD = 0xffc928;
@@ -17,6 +19,8 @@ export type PiggyDeps = {
   scene: Phaser.Scene;
   x: number;
   y: number;
+  orbs: XpOrbWorld;
+  grantLevel: (hero: HeroRuntime) => void;
 };
 
 export class GoldenPiggyBankObjective implements MatchObjective {
@@ -25,6 +29,8 @@ export class GoldenPiggyBankObjective implements MatchObjective {
   readonly y: number;
   readonly radius = OBJECTIVE.piggy.radius;
   private readonly scene: Phaser.Scene;
+  private readonly orbs: XpOrbWorld;
+  private readonly grantLevel: (hero: HeroRuntime) => void;
   private readonly root: Phaser.GameObjects.Container;
   private readonly body: Phaser.GameObjects.Arc;
   private readonly snout: Phaser.GameObjects.Shape;
@@ -44,6 +50,8 @@ export class GoldenPiggyBankObjective implements MatchObjective {
 
   constructor(deps: PiggyDeps) {
     this.scene = deps.scene;
+    this.orbs = deps.orbs;
+    this.grantLevel = deps.grantLevel;
     this.x = deps.x;
     this.y = deps.y;
     this.body = deps.scene.add.circle(0, 8, this.radius * 0.82, GOLD, 1);
@@ -146,7 +154,7 @@ export class GoldenPiggyBankObjective implements MatchObjective {
     this.syncBars();
     const winner = this.winner();
     if (winner) {
-      return this.complete(winner);
+      return this.complete(winner, ctx.heroes);
     }
     return undefined;
   }
@@ -278,10 +286,11 @@ export class GoldenPiggyBankObjective implements MatchObjective {
     return undefined;
   }
 
-  private complete(winner: TeamId): ObjectiveCompleteEvent {
+  private complete(winner: TeamId, heroes: readonly HeroRuntime[]): ObjectiveCompleteEvent {
     this.awarded = true;
     this.offStrike?.();
     this.offStrike = undefined;
+    grantTeamLevels(winner, heroes, this.grantLevel, this.orbs, this.x, this.y, 1);
     audio.play('piggy-break');
     audio.play('objective-complete');
     const burst = this.scene.add.circle(this.x, this.y, this.radius, GOLD, 0.5).setDepth(21);

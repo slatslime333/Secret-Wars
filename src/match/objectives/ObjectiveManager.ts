@@ -15,6 +15,9 @@ import type { XpOrbWorld } from '../XpOrbWorld';
 import { setObjectiveWorld, type ObjectiveWorld } from './board';
 import { CaptureZoneObjective } from './CaptureZoneObjective';
 import { GoldenPiggyBankObjective } from './GoldenPiggyBankObjective';
+import { BountyTargetObjective } from './BountyTargetObjective';
+import { HealingShrineObjective } from './HealingShrineObjective';
+import { ExecutionerObjective } from './ExecutionerObjective';
 import { ObjectiveHud } from './ObjectiveHud';
 import { pickObjectiveLocation } from './pickLocation';
 import type { MatchObjective, ObjectiveCompleteEvent } from './types';
@@ -48,6 +51,7 @@ export class ObjectiveManager {
   private nextAt?: number;
   private cooldownUntil = 0;
   private lastKind?: ObjectiveKind;
+  private lastBounty: { alpha?: string; bravo?: string } = {};
   private readonly kindQueue: ObjectiveKind[] = [];
   private closed = false;
 
@@ -104,6 +108,13 @@ export class ObjectiveManager {
     }
   }
 
+  notifyHeroDeath(now: number, victim: HeroRuntime, killer?: HeroRuntime['body']): void {
+    if (!this.active || this.closed) {
+      return;
+    }
+    this.active.onHeroDeath?.({ now, victim, killer }, this.heroesOf());
+  }
+
   debugSpawn(kind?: ObjectiveKind, now = this.scene.time.now): boolean {
     if (this.closed || this.active || this.match.finished) {
       return false;
@@ -152,7 +163,13 @@ export class ObjectiveManager {
     switch (kind) {
       case 'golden_piggy': {
         const loc = pickObjectiveLocation(this.query, OBJECTIVE.piggy.radius, this.rng);
-        return new GoldenPiggyBankObjective({ scene: this.scene, x: loc.x, y: loc.y });
+        return new GoldenPiggyBankObjective({
+          scene: this.scene,
+          x: loc.x,
+          y: loc.y,
+          orbs: this.orbs,
+          grantLevel: this.grantLevel,
+        });
       }
       case 'capture_zone': {
         const loc = pickObjectiveLocation(this.query, OBJECTIVE.capture.radius * 0.18, this.rng);
@@ -164,14 +181,42 @@ export class ObjectiveManager {
           grantLevel: this.grantLevel,
         });
       }
+      case 'bounty_target': {
+        return new BountyTargetObjective({
+          scene: this.scene,
+          orbs: this.orbs,
+          grantLevel: this.grantLevel,
+          rng: this.rng,
+          heroes: this.heroesOf,
+          last: this.lastBounty,
+          onPicked: (ids) => {
+            this.lastBounty = ids;
+          },
+        });
+      }
+      case 'healing_shrine': {
+        const loc = pickObjectiveLocation(this.query, OBJECTIVE.shrine.radius * 0.2, this.rng);
+        return new HealingShrineObjective({ scene: this.scene, x: loc.x, y: loc.y });
+      }
+      case 'executioner': {
+        const loc = pickObjectiveLocation(this.query, OBJECTIVE.executioner.radius, this.rng);
+        return new ExecutionerObjective({
+          scene: this.scene,
+          x: loc.x,
+          y: loc.y,
+          query: this.query,
+        });
+      }
     }
   }
 
   private finish(event: ObjectiveCompleteEvent, elapsed: number): void {
-    if (event.kind === 'golden_piggy') {
-      this.score.addPoints(event.winner, OBJECTIVE.scoreReward);
+    if (event.winner) {
+      if (event.kind === 'golden_piggy') {
+        this.score.addPoints(event.winner, OBJECTIVE.scoreReward);
+      }
+      this.hud.celebrate(event.winner, celebrateLine(event.kind, event.winner));
     }
-    this.hud.celebrate(event.winner, celebrateLine(event.kind, event.winner));
     this.lastKind = event.kind;
     this.active?.cleanup();
     this.active = undefined;
@@ -211,6 +256,12 @@ export class ObjectiveManager {
       nearbyAlpha: alpha.nearbyAllies,
       nearbyBravo: bravo.nearbyAllies,
       urgency: Math.max(alpha.urgency, bravo.urgency),
+      alphaHeroId: alpha.allyHeroId,
+      bravoHeroId: bravo.allyHeroId,
+      alphaX: alpha.allyX,
+      alphaY: alpha.allyY,
+      bravoX: bravo.allyX,
+      bravoY: bravo.allyY,
     };
     setObjectiveWorld(world);
   }
@@ -221,6 +272,9 @@ const teamName = (team: TeamId): string => (team === 'alpha' ? 'ALPHA' : 'BRAVO'
 const CELEBRATE: Record<ObjectiveKind, (team: string) => string> = {
   capture_zone: (team) => `${team} SECURES THE ZONE`,
   golden_piggy: (team) => `${team} BREAKS THE BANK`,
+  bounty_target: (team) => `${team} CLAIMS THE BOUNTY`,
+  healing_shrine: (team) => `${team} HOLDS THE SHRINE`,
+  executioner: (team) => `${team} SLAYS THE EXECUTIONER`,
 };
 
 const celebrateLine = (kind: ObjectiveKind, team: TeamId): string => CELEBRATE[kind](teamName(team));

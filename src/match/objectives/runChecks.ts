@@ -1,6 +1,9 @@
 import { canStartObjective, nextObjectiveKind, OBJECTIVE, pickObjectiveKind, pickObjectiveStartAt } from '../../config/objective';
 import { COLE_CONVERTED_RANGE } from '../../config/cole';
 import { emptyCapture, tickCapture } from './captureLogic';
+import { shrineControlOf } from './shrineLogic';
+import { pickBountyTargets } from './bountyPick';
+import type { HeroRuntime } from '../HeroRuntime';
 
 export type CheckResult = { name: string; ok: boolean; detail: string };
 
@@ -53,6 +56,74 @@ const scenarioKindReroll = (): CheckResult => {
   const other = pickObjectiveKind('capture_zone', rngOf([0.1, 0.1]));
   const ok = Boolean(first) && same === 'capture_zone' && other === 'golden_piggy';
   return { name: 'objective kind variety', ok, detail: `first=${first} same=${same} other=${other}` };
+};
+
+const scenarioEventPool = (): CheckResult => {
+  const expected = ['capture_zone', 'golden_piggy', 'bounty_target', 'healing_shrine', 'executioner'];
+  const ok =
+    OBJECTIVE.kinds.length === 5 &&
+    expected.every((kind) => (OBJECTIVE.kinds as readonly string[]).includes(kind));
+  return { name: 'objective event pool', ok, detail: OBJECTIVE.kinds.join(',') };
+};
+
+const scenarioPiggyReward = (): CheckResult => {
+  const ok = OBJECTIVE.scoreReward === 1;
+  return { name: 'piggy bank team score is +1', ok, detail: `score=${OBJECTIVE.scoreReward}` };
+};
+
+const scenarioBuffDurations = (): CheckResult => {
+  const ok =
+    OBJECTIVE.bounty.buffMs === 20_000 &&
+    OBJECTIVE.bounty.moveMul === 1.3 &&
+    OBJECTIVE.bounty.attackMul === 1.3 &&
+    OBJECTIVE.bounty.levelReward === 2 &&
+    OBJECTIVE.shrine.durationMs === 20_000 &&
+    OBJECTIVE.executioner.buffMs === 20_000 &&
+    OBJECTIVE.executioner.moveMul === 1.18 &&
+    OBJECTIVE.executioner.attackMul === 1.18 &&
+    OBJECTIVE.executioner.staminaMul === 1.18 &&
+    OBJECTIVE.executioner.attackMs >= 1_200 &&
+    OBJECTIVE.executioner.moveSpeed < 120;
+  return {
+    name: 'event reward tunables',
+    ok,
+    detail: `bountyLv=${OBJECTIVE.bounty.levelReward} shrine=${OBJECTIVE.shrine.durationMs} execAtk=${OBJECTIVE.executioner.attackMs}`,
+  };
+};
+
+const scenarioShrineContest = (): CheckResult => {
+  const free = shrineControlOf(2, 0);
+  const contested = shrineControlOf(1, 1);
+  const empty = shrineControlOf(0, 0);
+  const ok = free.owner === 'alpha' && !free.contested && contested.contested && contested.owner === null && empty.owner === null && !empty.contested;
+  return { name: 'shrine control is exclusive', ok, detail: `free=${free.owner} contested=${contested.contested} empty=${empty.owner}` };
+};
+
+const stubHero = (team: 'alpha' | 'bravo', instanceId: string, alive = true): HeroRuntime =>
+  ({ team, instanceId, alive, heroId: 'cole' }) as unknown as HeroRuntime;
+
+const scenarioBountyPick = (): CheckResult => {
+  const heroes = [
+    stubHero('alpha', 'a1'),
+    stubHero('alpha', 'a2'),
+    stubHero('bravo', 'b1'),
+    stubHero('bravo', 'b2'),
+    stubHero('bravo', 'b3', false),
+  ];
+  const first = pickBountyTargets(heroes, rngOf([0, 0]));
+  const second = pickBountyTargets(heroes, rngOf([0.9, 0.9]), { alpha: first.alpha?.instanceId, bravo: first.bravo?.instanceId });
+  const ok =
+    Boolean(first.alpha && first.bravo) &&
+    first.alpha?.team === 'alpha' &&
+    first.bravo?.team === 'bravo' &&
+    first.alpha !== first.bravo &&
+    second.alpha?.instanceId !== first.alpha?.instanceId &&
+    second.bravo?.instanceId !== first.bravo?.instanceId;
+  return {
+    name: 'bounty picks one living hero per team',
+    ok,
+    detail: `first=${first.alpha?.instanceId}/${first.bravo?.instanceId} second=${second.alpha?.instanceId}/${second.bravo?.instanceId}`,
+  };
 };
 
 const scenarioKindDeck = (): CheckResult => {
@@ -159,9 +230,14 @@ export const runObjectiveChecks = (): CheckResult[] => [
   scenarioTimingWindow(),
   scenarioRandomStart(),
   scenarioKindReroll(),
+  scenarioEventPool(),
   scenarioKindDeck(),
   scenarioFirstEventFitsSecond(),
   scenarioCaptureRadius(),
   scenarioSecondEventWindow(),
   scenarioCaptureRules(),
+  scenarioPiggyReward(),
+  scenarioBuffDurations(),
+  scenarioShrineContest(),
+  scenarioBountyPick(),
 ];

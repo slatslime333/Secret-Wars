@@ -36,6 +36,10 @@ export type MoveHint = {
     x: number;
     y: number;
     radius: number;
+    huntX?: number;
+    huntY?: number;
+    guardX?: number;
+    guardY?: number;
   };
 };
 
@@ -126,7 +130,7 @@ export const moveGoal = (
     const ranged = isRangedMove(body, hint);
     const support = hint.stance === 'support';
     const aim = target ? aimTo(target.x, target.y) : aimTo(obj.x, obj.y);
-    if (obj.kind === 'capture_zone') {
+    if (obj.kind === 'capture_zone' || obj.kind === 'healing_shrine') {
       if (ranged) {
         const gx = obj.x + -flankSign * obj.radius * 0.72;
         const gy = obj.y + (slot % 2 === 0 ? 1 : -1) * obj.radius * 0.28;
@@ -144,6 +148,42 @@ export const moveGoal = (
       const gy = obj.y + offset;
       const gap = Math.hypot(gx - body.x, gy - body.y);
       return { x: gx, y: gy, halt: gap < obj.radius * 0.28, ...aim };
+    }
+    if (obj.kind === 'bounty_target') {
+      const huntX = obj.huntX ?? obj.x;
+      const huntY = obj.huntY ?? obj.y;
+      const guardX = obj.guardX;
+      const guardY = obj.guardY;
+      const selfMarked =
+        guardX !== undefined && guardY !== undefined && Math.hypot(guardX - body.x, guardY - body.y) < 48;
+      if (selfMarked) {
+        const stand = preferredRange(body, action, hint) + 36;
+        const toX = huntX - body.x;
+        const toY = huntY - body.y;
+        const gap = Math.hypot(toX, toY) || 1;
+        return {
+          x: huntX - (toX / gap) * stand,
+          y: huntY - (toY / gap) * stand,
+          halt: gap < stand + 12,
+          ...aimTo(huntX, huntY),
+        };
+      }
+      if (guardX !== undefined && guardY !== undefined && (!target || Math.hypot(body.x - guardX, body.y - guardY) > 90)) {
+        const gx = guardX + -flankSign * 36;
+        const gy = guardY + 22 * flankSign;
+        const gap = Math.hypot(gx - body.x, gy - body.y);
+        return { x: gx, y: gy, halt: gap < 28, ...aimTo(huntX, huntY) };
+      }
+      const toX = huntX - body.x;
+      const toY = huntY - body.y;
+      const gap = Math.hypot(toX, toY) || 1;
+      const stand = preferredRange(body, action, hint);
+      return {
+        x: huntX - (toX / gap) * stand + - (toY / gap) * 20 * flankSign,
+        y: huntY - (toY / gap) * stand + (toX / gap) * 20 * flankSign,
+        halt: Math.abs(gap - stand) < 18,
+        ...aimTo(huntX, huntY),
+      };
     }
     const range = preferredRange(body, action, hint);
     const toX = obj.x - body.x;

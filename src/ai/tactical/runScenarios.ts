@@ -1,5 +1,6 @@
 import { runTacticalScenarios } from './scenarios';
 import { runObjectiveChecks } from '../../match/objectives/runChecks';
+import { runDraftChecks } from '../../draft/runChecks';
 import { moveGoal } from './move';
 import { smashBatHits, smashHitsTarget } from '../../heroes/abilities/death/smashHit';
 import { atFarEdge, roamHuntPoint } from '../../config/arena';
@@ -87,8 +88,18 @@ for (const result of objectiveChecks) {
   console.log(`${mark}  ${result.name}  ${result.detail}`);
 }
 
+const draftChecks = runDraftChecks();
+for (const result of draftChecks) {
+  const mark = result.ok ? 'ok' : 'FAIL';
+  if (!result.ok) {
+    failed += 1;
+  }
+  console.log(`${mark}  ${result.name}  ${result.detail}`);
+}
+
 if (failed > 0) {
   throw new Error(`${failed} tactical scenario(s) failed`);
 }
 console.log(`\n${results.length} tactical scenarios passed`);
 console.log(`${objectiveChecks.length} objective checks passed`);
+console.log(`${draftChecks.length} draft checks passed`);
