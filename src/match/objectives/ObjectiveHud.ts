@@ -13,6 +13,9 @@ const TEAM_COLOR: Record<TeamId, number> = {
 const TITLE: Record<ObjectiveKind, string> = {
   capture_zone: 'CAPTURE ZONE!',
   golden_piggy: 'GOLDEN PIGGY BANK!',
+  bounty_target: 'BOUNTY TARGET!',
+  healing_shrine: 'HEALING SHRINE!',
+  executioner: 'EXECUTIONER!',
 };
 
 const edgePoint = (sx: number, sy: number, w: number, h: number, m: number): { x: number; y: number } => {

@@ -471,7 +471,7 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   private confirm(): void {
     setSelectedHeroId(this.selected);
-    this.leaveTo('Match', { heroId: this.selected });
+    this.leaveTo('RosterDraft', { heroId: this.selected });
   }
 
   private leaveTo(sceneName: string, data?: object): void {

@@ -406,6 +406,98 @@ const scenarioU = (): ScenarioResult => {
   return { name: 'U piggy near break is urgent', ok, detail: `best=${best(rows)} contest=${contest.toFixed(1)} farm=${farm.toFixed(1)}` };
 };
 
+const scenarioV = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 640, hpRatio: 0.18 });
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 980, y: 640, hpRatio: 0.9 }),
+    unit({ id: 11, team: 'bravo', x: 1000, y: 620, hpRatio: 0.85 }),
+  ];
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      objective: {
+        kind: 'healing_shrine',
+        x: 1020,
+        y: 640,
+        radius: OBJECTIVE.shrine.radius,
+        contested: true,
+        decaying: false,
+        owner: null,
+        selfProgress: 0,
+        enemyProgress: 1,
+        occupyingAllies: 0,
+        occupyingEnemies: 2,
+        nearbyAllies: 0,
+        nearbyEnemies: 2,
+        urgency: 0.5,
+      },
+    }),
+  );
+  const ok = !['contest_objective', 'advance', 'attack'].includes(best(rows)) || among(rows, ['retreat', 'escape', 'recover'], 2);
+  return { name: 'V low HP does not suicide the shrine', ok, detail: `best=${best(rows)} top=${rows.slice(0, 4).map((row) => row.action).join(',')}` };
+};
+
+const scenarioW = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 980, y: 640, hpRatio: 0.86, role: 'frontliner' });
+  const rows = rankActions(
+    situationOf(self, [], [], {
+      objective: {
+        kind: 'executioner',
+        x: 1020,
+        y: 640,
+        radius: OBJECTIVE.executioner.radius,
+        contested: false,
+        decaying: false,
+        owner: 'alpha',
+        selfProgress: 0.88,
+        enemyProgress: 0.4,
+        occupyingAllies: 1,
+        occupyingEnemies: 0,
+        nearbyAllies: 1,
+        nearbyEnemies: 0,
+        urgency: 0.8,
+      },
+    }),
+  );
+  const contest = scoreOf(rows, 'contest_objective');
+  const farm = scoreOf(rows, 'farm_minions');
+  const ok = contest > 12 && contest >= farm && among(rows, ['contest_objective'], 3);
+  return { name: 'W executioner near kill is urgent', ok, detail: `best=${best(rows)} contest=${contest.toFixed(1)} farm=${farm.toFixed(1)}` };
+};
+
+const scenarioX = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 900, y: 640, hpRatio: 0.9, role: 'frontliner' });
+  const allies = [unit({ id: 2, team: 'alpha', x: 940, y: 640, hpRatio: 0.7, heroId: 'rope' })];
+  const rows = rankActions(
+    situationOf(self, allies, [], {
+      objective: {
+        kind: 'bounty_target',
+        x: 940,
+        y: 640,
+        radius: 40,
+        contested: true,
+        decaying: false,
+        owner: null,
+        selfProgress: 1,
+        enemyProgress: 1,
+        occupyingAllies: 1,
+        occupyingEnemies: 1,
+        nearbyAllies: 1,
+        nearbyEnemies: 1,
+        urgency: 0.7,
+        allyHeroId: 'rope',
+        allyX: 940,
+        allyY: 640,
+        enemyHeroId: 'cole',
+        enemyX: 1300,
+        enemyY: 640,
+      },
+    }),
+  );
+  const contest = scoreOf(rows, 'contest_objective');
+  const ok = contest > 8 && among(rows, ['contest_objective', 'protect_ally', 'assist_ally'], 5);
+  return { name: 'X bounty ally is worth covering', ok, detail: `best=${best(rows)} contest=${contest.toFixed(1)} top=${rows.slice(0, 4).map((row) => row.action).join(',')}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -428,4 +520,7 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioS(),
   scenarioT(),
   scenarioU(),
+  scenarioV(),
+  scenarioW(),
+  scenarioX(),
 ];
