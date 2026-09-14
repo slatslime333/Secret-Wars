@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 """South-facing Witch idle, designed as a small RPG battle sprite.
 
-Native pixels. Not a downscale of the portrait. Not a variant of the
-rejected illustrated battle sprite.
-
-Style (white-hair sheet): compact, head-heavy, round hair, stubby clothes,
-few face pixels, limited shading, clear silhouette.
-Identity (Witch portrait): hat, purple hair/skin, gothic corset, skirt,
-fishnets, skull staff.
+Native pixels. Same construction as the compact pass, scaled up to the
+white-hair sheet's size and detail: round hair mass, larger eyes, 2–3
+shade steps, stubby clothes. Not a downscale of the portrait.
 """
 from __future__ import annotations
 
@@ -20,36 +16,44 @@ OUT = ROOT / "assets" / "characters" / "witch"
 PREVIEW = Path("/tmp/witch_south_idle")
 REF = Path("/home/ubuntu/.cursor/projects/workspace/assets/528256f8-66f2-4d78-b5cf-a76b70cb76e2.jpg")
 
-W, H = 32, 32
-CX = 19  # body center. Staff sits on the viewer's left of this line.
+W, H = 64, 64
+CX = 38
 
 PALETTE: dict[str, tuple[int, int, int, int]] = {
-    "h": (40, 24, 60, 255),
+    "h": (42, 26, 64, 255),
     "d": (22, 14, 36, 255),
-    "l": (62, 40, 86, 255),
-    "b": (204, 90, 140, 255),
-    "n": (148, 52, 100, 255),
-    "a": (90, 38, 138, 255),
-    "k": (54, 22, 90, 255),
-    "i": (122, 60, 168, 255),
-    "s": (226, 188, 234, 255),
-    "q": (186, 140, 200, 255),
-    "e": (30, 18, 40, 255),
+    "l": (68, 44, 94, 255),
+    "b": (206, 92, 142, 255),
+    "n": (150, 54, 102, 255),
+    "B": (232, 140, 176, 255),
+    "a": (96, 40, 148, 255),
+    "k": (56, 22, 92, 255),
+    "i": (132, 68, 178, 255),
+    "I": (158, 96, 196, 255),
+    "s": (232, 196, 236, 255),
+    "q": (196, 148, 206, 255),
+    "e": (36, 22, 48, 255),
+    "E": (72, 40, 96, 255),
     "w": (255, 252, 255, 255),
-    "u": (232, 154, 186, 255),
-    "c": (220, 98, 150, 255),
-    "t": (24, 14, 30, 255),
-    "p": (240, 154, 182, 255),
-    "r": (112, 54, 158, 255),
-    "m": (76, 34, 112, 255),
-    "f": (238, 224, 242, 255),
-    "j": (176, 138, 190, 255),
-    "o": (40, 24, 54, 255),
-    "y": (150, 94, 50, 255),
-    "v": (98, 60, 30, 255),
-    "x": (234, 220, 196, 255),
-    "z": (46, 32, 42, 255),
-    "g": (216, 172, 64, 255),
+    "u": (236, 150, 186, 255),
+    "M": (168, 110, 150, 255),
+    "c": (222, 100, 152, 255),
+    "C": (242, 158, 186, 255),
+    "t": (26, 16, 32, 255),
+    "p": (186, 70, 122, 255),
+    "r": (118, 56, 164, 255),
+    "m": (80, 36, 116, 255),
+    "R": (146, 82, 188, 255),
+    "f": (240, 228, 244, 255),
+    "j": (178, 140, 192, 255),
+    "o": (42, 26, 56, 255),
+    "O": (64, 40, 78, 255),
+    "y": (154, 98, 52, 255),
+    "v": (104, 64, 32, 255),
+    "x": (236, 222, 198, 255),
+    "z": (48, 34, 44, 255),
+    "X": (198, 176, 150, 255),
+    "g": (220, 176, 68, 255),
 }
 
 
@@ -65,118 +69,153 @@ class Canvas:
         for x in range(x0, x1 + 1):
             self.put(x, y, ch)
 
+    def rect(self, x0: int, y0: int, x1: int, y1: int, ch: str) -> None:
+        for y in range(y0, y1 + 1):
+            self.span(x0, x1, y, ch)
+
+    def ellipse(self, cx: int, cy: int, rx: int, ry: int, ch: str) -> None:
+        rx = max(1, rx)
+        ry = max(1, ry)
+        for y in range(cy - ry, cy + ry + 1):
+            for x in range(cx - rx, cx + rx + 1):
+                if ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1.02:
+                    self.put(x, y, ch)
+
     def dump(self) -> list[str]:
         return ["".join(row) for row in self.g]
 
 
+def eye(c: Canvas, x: int, y: int) -> None:
+    """Sheet-style eye: rounder oval, left shine, small iris."""
+    c.span(x + 1, x + 4, y, "e")
+    c.span(x, x + 5, y + 1, "e")
+    c.span(x, x + 5, y + 2, "e")
+    c.span(x, x + 5, y + 3, "e")
+    c.span(x + 1, x + 4, y + 4, "e")
+    c.put(x + 2, y + 2, "E")
+    c.put(x + 3, y + 2, "E")
+    c.put(x + 3, y + 3, "E")
+    c.put(x, y + 1, "w")
+    c.put(x + 1, y + 1, "w")
+    c.put(x + 1, y + 2, "w")
+    c.put(x + 4, y + 1, "E")
+
+
 def south_idle() -> Canvas:
-    """Compact straight-on idle. Round hair helmet, stubby dress, tucked staff."""
+    """Straight-on idle at sheet scale. Round hair, bigger eyes, stubby dress."""
     c = Canvas()
-    sx = 12  # 1px gap from hair so the pole does not stripe the head
+    sx = 20
 
-    # --- hat: short cone + wide brim, overlaps the hair ---
-    c.put(CX, 2, "d")
-    c.span(CX - 1, CX + 1, 3, "h")
-    c.span(CX - 2, CX + 2, 4, "h")
-    c.put(CX - 2, 4, "l")
-    c.put(CX + 2, 4, "l")
-    c.span(CX - 3, CX + 3, 5, "h")
-    c.span(CX - 4, CX + 4, 6, "b")
-    c.put(CX - 4, 6, "d")
-    c.put(CX + 4, 6, "d")
-    c.put(CX - 3, 6, "n")
-    c.put(CX + 3, 6, "n")
-    c.span(CX - 6, CX + 6, 7, "h")
-    c.put(CX - 6, 7, "d")
-    c.put(CX + 6, 7, "d")
-    c.put(CX + 6, 8, "g")  # charm hangs off the brim
+    # hat: short cone, pink band, wide brim
+    c.put(CX, 5, "d")
+    c.span(CX - 1, CX + 1, 6, "h")
+    c.put(CX, 6, "l")
+    c.span(CX - 2, CX + 2, 7, "h")
+    c.span(CX - 3, CX + 3, 8, "h")
+    c.put(CX - 2, 8, "l")
+    c.put(CX + 2, 8, "l")
+    c.span(CX - 4, CX + 4, 9, "h")
+    c.span(CX - 5, CX + 5, 10, "h")
+    c.put(CX - 5, 10, "d")
+    c.put(CX + 5, 10, "d")
+    c.span(CX - 6, CX + 6, 11, "b")
+    c.span(CX - 6, CX + 6, 12, "n")
+    c.put(CX - 6, 11, "d")
+    c.put(CX + 6, 11, "d")
+    c.put(CX - 3, 11, "B")
+    c.put(CX, 11, "B")
+    c.put(CX + 3, 11, "B")
+    c.span(CX - 13, CX + 13, 13, "h")
+    c.span(CX - 12, CX + 12, 14, "d")
+    c.put(CX - 13, 13, "d")
+    c.put(CX + 13, 13, "d")
+    c.span(CX - 7, CX + 7, 13, "l")
+    c.put(CX + 14, 14, "g")
 
-    # --- hair: round helmet. Short locks only — body must stay visible. ---
-    c.span(CX - 3, CX + 3, 8, "a")
-    c.put(CX - 4, 8, "k")
-    c.put(CX + 4, 8, "k")
-    c.span(CX - 4, CX + 4, 9, "a")
-    c.put(CX - 4, 9, "k")
-    c.put(CX + 4, 9, "k")
-    for y in range(10, 14):
-        c.span(CX - 5, CX + 5, y, "a")
-        c.put(CX - 5, y, "k")
-        c.put(CX + 5, y, "k")
-    c.span(CX - 4, CX + 4, 14, "a")
-    c.put(CX - 4, 14, "k")
-    c.put(CX + 4, 14, "k")
-    c.span(CX - 2, CX + 2, 9, "i")
-    # two-pixel locks, like the sheet's hair ending at the shoulders
-    for y in range(14, 16):
-        c.put(CX - 5, y, "k")
-        c.put(CX - 4, y, "a")
-        c.put(CX + 4, y, "a")
-        c.put(CX + 5, y, "k")
+    # hair: round mushroom, slightly wider than tall, flat on the shoulders
+    c.ellipse(CX, 27, 17, 14, "k")
+    c.ellipse(CX, 27, 16, 13, "a")
+    c.ellipse(CX - 3, 22, 10, 7, "i")
+    c.ellipse(CX - 4, 20, 5, 4, "I")
+    # flatten the sit-on-shoulders contact
+    c.span(CX - 8, CX + 8, 40, "a")
+    c.span(CX - 6, CX + 6, 41, "k")
 
-    # --- face: small oval. Bangs are one hair shape, not strands. ---
-    c.span(CX - 2, CX + 2, 10, "a")
-    c.put(CX, 10, "s")
-    for y in range(11, 14):
-        c.span(CX - 2, CX + 2, y, "s")
-    c.put(CX, 14, "q")
-    # shine on the LEFT of each eye (sheet construction)
-    c.put(CX - 2, 11, "w")
-    c.put(CX - 1, 11, "e")
-    c.put(CX + 1, 11, "w")
-    c.put(CX + 2, 11, "e")
-    c.put(CX, 13, "q")
-    c.put(CX - 2, 13, "u")
-    c.put(CX + 2, 13, "u")
+    # larger face — the sheet's face fills the lower hair, not a sticker
+    c.ellipse(CX, 30, 11, 9, "q")
+    c.ellipse(CX, 30, 10, 8, "s")
+    # bangs: two lobes + a hairline, covering the forehead
+    c.ellipse(CX - 6, 23, 7, 5, "a")
+    c.ellipse(CX + 6, 23, 7, 5, "a")
+    c.span(CX - 9, CX + 9, 22, "a")
+    c.span(CX - 8, CX + 8, 23, "a")
+    c.put(CX - 5, 24, "k")
+    c.put(CX + 5, 24, "k")
+    c.put(CX - 2, 24, "k")
+    c.put(CX + 2, 24, "k")
+    eye(c, CX - 7, 27)
+    eye(c, CX + 1, 27)
+    c.put(CX - 8, 35, "u")
+    c.put(CX - 7, 35, "u")
+    c.put(CX + 7, 35, "u")
+    c.put(CX + 8, 35, "u")
+    c.span(CX - 1, CX, 37, "M")
+    c.put(CX, 36, "q")
+    c.put(CX - 12, 33, "g")
+    c.put(CX + 12, 33, "g")
 
-    # --- gothic corset: pink block, 1px black rails, 1 lace ---
-    for y in range(15, 18):
-        c.span(CX - 3, CX + 3, y, "c")
-        c.put(CX - 3, y, "t")
-        c.put(CX + 3, y, "t")
-    c.put(CX, 16, "p")
-    c.put(CX, 17, "t")  # second lace hole
+    # gothic corset
+    c.rect(CX - 8, 41, CX + 8, 46, "c")
+    c.rect(CX - 8, 42, CX - 8, 46, "t")
+    c.rect(CX + 8, 42, CX + 8, 46, "t")
+    c.span(CX - 8, CX + 8, 41, "t")
+    c.span(CX - 6, CX + 6, 42, "C")
+    c.put(CX, 43, "t")
+    c.put(CX, 44, "C")
+    c.put(CX, 45, "t")
+    c.put(CX - 1, 44, "p")
+    c.put(CX + 1, 44, "p")
 
-    # --- 1px midriff so the crop top reads ---
-    c.span(CX - 2, CX + 2, 18, "s")
-    c.put(CX - 2, 18, "q")
-    c.put(CX + 2, 18, "q")
+    c.span(CX - 5, CX + 5, 47, "s")
+    c.put(CX - 5, 47, "q")
+    c.put(CX + 5, 47, "q")
 
-    # --- skirt: one purple block ---
-    c.span(CX - 3, CX + 3, 19, "r")
-    c.span(CX - 3, CX + 3, 20, "m")
-    c.put(CX - 3, 19, "m")
-    c.put(CX + 3, 19, "m")
+    c.span(CX - 9, CX + 9, 48, "r")
+    c.span(CX - 10, CX + 10, 49, "r")
+    c.span(CX - 10, CX + 10, 50, "m")
+    c.span(CX - 6, CX + 6, 48, "R")
 
-    # --- fishnet legs + shoes ---
-    for dx in (-3, 1):
-        x0 = CX + dx
-        c.span(x0, x0 + 2, 21, "f")
-        c.put(x0, 22, "f")
-        c.put(x0 + 1, 22, "j")
-        c.put(x0 + 2, 22, "f")
-        c.span(x0, x0 + 2, 23, "f")
-        c.span(x0, x0 + 2, 24, "o")
-        c.span(x0, x0 + 2, 25, "o")
+    for x0 in (CX - 8, CX + 3):
+        c.rect(x0, 51, x0 + 4, 56, "f")
+        for yy in (52, 54, 56):
+            c.put(x0 + 1, yy, "j")
+            c.put(x0 + 3, yy, "j")
+        for yy in (53, 55):
+            c.put(x0 + 2, yy, "j")
+        c.rect(x0, 57, x0 + 4, 59, "o")
+        c.span(x0 + 1, x0 + 3, 57, "O")
 
-    # --- staff AFTER hat. Skull left of the brim; pole under the hand. ---
-    c.span(sx - 3, sx - 1, 6, "x")
-    c.put(sx - 3, 7, "z")
-    c.put(sx - 2, 7, "x")
-    c.put(sx - 1, 7, "z")
-    c.span(sx - 3, sx - 1, 8, "x")
-    c.put(sx - 1, 9, "x")
-    c.put(sx, 9, "y")
-    for y in range(10, 25):
-        c.put(sx, y, "y" if y % 3 else "v")
-    c.put(sx, 24, "v")
+    # skull staff
+    c.ellipse(sx + 1, 19, 4, 4, "x")
+    c.put(sx - 1, 18, "z")
+    c.put(sx - 1, 19, "z")
+    c.put(sx + 3, 18, "z")
+    c.put(sx + 3, 19, "z")
+    c.put(sx + 1, 20, "X")
+    c.put(sx + 1, 21, "z")
+    c.span(sx, sx + 2, 22, "x")
+    for y in range(23, 60):
+        wood = "y" if y % 4 else "v"
+        c.put(sx, y, wood)
+        c.put(sx + 1, y, "v" if wood == "y" else "y")
+    c.span(sx, sx + 1, 59, "v")
 
-    # hand ON the pole; short wrist into the torso. Tiny free arm on the right.
-    c.put(sx, 17, "s")
-    c.put(sx + 1, 16, "s")
-    c.put(sx + 2, 16, "s")
-    c.put(sx + 3, 16, "s")
-    c.put(CX + 4, 16, "s")
-    c.put(CX + 4, 17, "q")
+    c.rect(sx, 45, sx + 3, 47, "s")
+    c.rect(sx + 3, 44, CX - 9, 46, "s")
+    c.put(sx + 1, 47, "q")
+    c.rect(CX + 9, 43, CX + 11, 48, "s")
+    c.put(CX + 11, 48, "q")
+    c.put(CX + 10, 49, "q")
 
     return c
 
@@ -184,11 +223,18 @@ def south_idle() -> Canvas:
 def paint(canvas: Canvas) -> Image.Image:
     im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     px = im.load()
+    unknown: set[str] = set()
     for y, row in enumerate(canvas.dump()):
         for x, ch in enumerate(row):
             if ch == ".":
                 continue
-            px[x, y] = PALETTE[ch]
+            color = PALETTE.get(ch)
+            if color is None:
+                unknown.add(ch)
+                continue
+            px[x, y] = color
+    if unknown:
+        raise SystemExit(f"unknown palette keys: {sorted(unknown)}")
     return im
 
 
@@ -201,45 +247,31 @@ def zoom(im: Image.Image, factor: int, bg: tuple[int, int, int, int] | None) -> 
     return out.resize((im.width * factor, im.height * factor), Image.Resampling.NEAREST)
 
 
-def comparison(sprite: Image.Image) -> Image.Image:
-    """Reference sheet beside the new Witch at a similar on-screen character size."""
-    pink = (255, 228, 236, 255)
-    witch_hi = zoom(sprite, 12, pink)
-    if REF.exists():
-        sheet = Image.open(REF).convert("RGBA")
-    else:
-        sheet = Image.new("RGBA", (200, 200), pink)
-    pad = 16
-    width = sheet.width + pad + witch_hi.width
-    height = max(sheet.height, witch_hi.height) + pad * 2
-    canvas = Image.new("RGBA", (width, height), (36, 24, 44, 255))
-    canvas.paste(sheet, (0, pad))
-    canvas.paste(witch_hi, (sheet.width + pad, pad))
-    return canvas
-
-
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     PREVIEW.mkdir(parents=True, exist_ok=True)
     canvas = south_idle()
-    for i, row in enumerate(canvas.dump()):
-        if row.strip("."):
-            print(f"{i:02d} {row}")
     sprite = paint(canvas)
     sprite.save(OUT / "south-idle.png")
-    zoom(sprite, 12, (255, 228, 236, 255)).save(PREVIEW / "south_idle_x12.png")
-    zoom(sprite, 12, None).save(PREVIEW / "south_idle_x12_alpha.png")
-    zoom(sprite, 8, (18, 14, 24, 255)).save(PREVIEW / "south_idle_x8_dark.png")
-    comparison(sprite).save(PREVIEW / "south_idle_vs_reference.png")
+    pink = (255, 228, 236, 255)
+    zoom(sprite, 6, pink).save(PREVIEW / "south_idle_x6.png")
+    zoom(sprite, 8, pink).save(PREVIEW / "south_idle_x8.png")
+    zoom(sprite, 8, None).save(PREVIEW / "south_idle_x8_alpha.png")
+    zoom(sprite, 6, (18, 14, 24, 255)).save(PREVIEW / "south_idle_x6_dark.png")
     if REF.exists():
-        pink = (255, 228, 236, 255)
         sheet = Image.open(REF).convert("RGBA")
-        cell = zoom(sprite, 2, pink)
-        scale = Image.new("RGBA", (sheet.width + 16 + cell.width, sheet.height), (255, 228, 236, 255))
+        scale = Image.new("RGBA", (sheet.width + 16 + W, max(sheet.height, H + 32)), pink)
         scale.alpha_composite(sheet, (0, 0))
-        # First sheet row sits near y=47; sprite top is y=2 at native, 4 at 2x.
-        scale.alpha_composite(cell, (sheet.width + 8, 43))
+        cell = Image.new("RGBA", (W, H), pink)
+        cell.alpha_composite(sprite)
+        scale.alpha_composite(cell, (sheet.width + 8, 40))
         scale.save(PREVIEW / "south_idle_vs_sheet_scale.png")
+        crop = sheet.crop((55, 47, 110, 110))
+        pair = Image.new("RGBA", (crop.width + 16 + W, max(crop.height, H)), pink)
+        pair.alpha_composite(crop, (0, 0))
+        pair.alpha_composite(cell, (crop.width + 16, 0))
+        pair = pair.resize((pair.width * 4, pair.height * 4), Image.Resampling.NEAREST)
+        pair.save(PREVIEW / "south_idle_vs_one_ref_x4.png")
     px = sprite.load()
     xs, ys = [], []
     for y in range(H):
