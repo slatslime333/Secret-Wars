@@ -236,8 +236,8 @@ export class BountyTargetObjective implements MatchObjective {
     this.lastWinner = winningTeam;
     grantTeamLevels(winningTeam, heroes, this.grantLevel, this.orbs, mark.hero.body.x, mark.hero.body.y, OBJECTIVE.bounty.levelReward);
     audio.play('objective-complete');
-    const other = winningTeam === 'alpha' ? this.bravo : this.alpha;
-    if (other && killer === other.hero.body && other.hero.alive) {
+    const assassinMark = winningTeam === 'alpha' ? this.alpha : this.bravo;
+    if (assassinMark && killer === assassinMark.hero.body && assassinMark.hero.alive && !assassinMark.resolved) {
       killer.healFull();
       applyObjectiveHaste(killer, now, OBJECTIVE.bounty.buffMs, OBJECTIVE.bounty.moveMul, OBJECTIVE.bounty.attackMul);
     }

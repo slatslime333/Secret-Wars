@@ -135,6 +135,7 @@ export class MatchScene extends Phaser.Scene {
       this.roster = cloneRoster(data.roster);
       this.playerTeam = data.playerTeam;
       this.playerLane = data.playerLane;
+      this.startHeroId = this.roster[this.playerTeam][LANES.indexOf(this.playerLane)];
       rememberPlayerSpawn({ team: data.playerTeam, lane: data.playerLane });
       return;
     }
