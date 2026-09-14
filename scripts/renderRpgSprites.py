@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Compact RPG battle sprites for all six playable heroes.
+"""Compact RPG battle sprites — slim, round, human-proportioned.
 
-Style reference: the approved-construction Witch south idle (32x32 compact
-RPG sprite — round-ish hair helmet, stubby clothes, few face pixels, limited
-shading). Not the illustrated portrait and not the oversized balloon-head pass.
+Witch south idle is pixel-identical to the approved 32x32 reference
+(padded into a 48x48 frame). Every other hero uses that same construction:
+rounded helmet heads, torso narrower than the head, 3px legs, limited
+shading. Girls (Witch, Shadow) get an hourglass crop + skirt. Boys stay
+slim but straight-sided.
 
-48x48 frames, 10 poses x 4 directions. Ninja bandana is magenta chroma.
-Witch portrait is left untouched (detailed card art).
+Not the illustrated portrait. Not the 64x64 balloon-head pass.
 """
 from __future__ import annotations
 
@@ -22,9 +23,11 @@ PREVIEW = Path("/tmp/rpg_sprites")
 
 FRAME = 48
 PORTRAIT = 128
+# Native 32x32 Witch sits in the 48 frame so feet land on y=41.
+OX, OY = 8, 16
 COLS = ("idle0", "idle1", "walk0", "walk1", "walk2", "atk0", "atk1", "atk2", "hurt", "down")
 ROWS = ("south", "north", "east", "west")
-TEAM = (255, 0, 255, 255)  # ninja bandana chroma
+TEAM = (255, 0, 255, 255)
 TRANSP = (0, 0, 0, 0)
 
 Color = tuple[int, int, int, int]
@@ -52,13 +55,6 @@ class Pix:
             for xx in range(x, x + w):
                 self.put(xx, yy, c)
 
-    def disc(self, cx: int, cy: int, r: int, c: Color) -> None:
-        r2 = r * r
-        for yy in range(cy - r, cy + r + 1):
-            for xx in range(cx - r, cx + r + 1):
-                if (xx - cx) * (xx - cx) + (yy - cy) * (yy - cy) <= r2:
-                    self.put(xx, yy, c)
-
     def image(self) -> Image.Image:
         im = Image.new("RGBA", (self.w, self.h), TRANSP)
         px = im.load()
@@ -66,6 +62,13 @@ class Pix:
             for x in range(self.w):
                 px[x, y] = self.p[y][x]
         return im
+
+    def mirrored(self) -> "Pix":
+        out = Pix(self.w, self.h)
+        for y in range(self.h):
+            for x in range(self.w):
+                out.p[y][self.w - 1 - x] = self.p[y][x]
+        return out
 
 
 @dataclass
@@ -82,18 +85,17 @@ def pose_for(name: str) -> Pose:
     return {
         "idle0": Pose(),
         "idle1": Pose(bob=-1, arm=1),
-        "walk0": Pose(lstep=2, rstep=-2, arm=-1, bob=-1),
+        "walk0": Pose(lstep=1, rstep=-1, arm=-1, bob=-1),
         "walk1": Pose(),
-        "walk2": Pose(lstep=-2, rstep=2, arm=1, bob=-1),
-        "atk0": Pose(lean=-1, arm=-2, swing=-3, bob=-1),
-        "atk1": Pose(lean=1, arm=2, swing=4, bob=1),
+        "walk2": Pose(lstep=-1, rstep=1, arm=1, bob=-1),
+        "atk0": Pose(lean=-1, arm=-1, swing=-3, bob=-1),
+        "atk1": Pose(lean=1, arm=1, swing=3, bob=1),
         "atk2": Pose(lean=1, arm=1, swing=2),
-        "hurt": Pose(lean=-2, arm=-2, bob=1),
+        "hurt": Pose(lean=-2, arm=-1, bob=1),
         "down": Pose(bob=6, lean=3),
     }[name]
 
 
-# --- palettes (local darks, not a global black outline) ---
 WITCH = {
     "h": C(40, 24, 60), "d": C(22, 14, 36), "l": C(62, 40, 86),
     "b": C(204, 90, 140), "n": C(148, 52, 100),
@@ -126,7 +128,8 @@ SHADOW = {
     "skin": C(240, 208, 196), "skinD": C(196, 150, 138),
     "hair": C(20, 18, 26), "hairL": C(48, 46, 58),
     "shirt": C(246, 244, 238), "skirt": C(22, 20, 28),
-    "eye": C(36, 24, 32), "claw": C(52, 24, 80), "clawL": C(110, 70, 150),
+    "eye": C(36, 24, 32), "blush": C(232, 154, 186),
+    "claw": C(52, 24, 80), "clawL": C(110, 70, 150),
 }
 ROPE = {
     "r": C(148, 102, 52), "rd": C(98, 64, 28), "rl": C(196, 154, 88),
@@ -134,13 +137,69 @@ ROPE = {
 }
 
 
+def wrap_put(c: Pix, x: int, y: int) -> None:
+    c.put(x, y, ROPE["rd"] if (x + y) % 2 == 0 else ROPE["r"])
+
+
 def wrap_fill(c: Pix, x: int, y: int, w: int, h: int) -> None:
     for yy in range(y, y + h):
         for xx in range(x, x + w):
-            c.put(xx, yy, ROPE["rd"] if (xx + yy) % 2 == 0 else ROPE["r"])
+            wrap_put(c, xx, yy)
 
 
-def staff(c: Pix, sx: int, y0: int, y1: int, skull_y: int, p: dict[str, Color] = WITCH) -> None:
+def helmet(
+    c: Pix,
+    cx: int,
+    y0: int,
+    fill: Color,
+    edge: Color,
+    shine: Color | None = None,
+) -> None:
+    """Rounded 11px-wide helmet used by the Witch hair. Not a square, not a balloon."""
+    c.span(cx - 3, cx + 3, y0, fill)
+    c.put(cx - 4, y0, edge)
+    c.put(cx + 4, y0, edge)
+    c.span(cx - 4, cx + 4, y0 + 1, fill)
+    c.put(cx - 4, y0 + 1, edge)
+    c.put(cx + 4, y0 + 1, edge)
+    if shine is not None:
+        c.span(cx - 2, cx + 2, y0 + 1, shine)
+    for y in range(y0 + 2, y0 + 6):
+        c.span(cx - 5, cx + 5, y, fill)
+        c.put(cx - 5, y, edge)
+        c.put(cx + 5, y, edge)
+    c.span(cx - 4, cx + 4, y0 + 6, fill)
+    c.put(cx - 4, y0 + 6, edge)
+    c.put(cx + 4, y0 + 6, edge)
+
+
+def slim_legs(
+    c: Pix,
+    cx: int,
+    fy: int,
+    pose: Pose,
+    d: str,
+    fill: Color,
+    shoe: Color,
+    hole: Color | None = None,
+) -> None:
+    """3px legs, 2px shoes — same as the Witch fishnets."""
+    if d in ("south", "north"):
+        pairs = ((-3, pose.lstep), (1, pose.rstep))
+    else:
+        step = pose.rstep if d == "east" else pose.lstep
+        pairs = ((-1, step),)
+    for i, step in pairs:
+        x0 = cx + i + step
+        c.fill(x0, fy - 5, 3, 4, fill)
+        if hole is not None:
+            c.put(x0 + 1, fy - 4, hole)
+            c.put(x0 + 1, fy - 2, hole)
+        c.fill(x0, fy - 1, 3, 2, shoe)
+
+
+def staff(c: Pix, sx: int, y0: int, y1: int, skull_y: int) -> None:
+    p = WITCH
     c.fill(sx - 1, skull_y, 3, 3, p["x"])
     c.put(sx - 1, skull_y + 1, p["z"])
     c.put(sx + 1, skull_y + 1, p["z"])
@@ -148,378 +207,649 @@ def staff(c: Pix, sx: int, y0: int, y1: int, skull_y: int, p: dict[str, Color] =
         c.put(sx, y, p["y"] if y % 3 else p["v"])
 
 
+def flip_west(draw_east, d: str, pose: Pose) -> Pix:
+    if d != "west":
+        return draw_east(d, pose)
+    flipped = Pose(
+        bob=pose.bob,
+        lean=-pose.lean,
+        lstep=pose.rstep,
+        rstep=pose.lstep,
+        arm=pose.arm,
+        swing=pose.swing,
+    )
+    return draw_east("east", flipped).mirrored()
+
+
 # ---------------------------------------------------------------------------
-# Witch — compact construction from the preferred south idle
+# Witch — south idle is the exact 32x32 reference, padded into 48x48
 # ---------------------------------------------------------------------------
+def witch_south_native(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    """Exact construction from the approved 32x32 south idle (CX=19, sx=12)."""
+    p = WITCH
+
+    def put(x: int, y: int, k: str) -> None:
+        c.put(ox + x, oy + y, p[k])
+
+    def span(x0: int, x1: int, y: int, k: str) -> None:
+        for x in range(x0, x1 + 1):
+            put(x, y, k)
+
+    cx = 19
+    sx = 12 + pose.swing
+
+    put(cx, 2, "d")
+    span(cx - 1, cx + 1, 3, "h")
+    span(cx - 2, cx + 2, 4, "h")
+    put(cx - 2, 4, "l")
+    put(cx + 2, 4, "l")
+    span(cx - 3, cx + 3, 5, "h")
+    span(cx - 4, cx + 4, 6, "b")
+    put(cx - 4, 6, "d")
+    put(cx + 4, 6, "d")
+    put(cx - 3, 6, "n")
+    put(cx + 3, 6, "n")
+    span(cx - 6, cx + 6, 7, "h")
+    put(cx - 6, 7, "d")
+    put(cx + 6, 7, "d")
+    put(cx + 6, 8, "g")
+
+    span(cx - 3, cx + 3, 8, "a")
+    put(cx - 4, 8, "k")
+    put(cx + 4, 8, "k")
+    span(cx - 4, cx + 4, 9, "a")
+    put(cx - 4, 9, "k")
+    put(cx + 4, 9, "k")
+    for y in range(10, 14):
+        span(cx - 5, cx + 5, y, "a")
+        put(cx - 5, y, "k")
+        put(cx + 5, y, "k")
+    span(cx - 4, cx + 4, 14, "a")
+    put(cx - 4, 14, "k")
+    put(cx + 4, 14, "k")
+    span(cx - 2, cx + 2, 9, "i")
+    for y in range(14, 16):
+        put(cx - 5, y, "k")
+        put(cx - 4, y, "a")
+        put(cx + 4, y, "a")
+        put(cx + 5, y, "k")
+
+    span(cx - 2, cx + 2, 10, "a")
+    put(cx, 10, "s")
+    for y in range(11, 14):
+        span(cx - 2, cx + 2, y, "s")
+    put(cx, 14, "q")
+    put(cx - 2, 11, "w")
+    put(cx - 1, 11, "e")
+    put(cx + 1, 11, "w")
+    put(cx + 2, 11, "e")
+    put(cx, 13, "q")
+    put(cx - 2, 13, "u")
+    put(cx + 2, 13, "u")
+
+    for y in range(15, 18):
+        span(cx - 3, cx + 3, y, "c")
+        put(cx - 3, y, "t")
+        put(cx + 3, y, "t")
+    put(cx, 16, "p")
+    put(cx, 17, "t")
+
+    span(cx - 2, cx + 2, 18, "s")
+    put(cx - 2, 18, "q")
+    put(cx + 2, 18, "q")
+
+    span(cx - 3, cx + 3, 19, "r")
+    span(cx - 3, cx + 3, 20, "m")
+    put(cx - 3, 19, "m")
+    put(cx + 3, 19, "m")
+
+    for dx, step in ((-3, pose.lstep), (1, pose.rstep)):
+        x0 = cx + dx + step
+        span(x0, x0 + 2, 21, "f")
+        put(x0, 22, "f")
+        put(x0 + 1, 22, "j")
+        put(x0 + 2, 22, "f")
+        span(x0, x0 + 2, 23, "f")
+        span(x0, x0 + 2, 24, "o")
+        span(x0, x0 + 2, 25, "o")
+
+    span(sx - 3, sx - 1, 6, "x")
+    put(sx - 3, 7, "z")
+    put(sx - 2, 7, "x")
+    put(sx - 1, 7, "z")
+    span(sx - 3, sx - 1, 8, "x")
+    put(sx - 1, 9, "x")
+    put(sx, 9, "y")
+    for y in range(10, 25):
+        put(sx, y, "y" if y % 3 else "v")
+    put(sx, 24, "v")
+
+    put(sx, 17, "s")
+    put(sx + 1, 16 + pose.arm, "s")
+    put(sx + 2, 16 + pose.arm, "s")
+    put(sx + 3, 16 + pose.arm, "s")
+    put(cx + 4, 16 + pose.arm, "s")
+    put(cx + 4, 17 + pose.arm, "q")
+
+
+def witch_hat(c: Pix, cx: int, hy: int, brim: int, charm_right: bool) -> None:
+    p = WITCH
+    c.put(cx, hy, p["d"])
+    c.span(cx - 1, cx + 1, hy + 1, p["h"])
+    c.span(cx - 2, cx + 2, hy + 2, p["h"])
+    c.put(cx - 2, hy + 2, p["l"])
+    c.put(cx + 2, hy + 2, p["l"])
+    c.span(cx - 3, cx + 3, hy + 3, p["h"])
+    c.span(cx - 4, cx + 4, hy + 4, p["b"])
+    c.put(cx - 4, hy + 4, p["d"])
+    c.put(cx + 4, hy + 4, p["d"])
+    c.put(cx - 3, hy + 4, p["n"])
+    c.put(cx + 3, hy + 4, p["n"])
+    c.span(cx - brim, cx + brim, hy + 5, p["h"])
+    c.put(cx - brim, hy + 5, p["d"])
+    c.put(cx + brim, hy + 5, p["d"])
+    if charm_right:
+        c.put(cx + brim, hy + 6, p["g"])
+    else:
+        c.put(cx - brim, hy + 6, p["g"])
+
+
+def witch_north(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    p = WITCH
+    cx = 19
+    sx = 26 + pose.swing
+
+    def put(x: int, y: int, k: str) -> None:
+        c.put(ox + x, oy + y, p[k])
+
+    def span(x0: int, x1: int, y: int, k: str) -> None:
+        for x in range(x0, x1 + 1):
+            put(x, y, k)
+
+    witch_hat(c, ox + cx, oy + 2, 6, charm_right=False)
+    # Same round helmet as south — short locks, body stays visible.
+    span(cx - 3, cx + 3, 8, "a")
+    put(cx - 4, 8, "k")
+    put(cx + 4, 8, "k")
+    span(cx - 4, cx + 4, 9, "a")
+    put(cx - 4, 9, "k")
+    put(cx + 4, 9, "k")
+    span(cx - 2, cx + 2, 9, "i")
+    for y in range(10, 14):
+        span(cx - 5, cx + 5, y, "a")
+        put(cx - 5, y, "k")
+        put(cx + 5, y, "k")
+    span(cx - 4, cx + 4, 14, "a")
+    put(cx - 4, 14, "k")
+    put(cx + 4, 14, "k")
+    for y in range(14, 16):
+        put(cx - 5, y, "k")
+        put(cx - 4, y, "a")
+        put(cx + 4, y, "a")
+        put(cx + 5, y, "k")
+    for y in range(15, 18):
+        span(cx - 3, cx + 3, y, "r")
+        put(cx - 3, y, "m")
+        put(cx + 3, y, "m")
+    span(cx - 3, cx + 3, 19, "r")
+    span(cx - 3, cx + 3, 20, "m")
+    for dx, step in ((-3, pose.lstep), (1, pose.rstep)):
+        x0 = cx + dx + step
+        span(x0, x0 + 2, 21, "f")
+        put(x0 + 1, 22, "j")
+        span(x0, x0 + 2, 23, "f")
+        span(x0, x0 + 2, 24, "o")
+        span(x0, x0 + 2, 25, "o")
+    staff(c, ox + sx, oy + 10, oy + 25, oy + 6)
+    put(sx - 1, 16 + pose.arm, "s")
+    put(sx, 17 + pose.arm, "s")
+
+
+def witch_east(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    p = WITCH
+    cx = 16
+    sx = 22 + pose.swing
+
+    def put(x: int, y: int, k: str) -> None:
+        c.put(ox + x, oy + y, p[k])
+
+    def span(x0: int, x1: int, y: int, k: str) -> None:
+        for x in range(x0, x1 + 1):
+            put(x, y, k)
+
+    witch_hat(c, ox + cx, oy + 2, 5, charm_right=True)
+    # round hair, face on the right, lock trailing left
+    span(cx - 2, cx + 2, 8, "a")
+    put(cx - 3, 8, "k")
+    put(cx + 3, 8, "k")
+    for y in range(9, 14):
+        span(cx - 3, cx + 3, y, "a")
+        put(cx - 3, y, "k")
+        put(cx + 3, y, "k")
+    span(cx - 2, cx + 2, 14, "a")
+    for y in range(12, 16):
+        put(cx - 4, y, "k")
+        put(cx - 3, y, "a")
+    span(cx, cx + 2, 10, "s")
+    span(cx, cx + 2, 11, "s")
+    span(cx, cx + 2, 12, "s")
+    span(cx, cx + 1, 13, "s")
+    put(cx + 1, 11, "w")
+    put(cx + 2, 11, "e")
+    put(cx + 1, 13, "u")
+    for y in range(15, 18):
+        span(cx - 2, cx + 2, y, "c")
+        put(cx - 2, y, "t")
+        put(cx + 2, y, "t")
+    put(cx, 16, "p")
+    span(cx - 1, cx + 1, 18, "s")
+    span(cx - 2, cx + 2, 19, "r")
+    span(cx - 2, cx + 2, 20, "m")
+    x0 = cx - 1 + pose.rstep
+    span(x0, x0 + 2, 21, "f")
+    put(x0 + 1, 22, "j")
+    span(x0, x0 + 2, 23, "f")
+    span(x0, x0 + 2, 24, "o")
+    span(x0, x0 + 2, 25, "o")
+    staff(c, ox + sx, oy + 10, oy + 25, oy + 6)
+    put(sx - 1, 16 + pose.arm, "s")
+    put(sx, 17, "s")
+    put(cx + 3, 16, "s")
+
+
 def witch(d: str, pose: Pose) -> Pix:
     c = Pix()
     p = WITCH
-    cx, fy = 28 + pose.lean, 42 + pose.bob
-    if d == "down":
-        c.fill(18, 32, 16, 8, p["a"])
-        c.fill(20, 38, 12, 6, p["r"])
-        c.fill(14, 24, 8, 8, p["h"])
-        staff(c, 34, 30, 42, 24)
+    ox, oy = OX + pose.lean, OY + pose.bob
+    if d == "down" or pose.bob >= 6:
+        c.fill(18, 34, 14, 6, p["a"])
+        c.fill(20, 39, 10, 4, p["r"])
+        c.fill(14, 28, 7, 6, p["h"])
+        staff(c, 34, 32, 42, 26)
         return c
-
-    hy = fy - 27  # hat tip
-    # legs
-    if d in ("south", "north"):
-        for i, step in ((-3, pose.lstep), (1, pose.rstep)):
-            x0 = cx + i + step
-            c.fill(x0, fy - 5, 3, 4, p["f"])
-            c.put(x0 + 1, fy - 4, p["j"])
-            c.put(x0 + 1, fy - 2, p["j"])
-            c.fill(x0, fy - 1, 3, 2, p["o"])
-    else:
-        step = pose.rstep if d == "east" else pose.lstep
-        x0 = cx - 1 + step
-        c.fill(x0, fy - 5, 3, 4, p["f"])
-        c.put(x0 + 1, fy - 4, p["j"])
-        c.fill(x0, fy - 1, 3, 2, p["o"])
-
-    # skirt, midriff, gothic corset — all below the head
-    c.fill(cx - 4, fy - 8, 9, 2, p["m"])
-    c.fill(cx - 4, fy - 9, 9, 1, p["r"])
     if d == "south":
-        c.fill(cx - 3, fy - 10, 7, 1, p["s"])
-    c.fill(cx - 4, fy - 14, 9, 4, p["c"])
-    c.put(cx - 4, fy - 13, p["t"])
-    c.put(cx + 4, fy - 13, p["t"])
-    c.put(cx, fy - 12, p["p"])
-    c.put(cx, fy - 11, p["t"])
+        witch_south_native(c, ox, oy, pose)
+        return c
     if d == "north":
-        c.fill(cx - 4, fy - 14, 9, 5, p["a"])  # hair covers the back of the top
-        c.fill(cx - 4, fy - 9, 9, 3, p["r"])
-
-    # hat
-    c.put(cx, hy, p["d"])
-    c.fill(cx - 1, hy + 1, 3, 2, p["h"])
-    c.fill(cx - 2, hy + 3, 5, 1, p["h"])
-    c.fill(cx - 3, hy + 4, 7, 1, p["h"])
-    c.fill(cx - 4, hy + 5, 9, 1, p["b"])
-    c.fill(cx - 4, hy + 6, 9, 1, p["n"])
-    brim_w = 13 if d in ("south", "north") else 11
-    c.fill(cx - brim_w // 2, hy + 7, brim_w, 1, p["h"])
-    c.put(cx - brim_w // 2, hy + 7, p["d"])
-    c.put(cx + brim_w // 2 - 1, hy + 7, p["d"])
-    if d != "west":
-        c.put(cx + brim_w // 2, hy + 8, p["g"])
-
-    # hair + face sit under the brim, above the corset (hy+8 .. fy-14)
-    if d == "south":
-        c.fill(cx - 5, hy + 8, 11, 7, p["a"])
-        c.put(cx - 5, hy + 8, p["k"])
-        c.put(cx + 5, hy + 8, p["k"])
-        c.fill(cx - 4, hy + 8, 9, 1, p["i"])
-        c.fill(cx - 3, hy + 9, 7, 1, p["a"])  # bangs
-        c.fill(cx - 4, hy + 10, 9, 4, p["s"])
-        c.put(cx - 3, hy + 10, p["w"])
-        c.put(cx - 2, hy + 10, p["e"])
-        c.put(cx + 1, hy + 10, p["w"])
-        c.put(cx + 2, hy + 10, p["e"])
-        c.put(cx - 3, hy + 12, p["u"])
-        c.put(cx + 2, hy + 12, p["u"])
-        c.put(cx, hy + 13, p["q"])
-        c.fill(cx - 5, hy + 14, 2, 2, p["k"])
-        c.fill(cx + 4, hy + 14, 2, 2, p["k"])
-        c.put(cx - 6, hy + 11, p["g"])
-        c.put(cx + 5, hy + 11, p["g"])
-    elif d == "north":
-        c.fill(cx - 5, hy + 8, 11, 8, p["a"])
-        c.fill(cx - 4, hy + 8, 9, 2, p["i"])
-        c.fill(cx - 5, hy + 14, 2, 3, p["k"])
-        c.fill(cx + 4, hy + 14, 2, 3, p["k"])
-    elif d == "east":
-        c.fill(cx - 2, hy + 8, 7, 7, p["a"])
-        c.fill(cx - 1, hy + 10, 4, 4, p["s"])
-        c.put(cx + 2, hy + 11, p["w"])
-        c.put(cx + 3, hy + 11, p["e"])
-        c.put(cx + 2, hy + 13, p["u"])
-        c.fill(cx + 3, hy + 12, 3, 5, p["a"])
-        c.put(cx + 4, hy + 11, p["g"])
-        c.fill(cx - 1, fy - 14, 5, 4, p["c"])  # thinner side corset
-        c.fill(cx - 2, fy - 9, 6, 2, p["r"])
-    else:
-        c.fill(cx - 4, hy + 8, 7, 7, p["a"])
-        c.fill(cx - 2, hy + 10, 4, 4, p["s"])
-        c.put(cx - 2, hy + 11, p["e"])
-        c.put(cx - 1, hy + 11, p["w"])
-        c.put(cx - 1, hy + 13, p["u"])
-        c.fill(cx - 5, hy + 12, 3, 5, p["a"])
-        c.put(cx - 4, hy + 11, p["g"])
-        c.fill(cx - 3, fy - 14, 5, 4, p["c"])
-        c.fill(cx - 3, fy - 9, 6, 2, p["r"])
-
-    # staff + arms
-    swing = pose.swing
-    if d == "south":
-        sx = cx - 9
-        staff(c, sx, hy + 10, fy, hy + 4)
-        c.fill(sx, fy - 13 + pose.arm, 4, 2, p["s"])  # hand on pole
-        c.put(cx + 5, fy - 12, p["s"])
-        c.put(cx + 5, fy - 11, p["q"])
-    elif d == "north":
-        sx = cx + 8
-        staff(c, sx, hy + 10, fy, hy + 4)
-        c.fill(sx - 2, fy - 13 + pose.arm, 3, 2, p["s"])
-    elif d == "east":
-        sx = cx + 7 + swing
-        staff(c, sx, hy + 9, fy, hy + 3)
-        c.fill(cx + 3, fy - 13 + pose.arm, 4, 2, p["s"])
-    else:
-        sx = cx - 7 - swing
-        staff(c, sx, hy + 9, fy, hy + 3)
-        c.fill(cx - 6, fy - 13 + pose.arm, 4, 2, p["s"])
+        witch_north(c, ox, oy, pose)
+        return c
+    if d == "west":
+        return flip_west(lambda dd, pp: witch(dd, pp), d, pose)
+    witch_east(c, ox, oy, pose)
     return c
 
 
 # ---------------------------------------------------------------------------
-# Other heroes — same compact proportions
+# Shared slim body for the rest of the roster
 # ---------------------------------------------------------------------------
-def ninja(d: str, pose: Pose) -> Pix:
+def boy_torso(c: Pix, cx: int, fy: int, fill: Color, lite: Color | None = None) -> None:
+    """7px chest, narrower than the 11px head."""
+    c.fill(cx - 3, fy - 14, 7, 6, fill)
+    if lite is not None:
+        c.fill(cx - 2, fy - 13, 5, 2, lite)
+
+
+def girl_hourglass(
+    c: Pix,
+    cx: int,
+    fy: int,
+    top: Color,
+    rail: Color | None,
+    skin: Color,
+    skirt: Color,
+    skirt_d: Color,
+) -> None:
+    """7px top, 5px waist, 7px skirt — Witch corset proportions."""
+    c.fill(cx - 3, fy - 14, 7, 3, top)
+    if rail is not None:
+        c.put(cx - 3, fy - 13, rail)
+        c.put(cx + 3, fy - 13, rail)
+        c.put(cx, fy - 12, rail)
+    c.span(cx - 2, cx + 2, fy - 11, skin)
+    c.span(cx - 3, cx + 3, fy - 10, skirt)
+    c.span(cx - 3, cx + 3, fy - 9, skirt_d)
+    c.put(cx - 3, fy - 10, skirt_d)
+    c.put(cx + 3, fy - 10, skirt_d)
+
+
+def round_bun(c: Pix, cx: int, cy: int, fill: Color) -> None:
+    """Tiny round bun sitting on the helmet, not a wide bar."""
+    c.put(cx, cy - 1, fill)
+    c.span(cx - 1, cx + 1, cy, fill)
+    c.put(cx, cy + 1, fill)
+
+
+def shadow_claw(c: Pix, hx: int, hy: int) -> None:
+    p = SHADOW
+    c.fill(hx, hy, 3, 3, p["claw"])
+    c.put(hx + 3, hy - 1, p["clawL"])
+    c.put(hx + 4, hy, p["clawL"])
+    c.put(hx + 3, hy + 1, p["clawL"])
+    c.put(hx + 2, hy - 2, p["clawL"])
+
+
+# ---------------------------------------------------------------------------
+# Ninja
+# ---------------------------------------------------------------------------
+def ninja_east(d: str, pose: Pose) -> Pix:
     c = Pix()
     p = NINJA
     cx, fy = 24 + pose.lean, 41 + pose.bob
-    if d == "down":
-        c.fill(14, 32, 18, 8, p["suit"])
-        c.fill(16, 30, 8, 4, TEAM)
-        c.fill(28, 28, 12, 2, p["blade"])
+    slim_legs(c, cx, fy, pose, "east", p["suit"], p["d"])
+    boy_torso(c, cx, fy, p["suit"], p["lite"])
+    hy = fy - 23
+    helmet(c, cx, hy, p["suit"], p["lite"], p["lite"])
+    c.span(cx - 4, cx + 4, hy + 2, TEAM)
+    c.fill(cx - 8, hy + 1, 3, 2, TEAM)
+    c.put(cx + 2, hy + 5, C(255, 252, 255))
+    c.put(cx + 3, hy + 5, p["eye"])
+    c.put(cx + 1, hy + 7, p["skin"])
+    c.put(cx + 4, fy - 12 + pose.arm, p["skin"])
+    hx = cx + 5 + pose.swing
+    c.fill(hx, fy - 13, 8, 1, p["blade"])
+    c.fill(hx, fy - 12, 2, 2, p["hilt"])
+    return c
+
+
+def ninja(d: str, pose: Pose) -> Pix:
+    if d == "west":
+        return flip_west(ninja_east, d, pose)
+    c = Pix()
+    p = NINJA
+    cx, fy = 24 + pose.lean, 41 + pose.bob
+    if d == "down" or pose.bob >= 6:
+        c.fill(16, 34, 16, 6, p["suit"])
+        c.fill(18, 32, 8, 3, TEAM)
+        c.fill(30, 30, 10, 1, p["blade"])
         return c
-    # legs
-    if d in ("south", "north"):
-        c.fill(cx - 4 + pose.lstep, fy - 6, 3, 6, p["suit"])
-        c.fill(cx + 1 + pose.rstep, fy - 6, 3, 6, p["suit"])
-        c.fill(cx - 4 + pose.lstep, fy - 1, 3, 2, p["d"])
-        c.fill(cx + 1 + pose.rstep, fy - 1, 3, 2, p["d"])
-    else:
-        step = pose.rstep if d == "east" else pose.lstep
-        c.fill(cx - 1 + step, fy - 6, 3, 6, p["suit"])
-        c.fill(cx - 1 + step, fy - 1, 3, 2, p["d"])
-    # torso
-    c.fill(cx - 5, fy - 14, 11, 8, p["suit"])
-    c.fill(cx - 4, fy - 13, 9, 2, p["lite"])
-    hy = fy - 24
-    c.fill(cx - 5, hy, 11, 10, p["suit"])
-    c.fill(cx - 4, hy + 1, 9, 2, p["lite"])
-    c.fill(cx - 5, hy + 3, 11, 2, TEAM)
+    slim_legs(c, cx, fy, pose, d, p["suit"], p["d"])
+    boy_torso(c, cx, fy, p["suit"], p["lite"])
+    hy = fy - 23
+    helmet(c, cx, hy, p["suit"], p["lite"], p["lite"])
+    c.span(cx - 4, cx + 4, hy + 2, TEAM)
     if d == "south":
-        c.fill(cx + 6, hy + 2, 4, 2, TEAM)
-        c.fill(cx + 9, hy + 1, 3, 2, TEAM)
-        c.fill(cx - 3, hy + 6, 2, 2, p["eye"])
-        c.fill(cx + 1, hy + 6, 2, 2, p["eye"])
-        c.fill(cx - 2, hy + 8, 5, 1, p["skin"])
-        c.put(cx - 6, fy - 12 + pose.arm, p["skin"])
-        c.put(cx + 6, fy - 12, p["skin"])
-        # katana on right hip / swing
-        hx, hy2 = cx + 6, fy - 12 + pose.arm
-        c.fill(hx, hy2 - 8 - pose.swing, 1, 10 + abs(pose.swing), p["blade"])
-        c.fill(hx - 1, hy2, 3, 2, p["hilt"])
-    elif d == "north":
-        c.fill(cx - 9, hy + 2, 4, 2, TEAM)
-        c.fill(cx - 5, hy, 11, 10, p["suit"])
-        c.fill(cx - 5, hy + 3, 11, 2, TEAM)
-        c.fill(cx - 7, fy - 18, 1, 12, p["blade"])
-    elif d == "east":
-        c.fill(cx - 8, hy + 2, 4, 2, TEAM)
-        c.put(cx + 2, hy + 6, p["eye"])
-        c.put(cx + 2, hy + 7, p["eye"])
-        c.fill(cx + 1, hy + 8, 2, 1, p["skin"])
-        hx = cx + 6 + pose.swing
-        c.fill(hx, fy - 14, 8, 1, p["blade"])
-        c.fill(hx, fy - 13, 2, 2, p["hilt"])
+        c.fill(cx + 5, hy + 1, 3, 2, TEAM)
+        c.fill(cx + 8, hy, 2, 2, TEAM)
+        c.put(cx - 2, hy + 5, C(255, 252, 255))
+        c.put(cx - 1, hy + 5, p["eye"])
+        c.put(cx + 1, hy + 5, C(255, 252, 255))
+        c.put(cx + 2, hy + 5, p["eye"])
+        c.span(cx - 1, cx + 1, hy + 7, p["skin"])
+        c.put(cx - 5, fy - 12 + pose.arm, p["skin"])
         c.put(cx + 5, fy - 12, p["skin"])
-    else:
-        c.fill(cx + 5, hy + 2, 4, 2, TEAM)
-        c.put(cx - 2, hy + 6, p["eye"])
-        c.put(cx - 2, hy + 7, p["eye"])
-        c.fill(cx - 2, hy + 8, 2, 1, p["skin"])
-        hx = cx - 13 - pose.swing
-        c.fill(hx, fy - 14, 8, 1, p["blade"])
-        c.fill(cx - 6, fy - 13, 2, 2, p["hilt"])
-        c.put(cx - 5, fy - 12, p["skin"])
+        hx = cx + 6
+        c.fill(hx, fy - 20 - pose.swing, 1, 9 + abs(pose.swing), p["blade"])
+        c.fill(hx - 1, fy - 12 + pose.arm, 3, 2, p["hilt"])
+    elif d == "north":
+        c.fill(cx - 8, hy + 1, 3, 2, TEAM)
+        c.fill(cx - 7, fy - 20, 1, 10, p["blade"])
+        c.put(cx - 5, fy - 12 + pose.arm, p["skin"])
+        c.put(cx + 5, fy - 12, p["skin"])
+    elif d == "east":
+        return ninja_east(d, pose)
+    return c
+
+
+# ---------------------------------------------------------------------------
+# Cole
+# ---------------------------------------------------------------------------
+def cole_east(d: str, pose: Pose) -> Pix:
+    c = Pix()
+    p = COLE
+    cx, fy = 24 + pose.lean, 41 + pose.bob
+    slim_legs(c, cx, fy, pose, "east", p["pants"], p["stripe"])
+    c.fill(cx - 3, fy - 14, 7, 6, p["hood"])
+    c.fill(cx - 3, fy - 12, 1, 4, p["stripe"])
+    c.fill(cx + 3, fy - 12, 1, 4, p["stripe"])
+    c.fill(cx - 1, fy - 13, 3, 4, p["shirt"])
+    hy = fy - 23
+    helmet(c, cx, hy, p["hood"], p["hoodD"])
+    c.fill(cx - 2, hy + 3, 5, 4, p["skin"])
+    c.span(cx - 3, cx + 3, hy, p["hair"])
+    c.span(cx - 4, cx + 3, hy + 1, p["hair"])
+    c.put(cx + 2, hy + 5, p["eye"])
+    c.put(cx + 4, fy - 12, p["skin"])
+    c.put(cx + 5, fy - 14 + pose.swing // 2, p["bolt"])
     return c
 
 
 def cole(d: str, pose: Pose) -> Pix:
+    if d == "west":
+        return flip_west(cole_east, d, pose)
     c = Pix()
     p = COLE
     cx, fy = 24 + pose.lean, 41 + pose.bob
-    if d == "down":
-        c.fill(14, 32, 20, 8, p["hood"])
-        c.fill(18, 28, 10, 6, p["skin"])
+    if d == "down" or pose.bob >= 6:
+        c.fill(16, 34, 16, 6, p["hood"])
+        c.fill(20, 30, 8, 5, p["skin"])
         return c
-    if d in ("south", "north"):
-        c.fill(cx - 4 + pose.lstep, fy - 6, 3, 6, p["pants"])
-        c.fill(cx + 1 + pose.rstep, fy - 6, 3, 6, p["pants"])
-        c.fill(cx - 4 + pose.lstep, fy - 1, 3, 2, p["stripe"])
-        c.fill(cx + 1 + pose.rstep, fy - 1, 3, 2, p["stripe"])
-    else:
-        step = pose.rstep if d == "east" else pose.lstep
-        c.fill(cx - 1 + step, fy - 6, 3, 6, p["pants"])
-        c.fill(cx - 1 + step, fy - 1, 3, 2, p["stripe"])
-    c.fill(cx - 6, fy - 15, 13, 9, p["hood"])
-    c.fill(cx - 6, fy - 12, 1, 6, p["stripe"])
-    c.fill(cx + 6, fy - 12, 1, 6, p["stripe"])
-    c.fill(cx - 2, fy - 13, 5, 7, p["shirt"])
-    hy = fy - 24
-    c.fill(cx - 6, hy, 13, 9, p["hood"])  # hood
-    c.fill(cx - 4, hy + 3, 9, 6, p["skin"])
-    c.fill(cx - 4, hy, 9, 4, p["hair"])
+    slim_legs(c, cx, fy, pose, d, p["pants"], p["stripe"])
+    # fitted hoodie: 7px, white shirt sliver
+    c.fill(cx - 3, fy - 14, 7, 6, p["hood"])
+    c.put(cx - 3, fy - 12, p["stripe"])
+    c.put(cx + 3, fy - 12, p["stripe"])
+    c.put(cx - 3, fy - 10, p["stripe"])
+    c.put(cx + 3, fy - 10, p["stripe"])
+    c.fill(cx - 1, fy - 13, 3, 4, p["shirt"])
+    hy = fy - 23
+    helmet(c, cx, hy, p["skin"], p["hair"])
+    # buzz hair cap on the round head
+    c.span(cx - 4, cx + 4, hy, p["hair"])
+    c.span(cx - 5, cx + 5, hy + 1, p["hair"])
+    c.span(cx - 5, cx + 5, hy + 2, p["hair"])
     if d == "south":
-        c.fill(cx - 3, hy + 5, 2, 2, p["eye"])
-        c.fill(cx + 1, hy + 5, 2, 2, p["eye"])
-        c.put(cx - 7, fy - 12 + pose.arm, p["skin"])
-        c.put(cx + 7, fy - 12, p["skin"])
-        c.put(cx - 7, fy - 14 + pose.arm, p["bolt"])
-        c.put(cx + 8, fy - 14, p["bolt2"] if pose.bob else p["bolt"])
-    elif d == "north":
-        c.fill(cx - 6, hy, 13, 10, p["hood"])
-        c.put(cx - 7, fy - 14, p["bolt"])
-        c.put(cx + 7, fy - 14, p["bolt"])
-    elif d == "east":
+        c.put(cx - 2, hy + 5, C(255, 252, 255))
+        c.put(cx - 1, hy + 5, p["eye"])
+        c.put(cx + 1, hy + 5, C(255, 252, 255))
         c.put(cx + 2, hy + 5, p["eye"])
-        c.put(cx + 7, fy - 12, p["skin"])
-        c.put(cx + 8, fy - 14 + pose.swing // 2, p["bolt"])
-    else:
-        c.put(cx - 2, hy + 5, p["eye"])
-        c.put(cx - 7, fy - 12, p["skin"])
-        c.put(cx - 8, fy - 14 + pose.swing // 2, p["bolt"])
+        c.put(cx, hy + 7, p["skin"])
+        c.put(cx - 5, fy - 12 + pose.arm, p["skin"])
+        c.put(cx + 5, fy - 12, p["skin"])
+        c.put(cx - 6, fy - 14 + pose.arm, p["bolt"])
+        c.put(cx + 6, fy - 14, p["bolt2"] if pose.bob else p["bolt"])
+    elif d == "north":
+        helmet(c, cx, hy, p["hood"], p["hoodD"])
+        c.span(cx - 4, cx + 4, hy, p["hair"])
+        c.put(cx - 5, fy - 14, p["bolt"])
+        c.put(cx + 5, fy - 14, p["bolt"])
+    elif d == "east":
+        return cole_east(d, pose)
+    return c
+
+
+# ---------------------------------------------------------------------------
+# Death
+# ---------------------------------------------------------------------------
+def death_east(d: str, pose: Pose) -> Pix:
+    c = Pix()
+    p = DEATH
+    cx, fy = 24 + pose.lean, 41 + pose.bob
+    slim_legs(c, cx, fy, pose, "east", p["cloth"], p["wrap"])
+    boy_torso(c, cx, fy, p["cloth"], p["clothL"])
+    hy = fy - 23
+    helmet(c, cx, hy, p["wrap"], p["clothL"], p["cloth"])
+    c.put(cx + 2, hy + 5, C(255, 252, 255))
+    c.put(cx + 3, hy + 5, p["eye"])
+    hx = cx + 5 + pose.swing
+    hy2 = fy - 13 + pose.arm
+    for i in range(8):
+        c.put(hx + i // 2, hy2 - i, p["wood"] if i % 2 == 0 else p["woodD"])
+    c.put(hx + 3, hy2 - 8, p["spike"])
+    c.fill(cx - 3, fy - 11, 4, 2, p["gun"])
     return c
 
 
 def death(d: str, pose: Pose) -> Pix:
+    if d == "west":
+        return flip_west(death_east, d, pose)
     c = Pix()
     p = DEATH
-    cx, fy = 24 + pose.lean, 42 + pose.bob
-    if d == "down":
-        c.fill(12, 32, 22, 10, p["cloth"])
-        c.fill(30, 28, 10, 3, p["wood"])
-        c.put(20, 34, p["eye"])
+    cx, fy = 24 + pose.lean, 41 + pose.bob
+    if d == "down" or pose.bob >= 6:
+        c.fill(14, 34, 18, 7, p["cloth"])
+        c.fill(30, 30, 8, 2, p["wood"])
+        c.put(20, 36, p["eye"])
         return c
-    if d in ("south", "north"):
-        c.fill(cx - 5 + pose.lstep, fy - 7, 4, 7, p["cloth"])
-        c.fill(cx + 1 + pose.rstep, fy - 7, 4, 7, p["cloth"])
-        c.fill(cx - 5 + pose.lstep, fy - 1, 4, 2, p["wrap"])
-        c.fill(cx + 1 + pose.rstep, fy - 1, 4, 2, p["wrap"])
-    else:
-        step = pose.rstep if d == "east" else pose.lstep
-        c.fill(cx - 2 + step, fy - 7, 4, 7, p["cloth"])
-        c.fill(cx - 2 + step, fy - 1, 4, 2, p["wrap"])
-    c.fill(cx - 6, fy - 16, 13, 9, p["cloth"])
-    c.fill(cx - 5, fy - 14, 11, 2, p["clothL"])
-    hy = fy - 26
-    c.fill(cx - 6, hy, 13, 11, p["wrap"])
-    c.fill(cx - 5, hy + 2, 11, 3, p["cloth"])
-    if d != "north":
-        c.fill(cx - 3, hy + 6, 2, 2, p["eye"])
-        c.fill(cx + 1, hy + 6, 2, 2, p["eye"])
-    # bat
-    east = d in ("south", "east")
-    hx = (cx + 7 + pose.swing) if east else (cx - 8 - pose.swing)
-    hy2 = fy - 14 + pose.arm
-    dirx = 1 if east else -1
-    for i in range(10):
-        c.put(hx + dirx * (i // 2), hy2 - i, p["wood"] if i % 2 == 0 else p["woodD"])
-    c.put(hx + dirx * 2, hy2 - 10, p["spike"])
-    c.put(hx + dirx * 3, hy2 - 9, p["spike"])
-    # hip uzi
-    gx = cx - 4 if east else cx + 2
-    c.fill(gx, fy - 11, 5, 3, p["gun"])
+    slim_legs(c, cx, fy, pose, d, p["cloth"], p["wrap"])
+    boy_torso(c, cx, fy, p["cloth"], p["clothL"])
+    hy = fy - 23
+    helmet(c, cx, hy, p["wrap"], p["clothL"], p["cloth"])
+    if d == "south":
+        c.put(cx - 2, hy + 5, C(255, 252, 255))
+        c.put(cx - 1, hy + 5, p["eye"])
+        c.put(cx + 1, hy + 5, C(255, 252, 255))
+        c.put(cx + 2, hy + 5, p["eye"])
+        hx = cx + 5 + pose.swing
+        hy2 = fy - 13 + pose.arm
+        for i in range(8):
+            c.put(hx + i // 2, hy2 - i, p["wood"] if i % 2 == 0 else p["woodD"])
+        c.put(hx + 3, hy2 - 8, p["spike"])
+        c.fill(cx - 4, fy - 11, 4, 2, p["gun"])
+        c.put(cx - 5, fy - 12 + pose.arm, C(198, 134, 74))
+        c.put(cx + 5, fy - 12, C(198, 134, 74))
+    elif d == "north":
+        helmet(c, cx, hy, p["wrap"], p["clothL"], p["cloth"])
+        c.fill(cx - 7, fy - 20, 1, 10, p["wood"])
+        c.fill(cx + 2, fy - 11, 4, 2, p["gun"])
+    elif d == "east":
+        return death_east(d, pose)
+    return c
+
+
+# ---------------------------------------------------------------------------
+# Shadow — same feminine hourglass as Witch
+# ---------------------------------------------------------------------------
+def shadow_east(d: str, pose: Pose) -> Pix:
+    c = Pix()
+    p = SHADOW
+    cx, fy = 24 + pose.lean, 41 + pose.bob
+    slim_legs(c, cx, fy, pose, "east", p["skin"], p["hair"])
+    girl_hourglass(c, cx, fy, p["shirt"], p["hair"], p["skinD"], p["skirt"], p["hair"])
+    hy = fy - 23
+    helmet(c, cx, hy, p["hair"], p["hair"], p["hairL"])
+    round_bun(c, cx + 5, hy + 1, p["hair"])
+    c.fill(cx, hy + 3, 4, 4, p["skin"])
+    c.put(cx + 2, hy + 5, C(255, 252, 255))
+    c.put(cx + 3, hy + 5, p["eye"])
+    c.put(cx + 2, hy + 7, p["blush"])
+    c.put(cx - 5, hy + 6, p["hair"])
+    c.put(cx - 5, hy + 7, p["hair"])
+    shadow_claw(c, cx + 6 + pose.swing, fy - 12 + pose.arm)
     return c
 
 
 def shadow(d: str, pose: Pose) -> Pix:
+    if d == "west":
+        return flip_west(shadow_east, d, pose)
     c = Pix()
     p = SHADOW
     cx, fy = 24 + pose.lean, 41 + pose.bob
-    if d == "down":
-        c.fill(16, 32, 16, 8, p["hair"])
-        c.fill(18, 36, 12, 6, p["skirt"])
+    if d == "down" or pose.bob >= 6:
+        c.fill(16, 34, 14, 6, p["hair"])
+        c.fill(18, 38, 10, 4, p["skirt"])
         return c
-    if d in ("south", "north"):
-        c.fill(cx - 3 + pose.lstep, fy - 5, 3, 4, p["skin"])
-        c.fill(cx + 1 + pose.rstep, fy - 5, 3, 4, p["skin"])
-        c.fill(cx - 3 + pose.lstep, fy - 1, 3, 2, p["hair"])
-        c.fill(cx + 1 + pose.rstep, fy - 1, 3, 2, p["hair"])
-    else:
-        step = pose.rstep if d == "east" else pose.lstep
-        c.fill(cx - 1 + step, fy - 5, 3, 4, p["skin"])
-        c.fill(cx - 1 + step, fy - 1, 3, 2, p["hair"])
-    c.fill(cx - 4, fy - 9, 9, 4, p["skirt"])
-    c.fill(cx - 4, fy - 14, 9, 5, p["shirt"])
-    hy = fy - 24
-    # buns + helmet hair
-    c.disc(cx - 5, hy + 2, 2, p["hair"])
-    c.disc(cx + 5, hy + 2, 2, p["hair"])
-    c.fill(cx - 5, hy, 11, 8, p["hair"])
+    slim_legs(c, cx, fy, pose, d, p["skin"], p["hair"])
+    girl_hourglass(c, cx, fy, p["shirt"], p["hair"], p["skinD"], p["skirt"], p["hair"])
+    hy = fy - 23
+    helmet(c, cx, hy, p["hair"], p["hair"], p["hairL"])
+    round_bun(c, cx - 5, hy + 1, p["hair"])
+    round_bun(c, cx + 5, hy + 1, p["hair"])
     if d == "south":
-        c.fill(cx - 3, hy + 4, 7, 5, p["skin"])
-        c.fill(cx - 4, hy + 3, 5, 4, p["hair"])  # bangs cover left
-        c.put(cx + 1, hy + 6, p["eye"])
-        c.fill(cx - 5, hy + 10, 2, 4, p["hair"])
-        c.fill(cx + 4, hy + 10, 2, 4, p["hair"])
-        c.put(cx - 6, fy - 12, p["skin"])  # left hand
-        # claw on her right = viewer's right
-        hx, hy2 = cx + 7, fy - 12 + pose.arm
-        c.disc(hx, hy2, 3, p["claw"])
-        c.put(hx + 2, hy2 - 2, p["clawL"])
-        c.put(hx + 3, hy2, p["clawL"])
-        c.put(hx + 2, hy2 + 2, p["clawL"])
+        # oval face inside the helmet, same language as Witch
+        c.fill(cx - 2, hy + 3, 5, 4, p["skin"])
+        c.put(cx, hy + 2, p["skin"])
+        c.span(cx - 3, cx + 1, hy + 2, p["hair"])
+        c.put(cx - 2, hy + 5, C(255, 252, 255))
+        c.put(cx - 1, hy + 5, p["eye"])
+        c.put(cx + 1, hy + 5, C(255, 252, 255))
+        c.put(cx + 2, hy + 5, p["eye"])
+        c.put(cx - 2, hy + 6, p["blush"])
+        c.put(cx + 2, hy + 6, p["blush"])
+        c.put(cx - 5, hy + 7, p["hair"])
+        c.put(cx + 5, hy + 7, p["hair"])
+        c.put(cx + 5, fy - 12, p["skin"])
+        shadow_claw(c, cx - 8, fy - 12 + pose.arm)
     elif d == "north":
-        c.fill(cx - 5, hy, 11, 12, p["hair"])
-        c.disc(cx - 5, hy + 2, 2, p["hair"])
-        c.disc(cx + 5, hy + 2, 2, p["hair"])
-        c.disc(cx - 7, fy - 12, 3, p["claw"])
+        helmet(c, cx, hy, p["hair"], p["hair"], p["hairL"])
+        round_bun(c, cx - 5, hy + 1, p["hair"])
+        round_bun(c, cx + 5, hy + 1, p["hair"])
+        c.put(cx - 5, hy + 7, p["hair"])
+        c.put(cx + 5, hy + 7, p["hair"])
+        shadow_claw(c, cx + 6, fy - 12)
     elif d == "east":
-        c.fill(cx - 2, hy + 4, 5, 5, p["skin"])
-        c.put(cx + 2, hy + 6, p["eye"])
-        c.fill(cx + 3, hy + 8, 3, 5, p["hair"])
-        c.disc(cx + 6, hy + 2, 2, p["hair"])
-        hx = cx + 7 + pose.swing
-        c.disc(hx, fy - 12, 3, p["claw"])
-        c.put(hx + 3, fy - 13, p["clawL"])
-        c.put(hx + 3, fy - 11, p["clawL"])
-    else:
-        c.fill(cx - 2, hy + 4, 5, 5, p["skin"])
-        c.put(cx - 2, hy + 6, p["eye"])
-        c.fill(cx - 5, hy + 8, 3, 5, p["hair"])
-        c.disc(cx - 6, hy + 2, 2, p["hair"])
-        hx = cx - 7 - pose.swing
-        c.disc(hx, fy - 12, 3, p["claw"])
-        c.put(hx - 3, fy - 13, p["clawL"])
+        return shadow_east(d, pose)
     return c
 
 
+# ---------------------------------------------------------------------------
+# Rope
+# ---------------------------------------------------------------------------
+def rope_east(d: str, pose: Pose) -> Pix:
+    c = Pix()
+    cx, fy = 24 + pose.lean, 41 + pose.bob
+    slim_wrap_legs(c, cx, fy, pose, "east")
+    wrap_fill(c, cx - 3, fy - 14, 7, 6)
+    hy = fy - 23
+    wrap_helmet(c, cx, hy)
+    c.put(cx + 2, hy + 4, ROPE["eye"])
+    c.put(cx + 2, hy + 5, ROPE["eye"])
+    c.put(cx + 3, hy + 4, ROPE["ink"])
+    wrap_fill(c, cx + 4, fy - 13 + pose.arm, 2, 4)
+    return c
+
+
+def slim_wrap_legs(c: Pix, cx: int, fy: int, pose: Pose, d: str) -> None:
+    if d in ("south", "north"):
+        pairs = ((-3, pose.lstep), (1, pose.rstep))
+    else:
+        step = pose.rstep if d == "east" else pose.lstep
+        pairs = ((-1, step),)
+    for i, step in pairs:
+        x0 = cx + i + step
+        wrap_fill(c, x0, fy - 5, 3, 6)
+
+
+def wrap_helmet(c: Pix, cx: int, y0: int) -> None:
+    def row(x0: int, x1: int, y: int) -> None:
+        for x in range(x0, x1 + 1):
+            wrap_put(c, x, y)
+
+    row(cx - 3, cx + 3, y0)
+    wrap_put(c, cx - 4, y0)
+    wrap_put(c, cx + 4, y0)
+    row(cx - 4, cx + 4, y0 + 1)
+    for y in range(y0 + 2, y0 + 6):
+        row(cx - 5, cx + 5, y)
+    row(cx - 4, cx + 4, y0 + 6)
+
+
 def rope(d: str, pose: Pose) -> Pix:
+    if d == "west":
+        return flip_west(rope_east, d, pose)
     c = Pix()
     p = ROPE
     cx, fy = 24 + pose.lean, 41 + pose.bob
-    if d == "down":
-        wrap_fill(c, 14, 32, 20, 8)
-        c.fill(22, 30, 3, 3, p["eye"])
+    if d == "down" or pose.bob >= 6:
+        wrap_fill(c, 16, 34, 16, 6)
+        c.fill(22, 32, 3, 3, p["eye"])
         return c
-    if d in ("south", "north"):
-        wrap_fill(c, cx - 4 + pose.lstep, fy - 6, 3, 6)
-        wrap_fill(c, cx + 1 + pose.rstep, fy - 6, 3, 6)
-    else:
-        step = pose.rstep if d == "east" else pose.lstep
-        wrap_fill(c, cx - 1 + step, fy - 6, 3, 6)
-    wrap_fill(c, cx - 5, fy - 15, 11, 9)
-    hy = fy - 24
-    wrap_fill(c, cx - 5, hy, 11, 10)
+    slim_wrap_legs(c, cx, fy, pose, d)
+    wrap_fill(c, cx - 3, fy - 14, 7, 6)
+    hy = fy - 23
+    wrap_helmet(c, cx, hy)
     if d != "north":
-        # yellow triangle eyes
-        c.put(cx - 3, hy + 5, p["eye"])
+        c.put(cx - 3, hy + 4, p["eye"])
+        c.put(cx - 2, hy + 4, p["eye"])
         c.put(cx - 2, hy + 5, p["eye"])
-        c.put(cx - 2, hy + 6, p["eye"])
+        c.put(cx + 1, hy + 4, p["eye"])
+        c.put(cx + 2, hy + 4, p["eye"])
         c.put(cx + 1, hy + 5, p["eye"])
-        c.put(cx + 2, hy + 5, p["eye"])
-        c.put(cx + 1, hy + 6, p["eye"])
-        c.put(cx - 2, hy + 5, p["ink"])
-        c.put(cx + 2, hy + 5, p["ink"])
-    wrap_fill(c, cx - 7, fy - 13 + pose.arm, 2, 4)
-    wrap_fill(c, cx + 6, fy - 13, 2, 4)
+        c.put(cx - 2, hy + 4, p["ink"])
+        c.put(cx + 2, hy + 4, p["ink"])
+    wrap_fill(c, cx - 6, fy - 13 + pose.arm, 2, 4)
+    wrap_fill(c, cx + 5, fy - 13, 2, 4)
+    if d == "east":
+        return rope_east(d, pose)
     return c
 
 
@@ -545,14 +875,12 @@ def sheet_for(hero: str) -> Image.Image:
 
 
 def portrait_from_south(hero: str) -> Image.Image:
-    """128x128 card close-up from the south idle, same pixel language."""
     idle = DRAW[hero]("south", Pose()).image()
-    # crop the upper body
     bbox = idle.getbbox()
     if not bbox:
         return Image.new("RGBA", (PORTRAIT, PORTRAIT), (20, 16, 24, 255))
     x0, y0, x1, y1 = bbox
-    head = idle.crop((max(0, x0 - 2), max(0, y0 - 2), min(FRAME, x1 + 2), min(FRAME, y0 + 22)))
+    head = idle.crop((max(0, x0 - 2), max(0, y0 - 2), min(FRAME, x1 + 2), min(FRAME, y0 + 20)))
     bg = {
         "witch": (42, 22, 58, 255),
         "ninja": (16, 14, 22, 255),
@@ -569,25 +897,58 @@ def portrait_from_south(hero: str) -> Image.Image:
     return canvas
 
 
+def zoom_on_pink(im: Image.Image, factor: int) -> Image.Image:
+    pink = (255, 228, 236, 255)
+    bg = Image.new("RGBA", im.size, pink)
+    bg.alpha_composite(im)
+    return bg.resize((im.width * factor, im.height * factor), Image.Resampling.NEAREST)
+
+
 def roster_preview(sheets: dict[str, Image.Image]) -> Image.Image:
     order = ("ninja", "cole", "death", "rope", "witch", "shadow")
     cell = FRAME * 4
     img = Image.new("RGBA", (cell * 4, cell * 6), (18, 14, 24, 255))
-    pink = (255, 228, 236, 255)
     for i, hero in enumerate(order):
         sheet = sheets[hero]
-        for d, col in enumerate(ROWS):
+        for d, _col in enumerate(ROWS):
             frame = sheet.crop((0, d * FRAME, FRAME, d * FRAME + FRAME))
-            bg = Image.new("RGBA", (FRAME, FRAME), pink)
-            bg.alpha_composite(frame)
-            img.paste(bg.resize((cell, cell), Image.Resampling.NEAREST), (d * cell, i * cell))
+            img.paste(zoom_on_pink(frame, 4), (d * cell, i * cell))
     return img
+
+
+def south_idle_strip(sheets: dict[str, Image.Image]) -> Image.Image:
+    order = ("witch", "shadow", "ninja", "cole", "death", "rope")
+    cell = FRAME * 12
+    img = Image.new("RGBA", (cell * 6, cell), (255, 228, 236, 255))
+    for i, hero in enumerate(order):
+        frame = sheets[hero].crop((0, 0, FRAME, FRAME))
+        img.paste(zoom_on_pink(frame, 12), (i * cell, 0))
+    return img
+
+
+def assert_witch_matches_reference() -> None:
+    """South idle0 must match the approved 32x32 pixels (padded at OX, OY)."""
+    git_ref = Path("/tmp/ref-witch-32.png")
+    if not git_ref.exists():
+        return
+    ref = Image.open(git_ref).convert("RGBA")
+    got = witch("south", Pose()).image().crop((OX, OY, OX + 32, OY + 32))
+    rp, gp = ref.load(), got.load()
+    mismatch = 0
+    for y in range(32):
+        for x in range(32):
+            if rp[x, y] != gp[x, y]:
+                mismatch += 1
+    if mismatch:
+        raise SystemExit(f"Witch south idle differs from 32x32 reference by {mismatch} pixels")
+    print("witch south idle matches 32x32 reference")
 
 
 def main() -> None:
     PREVIEW.mkdir(parents=True, exist_ok=True)
     CHAR_DIR.mkdir(parents=True, exist_ok=True)
     PORT_DIR.mkdir(parents=True, exist_ok=True)
+    assert_witch_matches_reference()
     sheets: dict[str, Image.Image] = {}
     for hero in DRAW:
         sheet = sheet_for(hero)
@@ -599,25 +960,19 @@ def main() -> None:
             portrait_from_south(hero).save(PORT_DIR / f"{hero}.png")
         print(f"wrote {hero} {sheet.size}")
 
-    # keep a standalone south idle for the Witch
     south = DRAW["witch"]("south", Pose()).image()
-    (CHAR_DIR / "witch" / "south-idle.png").parent.mkdir(parents=True, exist_ok=True)
+    (CHAR_DIR / "witch").mkdir(parents=True, exist_ok=True)
     south.save(CHAR_DIR / "witch" / "south-idle.png")
 
     roster_preview(sheets).save(PREVIEW / "roster_dirs_x4.png")
-    # witch four directions at 8x on pink
+    south_idle_strip(sheets).save(PREVIEW / "roster_south_x12.png")
     pink = (255, 228, 236, 255)
     strip = Image.new("RGBA", (FRAME * 8 * 4, FRAME * 8), pink)
     for i, d in enumerate(ROWS):
         fr = DRAW["witch"](d, Pose()).image()
-        bg = Image.new("RGBA", (FRAME, FRAME), pink)
-        bg.alpha_composite(fr)
-        strip.paste(bg.resize((FRAME * 8, FRAME * 8), Image.Resampling.NEAREST), (i * FRAME * 8, 0))
+        strip.paste(zoom_on_pink(fr, 8), (i * FRAME * 8, 0))
     strip.save(PREVIEW / "witch_dirs_x8.png")
-    # south idle 8x
-    bg = Image.new("RGBA", (FRAME, FRAME), pink)
-    bg.alpha_composite(south)
-    bg.resize((FRAME * 8, FRAME * 8), Image.Resampling.NEAREST).save(PREVIEW / "witch_south_x8.png")
+    zoom_on_pink(south, 12).save(PREVIEW / "witch_south_x12.png")
 
 
 if __name__ == "__main__":
