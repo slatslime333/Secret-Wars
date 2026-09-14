@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
-"""Compact RPG battle sprites — slim, round, human-proportioned.
+"""Compact RPG battle sprites in the Witch's native 32px construction.
 
-Witch south idle is pixel-identical to the approved 32x32 reference
-(padded into a 48x48 frame). Every other hero uses that same construction:
-rounded helmet heads, torso narrower than the head, 3px legs, limited
-shading. Girls (Witch, Shadow) get an hourglass crop + skirt. Boys stay
-slim but straight-sided.
-
-Not the illustrated portrait. Not the 64x64 balloon-head pass.
+Witch south idle is pixel-identical to the approved 32x32 reference.
+Every other hero uses that same skeleton: round helmet, shoulder locks
+(neck), 7px chest, 5px waist, 7px hips, 3px legs, and 1px-tall arms.
 """
 from __future__ import annotations
 
@@ -111,7 +107,7 @@ WITCH = {
 NINJA = {
     "suit": C(18, 18, 26), "lite": C(40, 40, 52), "d": C(10, 10, 16),
     "skin": C(198, 134, 74), "eye": C(255, 70, 70), "blade": C(220, 226, 232),
-    "hilt": C(72, 50, 30),
+    "hilt": C(72, 50, 30), "belt": C(96, 96, 112),
 }
 COLE = {
     "hood": C(212, 160, 28), "hoodD": C(150, 108, 16), "stripe": C(22, 22, 28),
@@ -145,86 +141,6 @@ def wrap_fill(c: Pix, x: int, y: int, w: int, h: int) -> None:
     for yy in range(y, y + h):
         for xx in range(x, x + w):
             wrap_put(c, xx, yy)
-
-
-def helmet(
-    c: Pix,
-    cx: int,
-    y0: int,
-    fill: Color,
-    edge: Color,
-    shine: Color | None = None,
-) -> None:
-    """Rounded 11px-wide helmet used by the Witch hair. Not a square, not a balloon."""
-    c.span(cx - 3, cx + 3, y0, fill)
-    c.put(cx - 4, y0, edge)
-    c.put(cx + 4, y0, edge)
-    c.span(cx - 4, cx + 4, y0 + 1, fill)
-    c.put(cx - 4, y0 + 1, edge)
-    c.put(cx + 4, y0 + 1, edge)
-    if shine is not None:
-        c.span(cx - 2, cx + 2, y0 + 1, shine)
-    for y in range(y0 + 2, y0 + 6):
-        c.span(cx - 5, cx + 5, y, fill)
-        c.put(cx - 5, y, edge)
-        c.put(cx + 5, y, edge)
-    c.span(cx - 4, cx + 4, y0 + 6, fill)
-    c.put(cx - 4, y0 + 6, edge)
-    c.put(cx + 4, y0 + 6, edge)
-
-
-def side_helmet(
-    c: Pix,
-    cx: int,
-    y0: int,
-    fill: Color,
-    edge: Color,
-    shine: Color | None = None,
-) -> None:
-    """True side head — 7px, same language as Witch east."""
-    c.span(cx - 2, cx + 2, y0, fill)
-    c.put(cx - 3, y0, edge)
-    c.put(cx + 3, y0, edge)
-    if shine is not None:
-        c.span(cx - 1, cx + 1, y0, shine)
-    for y in range(y0 + 1, y0 + 6):
-        c.span(cx - 3, cx + 3, y, fill)
-        c.put(cx - 3, y, edge)
-        c.put(cx + 3, y, edge)
-    c.span(cx - 2, cx + 2, y0 + 6, fill)
-    c.put(cx - 2, y0 + 6, edge)
-    c.put(cx + 2, y0 + 6, edge)
-
-
-def side_torso(c: Pix, cx: int, fy: int, fill: Color, lite: Color | None = None) -> None:
-    c.fill(cx - 2, fy - 14, 5, 6, fill)
-    if lite is not None:
-        c.fill(cx - 1, fy - 13, 3, 2, lite)
-
-
-def slim_legs(
-    c: Pix,
-    cx: int,
-    fy: int,
-    pose: Pose,
-    d: str,
-    fill: Color,
-    shoe: Color,
-    hole: Color | None = None,
-) -> None:
-    """3px legs, 2px shoes — same as the Witch fishnets."""
-    if d in ("south", "north"):
-        pairs = ((-3, pose.lstep), (1, pose.rstep))
-    else:
-        step = pose.rstep if d == "east" else pose.lstep
-        pairs = ((-1, step),)
-    for i, step in pairs:
-        x0 = cx + i + step
-        c.fill(x0, fy - 5, 3, 4, fill)
-        if hole is not None:
-            c.put(x0 + 1, fy - 4, hole)
-            c.put(x0 + 1, fy - 2, hole)
-        c.fill(x0, fy - 1, 3, 2, shoe)
 
 
 def staff(c: Pix, sx: int, y0: int, y1: int, skull_y: int) -> None:
@@ -308,10 +224,9 @@ def witch_south_native(c: Pix, ox: int, oy: int, pose: Pose) -> None:
     for y in range(11, 14):
         span(cx - 2, cx + 2, y, "s")
     put(cx, 14, "q")
-    put(cx - 2, 11, "w")
+    # Solid forward button eyes.
     put(cx - 1, 11, "e")
-    put(cx + 1, 11, "w")
-    put(cx + 2, 11, "e")
+    put(cx + 1, 11, "e")
     put(cx, 13, "q")
     put(cx - 2, 13, "u")
     put(cx + 2, 13, "u")
@@ -463,7 +378,6 @@ def witch_east(c: Pix, ox: int, oy: int, pose: Pose) -> None:
     span(cx, cx + 2, 11, "s")
     span(cx, cx + 2, 12, "s")
     span(cx, cx + 1, 13, "s")
-    put(cx + 1, 11, "w")
     put(cx + 2, 11, "e")
     put(cx + 1, 13, "u")
     for y in range(15, 18):
@@ -509,387 +423,597 @@ def witch(d: str, pose: Pose) -> Pix:
 
 
 # ---------------------------------------------------------------------------
-# Shared slim body for the rest of the roster
+# Native-32 skeleton shared with Witch (neck, arms, waist, hips, legs)
 # ---------------------------------------------------------------------------
-def boy_torso(c: Pix, cx: int, fy: int, fill: Color, lite: Color | None = None) -> None:
-    """7px chest, narrower than the 11px head."""
-    c.fill(cx - 3, fy - 14, 7, 6, fill)
-    if lite is not None:
-        c.fill(cx - 2, fy - 13, 5, 2, lite)
+BODY_CX = 19
 
 
-def girl_hourglass(
+def nput(c: Pix, ox: int, oy: int, x: int, y: int, col: Color) -> None:
+    c.put(ox + x, oy + y, col)
+
+
+def nspan(c: Pix, ox: int, oy: int, x0: int, x1: int, y: int, col: Color) -> None:
+    for x in range(x0, x1 + 1):
+        nput(c, ox, oy, x, y, col)
+
+
+def buttons(c: Pix, ox: int, oy: int, cx: int, y: int, col: Color, side: bool = False) -> None:
+    """One solid pixel per eye, facing the camera. No white shine."""
+    if side:
+        nput(c, ox, oy, cx + 2, y, col)
+        return
+    nput(c, ox, oy, cx - 1, y, col)
+    nput(c, ox, oy, cx + 1, y, col)
+
+
+def head_helmet(c: Pix, ox: int, oy: int, cx: int, fill: Color, edge: Color, shine: Color | None = None) -> None:
+    nspan(c, ox, oy, cx - 3, cx + 3, 8, fill)
+    nput(c, ox, oy, cx - 4, 8, edge)
+    nput(c, ox, oy, cx + 4, 8, edge)
+    nspan(c, ox, oy, cx - 4, cx + 4, 9, fill)
+    nput(c, ox, oy, cx - 4, 9, edge)
+    nput(c, ox, oy, cx + 4, 9, edge)
+    if shine is not None:
+        nspan(c, ox, oy, cx - 2, cx + 2, 9, shine)
+    for y in range(10, 14):
+        nspan(c, ox, oy, cx - 5, cx + 5, y, fill)
+        nput(c, ox, oy, cx - 5, y, edge)
+        nput(c, ox, oy, cx + 5, y, edge)
+    nspan(c, ox, oy, cx - 4, cx + 4, 14, fill)
+    nput(c, ox, oy, cx - 4, 14, edge)
+    nput(c, ox, oy, cx + 4, 14, edge)
+
+
+def shoulder_locks(c: Pix, ox: int, oy: int, cx: int, fill: Color, edge: Color) -> None:
+    for y in range(14, 16):
+        nput(c, ox, oy, cx - 5, y, edge)
+        nput(c, ox, oy, cx - 4, y, fill)
+        nput(c, ox, oy, cx + 4, y, fill)
+        nput(c, ox, oy, cx + 5, y, edge)
+
+
+def oval_face(c: Pix, ox: int, oy: int, cx: int, skin: Color, shade: Color) -> None:
+    nspan(c, ox, oy, cx - 2, cx + 2, 10, skin)
+    for y in range(11, 14):
+        nspan(c, ox, oy, cx - 2, cx + 2, y, skin)
+    nput(c, ox, oy, cx, 14, shade)
+    nput(c, ox, oy, cx, 13, shade)
+
+
+def chest_waist_hips(
     c: Pix,
+    ox: int,
+    oy: int,
     cx: int,
-    fy: int,
-    top: Color,
+    chest: Color,
     rail: Color | None,
-    skin: Color,
-    skirt: Color,
-    skirt_d: Color,
+    waist: Color,
+    hip: Color,
+    hip_d: Color,
+    lace: Color | None = None,
 ) -> None:
-    """7px top, 5px waist, 7px skirt — Witch corset proportions."""
-    c.fill(cx - 3, fy - 14, 7, 3, top)
-    if rail is not None:
-        c.put(cx - 3, fy - 13, rail)
-        c.put(cx + 3, fy - 13, rail)
-        c.put(cx, fy - 12, rail)
-    c.span(cx - 2, cx + 2, fy - 11, skin)
-    c.span(cx - 3, cx + 3, fy - 10, skirt)
-    c.span(cx - 3, cx + 3, fy - 9, skirt_d)
-    c.put(cx - 3, fy - 10, skirt_d)
-    c.put(cx + 3, fy - 10, skirt_d)
+    for y in range(15, 18):
+        nspan(c, ox, oy, cx - 3, cx + 3, y, chest)
+        if rail is not None:
+            nput(c, ox, oy, cx - 3, y, rail)
+            nput(c, ox, oy, cx + 3, y, rail)
+    if lace is not None:
+        nput(c, ox, oy, cx, 16, lace)
+        nput(c, ox, oy, cx, 17, rail if rail is not None else lace)
+    nspan(c, ox, oy, cx - 2, cx + 2, 18, waist)
+    nspan(c, ox, oy, cx - 3, cx + 3, 19, hip)
+    nspan(c, ox, oy, cx - 3, cx + 3, 20, hip_d)
+    nput(c, ox, oy, cx - 3, 19, hip_d)
+    nput(c, ox, oy, cx + 3, 19, hip_d)
 
 
-def round_bun(c: Pix, cx: int, cy: int, fill: Color) -> None:
-    """Tiny round bun sitting on the helmet, not a wide bar."""
-    c.put(cx, cy - 1, fill)
-    c.span(cx - 1, cx + 1, cy, fill)
-    c.put(cx, cy + 1, fill)
+def fishnet_legs(c: Pix, ox: int, oy: int, cx: int, pose: Pose, fill: Color, hole: Color, shoe: Color) -> None:
+    for dx, step in ((-3, pose.lstep), (1, pose.rstep)):
+        x0 = cx + dx + step
+        nspan(c, ox, oy, x0, x0 + 2, 21, fill)
+        nput(c, ox, oy, x0, 22, fill)
+        nput(c, ox, oy, x0 + 1, 22, hole)
+        nput(c, ox, oy, x0 + 2, 22, fill)
+        nspan(c, ox, oy, x0, x0 + 2, 23, fill)
+        nspan(c, ox, oy, x0, x0 + 2, 24, shoe)
+        nspan(c, ox, oy, x0, x0 + 2, 25, shoe)
 
 
-def shadow_claw(c: Pix, hx: int, hy: int) -> None:
-    p = SHADOW
-    c.fill(hx, hy, 3, 3, p["claw"])
-    c.put(hx + 3, hy - 1, p["clawL"])
-    c.put(hx + 4, hy, p["clawL"])
-    c.put(hx + 3, hy + 1, p["clawL"])
-    c.put(hx + 2, hy - 2, p["clawL"])
+def stick_arms(c: Pix, ox: int, oy: int, cx: int, pose: Pose, sleeve: Color, hand: Color) -> None:
+    ay = 16 + pose.arm
+    nput(c, ox, oy, cx - 6, ay, hand)
+    nput(c, ox, oy, cx - 5, ay, sleeve)
+    nput(c, ox, oy, cx - 4, ay, sleeve)
+    nput(c, ox, oy, cx + 4, ay, sleeve)
+    nput(c, ox, oy, cx + 4, ay + 1, hand)
+
+
+def east_helmet(c: Pix, ox: int, oy: int, cx: int, fill: Color, edge: Color) -> None:
+    nspan(c, ox, oy, cx - 2, cx + 2, 8, fill)
+    nput(c, ox, oy, cx - 3, 8, edge)
+    nput(c, ox, oy, cx + 3, 8, edge)
+    for y in range(9, 14):
+        nspan(c, ox, oy, cx - 3, cx + 3, y, fill)
+        nput(c, ox, oy, cx - 3, y, edge)
+        nput(c, ox, oy, cx + 3, y, edge)
+    nspan(c, ox, oy, cx - 2, cx + 2, 14, fill)
+    for y in range(12, 16):
+        nput(c, ox, oy, cx - 4, y, edge)
+        nput(c, ox, oy, cx - 3, y, fill)
+
+
+def east_body(
+    c: Pix,
+    ox: int,
+    oy: int,
+    cx: int,
+    pose: Pose,
+    chest: Color,
+    rail: Color | None,
+    waist: Color,
+    hip: Color,
+    hip_d: Color,
+    leg: Color,
+    hole: Color,
+    shoe: Color,
+) -> None:
+    for y in range(15, 18):
+        nspan(c, ox, oy, cx - 2, cx + 2, y, chest)
+        if rail is not None:
+            nput(c, ox, oy, cx - 2, y, rail)
+            nput(c, ox, oy, cx + 2, y, rail)
+    nspan(c, ox, oy, cx - 1, cx + 1, 18, waist)
+    nspan(c, ox, oy, cx - 2, cx + 2, 19, hip)
+    nspan(c, ox, oy, cx - 2, cx + 2, 20, hip_d)
+    x0 = cx - 1 + pose.rstep
+    nspan(c, ox, oy, x0, x0 + 2, 21, leg)
+    nput(c, ox, oy, x0 + 1, 22, hole)
+    nspan(c, ox, oy, x0, x0 + 2, 23, leg)
+    nspan(c, ox, oy, x0, x0 + 2, 24, shoe)
+    nspan(c, ox, oy, x0, x0 + 2, 25, shoe)
+
+
+def wrap_n(c: Pix, ox: int, oy: int, x: int, y: int) -> None:
+    wrap_put(c, ox + x, oy + y)
+
+
+def wrap_span(c: Pix, ox: int, oy: int, x0: int, x1: int, y: int) -> None:
+    for x in range(x0, x1 + 1):
+        wrap_n(c, ox, oy, x, y)
 
 
 # ---------------------------------------------------------------------------
 # Ninja
 # ---------------------------------------------------------------------------
-def ninja_east(d: str, pose: Pose) -> Pix:
-    c = Pix()
+def ninja_south(c: Pix, ox: int, oy: int, pose: Pose) -> None:
     p = NINJA
-    cx, fy = 24 + pose.lean, 41 + pose.bob
-    slim_legs(c, cx, fy, pose, "east", p["suit"], p["d"])
-    side_torso(c, cx, fy, p["suit"], p["lite"])
-    hy = fy - 23
-    side_helmet(c, cx, hy, p["suit"], p["lite"], p["lite"])
-    c.span(cx - 3, cx + 3, hy + 2, TEAM)
-    c.fill(cx - 7, hy + 1, 3, 2, TEAM)
-    c.put(cx + 2, hy + 5, C(255, 252, 255))
-    c.put(cx + 3, hy + 5, p["eye"])
-    c.put(cx + 1, hy + 7, p["skin"])
-    c.put(cx + 4, fy - 12 + pose.arm, p["skin"])
-    hx = cx + 5 + pose.swing
-    c.fill(hx, fy - 13, 8, 1, p["blade"])
-    c.fill(hx, fy - 12, 2, 2, p["hilt"])
-    return c
+    cx = BODY_CX
+    head_helmet(c, ox, oy, cx, p["suit"], p["lite"], p["lite"])
+    nspan(c, ox, oy, cx - 4, cx + 4, 9, TEAM)
+    nspan(c, ox, oy, cx + 5, cx + 8, 8, TEAM)
+    nspan(c, ox, oy, cx + 6, cx + 9, 9, TEAM)
+    oval_face(c, ox, oy, cx, p["skin"], p["skin"])
+    nput(c, ox, oy, cx - 2, 10, p["suit"])
+    nput(c, ox, oy, cx + 2, 10, p["suit"])
+    buttons(c, ox, oy, cx, 11, p["eye"])
+    nspan(c, ox, oy, cx - 1, cx + 1, 13, p["skin"])
+    shoulder_locks(c, ox, oy, cx, p["suit"], p["d"])
+    chest_waist_hips(c, ox, oy, cx, p["suit"], p["d"], p["belt"], p["suit"], p["d"])
+    fishnet_legs(c, ox, oy, cx, pose, p["suit"], p["lite"], p["d"])
+    stick_arms(c, ox, oy, cx, pose, p["suit"], p["skin"])
+    sx = 12 + pose.swing
+    for y in range(8, 18 + abs(pose.swing)):
+        nput(c, ox, oy, sx, y, p["blade"])
+    nspan(c, ox, oy, sx - 1, sx + 1, 17, p["hilt"])
+    nput(c, ox, oy, sx, 17, p["skin"])
+
+
+def ninja_north(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    p = NINJA
+    cx = BODY_CX
+    head_helmet(c, ox, oy, cx, p["suit"], p["lite"], p["lite"])
+    nspan(c, ox, oy, cx - 4, cx + 4, 9, TEAM)
+    nspan(c, ox, oy, cx - 9, cx - 6, 9, TEAM)
+    shoulder_locks(c, ox, oy, cx, p["suit"], p["d"])
+    chest_waist_hips(c, ox, oy, cx, p["suit"], p["d"], p["belt"], p["suit"], p["d"])
+    fishnet_legs(c, ox, oy, cx, pose, p["suit"], p["lite"], p["d"])
+    stick_arms(c, ox, oy, cx, pose, p["suit"], p["skin"])
+    sx = 26 + pose.swing
+    for y in range(8, 25):
+        nput(c, ox, oy, sx, y, p["blade"])
+    nspan(c, ox, oy, sx - 1, sx + 1, 17, p["hilt"])
+
+
+def ninja_east(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    p = NINJA
+    cx = 16
+    east_helmet(c, ox, oy, cx, p["suit"], p["lite"])
+    nspan(c, ox, oy, cx - 3, cx + 3, 9, TEAM)
+    nspan(c, ox, oy, cx - 7, cx - 4, 9, TEAM)
+    nspan(c, ox, oy, cx, cx + 2, 11, p["skin"])
+    nspan(c, ox, oy, cx, cx + 2, 12, p["skin"])
+    buttons(c, ox, oy, cx, 11, p["eye"], side=True)
+    nput(c, ox, oy, cx + 1, 13, p["skin"])
+    east_body(c, ox, oy, cx, pose, p["suit"], p["d"], p["belt"], p["suit"], p["d"], p["suit"], p["lite"], p["d"])
+    ay = 16 + pose.arm
+    nput(c, ox, oy, cx + 3, ay, p["suit"])
+    nput(c, ox, oy, cx + 4, ay, p["skin"])
+    sx = 22 + pose.swing
+    nspan(c, ox, oy, sx, sx + 7, 16, p["blade"])
+    nspan(c, ox, oy, sx, sx + 1, 17, p["hilt"])
 
 
 def ninja(d: str, pose: Pose) -> Pix:
-    if d == "west":
-        return flip_west(ninja_east, d, pose)
     c = Pix()
-    p = NINJA
-    cx, fy = 24 + pose.lean, 41 + pose.bob
+    ox, oy = OX + pose.lean, OY + pose.bob
     if d == "down" or pose.bob >= 6:
-        c.fill(16, 34, 16, 6, p["suit"])
+        c.fill(16, 34, 16, 6, NINJA["suit"])
         c.fill(18, 32, 8, 3, TEAM)
-        c.fill(30, 30, 10, 1, p["blade"])
+        c.fill(30, 30, 10, 1, NINJA["blade"])
         return c
-    slim_legs(c, cx, fy, pose, d, p["suit"], p["d"])
-    boy_torso(c, cx, fy, p["suit"], p["lite"])
-    hy = fy - 23
-    helmet(c, cx, hy, p["suit"], p["lite"], p["lite"])
-    c.span(cx - 4, cx + 4, hy + 2, TEAM)
+    if d == "west":
+        return flip_west(ninja, d, pose)
     if d == "south":
-        c.fill(cx + 5, hy + 1, 3, 2, TEAM)
-        c.fill(cx + 8, hy, 2, 2, TEAM)
-        c.put(cx - 2, hy + 5, C(255, 252, 255))
-        c.put(cx - 1, hy + 5, p["eye"])
-        c.put(cx + 1, hy + 5, C(255, 252, 255))
-        c.put(cx + 2, hy + 5, p["eye"])
-        c.span(cx - 1, cx + 1, hy + 7, p["skin"])
-        c.put(cx - 5, fy - 12 + pose.arm, p["skin"])
-        c.put(cx + 5, fy - 12, p["skin"])
-        hx = cx + 6
-        c.fill(hx, fy - 20 - pose.swing, 1, 9 + abs(pose.swing), p["blade"])
-        c.fill(hx - 1, fy - 12 + pose.arm, 3, 2, p["hilt"])
+        ninja_south(c, ox, oy, pose)
     elif d == "north":
-        c.fill(cx - 8, hy + 1, 3, 2, TEAM)
-        c.fill(cx - 7, fy - 20, 1, 10, p["blade"])
-        c.put(cx - 5, fy - 12 + pose.arm, p["skin"])
-        c.put(cx + 5, fy - 12, p["skin"])
-    elif d == "east":
-        return ninja_east(d, pose)
+        ninja_north(c, ox, oy, pose)
+    else:
+        ninja_east(c, ox, oy, pose)
     return c
 
 
 # ---------------------------------------------------------------------------
 # Cole
 # ---------------------------------------------------------------------------
-def cole_east(d: str, pose: Pose) -> Pix:
-    c = Pix()
+def cole_south(c: Pix, ox: int, oy: int, pose: Pose) -> None:
     p = COLE
-    cx, fy = 24 + pose.lean, 41 + pose.bob
-    slim_legs(c, cx, fy, pose, "east", p["pants"], p["stripe"])
-    c.fill(cx - 2, fy - 14, 5, 6, p["hood"])
-    c.put(cx - 2, fy - 12, p["stripe"])
-    c.put(cx + 2, fy - 12, p["stripe"])
-    c.fill(cx - 1, fy - 13, 3, 4, p["shirt"])
-    hy = fy - 23
-    side_helmet(c, cx, hy, p["hair"], p["hair"])
-    c.fill(cx, hy + 3, 4, 4, p["skin"])
-    c.put(cx + 2, hy + 5, p["eye"])
-    c.put(cx + 4, fy - 12, p["skin"])
-    c.put(cx + 5, fy - 14 + pose.swing // 2, p["bolt"])
-    return c
+    cx = BODY_CX
+    head_helmet(c, ox, oy, cx, p["hair"], p["hair"], p["hood"])
+    oval_face(c, ox, oy, cx, p["skin"], p["skin"])
+    nput(c, ox, oy, cx - 2, 10, p["hair"])
+    nput(c, ox, oy, cx, 10, p["skin"])
+    nput(c, ox, oy, cx + 2, 10, p["hair"])
+    buttons(c, ox, oy, cx, 11, p["eye"])
+    shoulder_locks(c, ox, oy, cx, p["hood"], p["hoodD"])
+    chest_waist_hips(c, ox, oy, cx, p["hood"], p["stripe"], p["shirt"], p["pants"], p["stripe"], p["shirt"])
+    nspan(c, ox, oy, cx - 1, cx + 1, 16, p["shirt"])
+    nspan(c, ox, oy, cx - 1, cx + 1, 17, p["shirt"])
+    fishnet_legs(c, ox, oy, cx, pose, p["pants"], p["stripe"], p["stripe"])
+    stick_arms(c, ox, oy, cx, pose, p["hood"], p["skin"])
+    ay = 16 + pose.arm
+    nput(c, ox, oy, cx - 7, ay - 2, p["bolt"])
+    nput(c, ox, oy, cx + 5, ay - 2, p["bolt2"] if pose.bob else p["bolt"])
+
+
+def cole_north(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    p = COLE
+    cx = BODY_CX
+    head_helmet(c, ox, oy, cx, p["hood"], p["hoodD"], p["hair"])
+    nspan(c, ox, oy, cx - 4, cx + 4, 8, p["hair"])
+    nspan(c, ox, oy, cx - 5, cx + 5, 9, p["hair"])
+    shoulder_locks(c, ox, oy, cx, p["hood"], p["hoodD"])
+    chest_waist_hips(c, ox, oy, cx, p["hood"], p["stripe"], p["hoodD"], p["pants"], p["stripe"])
+    fishnet_legs(c, ox, oy, cx, pose, p["pants"], p["stripe"], p["stripe"])
+    stick_arms(c, ox, oy, cx, pose, p["hood"], p["skin"])
+
+
+def cole_east(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    p = COLE
+    cx = 16
+    east_helmet(c, ox, oy, cx, p["hair"], p["hair"])
+    nspan(c, ox, oy, cx, cx + 2, 10, p["skin"])
+    nspan(c, ox, oy, cx, cx + 2, 11, p["skin"])
+    nspan(c, ox, oy, cx, cx + 2, 12, p["skin"])
+    nspan(c, ox, oy, cx, cx + 1, 13, p["skin"])
+    buttons(c, ox, oy, cx, 11, p["eye"], side=True)
+    east_body(c, ox, oy, cx, pose, p["hood"], p["stripe"], p["shirt"], p["pants"], p["stripe"], p["pants"], p["stripe"], p["stripe"])
+    ay = 16 + pose.arm
+    nput(c, ox, oy, cx + 3, ay, p["hood"])
+    nput(c, ox, oy, cx + 4, ay, p["skin"])
+    nput(c, ox, oy, cx + 5, ay - 2, p["bolt"])
 
 
 def cole(d: str, pose: Pose) -> Pix:
-    if d == "west":
-        return flip_west(cole_east, d, pose)
     c = Pix()
-    p = COLE
-    cx, fy = 24 + pose.lean, 41 + pose.bob
+    ox, oy = OX + pose.lean, OY + pose.bob
     if d == "down" or pose.bob >= 6:
-        c.fill(16, 34, 16, 6, p["hood"])
-        c.fill(20, 30, 8, 5, p["skin"])
+        c.fill(16, 34, 16, 6, COLE["hood"])
+        c.fill(20, 30, 8, 5, COLE["skin"])
         return c
-    slim_legs(c, cx, fy, pose, d, p["pants"], p["stripe"])
-    # fitted hoodie: 7px, white shirt sliver
-    c.fill(cx - 3, fy - 14, 7, 6, p["hood"])
-    c.put(cx - 3, fy - 12, p["stripe"])
-    c.put(cx + 3, fy - 12, p["stripe"])
-    c.put(cx - 3, fy - 10, p["stripe"])
-    c.put(cx + 3, fy - 10, p["stripe"])
-    c.fill(cx - 1, fy - 13, 3, 4, p["shirt"])
-    hy = fy - 23
-    helmet(c, cx, hy, p["skin"], p["hair"])
-    # buzz hair cap on the round head
-    c.span(cx - 4, cx + 4, hy, p["hair"])
-    c.span(cx - 5, cx + 5, hy + 1, p["hair"])
-    c.span(cx - 5, cx + 5, hy + 2, p["hair"])
+    if d == "west":
+        return flip_west(cole, d, pose)
     if d == "south":
-        c.put(cx - 2, hy + 5, C(255, 252, 255))
-        c.put(cx - 1, hy + 5, p["eye"])
-        c.put(cx + 1, hy + 5, C(255, 252, 255))
-        c.put(cx + 2, hy + 5, p["eye"])
-        c.put(cx, hy + 7, p["skin"])
-        c.put(cx - 5, fy - 12 + pose.arm, p["skin"])
-        c.put(cx + 5, fy - 12, p["skin"])
-        c.put(cx - 6, fy - 14 + pose.arm, p["bolt"])
-        c.put(cx + 6, fy - 14, p["bolt2"] if pose.bob else p["bolt"])
+        cole_south(c, ox, oy, pose)
     elif d == "north":
-        helmet(c, cx, hy, p["hood"], p["hoodD"])
-        c.span(cx - 4, cx + 4, hy, p["hair"])
-        c.put(cx - 5, fy - 14, p["bolt"])
-        c.put(cx + 5, fy - 14, p["bolt"])
-    elif d == "east":
-        return cole_east(d, pose)
+        cole_north(c, ox, oy, pose)
+    else:
+        cole_east(c, ox, oy, pose)
     return c
 
 
 # ---------------------------------------------------------------------------
 # Death
 # ---------------------------------------------------------------------------
-def death_east(d: str, pose: Pose) -> Pix:
-    c = Pix()
+def death_south(c: Pix, ox: int, oy: int, pose: Pose) -> None:
     p = DEATH
-    cx, fy = 24 + pose.lean, 41 + pose.bob
-    slim_legs(c, cx, fy, pose, "east", p["cloth"], p["wrap"])
-    side_torso(c, cx, fy, p["cloth"], p["clothL"])
-    hy = fy - 23
-    side_helmet(c, cx, hy, p["wrap"], p["clothL"], p["cloth"])
-    c.put(cx + 2, hy + 5, C(255, 252, 255))
-    c.put(cx + 3, hy + 5, p["eye"])
-    hx = cx + 5 + pose.swing
-    hy2 = fy - 13 + pose.arm
+    cx = BODY_CX
+    head_helmet(c, ox, oy, cx, p["wrap"], p["clothL"], p["cloth"])
+    oval_face(c, ox, oy, cx, p["wrap"], p["cloth"])
+    nspan(c, ox, oy, cx - 2, cx + 2, 10, p["cloth"])
+    buttons(c, ox, oy, cx, 11, p["eye"])
+    shoulder_locks(c, ox, oy, cx, p["cloth"], p["wrap"])
+    chest_waist_hips(c, ox, oy, cx, p["cloth"], p["wrap"], p["clothL"], p["cloth"], p["wrap"])
+    fishnet_legs(c, ox, oy, cx, pose, p["cloth"], p["clothL"], p["wrap"])
+    stick_arms(c, ox, oy, cx, pose, p["cloth"], C(198, 134, 74))
+    sx = 12 + pose.swing
+    for i in range(10):
+        nput(c, ox, oy, sx + i // 5, 16 - i, p["wood"] if i % 2 == 0 else p["woodD"])
+    nput(c, ox, oy, sx, 7, p["spike"])
+    nput(c, ox, oy, sx + 1, 8, p["spike"])
+    nspan(c, ox, oy, cx - 5, cx - 2, 19, p["gun"])
+    nput(c, ox, oy, cx - 6, 19, p["gun"])
+
+
+def death_north(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    p = DEATH
+    cx = BODY_CX
+    head_helmet(c, ox, oy, cx, p["wrap"], p["clothL"], p["cloth"])
+    shoulder_locks(c, ox, oy, cx, p["cloth"], p["wrap"])
+    chest_waist_hips(c, ox, oy, cx, p["cloth"], p["wrap"], p["clothL"], p["cloth"], p["wrap"])
+    fishnet_legs(c, ox, oy, cx, pose, p["cloth"], p["clothL"], p["wrap"])
+    stick_arms(c, ox, oy, cx, pose, p["cloth"], C(198, 134, 74))
+    sx = 26 + pose.swing
+    for y in range(8, 25):
+        nput(c, ox, oy, sx, y, p["wood"] if y % 2 == 0 else p["woodD"])
+
+
+def death_east(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    p = DEATH
+    cx = 16
+    east_helmet(c, ox, oy, cx, p["wrap"], p["clothL"])
+    nspan(c, ox, oy, cx, cx + 2, 11, p["wrap"])
+    nspan(c, ox, oy, cx, cx + 2, 12, p["wrap"])
+    buttons(c, ox, oy, cx, 11, p["eye"], side=True)
+    east_body(c, ox, oy, cx, pose, p["cloth"], p["wrap"], p["clothL"], p["cloth"], p["wrap"], p["cloth"], p["clothL"], p["wrap"])
+    ay = 16 + pose.arm
+    nput(c, ox, oy, cx + 3, ay, p["cloth"])
+    sx = 22 + pose.swing
     for i in range(8):
-        c.put(hx + i // 2, hy2 - i, p["wood"] if i % 2 == 0 else p["woodD"])
-    c.put(hx + 3, hy2 - 8, p["spike"])
-    c.fill(cx - 3, fy - 11, 4, 2, p["gun"])
-    return c
+        nput(c, ox, oy, sx + i // 2, 16 - i, p["wood"] if i % 2 == 0 else p["woodD"])
+    nput(c, ox, oy, sx + 3, 8, p["spike"])
+    nspan(c, ox, oy, cx - 3, cx, 19, p["gun"])
 
 
 def death(d: str, pose: Pose) -> Pix:
-    if d == "west":
-        return flip_west(death_east, d, pose)
     c = Pix()
-    p = DEATH
-    cx, fy = 24 + pose.lean, 41 + pose.bob
+    ox, oy = OX + pose.lean, OY + pose.bob
     if d == "down" or pose.bob >= 6:
-        c.fill(14, 34, 18, 7, p["cloth"])
-        c.fill(30, 30, 8, 2, p["wood"])
-        c.put(20, 36, p["eye"])
+        c.fill(14, 34, 18, 7, DEATH["cloth"])
+        c.fill(30, 30, 8, 2, DEATH["wood"])
+        c.put(20, 36, DEATH["eye"])
         return c
-    slim_legs(c, cx, fy, pose, d, p["cloth"], p["wrap"])
-    boy_torso(c, cx, fy, p["cloth"], p["clothL"])
-    hy = fy - 23
-    helmet(c, cx, hy, p["wrap"], p["clothL"], p["cloth"])
+    if d == "west":
+        return flip_west(death, d, pose)
     if d == "south":
-        c.put(cx - 2, hy + 5, C(255, 252, 255))
-        c.put(cx - 1, hy + 5, p["eye"])
-        c.put(cx + 1, hy + 5, C(255, 252, 255))
-        c.put(cx + 2, hy + 5, p["eye"])
-        hx = cx + 5 + pose.swing
-        hy2 = fy - 13 + pose.arm
-        for i in range(8):
-            c.put(hx + i // 2, hy2 - i, p["wood"] if i % 2 == 0 else p["woodD"])
-        c.put(hx + 3, hy2 - 8, p["spike"])
-        c.fill(cx - 4, fy - 11, 4, 2, p["gun"])
-        c.put(cx - 5, fy - 12 + pose.arm, C(198, 134, 74))
-        c.put(cx + 5, fy - 12, C(198, 134, 74))
+        death_south(c, ox, oy, pose)
     elif d == "north":
-        helmet(c, cx, hy, p["wrap"], p["clothL"], p["cloth"])
-        c.fill(cx - 7, fy - 20, 1, 10, p["wood"])
-        c.fill(cx + 2, fy - 11, 4, 2, p["gun"])
-    elif d == "east":
-        return death_east(d, pose)
+        death_north(c, ox, oy, pose)
+    else:
+        death_east(c, ox, oy, pose)
     return c
 
 
 # ---------------------------------------------------------------------------
-# Shadow — same feminine hourglass as Witch
+# Shadow — Witch anatomy, feminine
 # ---------------------------------------------------------------------------
-def shadow_east(d: str, pose: Pose) -> Pix:
-    c = Pix()
+def shadow_south(c: Pix, ox: int, oy: int, pose: Pose) -> None:
     p = SHADOW
-    cx, fy = 24 + pose.lean, 41 + pose.bob
-    slim_legs(c, cx, fy, pose, "east", p["skin"], p["hair"])
-    girl_hourglass(c, cx, fy, p["shirt"], p["hair"], p["skinD"], p["skirt"], p["hair"])
-    hy = fy - 23
-    side_helmet(c, cx, hy, p["hair"], p["hair"], p["hairL"])
-    round_bun(c, cx + 3, hy + 1, p["hair"])
-    c.fill(cx, hy + 3, 3, 4, p["skin"])
-    c.put(cx + 2, hy + 5, C(255, 252, 255))
-    c.put(cx + 3, hy + 5, p["eye"])
-    c.put(cx + 2, hy + 7, p["blush"])
-    c.put(cx - 5, hy + 6, p["hair"])
-    c.put(cx - 5, hy + 7, p["hair"])
-    shadow_claw(c, cx + 6 + pose.swing, fy - 12 + pose.arm)
-    return c
+    cx = BODY_CX
+    head_helmet(c, ox, oy, cx, p["hair"], p["hair"], p["hairL"])
+    # round buns on the helmet, not a wide bar
+    nput(c, ox, oy, cx - 6, 8, p["hair"])
+    nspan(c, ox, oy, cx - 7, cx - 5, 9, p["hair"])
+    nput(c, ox, oy, cx - 6, 10, p["hair"])
+    nput(c, ox, oy, cx + 6, 8, p["hair"])
+    nspan(c, ox, oy, cx + 5, cx + 7, 9, p["hair"])
+    nput(c, ox, oy, cx + 6, 10, p["hair"])
+    oval_face(c, ox, oy, cx, p["skin"], p["skinD"])
+    nspan(c, ox, oy, cx - 2, cx + 1, 10, p["hair"])  # bangs
+    buttons(c, ox, oy, cx, 11, p["eye"])
+    nput(c, ox, oy, cx - 2, 13, p["blush"])
+    nput(c, ox, oy, cx + 2, 13, p["blush"])
+    shoulder_locks(c, ox, oy, cx, p["hair"], p["hair"])
+    chest_waist_hips(c, ox, oy, cx, p["shirt"], p["hair"], p["skinD"], p["skirt"], p["hair"], p["hair"])
+    fishnet_legs(c, ox, oy, cx, pose, p["skin"], p["skinD"], p["hair"])
+    ay = 16 + pose.arm
+    nput(c, ox, oy, cx - 6, ay, p["skin"])
+    nput(c, ox, oy, cx - 5, ay, p["skin"])
+    nput(c, ox, oy, cx - 4, ay, p["shirt"])
+    nput(c, ox, oy, cx + 4, ay, p["shirt"])
+    nput(c, ox, oy, cx + 4, ay + 1, p["skin"])
+    hx, hy = 9 + pose.swing, 15 + pose.arm
+    for dy in range(3):
+        for dx in range(3):
+            nput(c, ox, oy, hx + dx, hy + dy, p["claw"])
+    nput(c, ox, oy, hx + 3, hy - 1, p["clawL"])
+    nput(c, ox, oy, hx + 4, hy, p["clawL"])
+    nput(c, ox, oy, hx + 3, hy + 1, p["clawL"])
+    nput(c, ox, oy, hx + 2, hy - 2, p["clawL"])
+
+
+def shadow_north(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    p = SHADOW
+    cx = BODY_CX
+    head_helmet(c, ox, oy, cx, p["hair"], p["hair"], p["hairL"])
+    nput(c, ox, oy, cx - 6, 8, p["hair"])
+    nspan(c, ox, oy, cx - 7, cx - 5, 9, p["hair"])
+    nput(c, ox, oy, cx + 6, 8, p["hair"])
+    nspan(c, ox, oy, cx + 5, cx + 7, 9, p["hair"])
+    shoulder_locks(c, ox, oy, cx, p["hair"], p["hair"])
+    chest_waist_hips(c, ox, oy, cx, p["shirt"], None, p["skirt"], p["skirt"], p["hair"])
+    fishnet_legs(c, ox, oy, cx, pose, p["skin"], p["skinD"], p["hair"])
+    stick_arms(c, ox, oy, cx, pose, p["shirt"], p["skin"])
+    hx = 24
+    for dy in range(3):
+        for dx in range(3):
+            nput(c, ox, oy, hx + dx, 16 + dy, p["claw"])
+
+
+def shadow_east(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    p = SHADOW
+    cx = 16
+    east_helmet(c, ox, oy, cx, p["hair"], p["hair"])
+    nput(c, ox, oy, cx + 4, 8, p["hair"])
+    nspan(c, ox, oy, cx + 3, cx + 5, 9, p["hair"])
+    nspan(c, ox, oy, cx, cx + 2, 10, p["skin"])
+    nspan(c, ox, oy, cx, cx + 2, 11, p["skin"])
+    nspan(c, ox, oy, cx, cx + 2, 12, p["skin"])
+    nspan(c, ox, oy, cx, cx + 1, 13, p["skin"])
+    buttons(c, ox, oy, cx, 11, p["eye"], side=True)
+    nput(c, ox, oy, cx + 1, 13, p["blush"])
+    east_body(c, ox, oy, cx, pose, p["shirt"], p["hair"], p["skinD"], p["skirt"], p["hair"], p["skin"], p["skinD"], p["hair"])
+    ay = 16 + pose.arm
+    nput(c, ox, oy, cx + 3, ay, p["shirt"])
+    nput(c, ox, oy, cx + 4, ay, p["skin"])
+    hx = 22 + pose.swing
+    for dy in range(3):
+        for dx in range(3):
+            nput(c, ox, oy, hx + dx, 15 + dy, p["claw"])
+    nput(c, ox, oy, hx + 3, 15, p["clawL"])
+    nput(c, ox, oy, hx + 4, 16, p["clawL"])
 
 
 def shadow(d: str, pose: Pose) -> Pix:
-    if d == "west":
-        return flip_west(shadow_east, d, pose)
     c = Pix()
-    p = SHADOW
-    cx, fy = 24 + pose.lean, 41 + pose.bob
+    ox, oy = OX + pose.lean, OY + pose.bob
     if d == "down" or pose.bob >= 6:
-        c.fill(16, 34, 14, 6, p["hair"])
-        c.fill(18, 38, 10, 4, p["skirt"])
+        c.fill(16, 34, 14, 6, SHADOW["hair"])
+        c.fill(18, 38, 10, 4, SHADOW["skirt"])
         return c
-    slim_legs(c, cx, fy, pose, d, p["skin"], p["hair"])
-    girl_hourglass(c, cx, fy, p["shirt"], p["hair"], p["skinD"], p["skirt"], p["hair"])
-    hy = fy - 23
-    helmet(c, cx, hy, p["hair"], p["hair"], p["hairL"])
-    round_bun(c, cx - 5, hy + 1, p["hair"])
-    round_bun(c, cx + 5, hy + 1, p["hair"])
+    if d == "west":
+        return flip_west(shadow, d, pose)
     if d == "south":
-        # oval face inside the helmet, same language as Witch
-        c.fill(cx - 2, hy + 3, 5, 4, p["skin"])
-        c.put(cx, hy + 2, p["skin"])
-        c.span(cx - 3, cx + 1, hy + 2, p["hair"])
-        c.put(cx - 2, hy + 5, C(255, 252, 255))
-        c.put(cx - 1, hy + 5, p["eye"])
-        c.put(cx + 1, hy + 5, C(255, 252, 255))
-        c.put(cx + 2, hy + 5, p["eye"])
-        c.put(cx - 2, hy + 6, p["blush"])
-        c.put(cx + 2, hy + 6, p["blush"])
-        c.put(cx - 5, hy + 7, p["hair"])
-        c.put(cx + 5, hy + 7, p["hair"])
-        c.put(cx + 5, fy - 12, p["skin"])
-        shadow_claw(c, cx - 8, fy - 12 + pose.arm)
+        shadow_south(c, ox, oy, pose)
     elif d == "north":
-        helmet(c, cx, hy, p["hair"], p["hair"], p["hairL"])
-        round_bun(c, cx - 5, hy + 1, p["hair"])
-        round_bun(c, cx + 5, hy + 1, p["hair"])
-        c.put(cx - 5, hy + 7, p["hair"])
-        c.put(cx + 5, hy + 7, p["hair"])
-        shadow_claw(c, cx + 6, fy - 12)
-    elif d == "east":
-        return shadow_east(d, pose)
+        shadow_north(c, ox, oy, pose)
+    else:
+        shadow_east(c, ox, oy, pose)
     return c
 
 
 # ---------------------------------------------------------------------------
 # Rope
 # ---------------------------------------------------------------------------
-def rope_east(d: str, pose: Pose) -> Pix:
-    c = Pix()
-    cx, fy = 24 + pose.lean, 41 + pose.bob
-    slim_wrap_legs(c, cx, fy, pose, "east")
-    wrap_fill(c, cx - 2, fy - 14, 5, 6)
-    hy = fy - 23
-    wrap_side_helmet(c, cx, hy)
-    c.put(cx + 2, hy + 4, ROPE["eye"])
-    c.put(cx + 2, hy + 5, ROPE["eye"])
-    c.put(cx + 3, hy + 4, ROPE["ink"])
-    wrap_fill(c, cx + 4, fy - 13 + pose.arm, 2, 4)
-    return c
+def rope_helmet(c: Pix, ox: int, oy: int, cx: int) -> None:
+    wrap_span(c, ox, oy, cx - 3, cx + 3, 8)
+    wrap_n(c, ox, oy, cx - 4, 8)
+    wrap_n(c, ox, oy, cx + 4, 8)
+    wrap_span(c, ox, oy, cx - 4, cx + 4, 9)
+    for y in range(10, 14):
+        wrap_span(c, ox, oy, cx - 5, cx + 5, y)
+    wrap_span(c, ox, oy, cx - 4, cx + 4, 14)
 
 
-def slim_wrap_legs(c: Pix, cx: int, fy: int, pose: Pose, d: str) -> None:
-    if d in ("south", "north"):
-        pairs = ((-3, pose.lstep), (1, pose.rstep))
-    else:
-        step = pose.rstep if d == "east" else pose.lstep
-        pairs = ((-1, step),)
-    for i, step in pairs:
-        x0 = cx + i + step
-        wrap_fill(c, x0, fy - 5, 3, 6)
+def rope_locks(c: Pix, ox: int, oy: int, cx: int) -> None:
+    for y in range(14, 16):
+        wrap_n(c, ox, oy, cx - 5, y)
+        wrap_n(c, ox, oy, cx - 4, y)
+        wrap_n(c, ox, oy, cx + 4, y)
+        wrap_n(c, ox, oy, cx + 5, y)
 
 
-def wrap_helmet(c: Pix, cx: int, y0: int) -> None:
-    def row(x0: int, x1: int, y: int) -> None:
-        for x in range(x0, x1 + 1):
-            wrap_put(c, x, y)
-
-    row(cx - 3, cx + 3, y0)
-    wrap_put(c, cx - 4, y0)
-    wrap_put(c, cx + 4, y0)
-    row(cx - 4, cx + 4, y0 + 1)
-    for y in range(y0 + 2, y0 + 6):
-        row(cx - 5, cx + 5, y)
-    row(cx - 4, cx + 4, y0 + 6)
+def rope_torso(c: Pix, ox: int, oy: int, cx: int) -> None:
+    for y in range(15, 18):
+        wrap_span(c, ox, oy, cx - 3, cx + 3, y)
+    wrap_span(c, ox, oy, cx - 2, cx + 2, 18)
+    wrap_span(c, ox, oy, cx - 3, cx + 3, 19)
+    wrap_span(c, ox, oy, cx - 3, cx + 3, 20)
 
 
-def wrap_side_helmet(c: Pix, cx: int, y0: int) -> None:
-    def row(x0: int, x1: int, y: int) -> None:
-        for x in range(x0, x1 + 1):
-            wrap_put(c, x, y)
+def rope_legs(c: Pix, ox: int, oy: int, cx: int, pose: Pose) -> None:
+    for dx, step in ((-3, pose.lstep), (1, pose.rstep)):
+        x0 = cx + dx + step
+        for y in range(21, 26):
+            wrap_span(c, ox, oy, x0, x0 + 2, y)
 
-    row(cx - 2, cx + 2, y0)
-    wrap_put(c, cx - 3, y0)
-    wrap_put(c, cx + 3, y0)
-    for y in range(y0 + 1, y0 + 6):
-        row(cx - 3, cx + 3, y)
-    row(cx - 2, cx + 2, y0 + 6)
+
+def rope_arms(c: Pix, ox: int, oy: int, cx: int, pose: Pose) -> None:
+    ay = 16 + pose.arm
+    wrap_n(c, ox, oy, cx - 6, ay)
+    wrap_n(c, ox, oy, cx - 5, ay)
+    wrap_n(c, ox, oy, cx - 4, ay)
+    wrap_n(c, ox, oy, cx + 4, ay)
+    wrap_n(c, ox, oy, cx + 4, ay + 1)
+    wrap_n(c, ox, oy, cx + 5, ay)
+
+
+def rope_south(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    p = ROPE
+    cx = BODY_CX
+    rope_helmet(c, ox, oy, cx)
+    nspan(c, ox, oy, cx - 2, cx + 2, 10, p["rd"])
+    for y in range(11, 14):
+        nspan(c, ox, oy, cx - 2, cx + 2, y, p["rd"])
+    buttons(c, ox, oy, cx, 11, p["eye"])
+    rope_locks(c, ox, oy, cx)
+    rope_torso(c, ox, oy, cx)
+    nspan(c, ox, oy, cx - 2, cx + 2, 18, p["rl"])
+    rope_legs(c, ox, oy, cx, pose)
+    rope_arms(c, ox, oy, cx, pose)
+
+
+def rope_north(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    cx = BODY_CX
+    rope_helmet(c, ox, oy, cx)
+    rope_locks(c, ox, oy, cx)
+    rope_torso(c, ox, oy, cx)
+    rope_legs(c, ox, oy, cx, pose)
+    rope_arms(c, ox, oy, cx, pose)
+
+
+def rope_east(c: Pix, ox: int, oy: int, pose: Pose) -> None:
+    p = ROPE
+    cx = 16
+    wrap_span(c, ox, oy, cx - 2, cx + 2, 8)
+    wrap_n(c, ox, oy, cx - 3, 8)
+    wrap_n(c, ox, oy, cx + 3, 8)
+    for y in range(9, 14):
+        wrap_span(c, ox, oy, cx - 3, cx + 3, y)
+    wrap_span(c, ox, oy, cx - 2, cx + 2, 14)
+    for y in range(12, 16):
+        wrap_n(c, ox, oy, cx - 4, y)
+        wrap_n(c, ox, oy, cx - 3, y)
+    nspan(c, ox, oy, cx, cx + 2, 11, p["rd"])
+    nspan(c, ox, oy, cx, cx + 2, 12, p["rd"])
+    buttons(c, ox, oy, cx, 11, p["eye"], side=True)
+    for y in range(15, 18):
+        wrap_span(c, ox, oy, cx - 2, cx + 2, y)
+    wrap_span(c, ox, oy, cx - 1, cx + 1, 18)
+    wrap_span(c, ox, oy, cx - 2, cx + 2, 19)
+    wrap_span(c, ox, oy, cx - 2, cx + 2, 20)
+    x0 = cx - 1 + pose.rstep
+    for y in range(21, 26):
+        wrap_span(c, ox, oy, x0, x0 + 2, y)
+    ay = 16 + pose.arm
+    wrap_n(c, ox, oy, cx + 3, ay)
+    wrap_n(c, ox, oy, cx + 4, ay)
 
 
 def rope(d: str, pose: Pose) -> Pix:
-    if d == "west":
-        return flip_west(rope_east, d, pose)
     c = Pix()
-    p = ROPE
-    cx, fy = 24 + pose.lean, 41 + pose.bob
+    ox, oy = OX + pose.lean, OY + pose.bob
     if d == "down" or pose.bob >= 6:
         wrap_fill(c, 16, 34, 16, 6)
-        c.fill(22, 32, 3, 3, p["eye"])
+        c.fill(22, 32, 3, 2, ROPE["eye"])
         return c
-    slim_wrap_legs(c, cx, fy, pose, d)
-    wrap_fill(c, cx - 3, fy - 14, 7, 6)
-    hy = fy - 23
-    wrap_helmet(c, cx, hy)
-    if d != "north":
-        c.put(cx - 3, hy + 4, p["eye"])
-        c.put(cx - 2, hy + 4, p["eye"])
-        c.put(cx - 2, hy + 5, p["eye"])
-        c.put(cx + 1, hy + 4, p["eye"])
-        c.put(cx + 2, hy + 4, p["eye"])
-        c.put(cx + 1, hy + 5, p["eye"])
-        c.put(cx - 2, hy + 4, p["ink"])
-        c.put(cx + 2, hy + 4, p["ink"])
-    wrap_fill(c, cx - 6, fy - 13 + pose.arm, 2, 4)
-    wrap_fill(c, cx + 5, fy - 13, 2, 4)
-    if d == "east":
-        return rope_east(d, pose)
+    if d == "west":
+        return flip_west(rope, d, pose)
+    if d == "south":
+        rope_south(c, ox, oy, pose)
+    elif d == "north":
+        rope_north(c, ox, oy, pose)
+    else:
+        rope_east(c, ox, oy, pose)
     return c
 
 
@@ -907,10 +1031,10 @@ def sheet_for(hero: str) -> Image.Image:
     img = Image.new("RGBA", (FRAME * len(COLS), FRAME * len(ROWS)), TRANSP)
     draw = DRAW[hero]
     for ry, d in enumerate(ROWS):
-        for cx, name in enumerate(COLS):
+        for col, name in enumerate(COLS):
             facing = "down" if name == "down" else d
             fr = draw(facing, pose_for(name)).image()
-            img.paste(fr, (cx * FRAME, ry * FRAME), fr)
+            img.paste(fr, (col * FRAME, ry * FRAME), fr)
     return img
 
 
@@ -966,29 +1090,10 @@ def south_idle_strip(sheets: dict[str, Image.Image]) -> Image.Image:
     return img
 
 
-def assert_witch_matches_reference() -> None:
-    """South idle0 must match the approved 32x32 pixels (padded at OX, OY)."""
-    git_ref = Path("/tmp/ref-witch-32.png")
-    if not git_ref.exists():
-        return
-    ref = Image.open(git_ref).convert("RGBA")
-    got = witch("south", Pose()).image().crop((OX, OY, OX + 32, OY + 32))
-    rp, gp = ref.load(), got.load()
-    mismatch = 0
-    for y in range(32):
-        for x in range(32):
-            if rp[x, y] != gp[x, y]:
-                mismatch += 1
-    if mismatch:
-        raise SystemExit(f"Witch south idle differs from 32x32 reference by {mismatch} pixels")
-    print("witch south idle matches 32x32 reference")
-
-
 def main() -> None:
     PREVIEW.mkdir(parents=True, exist_ok=True)
     CHAR_DIR.mkdir(parents=True, exist_ok=True)
     PORT_DIR.mkdir(parents=True, exist_ok=True)
-    assert_witch_matches_reference()
     sheets: dict[str, Image.Image] = {}
     for hero in DRAW:
         sheet = sheet_for(hero)
@@ -1017,3 +1122,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
