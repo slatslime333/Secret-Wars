@@ -24,6 +24,17 @@ export type HeroPoseName = (typeof HERO_SHEET_COLS)[number];
 export const HERO_PIXEL_SCALE = 0.85;
 export const HERO_PIXEL_ORIGIN = { x: 0.5, y: 0.61 };
 
+/** Style test: only Witch uses the new painted sheet until the look is approved. */
+export const LIVE_PIXEL_HEROES: readonly HeroId[] = ['witch'];
+
+export const usesHeroPixels = (id: string): id is HeroId =>
+  (LIVE_PIXEL_HEROES as readonly string[]).includes(id);
+
+export const heroFramePx = (id: string): number => (id === 'witch' ? 160 : 64);
+export const heroDrawScale = (id: string): number => (id === 'witch' ? 0.24 : HERO_PIXEL_SCALE);
+export const heroDrawOrigin = (id: string): { x: number; y: number } =>
+  id === 'witch' ? { x: 0.5, y: 0.58 } : HERO_PIXEL_ORIGIN;
+
 export const HERO_WALK_FRAME_MS = 140;
 export const HERO_IDLE_FRAME_MS = 480;
 export const HERO_WALK_SPEED_SQ = 320;

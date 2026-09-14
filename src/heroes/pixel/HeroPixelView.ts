@@ -3,7 +3,7 @@ import type { TeamId } from '../../config/hero';
 import type { HeroDrawOptions } from '../heroDraw';
 import { heroSheetReady } from './loadHeroPixels';
 import { poseForDraw } from './pose';
-import { HERO_PIXEL_ORIGIN, HERO_PIXEL_SCALE, heroFrameIndex, heroSheetKey, isPixelHeroId } from './spec';
+import { heroDrawOrigin, heroDrawScale, heroFrameIndex, heroSheetKey, isPixelHeroId } from './spec';
 
 export class HeroPixelView {
   readonly sprite: Phaser.GameObjects.Sprite;
@@ -11,8 +11,9 @@ export class HeroPixelView {
   constructor(scene: Phaser.Scene, parent: Phaser.GameObjects.Container, heroId: string, team: TeamId) {
     const id = isPixelHeroId(heroId) ? heroId : 'ninja';
     this.sprite = scene.add.sprite(0, 0, heroSheetKey(id, team), 0);
-    this.sprite.setOrigin(HERO_PIXEL_ORIGIN.x, HERO_PIXEL_ORIGIN.y);
-    this.sprite.setScale(HERO_PIXEL_SCALE);
+    const origin = heroDrawOrigin(id);
+    this.sprite.setOrigin(origin.x, origin.y);
+    this.sprite.setScale(heroDrawScale(id));
     parent.add(this.sprite);
   }
 
