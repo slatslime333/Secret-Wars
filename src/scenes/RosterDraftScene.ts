@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import type { HeroId } from '../heroes/roster';
-import { addHeroPortrait } from '../heroes/pixel';
+import type { TeamId } from '../config/hero';
+import { PLAYABLE_HEROES, type HeroId } from '../heroes/roster';
 import { heroSelectCopy } from '../heroes/selectCopy';
 import { DRAFT_CLASSES, DRAFT_CLASS_LABEL, draftClassOf, type DraftClass } from '../draft/classes';
 import {
@@ -196,10 +196,11 @@ export class RosterDraftScene extends Phaser.Scene {
       row.on(Phaser.Input.Events.POINTER_UP, () => this.cycle(cls));
     }
 
-    const art = addHeroPortrait(this, x - width / 2 + 36, y + 30, heroId, {
-      team: theirs ? 'bravo' : 'alpha',
-      scale: 0.32,
+    const art = this.add.graphics();
+    art.setPosition(x - width / 2 + 36, y + 30);
+    PLAYABLE_HEROES[heroId].draw(art, {
       facing: theirs ? 'west' : 'east',
+      team: (theirs ? 'bravo' : 'alpha') as TeamId,
     });
 
     const name = this.add

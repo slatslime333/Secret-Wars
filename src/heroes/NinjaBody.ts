@@ -9,8 +9,7 @@ import { emitCombatBlocked, emitCombatDamage } from '../combat/damageEvents';
 import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
 import { drawColeElectricity } from './drawCole';
-import type { HeroDrawFn, HeroDrawOptions } from './heroDraw';
-import { HERO_WALK_SPEED_SQ, tryAttachHeroPixelView, type HeroPixelView } from './pixel';
+import type { HeroDrawFn } from './heroDraw';
 import { playDeath, playWorld } from '../audio';
 import { drawRopeWrap } from './abilities/rope/ropeVisual';
 import { drawMagicVortex } from './abilities/witch/vortex';
@@ -55,9 +54,7 @@ export class NinjaBody {
   private present = true;
   readonly aim = new Phaser.Math.Vector2(1, 0);
   private facing: CardinalFacing = 'east';
-  private readonly art: Phaser.GameObjects.Container;
-  private readonly gfx: Phaser.GameObjects.Graphics;
-  private readonly pixels?: HeroPixelView;
+  private readonly art: Phaser.GameObjects.Graphics;
   private readonly sparks?: Phaser.GameObjects.Graphics;
   private readonly drawHero: HeroDrawFn;
   private readonly scene: Phaser.Scene;
@@ -115,14 +112,8 @@ export class NinjaBody {
     }
 
     this.view = scene.add.container(x, y).setDepth(this.rival ? 9 : 10);
-    this.art = scene.add.container(0, 0);
-    this.gfx = scene.add.graphics();
-    this.art.add(this.gfx);
+    this.art = scene.add.graphics();
     this.view.add(this.art);
-    this.pixels = tryAttachHeroPixelView(scene, this.art, this.stats.id, this.team);
-    if (this.pixels) {
-      this.gfx.setVisible(false);
-    }
     if (options.handSparks) {
       this.sparks = scene.add.graphics();
       this.view.add(this.sparks);
@@ -179,15 +170,12 @@ export class NinjaBody {
     this.syncClawMark();
     this.syncRageFire();
     const now = this.now();
-    if (!this.pixels && this.heroId === 'rope' && now >= this.attackingUntil && this.present && !this.down) {
+    if (this.heroId === 'rope' && now >= this.attackingUntil && this.present && !this.down) {
       const hop = Math.abs(Math.sin(now / 130)) * 3.4;
       this.art.setY(-hop);
     }
     const flashing = this.status.isFlashingHit(now);
-    if (this.pixels && now >= this.attackingUntil && this.present) {
-      this.lastDrawnFlash = flashing;
-      this.redrawIdle();
-    } else if (flashing !== this.lastDrawnFlash && now >= this.attackingUntil) {
+    if (flashing !== this.lastDrawnFlash && this.now() >= this.attackingUntil) {
       this.lastDrawnFlash = flashing;
       this.redrawIdle();
     }
@@ -422,7 +410,7 @@ export class NinjaBody {
         if (!this.present) {
           return;
         }
-        this.paint({
+        this.drawHero(this.art, {
           facing: this.facing,
           attacking: true,
           swordAngleOffset: swordAnimState.angleOffset,
@@ -481,7 +469,7 @@ export class NinjaBody {
         const pose = frame(anim.frac);
         this.armLiftLeft = pose.armLiftLeft ?? 0;
         this.armLiftRight = pose.armLiftRight ?? 0;
-        this.paint({
+        this.drawHero(this.art, {
           facing: this.facing,
           attacking: true,
           swordAngleOffset: pose.swordAngleOffset ?? 0,
@@ -534,15 +522,6 @@ export class NinjaBody {
     this.scene.tweens.killTweensOf(this.art);
     this.scene.tweens.killTweensOf(this.view);
     this.attackingUntil = this.now() + durationMs;
-    this.paint({
-      facing: this.facing,
-      attacking: true,
-      swordAngleOffset: 0.7,
-      comboStep: 1,
-      hitFlash: this.status.isFlashingHit(this.now()),
-      rival: this.rival,
-      team: this.team,
-    });
     const spin = { value: 0 };
     const length = Math.hypot(dirX, dirY) || 1;
     const nx = dirX / length;
@@ -573,15 +552,6 @@ export class NinjaBody {
   playKickPose(durationMs: number): void {
     this.currentAttackTween?.stop();
     this.attackingUntil = this.now() + durationMs;
-    this.paint({
-      facing: this.facing,
-      attacking: true,
-      swordAngleOffset: 0.9,
-      comboStep: 2,
-      hitFlash: this.status.isFlashingHit(this.now()),
-      rival: this.rival,
-      team: this.team,
-    });
     const lean = this.aim.x >= 0 ? 0.35 : -0.35;
     this.art.setRotation(lean);
     this.art.setPosition(this.aim.x * 10, this.aim.y * 10);
@@ -598,15 +568,6 @@ export class NinjaBody {
     this.scene.tweens.killTweensOf(this.art);
     this.scene.tweens.killTweensOf(this.view);
     this.attackingUntil = this.now() + durationMs;
-    this.paint({
-      facing: this.facing,
-      attacking: true,
-      swordAngleOffset: -0.4,
-      comboStep: 1,
-      hitFlash: this.status.isFlashingHit(this.now()),
-      rival: this.rival,
-      team: this.team,
-    });
     const spin = { value: 0 };
     const length = Math.hypot(dirX, dirY) || 1;
     const nx = dirX / length;
@@ -1054,24 +1015,8 @@ export class NinjaBody {
     this.view.destroy();
   }
 
-  private paint(options: HeroDrawOptions, moving = false): void {
-    if (this.pixels) {
-      this.pixels.show(options, moving, this.now(), this.down);
-      return;
-    }
-    this.drawHero(this.gfx, options);
-  }
-
   private redrawIdle(): void {
-    const body = this.physics();
-    const speedSq = body ? body.velocity.x * body.velocity.x + body.velocity.y * body.velocity.y : 0;
-    const moving =
-      Boolean(this.pixels) &&
-      this.present &&
-      !this.down &&
-      this.now() >= this.attackingUntil &&
-      speedSq > HERO_WALK_SPEED_SQ;
-    this.paint({
+    this.drawHero(this.art, {
       facing: this.facing,
       attacking: false,
       swordAngleOffset: 0,
@@ -1079,15 +1024,11 @@ export class NinjaBody {
       hitFlash: this.status.isFlashingHit(this.now()),
       rival: this.rival,
       team: this.team,
-    }, moving);
+    });
   }
 
   private redrawHandSparks(): void {
     if (!this.sparks) {
-      return;
-    }
-    if (this.pixels) {
-      this.sparks.clear();
       return;
     }
     drawColeElectricity(this.sparks, this.facing, this.now(), this.armLiftLeft, this.armLiftRight);
