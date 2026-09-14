@@ -61,12 +61,14 @@ const startSecondWindField = (ctx: AbilityContext): void => {
       }
       gfx.clear();
       gfx.setPosition(originX, originY);
-      const wash = 0.14 + Math.sin(now / 160) * 0.04;
+      const wash = 0.28 + Math.sin(now / 160) * 0.06;
       gfx.fillStyle(0xf0d050, wash);
       gfx.fillCircle(0, 0, MENDER_WIND.radius);
-      gfx.lineStyle(3, 0xfff2a0, 0.7);
+      gfx.fillStyle(0xfff2a0, 0.08);
+      gfx.fillCircle(0, 0, MENDER_WIND.radius * 0.55);
+      gfx.lineStyle(5, 0xfff07a, 0.9);
       gfx.strokeCircle(0, 0, MENDER_WIND.radius);
-      gfx.lineStyle(1.6, 0xffffff, 0.35);
+      gfx.lineStyle(2.2, 0xffffff, 0.55);
       gfx.strokeCircle(0, 0, MENDER_WIND.radius * 0.72);
       gfx.lineStyle(2, 0xfff2a0, 0.5 + Math.sin(now / 90) * 0.12);
       for (const fighter of fighters) {
