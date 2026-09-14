@@ -135,6 +135,24 @@ export class TacticalField {
     return n;
   }
 
+  fillAllyBodies(body: NinjaBody, out: NinjaBody[]): number {
+    let n = 0;
+    for (let i = 0; i < this.factCount; i += 1) {
+      const fact = this.facts[i];
+      if (fact.team !== body.team || fact.ref === body) {
+        continue;
+      }
+      if (n < out.length) {
+        out[n] = fact.ref;
+      } else {
+        out.push(fact.ref);
+      }
+      n += 1;
+    }
+    out.length = n;
+    return n;
+  }
+
   enemiesOf(body: NinjaBody): NinjaBody[] {
     const foes: NinjaBody[] = [];
     this.fillEnemies(body, foes);

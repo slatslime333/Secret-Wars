@@ -37,7 +37,7 @@ export class AbilityController {
   private readonly heldSlots = new Set<AbilitySlot>();
   private loopKey?: string;
 
-  constructor(private readonly kit: HeroAbilityKit) {
+  constructor(readonly kit: HeroAbilityKit) {
     this.slots = {
       ability1: makeRuntime(kit.ability1),
       ability2: makeRuntime(kit.ability2),

@@ -25,7 +25,7 @@ export const guardianAngelDef: AbilityDef = {
   aimOnRelease: true,
   padLabel: 'ANGEL',
   deferCooldown: true,
-  tactics: { roles: ['defense', 'peel'], range: MENDER_ANGEL.maxRange },
+  tactics: { roles: ['defense', 'peel', 'shield'], range: MENDER_ANGEL.maxRange },
   canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new GuardianAngelAbility(ctx),
 };

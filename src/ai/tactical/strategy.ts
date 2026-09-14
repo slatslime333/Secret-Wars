@@ -235,7 +235,15 @@ const nextState = (situation: Situation, kit: KitProfile, opening: OpeningPlan, 
     return !best || d < best.d ? { enemy, d } : best;
   }, undefined as { enemy: CombatantView; d: number } | undefined);
   const allyNeed = situation.allies.find((ally) => ally.kind === 'hero' && ally.hpRatio < 0.36 && ally.recentlyHit);
-  if (allyNeed && kit.wantsProtect) {
+  if (situation.hasAllySupport) {
+    const mode = situation.supportMode;
+    if (mode === 'save' || mode === 'support') {
+      return 'protect';
+    }
+    if (mode === 'mix') {
+      return nearest && nearest.d <= kit.comfortMax ? 'poke' : 'support';
+    }
+  } else if (allyNeed && kit.wantsProtect) {
     return 'protect';
   }
   if (nearest && nearest.enemy.hpRatio < 0.2 && p.opportunism > 0.35) {

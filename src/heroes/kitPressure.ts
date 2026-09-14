@@ -1,5 +1,5 @@
 import type { AbilityController } from './abilities/AbilityController';
-import { SLOT_ORDER } from './abilities/types';
+import { kitHasAllySupport, SLOT_ORDER } from './abilities/types';
 import type { DashController } from '../combat/DashController';
 import type { NinjaBody } from './NinjaBody';
 
@@ -15,6 +15,7 @@ export const stampKitPressure = (
       const state = abilities.slotState(slot, now);
       return state.ready && !state.consumed;
     });
+    body.kitHasAllySupport = kitHasAllySupport(abilities.kit);
   }
   if (dash) {
     body.kitDashCharges = dash.chargeCount;

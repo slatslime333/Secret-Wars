@@ -24,6 +24,7 @@ import { stampKitPressure } from '../heroes/kitPressure';
 export class RivalBrain {
   private readonly chase = new Phaser.Math.Vector2();
   private readonly foes: NinjaBody[] = [];
+  private readonly mates: NinjaBody[] = [];
   readonly mind: TacticalMind;
   private readonly combat = new CombatDriver();
   private readonly swing = new SwingIntent();
@@ -54,6 +55,7 @@ export class RivalBrain {
     }
 
     field.fillEnemies(cpu, this.foes);
+    field.fillAllyBodies(cpu, this.mates);
     const foes = this.foes;
     stampKitPressure(cpu, now, this.abilities, this.dash);
     cpu.regenHealth(delta, now);
@@ -78,6 +80,7 @@ export class RivalBrain {
           delta,
           caster: cpu,
           enemies: foes,
+          allies: this.mates,
           world: this.world,
           interruptCombat: () => {
             this.attacks.interrupt(now);

@@ -18,7 +18,7 @@ export const secondWindDef: AbilityDef = {
   iconKey: ABILITY_ICON.secondWind,
   accent: 0xf0d050,
   padLabel: 'WIND',
-  tactics: { roles: ['defense', 'peel', 'aoe', 'space'], range: MENDER_WIND.radius },
+  tactics: { roles: ['defense', 'peel', 'aoe', 'space', 'heal', 'buff'], range: MENDER_WIND.radius, includesSelf: true },
   canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new SecondWindAbility(ctx),
 };

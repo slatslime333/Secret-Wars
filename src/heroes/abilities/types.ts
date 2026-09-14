@@ -28,11 +28,28 @@ export type AbilityRole =
   | 'finish'
   | 'space'
   | 'peel'
-  | 'setup';
+  | 'setup'
+  | 'heal'
+  | 'shield'
+  | 'buff';
+
+export const ALLY_SUPPORT_ROLES: readonly AbilityRole[] = ['heal', 'shield', 'buff'];
+
+export const defHasAllySupport = (def: { tactics?: AbilityTactics }): boolean =>
+  Boolean(def.tactics?.roles.some((role) => ALLY_SUPPORT_ROLES.includes(role)));
+
+export const kitHasAllySupport = (kit: {
+  ability1: { tactics?: AbilityTactics };
+  ability2: { tactics?: AbilityTactics };
+  ultimate: { tactics?: AbilityTactics };
+}): boolean =>
+  defHasAllySupport(kit.ability1) || defHasAllySupport(kit.ability2) || defHasAllySupport(kit.ultimate);
 
 export type AbilityTactics = {
   roles: readonly AbilityRole[];
   range: number;
+  /** Caster also receives the ally effect (Hex self-shield, Second Wind field). */
+  includesSelf?: boolean;
 };
 
 export type AbilityControlFlags = {

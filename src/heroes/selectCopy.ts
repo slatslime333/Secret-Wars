@@ -124,7 +124,7 @@ const ABILITY_TEXT: Record<string, string> = {
   'mender-guardian-angel':
     `Mender fires a Cole-style energy ball at an ally. The shield lasts ${seconds(MENDER_ANGEL.durationMs)} and converts incoming damage into a Discharge-like knockback burst, ${Math.round(MENDER_ANGEL.healRatio * 100)}% of absorbed damage as healing, and stamina. The ${seconds(MENDER_ANGEL.cooldownMs)} cooldown starts when the shield ends.`,
   'mender-soul-dash':
-    `Dash to an ally (same range as Backflip Kick), become a fairy, and grant ${Math.round(MENDER_SOUL.healMaxHp * 100)}% max HP plus ${faster(MENDER_SOUL.moveMul)} movement, ${faster(MENDER_SOUL.attackSpeedMul)} attack speed, and ${faster(MENDER_SOUL.staminaRegenMul)} stamina recovery for ${seconds(MENDER_SOUL.buffMs)}. Press again to backflip out. The cooldown starts on exit.`,
+    `Dash to an ally (same range as Backflip Kick), become a fairy, and grant ${Math.round(MENDER_SOUL.healMaxHp * 100)}% max HP plus ${faster(MENDER_SOUL.moveMul)} movement, ${faster(MENDER_SOUL.attackSpeedMul)} attack speed, and ${faster(MENDER_SOUL.staminaRegenMul)} stamina recovery for ${seconds(MENDER_SOUL.buffMs)}. Mender takes no combat damage until she ejects. Press again to backflip out. The cooldown starts on exit.`,
   'mender-second-wind':
     `Plant a large yellow field for ${seconds(MENDER_WIND.durationMs)}. Allies inside slowly regenerate health and recover stamina faster. Mender takes reduced damage while she holds the circle. Enemies inside are slowed ${slower(MENDER_WIND.enemySlowMul)}.`,
 };

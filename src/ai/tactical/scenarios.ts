@@ -3,6 +3,9 @@ import { ensureScoreBuffer, scoreSituation } from './evaluate';
 import { kitProfileOf } from './kitProfile';
 import { OBJECTIVE } from '../../config/objective';
 import { ARENA } from '../../config/arena';
+import { assessSupport } from './supportSense';
+import { scoreKitSlot } from './kitTactics';
+import type { AbilityDef, AbilityTactics } from '../../heroes/abilities/types';
 
 const buffer = ensureScoreBuffer();
 
@@ -852,6 +855,128 @@ const scenarioAO = (): ScenarioResult => {
   };
 };
 
+const mockAbility = (id: string, slot: AbilityDef['slot'], tactics: AbilityTactics): AbilityDef => ({
+  id,
+  name: id,
+  slot,
+  cooldownMs: 8000,
+  chargeMode: 'cooldown',
+  startingCharges: 1,
+  maxCharges: 1,
+  iconKey: '',
+  accent: 0,
+  tactics,
+  canActivate: () => true,
+  activate: () => undefined,
+});
+
+const menderKit = kitProfileOf('mender', 'support', 240);
+const witchKit = kitProfileOf('witch', 'ranged-tank', 220);
+
+const menderSupport = (self: CombatantView, allies: CombatantView[], enemies: CombatantView[]): Situation =>
+  situationOf(self, allies, enemies, { hasAllySupport: true, kit: menderKit });
+
+const scenarioAP = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, role: 'support', heroId: 'mender', hpRatio: 0.92, attackRange: 240 });
+  const allies = [
+    unit({ id: 2, team: 'alpha', x: 430, y: 748, hpRatio: 0.96, attacking: true }),
+    unit({ id: 3, team: 'alpha', x: 424, y: 760, hpRatio: 0.94, attacking: true }),
+  ];
+  const enemies = [unit({ id: 10, team: 'bravo', x: 560, y: 750, hpRatio: 0.7 })];
+  const rows = rankActions(menderSupport(self, allies, enemies));
+  const ok = among(rows, ['attack', 'assist_ally', 'hold_position', 'reposition'], 3) && best(rows) !== 'protect_ally';
+  return { name: 'AP mender healthy team attacks', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioAQ = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 420, y: 750, role: 'support', heroId: 'mender', hpRatio: 0.8, attackRange: 240 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 500, y: 750, hpRatio: 0.16, recentlyHit: true, attacking: true })];
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 530, y: 742, attacking: true, lastAttackerId: 2 }),
+    unit({ id: 11, team: 'bravo', x: 535, y: 760, attacking: true, lastAttackerId: 2 }),
+  ];
+  const rows = rankActions(menderSupport(self, allies, enemies));
+  const ok = among(rows, ['protect_ally', 'assist_ally'], 2);
+  return { name: 'AQ mender saves critical ally', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioAR = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, role: 'support', heroId: 'mender', hpRatio: 0.85, attackRange: 240 });
+  const hiding = unit({ id: 2, team: 'alpha', x: 250, y: 900, hpRatio: 0.22 });
+  const fighting = unit({ id: 3, team: 'alpha', x: 480, y: 750, hpRatio: 0.4, recentlyHit: true, attacking: true });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 510, y: 748, attacking: true, lastAttackerId: 3 })];
+  const sit = menderSupport(self, [hiding, fighting], enemies);
+  const read = assessSupport(sit);
+  const ok = read.ally?.id === 3;
+  return { name: 'AR mender picks fighting ally over lowest HP', ok, detail: `ally=${read.ally?.id ?? -1} need=${read.need.toFixed(1)} mode=${read.mode}` };
+};
+
+const scenarioAS = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, role: 'support', heroId: 'mender', hpRatio: 0.55, attackRange: 240 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 470, y: 750, hpRatio: 0.24, recentlyHit: true, attacking: true })];
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 500, y: 750, attacking: true, lastAttackerId: 2 }),
+    unit({ id: 20, team: 'bravo', x: 390, y: 820, kind: 'minion', role: 'minion', heroId: 'minion', hpRatio: 1, power: 0.3 }),
+  ];
+  const rows = rankActions(menderSupport(self, allies, enemies));
+  const farm = scoreOf(rows, 'farm_minions');
+  const cover = Math.max(scoreOf(rows, 'protect_ally'), scoreOf(rows, 'assist_ally'));
+  const ok = cover > farm;
+  return { name: 'AS mender will not farm over a needy ally', ok, detail: `cover=${cover.toFixed(1)} farm=${farm.toFixed(1)} best=${best(rows)}` };
+};
+
+const scenarioAT = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, role: 'support', heroId: 'mender', hpRatio: 0.9, attackRange: 240 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 460, y: 750, hpRatio: 0.94 })];
+  const enemies = [unit({ id: 10, team: 'bravo', x: 620, y: 750, hpRatio: 0.8 })];
+  const angel = mockAbility('mender-guardian-angel', 'ability1', { roles: ['defense', 'peel', 'shield'], range: 260 });
+  const score = scoreKitSlot(angel, menderSupport(self, allies, enemies), 'ability1');
+  const ok = score < 18;
+  return { name: 'AT mender holds shield on chip HP idle ally', ok, detail: `angel=${score.toFixed(1)}` };
+};
+
+const scenarioAU = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, role: 'ranged-tank', heroId: 'witch', hpRatio: 0.8, attackRange: 220 });
+  const fighting = unit({ id: 2, team: 'alpha', x: 470, y: 750, hpRatio: 0.62, recentlyHit: true, attacking: true });
+  const idle = unit({ id: 3, team: 'alpha', x: 430, y: 900, hpRatio: 1 });
+  const foes = [unit({ id: 10, team: 'bravo', x: 500, y: 748, attacking: true, lastAttackerId: 2 })];
+  const hex = mockAbility('witch-hex', 'ability2', {
+    roles: ['defense', 'peel', 'shield', 'buff'],
+    range: 220,
+    includesSelf: true,
+  });
+  const fightScore = scoreKitSlot(hex, situationOf(self, [fighting], foes, { hasAllySupport: true, kit: witchKit }), 'ability2');
+  const idleScore = scoreKitSlot(hex, situationOf(self, [idle], [], { hasAllySupport: true, kit: witchKit }), 'ability2');
+  const ok = fightScore > idleScore + 12 && idleScore < 12;
+  return { name: 'AU witch hex helps a fighting ally not an idle one', ok, detail: `fight=${fightScore.toFixed(1)} idle=${idleScore.toFixed(1)}` };
+};
+
+const scenarioAV = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, role: 'support', heroId: 'mender', hpRatio: 0.14, attackRange: 240 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 720, y: 750, hpRatio: 0.18, recentlyHit: true })];
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 480, y: 750, attacking: true }),
+    unit({ id: 11, team: 'bravo', x: 560, y: 742, attacking: true }),
+    unit({ id: 12, team: 'bravo', x: 620, y: 760, attacking: true }),
+  ];
+  const sit = menderSupport(self, allies, enemies);
+  const read = assessSupport(sit);
+  const rows = rankActions(sit);
+  const ok = read.need < 28 && !['chase', 'flank'].includes(best(rows));
+  return { name: 'AV fragile mender will not suicide a corridor save', ok, detail: `need=${read.need.toFixed(1)} best=${best(rows)} mode=${read.mode}` };
+};
+
+const scenarioAW = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, role: 'support', heroId: 'mender', hpRatio: 0.82, attackRange: 240 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 470, y: 750, hpRatio: 0.58, recentlyHit: true, attacking: true })];
+  const enemies = [unit({ id: 10, team: 'bravo', x: 530, y: 750, hpRatio: 0.7, attacking: true, lastAttackerId: 2 })];
+  const rows = rankActions(menderSupport(self, allies, enemies));
+  const attack = scoreOf(rows, 'attack');
+  const cover = Math.max(scoreOf(rows, 'assist_ally'), scoreOf(rows, 'protect_ally'));
+  const ok = attack > 8 && cover > 8;
+  return { name: 'AW mender mixes fire and peel on moderate injury', ok, detail: `attack=${attack.toFixed(1)} cover=${cover.toFixed(1)} best=${best(rows)}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -894,4 +1019,12 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioAM(),
   scenarioAN(),
   scenarioAO(),
+  scenarioAP(),
+  scenarioAQ(),
+  scenarioAR(),
+  scenarioAS(),
+  scenarioAT(),
+  scenarioAU(),
+  scenarioAV(),
+  scenarioAW(),
 ];
