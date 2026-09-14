@@ -7,7 +7,7 @@ import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
 import { audio, playHeroSelect } from '../audio';
 import { HERO_IDS, getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
-import { clamp, measureViewport } from '../ui/layout/viewport';
+import { clamp, measureViewport, resetUiCamera } from '../ui/layout/viewport';
 import { ScrollPanel } from '../ui/layout/ScrollPanel';
 
 export class MainMenuScene extends Phaser.Scene {
@@ -21,6 +21,7 @@ export class MainMenuScene extends Phaser.Scene {
 
   create(): void {
     this.leaving = false;
+    resetUiCamera(this);
     createBackdrop(this, { accent: COLORS.cyan, embers: true });
     this.cameras.main.fadeIn(260, 7, 10, 18);
 

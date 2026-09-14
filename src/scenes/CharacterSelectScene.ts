@@ -3,7 +3,7 @@ import { HERO_IDS, PLAYABLE_HEROES, setSelectedHeroId, type HeroId } from '../he
 import { heroSelectCopy } from '../heroes/selectCopy';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
-import { clamp, measureViewport } from '../ui/layout/viewport';
+import { clamp, measureViewport, resetUiCamera } from '../ui/layout/viewport';
 import { ScrollPanel } from '../ui/layout/ScrollPanel';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { audio, playHeroSelect } from '../audio';
@@ -40,6 +40,7 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   create(): void {
     this.leaving = false;
+    resetUiCamera(this);
     createBackdrop(this, { accent: COLORS.cyan, embers: true });
     this.cameras.main.fadeIn(220, 7, 10, 18);
 

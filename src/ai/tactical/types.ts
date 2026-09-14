@@ -191,6 +191,8 @@ export type Situation = {
   objective?: ObjectiveHint;
   teamScore?: { self: number; enemy: number; lastKillAt?: number };
   teamMomentum?: number;
+  /** Own stamina change since last think. Positive = recovering. */
+  staminaTrend?: number;
 };
 
 export type TacticalDebugInfo = {

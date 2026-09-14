@@ -203,6 +203,7 @@ export class HeroPilot {
         attackRange: body.stats.attackRange,
         role: body.stats.role,
         kind: 'hero',
+        id: this.mind.situationView().self.id,
       },
       now,
       this.mind.homeX,
@@ -219,7 +220,7 @@ export class HeroPilot {
         : undefined,
       ally ? { x: ally.x, y: ally.y, aimX: ally.aim.x, aimY: ally.aim.y } : undefined,
       this.mind.intent.flankSign,
-      body.x + body.y,
+      this.mind.situationView().self.id,
       this.mind.goal,
       this.mind.moveHint(),
     );

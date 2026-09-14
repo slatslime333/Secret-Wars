@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { ARENA } from '../../config/arena';
 import { CAMERA_ZOOM_MAX, CAMERA_ZOOM_MIN, cameraPrefs } from '../../config/cameraPrefs';
 import { getViewportSize, isTouchPrimary } from '../../device';
+import { HUD_CAMERA_NAME } from './hudCamera';
 
 /** iPad-class short side. Phones stay phones even in landscape. */
 export const TABLET_SHORT_EDGE = 600;
@@ -177,13 +178,23 @@ export const applyGameplayCamera = (
   width: number,
   height: number,
 ): void => {
-  const frame = measureViewport(width, height);
   camera.setSize(width, height);
+  if (camera.name === HUD_CAMERA_NAME) {
+    camera.setZoom(1);
+    camera.setScroll(0, 0);
+    return;
+  }
+  const frame = measureViewport(width, height);
   cameraPrefs.load();
   camera.setZoom(clamp(frame.cameraZoom * cameraPrefs.zoomMultiplier(), CAMERA_ZOOM_MIN, CAMERA_ZOOM_MAX));
   camera.removeBounds();
   camera.setBackgroundColor(ARENA.wallColor);
   camera.setDeadzone(0, 0);
+};
+
+/** Menus, select, and settings stay at 1×. FOV never scales UI cameras. */
+export const resetUiCamera = (scene: Phaser.Scene): void => {
+  scene.cameras.main.setZoom(1);
 };
 
 /** Keep the followed fighter in the screen center, including past arena walls. */

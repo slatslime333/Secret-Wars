@@ -16,6 +16,7 @@ import {
 } from '../ui/controlLayout';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { fadeToScene } from './fadeToScene';
+import { resetUiCamera } from '../ui/layout/viewport';
 
 type DummyControl = {
   id: ControlId;
@@ -48,6 +49,7 @@ export class ControlLayoutScene extends Phaser.Scene {
 
   create(): void {
     this.returning = false;
+    resetUiCamera(this);
     createBackdrop(this, { accent: COLORS.orange });
     this.cameras.main.fadeIn(180, 7, 10, 18);
     this.working = this.restoreWorking ? { ...this.restoreWorking } : { ...loadControlLayout() };

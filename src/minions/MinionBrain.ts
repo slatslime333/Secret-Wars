@@ -12,7 +12,8 @@ import { battlefieldOf } from '../map';
 import { TacticalField } from '../ai/tactical/field';
 import { TacticalMind } from '../ai/tactical/mind';
 import { moveGoal } from '../ai/tactical/move';
-import type { TacticalAction } from '../ai/tactical/types';
+import { guardHome, minionLaneSpread, type CrowdMate } from '../ai/tactical/spacing';
+import type { TacticalAction, UnitFact } from '../ai/tactical/types';
 
 export type MinionState = TacticalAction | 'recover';
 
@@ -53,6 +54,7 @@ export class MinionBrain {
   private readonly guard?: NinjaBody;
   private readonly windupMs: number;
   private readonly recoveryMs: number;
+  private readonly nearby: UnitFact[] = [];
 
   constructor(
     readonly body: NinjaBody,
@@ -143,7 +145,8 @@ export class MinionBrain {
     } else {
       this.body.setAim(owner.x - this.body.x, owner.y - this.body.y);
     }
-    const homeDist = distanceBetween(this.body.x, this.body.y, owner.x, owner.y);
+    const home = guardHome(owner, this.mind.situationView().self.id || Math.round(this.body.y));
+    const fromOwner = distanceBetween(this.body.x, this.body.y, owner.x, owner.y);
     if (now < this.recoverUntil) {
       this.body.stop();
       this.state = 'recover';
@@ -162,10 +165,26 @@ export class MinionBrain {
       this.body.stop();
       return;
     }
-    const goalX = nearest && homeDist < leash ? nearest.x : owner.x;
-    const goalY = nearest && homeDist < leash ? nearest.y : owner.y;
+    const goalX = nearest && fromOwner < leash ? nearest.x : home.x;
+    const goalY = nearest && fromOwner < leash ? nearest.y : home.y;
     let dx = goalX - this.body.x;
     let dy = goalY - this.body.y;
+    const spread = minionLaneSpread(
+      {
+        x: this.body.x,
+        y: this.body.y,
+        team: this.body.team,
+        attackRange: this.body.stats.attackRange,
+        role: this.body.stats.role,
+        kind: 'minion',
+        id: this.mind.situationView().self.id,
+      },
+      this.crowdMates(field),
+      dx,
+      dy,
+    );
+    dx = spread.x;
+    dy = spread.y;
     const len = Math.hypot(dx, dy) || 1;
     const steered = battlefieldOf(scene)?.query.steer(this.body.x, this.body.y, dx / len, dy / len);
     if (steered) {
@@ -232,6 +251,7 @@ export class MinionBrain {
         attackRange: this.body.stats.attackRange,
         role: this.body.stats.role,
         kind: 'minion',
+        id: this.mind.situationView().self.id,
       },
       now,
       this.mind.homeX,
@@ -239,7 +259,9 @@ export class MinionBrain {
       target ? { x: target.x, y: target.y, aimX: target.aim.x, aimY: target.aim.y } : undefined,
       ally ? { x: ally.x, y: ally.y, aimX: ally.aim.x, aimY: ally.aim.y } : undefined,
       this.mind.intent.flankSign,
-      this.body.y,
+      this.mind.situationView().self.id,
+      this.mind.goal,
+      this.mind.moveHint(),
     );
     if (goal.halt) {
       this.body.stop();
@@ -255,6 +277,22 @@ export class MinionBrain {
       dx = minionAdvanceX(this.body.team);
       dy = Phaser.Math.Clamp((this.mind.homeY - this.body.y) * 0.004, -0.35, 0.35);
     }
+    const spread = minionLaneSpread(
+      {
+        x: this.body.x,
+        y: this.body.y,
+        team: this.body.team,
+        attackRange: this.body.stats.attackRange,
+        role: this.body.stats.role,
+        kind: 'minion',
+        id: this.mind.situationView().self.id,
+      },
+      this.mind.moveHint()?.mates,
+      dx,
+      dy,
+    );
+    dx = spread.x;
+    dy = spread.y;
     const len = Math.hypot(dx, dy) || 1;
     const steered = battlefieldOf(scene)?.query.steer(this.body.x, this.body.y, dx / len, dy / len);
     if (steered) {
@@ -380,6 +418,27 @@ export class MinionBrain {
     const fromAcquire = distanceBetween(this.acquireX, this.acquireY, target.x, target.y);
     const fromSelf = distanceBetween(this.body.x, this.body.y, target.x, target.y);
     return fromAcquire > MINION.leashRadius || fromSelf > MINION.leashRadius * 1.15;
+  }
+
+  private crowdMates(field: TacticalField): CrowdMate[] {
+    const n = field.queryNearby(this.body.x, this.body.y, 96, this.nearby);
+    const mates: CrowdMate[] = [];
+    const selfId = this.mind.situationView().self.id;
+    for (let i = 0; i < n; i += 1) {
+      const fact = this.nearby[i];
+      if (!fact || fact.team !== this.body.team || fact.id === selfId) {
+        continue;
+      }
+      mates.push({
+        x: fact.x,
+        y: fact.y,
+        id: fact.id,
+        kind: fact.kind,
+        role: String(fact.role),
+        attackRange: fact.attackRange,
+      });
+    }
+    return mates;
   }
 }
 

@@ -13,7 +13,7 @@ import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
 import { COLORS, FONTS, hex } from '../ui/theme';
 import { ScrollPanel } from '../ui/layout/ScrollPanel';
-import { measureViewport } from '../ui/layout/viewport';
+import { measureViewport, resetUiCamera } from '../ui/layout/viewport';
 import { audio, playHeroSelect } from '../audio';
 import { fadeToScene } from './fadeToScene';
 
@@ -32,6 +32,7 @@ export class SimulatorSetupScene extends Phaser.Scene {
 
   create(): void {
     this.leaving = false;
+    resetUiCamera(this);
     createBackdrop(this, { accent: COLORS.yellow, embers: true });
     this.cameras.main.fadeIn(220, 7, 10, 18);
 
