@@ -46,6 +46,10 @@ export class AbilityController {
     };
   }
 
+  isDrivingMovement(): boolean {
+    return Boolean(this.active && this.active.control.move);
+  }
+
   get control(): AbilityControlFlags {
     return this.active?.control ?? OPEN_CONTROL;
   }

@@ -355,6 +355,7 @@ export class BattleScene extends Phaser.Scene {
     } else if (frame.aimActive || frame.aim.lengthSq() > 0.01) {
       this.ninja.setAim(frame.aim);
     }
+    this.ninja.recordSteer(frame.move);
     this.abilities.update(this.makeAbilityContext(now, delta, this.liveAbilityAim(frame)));
     this.abilityWorld.update(now, everyone, delta);
     stampKitPressure(this.ninja, now, this.abilities, this.dash);
