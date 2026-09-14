@@ -27,13 +27,15 @@ export const purposesOf = (def: AbilityDef): SupportPurpose[] => {
   return out;
 };
 
-const foesNear = (ally: CombatantView, enemies: CombatantView[], radius: number): number => {
+const threatsNear = (ally: CombatantView, enemies: CombatantView[]): number => {
   let n = 0;
   for (const enemy of enemies) {
-    if (!enemy.visible || enemy.kind === 'minion') {
+    if (!enemy.visible || enemy.kind !== 'hero') {
       continue;
     }
-    if (dist(ally, enemy) <= radius) {
+    const d = dist(ally, enemy);
+    const pressing = enemy.attacking || enemy.lastAttackerId === ally.id || enemy.recentlyHit;
+    if (d <= 112 || (d <= 156 && pressing)) {
       n += 1;
     }
   }
@@ -89,7 +91,7 @@ export const scoreAllyNeed = (
     return 0;
   }
   const missing = 1 - ally.hpRatio;
-  const nearbyFoes = foesNear(ally, situation.enemies, 190);
+  const nearbyFoes = threatsNear(ally, situation.enemies);
   const focused = situation.enemies.some(
     (enemy) =>
       enemy.visible &&
@@ -145,13 +147,15 @@ export const scoreAllyNeed = (
   }
 
   const corridor = corridorThreat(self, ally, situation.enemies);
-  if (self.hpRatio < 0.28 && corridor >= 2) {
-    score -= 22;
+  if (self.hpRatio < 0.22 && corridor >= 2) {
+    score -= 36;
+  } else if (self.hpRatio < 0.28 && corridor >= 2) {
+    score -= 18;
   } else if (self.hpRatio < 0.18 && corridor >= 1) {
     score -= 16;
   }
-  if (self.hpRatio < 0.16 && d > 220 && corridor >= 1) {
-    score -= 12;
+  if (self.hpRatio < 0.16 && d > 180 && corridor >= 1) {
+    score -= 18;
   }
   return score;
 };
@@ -289,7 +293,7 @@ export const scoreSupportAbility = (def: AbilityDef, situation: Situation, range
   }
   const corridor = corridorThreat(situation.self, ally, situation.enemies);
   if (situation.self.hpRatio < 0.22 && corridor >= 2) {
-    score -= 20;
+    score -= 28;
   }
   return score;
 };
