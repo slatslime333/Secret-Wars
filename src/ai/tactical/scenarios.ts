@@ -817,6 +817,41 @@ const scenarioAM = (): ScenarioResult => {
   };
 };
 
+const scenarioAN = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, staminaRatio: 0.38, hpRatio: 0.76, attackRange: 70 });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 448, y: 750, hpRatio: 0.52, recentlyHit: true, attackRange: 70 })];
+  const rows = rankActions(situationOf(self, [], enemies));
+  const ok = among(rows, ['attack', 'finish_target'], 2) && !['recover', 'wait_for_opening'].includes(best(rows));
+  return {
+    name: 'AN melee with medium stamina keeps swinging',
+    ok,
+    detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}`,
+  };
+};
+
+const scenarioAO = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 400,
+    y: 750,
+    heroId: 'shadow',
+    role: 'frontliner',
+    attackRange: 145,
+    hpRatio: 0.8,
+    staminaRatio: 0.48,
+  });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 470, y: 750, hpRatio: 0.4, recentlyHit: true, attackRange: 70 })];
+  const kit = kitProfileOf('shadow', 'frontliner', 145, { staminaRatio: 0.48, abilityReady: true, dashCharges: 2 });
+  const rows = rankActions(situationOf(self, [], enemies, { kit }));
+  const ok = among(rows, ['attack', 'finish_target', 'chase'], 2) && best(rows) !== 'wait_for_opening';
+  return {
+    name: 'AO shadow in melee prefers pressure',
+    ok,
+    detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}`,
+  };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -857,4 +892,6 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioAK(),
   scenarioAL(),
   scenarioAM(),
+  scenarioAN(),
+  scenarioAO(),
 ];

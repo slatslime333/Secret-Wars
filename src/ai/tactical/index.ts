@@ -8,6 +8,8 @@ export { clusterRiskOf, protectStand, regroupStand, guardHome, nudgeOffMates } f
 export { personalityFromSeed } from './personality';
 export { kitProfileOf, isRangedLike, isShadowDry, isRopeDisarmed } from './kitProfile';
 export { GamePlanController } from './strategy';
+export { FightSense } from './fightSense';
+export { SwingIntent } from './swingIntent';
 export { NEUTRAL_PERSONALITY } from './types';
 export type {
   CombatantView,

@@ -99,6 +99,8 @@ export type KitProfile = {
   wantsPoke: boolean;
   wantsFlank: boolean;
   wantsProtect: boolean;
+  /** 0..1 bias to chain lights / stay in the exchange. Kit identity, not a new AI. */
+  pressureBias: number;
   setupIds: readonly string[];
   defensiveIds: readonly string[];
   escapeIds: readonly string[];
