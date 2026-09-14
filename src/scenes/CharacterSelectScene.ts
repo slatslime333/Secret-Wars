@@ -168,7 +168,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       const art = this.add.graphics();
       art.setPosition(cx, artY);
       art.setScale(artScale);
-      PLAYABLE_HEROES[id].draw(art, { facing: 'east', team: 'alpha' });
+      PLAYABLE_HEROES[id].draw(art, { facing: 'south', team: 'alpha' });
       const name = this.add
         .text(cx, nameY, copy.name.toUpperCase(), {
           fontFamily: FONTS.display,
