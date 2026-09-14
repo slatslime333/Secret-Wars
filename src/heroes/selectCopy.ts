@@ -134,7 +134,7 @@ const ABILITY_TEXT: Record<string, string> = {
   'demon-hell-bat':
     `Launch forward and become a fire bat with ${faster(DEMON_HELL_BAT.moveMul)} movement and ${more(DEMON_HELL_BAT.defenseMul)} defense. Forced flight — you steer but cannot stop. Hitting an enemy or recasting explodes for ${hit(DEMON_HELL_BAT.damage)} damage in a Smoke Bomb radius, knocks everyone back, and slows move and attack speed 25% for ${seconds(DEMON_HELL_BAT.slowMs)}. The blast throws Demon backward.`,
   'demon-rage':
-    `Demon Rage fills by dealing damage as Little Demon. At 100% he automatically transforms: 1 second locked, then ${seconds(DEMON_RAGE.durationMs)} as Big Demon. Rage does not build while transformed and resets to 0 after.`,
+    `Demon Rage fills by dealing damage as Little Demon. At 100% he automatically transforms: 1 second locked, then ${seconds(DEMON_RAGE.durationMs)} as Big Demon. Demon Rage does not build while transformed and resets to 0 after.`,
 };
 
 const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {

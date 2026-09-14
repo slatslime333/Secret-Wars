@@ -15,7 +15,7 @@ export const demonRageDef: AbilityDef = {
   maxCharges: 1,
   iconKey: ABILITY_ICON.demonRage,
   accent: 0xff4a10,
-  padLabel: 'DEMON',
+  padLabel: 'D.RAGE',
   tactics: { roles: ['burst', 'initiate', 'damage'], range: 80 },
   canActivate: (ctx) => canStartAbility(ctx) && ctx.caster.demonForm === 'little' && ctx.caster.demonRage >= 1,
   activate: (ctx) => new DemonRageAbility(ctx),
@@ -37,7 +37,7 @@ class DemonRageAbility implements ActiveAbility {
     caster.status.applyControlLock(now, DEMON_RAGE.lockMs);
     caster.grantInvulnerable(now + DEMON_RAGE.lockMs);
     caster.view.setScale(1.08);
-    spawnCombatCallout(ctx.scene, caster.x, caster.y, 'DEMON', 0xff4a10);
+    spawnCombatCallout(ctx.scene, caster.x, caster.y, 'DEMON RAGE', 0xff4a10);
     playWorld('shadow-rage-cast', caster);
     caster.playCustomAttack(now, DEMON_RAGE.lockMs, (frac) => ({
       armLiftRight: 0.3 + frac * 1.1,
