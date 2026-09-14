@@ -977,6 +977,76 @@ const scenarioAW = (): ScenarioResult => {
   return { name: 'AW mender mixes fire and peel on moderate injury', ok, detail: `attack=${attack.toFixed(1)} cover=${cover.toFixed(1)} best=${best(rows)}` };
 };
 
+const littleDemonKit = (rage = 0.2, form: CombatantView['demonForm'] = 'little') =>
+  kitProfileOf('demon', 'frontliner', form === 'big' ? 145 : 220, {
+    staminaRatio: 1,
+    abilityReady: true,
+    dashCharges: 2,
+    rageRatio: rage,
+    demonForm: form,
+    transformLeftMs: form === 'big' ? 5000 : 0,
+  });
+
+const scenarioAX = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 400,
+    y: 750,
+    role: 'frontliner',
+    heroId: 'demon',
+    hpRatio: 0.9,
+    attackRange: 220,
+    rageRatio: 0.2,
+    demonForm: 'little',
+  });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 470, y: 750, hpRatio: 0.8 })];
+  const rows = rankActions(situationOf(self, [], enemies, { kit: littleDemonKit(0.2) }));
+  const ok = among(rows, ['attack', 'reposition', 'hold_position'], 2) && best(rows) !== 'chase';
+  return { name: 'AX little Demon pokes instead of chasing', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioAY = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 400,
+    y: 750,
+    role: 'frontliner',
+    heroId: 'demon',
+    hpRatio: 0.7,
+    attackRange: 220,
+    rageRatio: 0.94,
+    demonForm: 'little',
+  });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 430, y: 752, hpRatio: 0.85, attacking: true })];
+  const rows = rankActions(situationOf(self, [], enemies, { kit: littleDemonKit(0.94) }));
+  const space = Math.max(scoreOf(rows, 'reposition'), scoreOf(rows, 'retreat'), scoreOf(rows, 'escape'));
+  const chase = scoreOf(rows, 'chase');
+  const ok = space > chase;
+  return { name: 'AY near-full Demon Rage creates space', ok, detail: `space=${space.toFixed(1)} chase=${chase.toFixed(1)} best=${best(rows)}` };
+};
+
+const scenarioAZ = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 500,
+    y: 750,
+    role: 'frontliner',
+    heroId: 'demon',
+    hpRatio: 0.8,
+    attackRange: 145,
+    rageRatio: 1,
+    demonForm: 'big',
+    transformLeftMs: 6000,
+  });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 560, y: 750, hpRatio: 0.4 })];
+  const rows = rankActions(situationOf(self, [], enemies, { kit: littleDemonKit(1, 'big') }));
+  const ok = among(rows, ['attack', 'chase', 'finish_target'], 1);
+  return { name: 'AZ Big Demon presses a wounded target', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -1027,4 +1097,7 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioAU(),
   scenarioAV(),
   scenarioAW(),
+  scenarioAX(),
+  scenarioAY(),
+  scenarioAZ(),
 ];

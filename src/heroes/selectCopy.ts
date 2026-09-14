@@ -13,6 +13,7 @@ import { ROPE } from '../config/rope';
 import { WITCH } from '../config/witch';
 import { SHADOW } from '../config/shadow';
 import { MENDER } from '../config/mender';
+import { DEMON } from '../config/demon';
 import { NINJA_KICK, NINJA_SMOKE, NINJA_TORNADO } from './abilities/ninja/tunables';
 import { COLE_ATTACK, COLE_BALL, COLE_DISCHARGE, COLE_STORM } from './abilities/cole/tunables';
 import { DEATH_ATTACK, DEATH_GUN, DEATH_SMASH, DEATH_SWEEP } from './abilities/death/tunables';
@@ -27,6 +28,7 @@ import {
 } from './abilities/witch/tunables';
 import { SHADOW_CLAW, SHADOW_DASH, SHADOW_MARK, SHADOW_RAGE } from './abilities/shadow/tunables';
 import { MENDER_ANGEL, MENDER_SOUL, MENDER_WIND } from './abilities/mender/tunables';
+import { DEMON_BURN, DEMON_HELLFIRE, DEMON_HELL_BAT, DEMON_RAGE } from './abilities/demon/tunables';
 
 export type HeroSelectCopy = {
   id: HeroId;
@@ -127,6 +129,12 @@ const ABILITY_TEXT: Record<string, string> = {
     `Dash to an ally (same range as Backflip Kick), become a fairy, and grant ${Math.round(MENDER_SOUL.healMaxHp * 100)}% max HP plus ${faster(MENDER_SOUL.moveMul)} movement, ${faster(MENDER_SOUL.attackSpeedMul)} attack speed, and ${faster(MENDER_SOUL.staminaRegenMul)} stamina recovery for ${seconds(MENDER_SOUL.buffMs)}. Mender takes no combat damage until she ejects. Press again to backflip out. The cooldown starts on exit.`,
   'mender-second-wind':
     `Plant a large yellow field for ${seconds(MENDER_WIND.durationMs)}. Allies inside slowly regenerate health and recover stamina faster. Mender takes reduced damage while she holds the circle. Enemies inside are slowed ${slower(MENDER_WIND.enemySlowMul)}.`,
+  'demon-hellfire':
+    `Throw the candle up to Backflip Kick range. It bursts into a pentagram of fire the size of Smoke Bomb for ${seconds(DEMON_HELLFIRE.durationMs)}. The blast deals ${hit(DEMON_HELLFIRE.explodeDamage)} damage, then the field ticks while enemies stay inside and applies Burn (${DEMON_BURN.hellfireDamage} every 0.5s for ${seconds(DEMON_BURN.hellfireDurationMs)}, no stack).`,
+  'demon-hell-bat':
+    `Launch forward and become a fire bat with ${faster(DEMON_HELL_BAT.moveMul)} movement and ${more(DEMON_HELL_BAT.defenseMul)} defense. Forced flight — you steer but cannot stop. Hitting an enemy or recasting explodes for ${hit(DEMON_HELL_BAT.damage)} damage in a Smoke Bomb radius, knocks everyone back, and slows move and attack speed 25% for ${seconds(DEMON_HELL_BAT.slowMs)}. The blast throws Demon backward.`,
+  'demon-rage':
+    `Demon Rage fills by dealing damage as Little Demon. At 100% he automatically transforms: 1 second locked, then ${seconds(DEMON_RAGE.durationMs)} as Big Demon. Rage does not build while transformed and resets to 0 after.`,
 };
 
 const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
@@ -171,6 +179,12 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
       'A fragile ranged support. Mender pokes with dual uzis, then spends her kit protecting teammates instead of finishing fights herself.',
     light:
       `Pulse: alternating cyan SMG shots. Each shot deals ${hit(MENDER.attackDamage)} damage at long range with light knockback and a brief slow. Fast, readable dual-uzi fire — support pressure, not a finisher.`,
+  },
+  demon: {
+    description:
+      'A fragile ranged harasser who builds Demon Rage, then becomes a melee frontliner for 8 seconds.',
+    light:
+      `Candle Flame: a long-range fireball for ${hit(DEMON.attackDamage)} damage with low hitstun. Applies Burn (${DEMON_BURN.candleDamage} every 0.5s for ${seconds(DEMON_BURN.candleDurationMs)}, no stack). Built to poke and fill Demon Rage, not to burst.`,
   },
 };
 

@@ -222,6 +222,9 @@ export class TacticalField {
       blocking: false,
       abilityReady: true,
       dashCharges: 2,
+      rageRatio: 0,
+      demonForm: 'little',
+      transformLeftMs: 0,
       ref: undefined as unknown as NinjaBody,
     };
     this.facts[index] = created;
@@ -258,6 +261,9 @@ export class TacticalField {
     fact.blocking = body.blocking;
     fact.abilityReady = body.kitAbilityReady;
     fact.dashCharges = body.kitDashCharges;
+    fact.rageRatio = body.demonRage;
+    fact.demonForm = body.demonForm;
+    fact.transformLeftMs = Math.max(0, body.demonTransformUntil - now);
     fact.lastAttackerId = -1;
   }
 }

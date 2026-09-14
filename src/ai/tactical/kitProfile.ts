@@ -4,6 +4,9 @@ export type KitLiveFlags = {
   staminaRatio: number;
   abilityReady?: boolean;
   dashCharges?: number;
+  rageRatio?: number;
+  demonForm?: 'little' | 'transforming' | 'big' | 'bat';
+  transformLeftMs?: number;
 };
 
 const abilityReadyOf = (live: KitLiveFlags): boolean => live.abilityReady !== false;
@@ -135,6 +138,21 @@ const KIT_OVERRIDES: Record<string, KitOverride> = {
     escapeIds: ['mender-soul-dash'],
     ultSaveUntilFoes: 2,
   },
+  demon: {
+    stance: 'ranged',
+    preferredRangeMul: 0.9,
+    comfortMinMul: 0.58,
+    comfortMaxMul: 1.2,
+    wantsInitiate: false,
+    wantsPoke: true,
+    wantsFlank: true,
+    wantsProtect: false,
+    pressureBias: 0.4,
+    setupIds: ['demon-hellfire'],
+    defensiveIds: ['demon-hellfire', 'demon-hell-bat'],
+    escapeIds: ['demon-hell-bat'],
+    ultSaveUntilFoes: 9,
+  },
 };
 
 const stanceFromRole = (role: string, attackRange: number): KitStance => {
@@ -172,8 +190,8 @@ export const kitProfileOf = (
   attackRange: number,
   live?: KitLiveFlags,
 ): KitProfile => {
-  const override = KIT_OVERRIDES[heroId] ?? {};
-  const stance = override.stance ?? stanceFromRole(role, attackRange);
+  let override = KIT_OVERRIDES[heroId] ?? {};
+  let stance = override.stance ?? stanceFromRole(role, attackRange);
   let preferredMul = override.preferredRangeMul ?? (stance === 'ranged' || stance === 'support' ? 0.88 : 0.7);
   let minMul = override.comfortMinMul ?? (stance === 'ranged' || stance === 'support' ? 0.55 : 0.32);
   let maxMul = override.comfortMaxMul ?? (stance === 'ranged' || stance === 'support' ? 1.18 : 1.08);
@@ -200,6 +218,41 @@ export const kitProfileOf = (
     maxMul = 1.1;
     wantsInitiate = false;
     wantsPoke = true;
+  }
+  if (heroId === 'demon' && live) {
+    const form = live.demonForm ?? 'little';
+    const rage = live.rageRatio ?? 0;
+    const left = live.transformLeftMs ?? 0;
+    if (form === 'big') {
+      stance = 'melee';
+      preferredMul = left > 0 && left < 2200 ? 0.78 : 0.68;
+      minMul = left > 0 && left < 1800 ? 0.42 : 0.28;
+      maxMul = 1.08;
+      wantsInitiate = !(left > 0 && left < 1400) && (live.staminaRatio > 0.18);
+      wantsPoke = false;
+      override = { ...override, pressureBias: left < 1800 ? 0.7 : 0.92, wantsFlank: true, wantsProtect: true };
+    } else {
+      stance = 'ranged';
+      wantsInitiate = false;
+      wantsPoke = true;
+      if (rage > 0.86) {
+        preferredMul = 0.96;
+        minMul = 0.68;
+        maxMul = 1.22;
+      } else if (rage > 0.55) {
+        preferredMul = 0.92;
+        minMul = 0.62;
+        maxMul = 1.2;
+      } else {
+        preferredMul = 0.9;
+        minMul = 0.58;
+        maxMul = 1.2;
+      }
+      if (live.staminaRatio < 0.22 || form === 'transforming') {
+        preferredMul = Math.max(preferredMul, 0.98);
+        minMul = Math.max(minMul, 0.7);
+      }
+    }
   }
   return {
     heroId,

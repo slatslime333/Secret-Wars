@@ -15,6 +15,7 @@ import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT } from '../heroes/abilities/rope/tunab
 import { witchHexAllyRange } from '../heroes/abilities/witch/tunables';
 import { SHADOW_CLAW, SHADOW_DASH } from '../heroes/abilities/shadow/tunables';
 import { MENDER_ANGEL, MENDER_PULSE, MENDER_SOUL } from '../heroes/abilities/mender/tunables';
+import { DEMON_HELLFIRE } from '../heroes/abilities/demon/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { onCombatDamage, onCombatBlocked, isHeroFighter } from '../combat/damageEvents';
 import { BattleInput } from '../input/BattleInput';
@@ -787,6 +788,18 @@ export class MatchScene extends Phaser.Scene {
         MENDER_SOUL.dashDistance,
         true,
         ninja.stats.bodyRadius * 2 + 8,
+      );
+    } else if (ninja.heroId === 'demon' && frame.ability1Aiming) {
+      const len = Math.hypot(ninja.aim.x, ninja.aim.y) || 1;
+      const nx = ninja.aim.x / len;
+      const ny = ninja.aim.y / len;
+      this.marker.syncBallAim(
+        ninja.x + nx * DEMON_HELLFIRE.range,
+        ninja.y + ny * DEMON_HELLFIRE.range,
+        nx,
+        ny,
+        DEMON_HELLFIRE.radius,
+        true,
       );
     } else if (ninja.heroId === 'rope' && frame.ability1Aiming && !this.player.abilities.isBusy()) {
       this.marker.syncRopeGrabAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, ROPE_GRAB.range, true);

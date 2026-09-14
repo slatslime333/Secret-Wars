@@ -26,6 +26,7 @@ const scenarioClassMap = (): CheckResult => {
   const ok =
     HERO_DRAFT_CLASS.cole === 'frontliner' &&
     HERO_DRAFT_CLASS.shadow === 'frontliner' &&
+    HERO_DRAFT_CLASS.demon === 'frontliner' &&
     HERO_DRAFT_CLASS.ninja === 'support' &&
     HERO_DRAFT_CLASS.rope === 'support' &&
     HERO_DRAFT_CLASS.mender === 'support' &&
@@ -106,6 +107,12 @@ const scenarioMenderUniqueTeam = (): CheckResult => {
   };
 };
 
+const scenarioDemonDraft = (): CheckResult => {
+  const draft = randomizeDraft('demon', rngOf([0.2, 0.5, 0.8, 0.1, 0.9]));
+  const ok = draftIsValid(draft) && draft.playerId === 'demon' && !draft.enemies.includes('demon') && !draft.allies.includes('demon');
+  return { name: 'demon frontliner draft unique', ok, detail: `allies=${draft.allies.join(',')} enemies=${draft.enemies.join(',')}` };
+};
+
 export const runDraftChecks = (): CheckResult[] => [
   scenarioClassMap(),
   scenarioRandomUnique(),
@@ -113,4 +120,5 @@ export const runDraftChecks = (): CheckResult[] => [
   scenarioSpawnNeverSame(),
   scenarioPlaceUsesSpawn(),
   scenarioMenderUniqueTeam(),
+  scenarioDemonDraft(),
 ];

@@ -28,6 +28,9 @@ export const ABILITY_ICON = {
   guardianAngel: 'ability-icon-guardian-angel',
   soulDash: 'ability-icon-soul-dash',
   secondWind: 'ability-icon-second-wind',
+  hellfire: 'ability-icon-hellfire',
+  hellBat: 'ability-icon-hell-bat',
+  demonRage: 'ability-icon-demon-rage',
 } as const;
 
 const SIZE = 128;
@@ -56,6 +59,9 @@ export const ensureAbilityIcons = (scene: Phaser.Scene): void => {
   drawIfMissing(scene, ABILITY_ICON.guardianAngel, drawGuardianAngelIcon);
   drawIfMissing(scene, ABILITY_ICON.soulDash, drawSoulDashIcon);
   drawIfMissing(scene, ABILITY_ICON.secondWind, drawSecondWindIcon);
+  drawIfMissing(scene, ABILITY_ICON.hellfire, drawHellfireIcon);
+  drawIfMissing(scene, ABILITY_ICON.hellBat, drawHellBatIcon);
+  drawIfMissing(scene, ABILITY_ICON.demonRage, drawDemonRageIcon);
   drawIfMissing(scene, CONTROL_ICON.dash, drawDashIcon);
   drawIfMissing(scene, CONTROL_ICON.shield, drawShieldIcon);
 };
@@ -735,6 +741,104 @@ const drawSecondWindIcon = (ctx: CanvasRenderingContext2D, size: number): void =
   ctx.fillStyle = '#ffe878';
   ctx.beginPath();
   ctx.arc(c, c, 10, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+const drawHellfireIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = '#2a1008';
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ff4a10';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(c, c, 36, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = '#ffc030';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  const r = 28;
+  for (let i = 0; i <= 5; i += 1) {
+    const a = -Math.PI / 2 + (i * 4 * Math.PI) / 5;
+    const x = c + Math.cos(a) * r;
+    const y = c + Math.sin(a) * r;
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+  ctx.stroke();
+  ctx.fillStyle = '#f4ead0';
+  ctx.fillRect(c - 4, c + 6, 8, 16);
+  ctx.fillStyle = '#ff7a20';
+  ctx.beginPath();
+  ctx.ellipse(c, c + 2, 5, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+const drawHellBatIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ff4a10';
+  ctx.beginPath();
+  ctx.moveTo(c - 42, c + 8);
+  ctx.lineTo(c - 8, c - 6);
+  ctx.lineTo(c - 36, c - 22);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(c + 42, c + 8);
+  ctx.lineTo(c + 8, c - 6);
+  ctx.lineTo(c + 36, c - 22);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#8a1814';
+  ctx.beginPath();
+  ctx.ellipse(c, c - 2, 12, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffe050';
+  ctx.beginPath();
+  ctx.arc(c - 4, c - 4, 3, 0, Math.PI * 2);
+  ctx.arc(c + 4, c - 4, 3, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+const drawDemonRageIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = '#180808';
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#d03028';
+  ctx.beginPath();
+  ctx.ellipse(c, c + 10, 22, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#8a1814';
+  ctx.beginPath();
+  ctx.ellipse(c, c - 6, 16, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#3a2418';
+  ctx.beginPath();
+  ctx.moveTo(c - 14, c - 16);
+  ctx.lineTo(c - 6, c - 12);
+  ctx.lineTo(c - 28, c - 40);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(c + 14, c - 16);
+  ctx.lineTo(c + 6, c - 12);
+  ctx.lineTo(c + 28, c - 40);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#ffe050';
+  ctx.beginPath();
+  ctx.arc(c - 5, c - 8, 3, 0, Math.PI * 2);
+  ctx.arc(c + 5, c - 8, 3, 0, Math.PI * 2);
   ctx.fill();
 };
 

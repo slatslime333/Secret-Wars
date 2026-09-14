@@ -160,6 +160,9 @@ export type CombatantView = {
   blocking: boolean;
   abilityReady: boolean;
   dashCharges: number;
+  rageRatio?: number;
+  demonForm?: 'little' | 'transforming' | 'big' | 'bat';
+  transformLeftMs?: number;
 };
 
 export type UnitFact = CombatantView & {
