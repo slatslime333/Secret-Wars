@@ -15,6 +15,9 @@ import { pickRetreatGoal, type RetreatGoal } from './retreat';
 import { scanProjectileThreat } from './shots';
 import { GamePlanController } from './strategy';
 import { objectiveHintFor } from '../../match/objectives/board';
+import { scoreHintFor } from '../../match/scoreBoard';
+import { assessObjective } from './objectiveIntel';
+import { assessTeam } from './teamIntel';
 import type {
   CombatantView,
   GamePlan,
@@ -40,6 +43,12 @@ export type TacticalIntent = {
   commitUntil: number;
   hpAtCommit: number;
   enemyCountAtCommit: number;
+  objEnemyAtCommit: number;
+  objAllyAtCommit: number;
+  objSelfProgressAtCommit: number;
+  objEnemyProgressAtCommit: number;
+  objPresentAtCommit: boolean;
+  allyDangerAtCommit: boolean;
   goal?: RetreatGoal;
 };
 
@@ -115,6 +124,12 @@ export class TacticalMind {
       commitUntil: 0,
       hpAtCommit: 1,
       enemyCountAtCommit: 0,
+      objEnemyAtCommit: 0,
+      objAllyAtCommit: 0,
+      objSelfProgressAtCommit: 0,
+      objEnemyProgressAtCommit: 0,
+      objPresentAtCommit: false,
+      allyDangerAtCommit: false,
     };
     this.situation = {
       self: blankView(),
@@ -262,6 +277,14 @@ export class TacticalMind {
       commitUntil: now + this.commitMs(picked.action),
       hpAtCommit: selfFact.hpRatio,
       enemyCountAtCommit: this.lastEnemyCount,
+      objEnemyAtCommit: this.situation.objective?.occupyingEnemies ?? 0,
+      objAllyAtCommit: this.situation.objective?.occupyingAllies ?? 0,
+      objSelfProgressAtCommit: this.situation.objective?.selfProgress ?? 0,
+      objEnemyProgressAtCommit: this.situation.objective?.enemyProgress ?? 0,
+      objPresentAtCommit: Boolean(this.situation.objective),
+      allyDangerAtCommit: this.allies.some(
+        (ally) => ally.kind === 'hero' && ally.hpRatio < 0.32 && (ally.recentlyHit || ally.attacking),
+      ),
       goal: this.goalFor(picked.action, nextAlly),
     };
   }
@@ -269,6 +292,13 @@ export class TacticalMind {
   debugInfo(self: NinjaBody): TacticalDebugInfo {
     const target = this.target;
     const maxHp = Math.max(1, self.stats.maxHealth);
+    const team = assessTeam(this.situation);
+    const obj = assessObjective(this.situation);
+    const teamLine = team.allyInDanger
+      ? `${team.debug}  LOW HP ALLY`
+      : team.fightHandled
+        ? `${team.debug}  FIGHT HANDLED`
+        : team.debug;
     return {
       action: this.intent.action,
       targetLabel: labelOf(target),
@@ -286,6 +316,8 @@ export class TacticalMind {
       projectile: Boolean(this.situation.projectile?.willHit),
       regrouping: this.intent.action === 'regroup' || Boolean(this.director?.regrouping),
       savedUlt: Boolean(this.director?.savedUlt),
+      team: teamLine,
+      objective: obj?.debug,
     };
   }
 
@@ -410,6 +442,9 @@ export class TacticalMind {
     this.situation.now = now;
     this.situation.projectile = scanProjectileThreat(this.situation.self, this.personality, selfFact.ref.stats.bodyRadius);
     this.situation.objective = objectiveHintFor(selfFact.team);
+    const score = scoreHintFor(selfFact.team);
+    this.situation.teamScore = { self: score.self, enemy: score.enemy, lastKillAt: score.lastKillAt };
+    this.situation.teamMomentum = score.momentum;
     this.lastAllyCount = allyHeroes.length;
   }
 
@@ -473,6 +508,45 @@ export class TacticalMind {
       return true;
     }
     if (this.situation.lastSurvivor && AGGRESSIVE.has(intent.action) && intent.action !== 'finish_target') {
+      return true;
+    }
+    const live = objectiveHintFor(self.team);
+    if (Boolean(live) !== intent.objPresentAtCommit) {
+      return true;
+    }
+    if (live) {
+      const idleFarm =
+        intent.action === 'farm_minions' ||
+        intent.action === 'advance' ||
+        intent.action === 'search_for_target';
+      const freeish =
+        live.kind !== 'bounty_target' &&
+        live.occupyingEnemies === 0 &&
+        live.nearbyEnemies === 0 &&
+        !live.contested;
+      if (idleFarm && (live.urgency >= 0.62 || freeish)) {
+        return true;
+      }
+      if (Math.abs(live.selfProgress - intent.objSelfProgressAtCommit) >= 0.14) {
+        return true;
+      }
+      if (Math.abs(live.enemyProgress - intent.objEnemyProgressAtCommit) >= 0.12) {
+        return true;
+      }
+      if (live.occupyingEnemies !== intent.objEnemyAtCommit || live.occupyingAllies !== intent.objAllyAtCommit) {
+        return true;
+      }
+      if (live.contested && intent.action === 'farm_minions') {
+        return true;
+      }
+    }
+    const allyDanger = this.allies.some(
+      (ally) => ally.kind === 'hero' && ally.hpRatio < 0.3 && (ally.recentlyHit || ally.attacking),
+    );
+    if (allyDanger && !intent.allyDangerAtCommit && intent.action !== 'protect_ally' && intent.action !== 'assist_ally') {
+      return true;
+    }
+    if (this.lastEnemyCount + 1 <= intent.enemyCountAtCommit && intent.action === 'assist_ally' && live && live.occupyingEnemies === 0) {
       return true;
     }
     return false;

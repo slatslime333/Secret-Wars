@@ -214,10 +214,13 @@ const nextState = (situation: Situation, kit: KitProfile, opening: OpeningPlan, 
   if (situation.self.hpRatio < p.retreatHp || (situation.lastSurvivor && foes.length >= 2)) {
     return situation.self.hpRatio < 0.22 ? 'retreat' : 'recover';
   }
-  if (situation.isolated && allyHeroesOf(situation).length > 0 && (p.teamwork > 0.4 || situation.self.hpRatio < 0.55)) {
+  if (situation.isolated && allyHeroesOf(situation).length > 0 && (p.teamwork > 0.4 || situation.self.hpRatio < 0.55 || (situation.teamScore && situation.teamScore.self + 2 < situation.teamScore.enemy))) {
     return 'regroup';
   }
   if (foes.length === 0) {
+    if (situation.objective && situation.objective.urgency >= 0.58) {
+      return 'advance';
+    }
     if (prev === 'opening' && situation.now !== undefined && situation.plan && situation.now < situation.plan.until) {
       return 'opening';
     }

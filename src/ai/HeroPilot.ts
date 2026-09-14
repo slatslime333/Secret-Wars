@@ -110,7 +110,10 @@ export class HeroPilot {
     this.walk(now, body, scene);
     this.queueSwing(now, body, target, objective);
 
-    const inRange = target ? distance(body, target) <= body.stats.attackRange * 1.08 : false;
+    const smashRange = objectiveInHitRange(body, objective, this.mind.action);
+    const inRange = target
+      ? distance(body, target) <= body.stats.attackRange * 1.08
+      : smashRange;
     const held = now < this.holdUntil && inRange && body.canAttack(now) && this.mind.wantsAttack();
     const pressed = this.tapQueued && body.canAttack(now) && this.mind.wantsAttack();
     this.tapQueued = false;
@@ -131,15 +134,35 @@ export class HeroPilot {
     now: number,
     body: NinjaBody,
     target: NinjaBody | undefined,
-    _objective?: { kind: string; x: number; y: number; radius: number },
+    objective?: { kind: string; x: number; y: number; radius: number },
   ): void {
     if (!this.mind.wantsAttack() || !body.canAttack(now) || now < this.pauseUntil) {
       return;
     }
+    const smash = objectiveInHitRange(body, objective, this.mind.action);
     if (!target) {
+      if (!smash) {
+        return;
+      }
+      if (now < this.holdUntil) {
+        return;
+      }
+      const roll = Math.random();
+      this.tapQueued = roll > 0.5;
+      this.holdUntil = now + (this.tapQueued ? 90 : 130 + Math.random() * 120);
       return;
     }
-    if (distance(body, target) > body.stats.attackRange * 1.08) {
+    const targetReachable = distance(body, target) <= body.stats.attackRange * 1.08;
+    if (!targetReachable) {
+      if (!smash) {
+        return;
+      }
+      if (now < this.holdUntil) {
+        return;
+      }
+      const roll = Math.random();
+      this.tapQueued = roll > 0.5;
+      this.holdUntil = now + (this.tapQueued ? 90 : 130 + Math.random() * 120);
       return;
     }
     if (now < this.holdUntil) {
@@ -185,7 +208,14 @@ export class HeroPilot {
       this.mind.homeX,
       this.mind.homeY,
       target
-        ? { x: target.x, y: target.y, aimX: target.aim.x, aimY: target.aim.y }
+        ? {
+            x: target.x,
+            y: target.y,
+            aimX: target.aim.x,
+            aimY: target.aim.y,
+            vx: target.body?.velocity.x,
+            vy: target.body?.velocity.y,
+          }
         : undefined,
       ally ? { x: ally.x, y: ally.y, aimX: ally.aim.x, aimY: ally.aim.y } : undefined,
       this.mind.intent.flankSign,
@@ -225,6 +255,20 @@ export class HeroPilot {
 }
 
 const distance = (a: NinjaBody, b: NinjaBody): number => Math.hypot(a.x - b.x, a.y - b.y);
+
+const objectiveInHitRange = (
+  body: NinjaBody,
+  objective: { kind: string; x: number; y: number; radius: number } | undefined,
+  action: string,
+): boolean => {
+  if (!objective || action !== 'contest_objective') {
+    return false;
+  }
+  if (objective.kind !== 'golden_piggy' && objective.kind !== 'executioner') {
+    return false;
+  }
+  return Math.hypot(body.x - objective.x, body.y - objective.y) <= body.stats.attackRange + objective.radius + 10;
+};
 
 const isOpening = (now: number, self: NinjaBody, target: NinjaBody): boolean => {
   if (target.status.isBlockStunned(now) || target.status.isHitReacting(now)) {

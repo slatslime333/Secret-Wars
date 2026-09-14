@@ -24,6 +24,8 @@ export type MoveFocus = {
   y: number;
   aimX: number;
   aimY: number;
+  vx?: number;
+  vy?: number;
 };
 
 export type MoveHint = {
@@ -64,6 +66,48 @@ const preferredRange = (body: MoveBody, action: TacticalAction, hint?: MoveHint)
 };
 
 const laneYOf = (y: number): number => ARENA.laneY[nearestLane(y)];
+
+const isZoneKind = (kind: ObjectiveKind): boolean => kind === 'capture_zone' || kind === 'healing_shrine';
+
+const clampInCircle = (
+  x: number,
+  y: number,
+  cx: number,
+  cy: number,
+  radius: number,
+): { x: number; y: number } => {
+  const dx = x - cx;
+  const dy = y - cy;
+  const d = Math.hypot(dx, dy);
+  if (d <= radius || d < 1) {
+    return { x, y };
+  }
+  return { x: cx + (dx / d) * radius, y: cy + (dy / d) * radius };
+};
+
+const standInZone = (
+  body: MoveBody,
+  obj: NonNullable<MoveHint['objective']>,
+  target: MoveFocus | undefined,
+  flankSign: number,
+  ranged: boolean,
+  slot: number,
+): { x: number; y: number; halt: boolean } => {
+  const inner = obj.radius * (ranged ? 0.62 : 0.42);
+  let gx = obj.x + flankSign * 14;
+  let gy = obj.y + (slot % 2 === 0 ? 12 : -12);
+  if (target) {
+    const tx = target.x - obj.x;
+    const ty = target.y - obj.y;
+    const tlen = Math.hypot(tx, ty) || 1;
+    const pull = Math.min(inner, tlen * 0.5);
+    gx = obj.x + (tx / tlen) * pull;
+    gy = obj.y + (ty / tlen) * pull;
+  }
+  const clamped = clampInCircle(gx, gy, obj.x, obj.y, inner);
+  const gap = Math.hypot(clamped.x - body.x, clamped.y - body.y);
+  return { x: clamped.x, y: clamped.y, halt: gap < 20 };
+};
 
 const idleAnchor = (body: MoveBody, now: number, slot: number, hint?: MoveHint): { x: number; y: number } => {
   if (hint?.anchorX !== undefined && hint.anchorY !== undefined) {
@@ -130,24 +174,9 @@ export const moveGoal = (
     const ranged = isRangedMove(body, hint);
     const support = hint.stance === 'support';
     const aim = target ? aimTo(target.x, target.y) : aimTo(obj.x, obj.y);
-    if (obj.kind === 'capture_zone' || obj.kind === 'healing_shrine') {
-      if (ranged) {
-        const gx = obj.x + -flankSign * obj.radius * 0.72;
-        const gy = obj.y + (slot % 2 === 0 ? 1 : -1) * obj.radius * 0.28;
-        const gap = Math.hypot(gx - body.x, gy - body.y);
-        return { x: gx, y: gy, halt: gap < 28, ...aim };
-      }
-      if (support && ally) {
-        const gx = ally.x * 0.65 + obj.x * 0.35;
-        const gy = ally.y * 0.65 + obj.y * 0.35;
-        const gap = Math.hypot(gx - body.x, gy - body.y);
-        return { x: gx, y: gy, halt: gap < 24, ...aim };
-      }
-      const offset = 18 * flankSign;
-      const gx = obj.x + (ranged ? 0 : offset * 0.4);
-      const gy = obj.y + offset;
-      const gap = Math.hypot(gx - body.x, gy - body.y);
-      return { x: gx, y: gy, halt: gap < obj.radius * 0.28, ...aim };
+    if (isZoneKind(obj.kind)) {
+      const stand = standInZone(body, obj, target, flankSign, ranged || support, slot);
+      return { ...stand, ...aim };
     }
     if (obj.kind === 'bounty_target') {
       const huntX = obj.huntX ?? obj.x;
@@ -179,22 +208,30 @@ export const moveGoal = (
       const gap = Math.hypot(toX, toY) || 1;
       const stand = preferredRange(body, action, hint);
       return {
-        x: huntX - (toX / gap) * stand + - (toY / gap) * 20 * flankSign,
+        x: huntX - (toX / gap) * stand + -(toY / gap) * 20 * flankSign,
         y: huntY - (toY / gap) * stand + (toX / gap) * 20 * flankSign,
         halt: Math.abs(gap - stand) < 18,
         ...aimTo(huntX, huntY),
       };
     }
     const range = preferredRange(body, action, hint);
-    const toX = obj.x - body.x;
-    const toY = obj.y - body.y;
-    const gap = Math.hypot(toX, toY) || 1;
-    const nx = toX / gap;
-    const ny = toY / gap;
+    const destX = obj.x;
+    const destY = obj.y;
+    const dx = destX - body.x;
+    const dy = destY - body.y;
+    const gap = Math.hypot(dx, dy) || 1;
+    const nx = dx / gap;
+    const ny = dy / gap;
     const stand = obj.radius + range * (ranged ? 0.85 : 0.55);
+    let gx = destX - nx * stand + -ny * 22 * flankSign;
+    let gy = destY - ny * stand + nx * 22 * flankSign;
+    if (target && Math.hypot(target.x - destX, target.y - destY) < obj.radius + 140) {
+      gx += -ny * 18 * flankSign;
+      gy += nx * 18 * flankSign;
+    }
     return {
-      x: obj.x - nx * stand + -ny * 22 * flankSign,
-      y: obj.y - ny * stand + nx * 22 * flankSign,
+      x: gx,
+      y: gy,
       halt: Math.abs(gap - stand) < 16,
       ...aim,
     };
@@ -213,6 +250,20 @@ export const moveGoal = (
   const toY = target.y - body.y;
   const gap = Math.hypot(toX, toY) || 1;
   const ranged = isRangedMove(body, hint);
+
+  if (
+    hint?.objective &&
+    isZoneKind(hint.objective.kind) &&
+    (action === 'attack' || action === 'assist_ally' || action === 'finish_target' || action === 'flank')
+  ) {
+    const obj = hint.objective;
+    const targetNear = Math.hypot(target.x - obj.x, target.y - obj.y) < obj.radius + 100;
+    const selfNear = Math.hypot(body.x - obj.x, body.y - obj.y) < obj.radius + 170;
+    if (targetNear && selfNear) {
+      const stand = standInZone(body, obj, target, flankSign, ranged, slot);
+      return { ...stand, ...aimTo(target.x, target.y) };
+    }
+  }
 
   if (action === 'wait_for_opening' || action === 'hold_position') {
     const nx = toX / gap;
@@ -258,8 +309,23 @@ export const moveGoal = (
   }
 
   if (action === 'intercept') {
-    const gx = target.x + target.aimX * 36;
-    const gy = target.y + target.aimY * 36;
+    const obj = hint?.objective;
+    const vx = target.vx ?? target.aimX * 90;
+    const vy = target.vy ?? target.aimY * 90;
+    if (obj && obj.kind !== 'bounty_target') {
+      const toObjX = obj.x - target.x;
+      const toObjY = obj.y - target.y;
+      const toObj = Math.hypot(toObjX, toObjY) || 1;
+      const closing = (vx * toObjX + vy * toObjY) / (Math.max(18, Math.hypot(vx, vy)) * toObj);
+      if (closing > 0.2 && toObj > obj.radius) {
+        const lead = Math.min(toObj * 0.55, 220);
+        const gx = target.x + (toObjX / toObj) * lead;
+        const gy = target.y + (toObjY / toObj) * lead;
+        return { x: gx, y: gy, halt: false, ...aimTo(gx, gy) };
+      }
+    }
+    const gx = target.x + vx * 0.28;
+    const gy = target.y + vy * 0.28;
     const aim = aimTo(gx, gy);
     return { x: gx, y: gy, halt: false, ...aim };
   }

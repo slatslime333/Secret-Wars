@@ -39,6 +39,12 @@ export class TacticalOverlay {
         `rng ${info.preferredRange}${info.savedUlt ? '  saveUlt' : ''}  ${info.hp}`,
         info.reason,
       ];
+      if (info.team) {
+        lines.push(info.team);
+      }
+      if (info.objective) {
+        lines.push(info.objective);
+      }
       const text = this.scene.add
         .text(subject.x, subject.y - 34, lines.join('\n'), {
           fontFamily: 'monospace',
