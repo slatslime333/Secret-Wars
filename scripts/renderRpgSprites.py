@@ -173,6 +173,35 @@ def helmet(
     c.put(cx + 4, y0 + 6, edge)
 
 
+def side_helmet(
+    c: Pix,
+    cx: int,
+    y0: int,
+    fill: Color,
+    edge: Color,
+    shine: Color | None = None,
+) -> None:
+    """True side head — 7px, same language as Witch east."""
+    c.span(cx - 2, cx + 2, y0, fill)
+    c.put(cx - 3, y0, edge)
+    c.put(cx + 3, y0, edge)
+    if shine is not None:
+        c.span(cx - 1, cx + 1, y0, shine)
+    for y in range(y0 + 1, y0 + 6):
+        c.span(cx - 3, cx + 3, y, fill)
+        c.put(cx - 3, y, edge)
+        c.put(cx + 3, y, edge)
+    c.span(cx - 2, cx + 2, y0 + 6, fill)
+    c.put(cx - 2, y0 + 6, edge)
+    c.put(cx + 2, y0 + 6, edge)
+
+
+def side_torso(c: Pix, cx: int, fy: int, fill: Color, lite: Color | None = None) -> None:
+    c.fill(cx - 2, fy - 14, 5, 6, fill)
+    if lite is not None:
+        c.fill(cx - 1, fy - 13, 3, 2, lite)
+
+
 def slim_legs(
     c: Pix,
     cx: int,
@@ -536,11 +565,11 @@ def ninja_east(d: str, pose: Pose) -> Pix:
     p = NINJA
     cx, fy = 24 + pose.lean, 41 + pose.bob
     slim_legs(c, cx, fy, pose, "east", p["suit"], p["d"])
-    boy_torso(c, cx, fy, p["suit"], p["lite"])
+    side_torso(c, cx, fy, p["suit"], p["lite"])
     hy = fy - 23
-    helmet(c, cx, hy, p["suit"], p["lite"], p["lite"])
-    c.span(cx - 4, cx + 4, hy + 2, TEAM)
-    c.fill(cx - 8, hy + 1, 3, 2, TEAM)
+    side_helmet(c, cx, hy, p["suit"], p["lite"], p["lite"])
+    c.span(cx - 3, cx + 3, hy + 2, TEAM)
+    c.fill(cx - 7, hy + 1, 3, 2, TEAM)
     c.put(cx + 2, hy + 5, C(255, 252, 255))
     c.put(cx + 3, hy + 5, p["eye"])
     c.put(cx + 1, hy + 7, p["skin"])
@@ -598,15 +627,13 @@ def cole_east(d: str, pose: Pose) -> Pix:
     p = COLE
     cx, fy = 24 + pose.lean, 41 + pose.bob
     slim_legs(c, cx, fy, pose, "east", p["pants"], p["stripe"])
-    c.fill(cx - 3, fy - 14, 7, 6, p["hood"])
-    c.fill(cx - 3, fy - 12, 1, 4, p["stripe"])
-    c.fill(cx + 3, fy - 12, 1, 4, p["stripe"])
+    c.fill(cx - 2, fy - 14, 5, 6, p["hood"])
+    c.put(cx - 2, fy - 12, p["stripe"])
+    c.put(cx + 2, fy - 12, p["stripe"])
     c.fill(cx - 1, fy - 13, 3, 4, p["shirt"])
     hy = fy - 23
-    helmet(c, cx, hy, p["hood"], p["hoodD"])
-    c.fill(cx - 2, hy + 3, 5, 4, p["skin"])
-    c.span(cx - 3, cx + 3, hy, p["hair"])
-    c.span(cx - 4, cx + 3, hy + 1, p["hair"])
+    side_helmet(c, cx, hy, p["hair"], p["hair"])
+    c.fill(cx, hy + 3, 4, 4, p["skin"])
     c.put(cx + 2, hy + 5, p["eye"])
     c.put(cx + 4, fy - 12, p["skin"])
     c.put(cx + 5, fy - 14 + pose.swing // 2, p["bolt"])
@@ -665,9 +692,9 @@ def death_east(d: str, pose: Pose) -> Pix:
     p = DEATH
     cx, fy = 24 + pose.lean, 41 + pose.bob
     slim_legs(c, cx, fy, pose, "east", p["cloth"], p["wrap"])
-    boy_torso(c, cx, fy, p["cloth"], p["clothL"])
+    side_torso(c, cx, fy, p["cloth"], p["clothL"])
     hy = fy - 23
-    helmet(c, cx, hy, p["wrap"], p["clothL"], p["cloth"])
+    side_helmet(c, cx, hy, p["wrap"], p["clothL"], p["cloth"])
     c.put(cx + 2, hy + 5, C(255, 252, 255))
     c.put(cx + 3, hy + 5, p["eye"])
     hx = cx + 5 + pose.swing
@@ -726,9 +753,9 @@ def shadow_east(d: str, pose: Pose) -> Pix:
     slim_legs(c, cx, fy, pose, "east", p["skin"], p["hair"])
     girl_hourglass(c, cx, fy, p["shirt"], p["hair"], p["skinD"], p["skirt"], p["hair"])
     hy = fy - 23
-    helmet(c, cx, hy, p["hair"], p["hair"], p["hairL"])
-    round_bun(c, cx + 5, hy + 1, p["hair"])
-    c.fill(cx, hy + 3, 4, 4, p["skin"])
+    side_helmet(c, cx, hy, p["hair"], p["hair"], p["hairL"])
+    round_bun(c, cx + 3, hy + 1, p["hair"])
+    c.fill(cx, hy + 3, 3, 4, p["skin"])
     c.put(cx + 2, hy + 5, C(255, 252, 255))
     c.put(cx + 3, hy + 5, p["eye"])
     c.put(cx + 2, hy + 7, p["blush"])
@@ -788,9 +815,9 @@ def rope_east(d: str, pose: Pose) -> Pix:
     c = Pix()
     cx, fy = 24 + pose.lean, 41 + pose.bob
     slim_wrap_legs(c, cx, fy, pose, "east")
-    wrap_fill(c, cx - 3, fy - 14, 7, 6)
+    wrap_fill(c, cx - 2, fy - 14, 5, 6)
     hy = fy - 23
-    wrap_helmet(c, cx, hy)
+    wrap_side_helmet(c, cx, hy)
     c.put(cx + 2, hy + 4, ROPE["eye"])
     c.put(cx + 2, hy + 5, ROPE["eye"])
     c.put(cx + 3, hy + 4, ROPE["ink"])
@@ -821,6 +848,19 @@ def wrap_helmet(c: Pix, cx: int, y0: int) -> None:
     for y in range(y0 + 2, y0 + 6):
         row(cx - 5, cx + 5, y)
     row(cx - 4, cx + 4, y0 + 6)
+
+
+def wrap_side_helmet(c: Pix, cx: int, y0: int) -> None:
+    def row(x0: int, x1: int, y: int) -> None:
+        for x in range(x0, x1 + 1):
+            wrap_put(c, x, y)
+
+    row(cx - 2, cx + 2, y0)
+    wrap_put(c, cx - 3, y0)
+    wrap_put(c, cx + 3, y0)
+    for y in range(y0 + 1, y0 + 6):
+        row(cx - 3, cx + 3, y)
+    row(cx - 2, cx + 2, y0 + 6)
 
 
 def rope(d: str, pose: Pose) -> Pix:
