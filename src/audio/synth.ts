@@ -180,6 +180,19 @@ export function synthesize(ctx: AudioContext, dest: AudioNode, id: SoundId): voi
         { kind: 'sine', freq: 880, duration: 0.1, gain: 0.1, delay: 0.06 },
       ]);
       return;
+    case 'crate-hit':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: v(210, 24), duration: 0.05, gain: 0.1 },
+        { kind: 'noise', freq: 0, duration: 0.03, gain: 0.05 },
+      ]);
+      return;
+    case 'crate-break':
+      playRecipe(ctx, dest, [
+        { kind: 'noise', freq: 0, duration: 0.1, gain: 0.09 },
+        { kind: 'triangle', freq: 180, endFreq: 70, duration: 0.16, gain: 0.14 },
+        { kind: 'square', freq: 140, duration: 0.06, gain: 0.05, delay: 0.03 },
+      ]);
+      return;
     case 'ui-level-up':
       playRecipe(ctx, dest, [
         { kind: 'sine', freq: 523, duration: 0.1, gain: 0.15 },

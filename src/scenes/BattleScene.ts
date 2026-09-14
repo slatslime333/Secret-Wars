@@ -134,6 +134,14 @@ export class BattleScene extends Phaser.Scene {
     });
     this.battlefield.attachMover(this.ninja.sprite);
     this.progression = new Progression(this.ninja);
+    this.battlefield.configureCrates({
+      heroes: () => (this.rival ? [this.ninja, this.rival] : [this.ninja]),
+      grantXp: (body, amount) => {
+        if (body === this.ninja) {
+          this.progression.grantXp(amount);
+        }
+      },
+    });
     this.sandboxStats = new CombatStatsTracker();
     this.sandboxStats.register(this.ninja, { instanceId: 'playtest-player', player: true });
     this.offDamage = onCombatDamage((event) => this.sandboxStats.recordDamage(event));
@@ -299,6 +307,7 @@ export class BattleScene extends Phaser.Scene {
     }
     this.ninja.syncView();
     this.rival?.syncView();
+    this.battlefield?.update(now, delta);
     this.syncMinimap();
     const everyone = this.allCombatants();
     if (this.rival && this.rivalBlock) {

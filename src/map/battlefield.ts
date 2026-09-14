@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { MapDebugOverlay } from './debug';
+import { CrateWorld, type CrateHooks } from './CrateWorld';
 import { generateBattlefield } from './generate';
 import { MapQuery } from './query';
 import { renderMapLayout, type MapView } from './render';
@@ -17,9 +18,11 @@ export class Battlefield {
   layout: MapLayout;
   query: MapQuery;
   world: MapWorld;
+  crates: CrateWorld;
   result: GenerateResult;
   private view: MapView;
   readonly debug: MapDebugOverlay;
+  private hooks: CrateHooks = { heroes: () => [] };
 
   private constructor(
     private readonly scene: Phaser.Scene,
@@ -30,6 +33,7 @@ export class Battlefield {
     this.query = new MapQuery(result.layout);
     this.world = new MapWorld(scene, result.layout);
     this.view = renderMapLayout(scene, result.layout);
+    this.crates = new CrateWorld(scene, this.world, this.view);
     this.debug = new MapDebugOverlay(scene, result.layout);
     (scene as BattlefieldHost).battlefield = this;
   }
@@ -40,6 +44,11 @@ export class Battlefield {
     return new Battlefield(scene, result);
   }
 
+  configureCrates(hooks: CrateHooks): void {
+    this.hooks = hooks;
+    this.crates.configure(hooks);
+  }
+
   attachMover(sprite: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.GameObjects.GameObject): void {
     this.world.attachMover(sprite);
   }
@@ -48,8 +57,13 @@ export class Battlefield {
     this.world.attachGroup(group);
   }
 
+  update(now: number, delta: number): void {
+    this.crates.update(now, delta);
+  }
+
   regenerate(seed: number): GenerateResult {
     const debugOn = this.debug.visible;
+    this.crates.destroy();
     this.world.destroy();
     this.view.destroy();
     this.result = generateBattlefield({ seed, log: true });
@@ -57,12 +71,15 @@ export class Battlefield {
     this.query = new MapQuery(this.layout);
     this.world = new MapWorld(this.scene, this.layout);
     this.view = renderMapLayout(this.scene, this.layout);
+    this.crates = new CrateWorld(this.scene, this.world, this.view);
+    this.crates.configure(this.hooks);
     this.debug.setLayout(this.layout);
     this.debug.setVisible(debugOn);
     return this.result;
   }
 
   destroy(): void {
+    this.crates.destroy();
     this.debug.destroy();
     this.view.destroy();
     this.world.destroy();

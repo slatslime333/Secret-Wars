@@ -1,28 +1,11 @@
-import { ARENA, LANES } from '../config/arena';
-import type { TeamId } from '../config/hero';
+import { ARENA } from '../config/arena';
 import { MAP, chunkSize, mapPlayable } from './config';
 import { templateOf } from './chunks';
-import type { ChunkKind, MapChunkInstance, MapDecoration, MapLayout, MapObstacle, MapRegionId, Rect, SpawnZone } from './types';
+import { generateRoads } from './roads';
+import { buildReservedZones, reservedBlocks, spawnZonesOf } from './reserved';
+import { visualForProp } from './scale';
+import type { ChunkKind, MapChunkInstance, MapDecoration, MapLayout, MapObstacle, MapRegionId, Rect } from './types';
 import { largestOpenRects, scoreLayout, validateLayout } from './validate';
-
-const fallbackSpawns = (): SpawnZone[] => {
-  const zones: SpawnZone[] = [];
-  for (const team of ['alpha', 'bravo'] as TeamId[]) {
-    for (const lane of LANES) {
-      const hero = ARENA.laneSpawns[team][lane];
-      zones.push({ team, role: 'hero', lane, x: hero.x, y: hero.y, radius: MAP.spawnHeroRadius });
-      zones.push({
-        team,
-        role: 'minion',
-        lane,
-        x: ARENA.minionSpawnX[team],
-        y: ARENA.laneY[lane],
-        radius: MAP.spawnMinionRadius,
-      });
-    }
-  }
-  return zones;
-};
 
 const regionRects = (playable: Rect): Record<MapRegionId, Rect> => {
   const h = playable.h / 3;
@@ -36,7 +19,7 @@ const regionRects = (playable: Rect): Record<MapRegionId, Rect> => {
 const PLAN: ChunkKind[][] = [
   ['OPEN_FIELD', 'SCATTERED_COVER', 'WIDE_PATH', 'SCATTERED_COVER', 'OPEN_FIELD'],
   ['WIDE_PATH', 'TWIN_WALLS', 'OPEN_FIELD', 'TWIN_WALLS', 'WIDE_PATH'],
-  ['OPEN_FIELD', 'FOREST', 'WIDE_PATH', 'FOREST', 'OPEN_FIELD'],
+  ['OPEN_FIELD', 'ROCK_CLUSTER', 'WIDE_PATH', 'ROCK_CLUSTER', 'OPEN_FIELD'],
 ];
 
 /**
@@ -46,6 +29,8 @@ const PLAN: ChunkKind[][] = [
 export const buildFallbackLayout = (seed: number, attempt: number): MapLayout => {
   const playable = mapPlayable();
   const size = chunkSize();
+  const zones = spawnZonesOf();
+  const reserved = buildReservedZones(playable, zones);
   const chunks: MapChunkInstance[] = [];
   const obstacles: MapObstacle[] = [];
   const decorations: MapDecoration[] = [];
@@ -70,21 +55,25 @@ export const buildFallbackLayout = (seed: number, attempt: number): MapLayout =>
         if (col === 0 || col === 4) {
           continue;
         }
+        const collision = { x: cx - local.spec.w / 2, y: cy - local.spec.h / 2, w: local.spec.w, h: local.spec.h };
+        if (reservedBlocks(collision, reserved, 2)) {
+          continue;
+        }
+        const visual = visualForProp(local.spec, cx, cy);
         obstacles.push({
           id: `fb-${col}-${row}-${n}`,
           kind: local.kind,
           variant: local.variant,
           x: cx,
           y: cy,
-          collision: { x: cx - local.w / 2, y: cy - local.h / 2, w: local.w, h: local.h },
-          visual:
-            local.kind === 'tree'
-              ? { x: cx - 13, y: cy - 22, w: 26, h: 30 }
-              : { x: cx - local.w / 2, y: cy - local.h / 2, w: local.w, h: local.h },
+          collision,
+          visual,
+          keepout: visual,
           blocksMovement: true,
-          blocksProjectiles: true,
-          blocksLos: true,
+          blocksProjectiles: local.kind !== 'fence',
+          blocksLos: local.kind === 'wall' || local.kind === 'vehicle' || local.kind === 'building',
           destructible: local.kind === 'crate',
+          hierarchy: local.kind === 'vehicle' || local.kind === 'building' ? 'landmark' : 'cover',
         });
         n += 1;
       }
@@ -121,8 +110,10 @@ export const buildFallbackLayout = (seed: number, attempt: number): MapLayout =>
     regions: regionRects(playable),
     chunks,
     obstacles,
-    spawnZones: fallbackSpawns(),
+    spawnZones: zones,
     decorations,
+    roads: generateRoads(playable, seed),
+    reserved,
     routes: [
       {
         id: 'direct',

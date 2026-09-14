@@ -3,6 +3,7 @@ import { ARENA } from '../config/arena';
 import { COLORS } from '../ui/theme';
 import { SeededRNG } from './seed';
 import type { MapLayout } from './types';
+import { drawRoadNetwork } from './drawRoads';
 
 const GRASS_KEY = 'sw-pixel-grass-v3';
 const TILE = 512;
@@ -233,7 +234,7 @@ const scatterFlowers = (graphics: Phaser.GameObjects.Graphics, layout: MapLayout
     for (let x = wall; x < ARENA.width - wall; x += step) {
       const jitterX = x + rng.int(-22, 22);
       const jitterY = y + rng.int(-22, 22);
-      if (!rng.chance(0.16) || inKeepout(layout, jitterX, jitterY)) {
+      if (!rng.chance(0.1) || inKeepout(layout, jitterX, jitterY)) {
         continue;
       }
       const color = rng.pick(FLOWER_COLORS);
@@ -288,6 +289,42 @@ const drawDecorations = (graphics: Phaser.GameObjects.Graphics, layout: MapLayou
       graphics.fillStyle(GRASS.bladeTip, 1);
       graphics.fillRect(mark.x, mark.y - 1, 1, 1);
       graphics.fillRect(mark.x + 2, mark.y, 1, 1);
+      continue;
+    }
+    if (mark.kind === 'debris') {
+      graphics.fillStyle(0x5a5348, 1);
+      graphics.fillRect(mark.x - 4, mark.y - 2, 7 + mark.variant, 4);
+      graphics.fillStyle(0x3a3428, 1);
+      graphics.fillRect(mark.x + 2, mark.y, 5, 3);
+      continue;
+    }
+    if (mark.kind === 'burn') {
+      graphics.fillStyle(0x2a1c14, 0.7);
+      graphics.fillRect(mark.x - 10, mark.y - 6, 22, 14);
+      graphics.fillStyle(0x3a2818, 0.5);
+      graphics.fillRect(mark.x - 4, mark.y - 2, 12, 8);
+      continue;
+    }
+    if (mark.kind === 'sign') {
+      graphics.fillStyle(0x1a1208, 1);
+      graphics.fillRect(mark.x, mark.y - 14, 3, 18);
+      graphics.fillStyle(0x8a5a2c, 1);
+      graphics.fillRect(mark.x - 8, mark.y - 22, 18, 10);
+      graphics.fillStyle(0xc48a40, 1);
+      graphics.fillRect(mark.x - 6, mark.y - 20, 14, 6);
+      continue;
+    }
+    if (mark.kind === 'grassCrack') {
+      graphics.fillStyle(GRASS.blade, 1);
+      graphics.fillRect(mark.x, mark.y, 1, 4);
+      graphics.fillRect(mark.x + 2, mark.y + 1, 1, 3);
+      graphics.fillStyle(0x5a4e38, 1);
+      graphics.fillRect(mark.x - 3, mark.y + 3, 9, 2);
+      continue;
+    }
+    if (mark.kind === 'curbBit') {
+      graphics.fillStyle(0x8a9086, 1);
+      graphics.fillRect(mark.x, mark.y, 8, 3);
     }
   }
 };
@@ -321,6 +358,7 @@ export const createCalmGround = (scene: Phaser.Scene, layout: MapLayout): Ground
   tile.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
 
   const overlay = scene.add.graphics().setDepth(1);
+  drawRoadNetwork(overlay, layout);
   drawDecorations(overlay, layout);
   drawMidfieldDust(overlay, layout);
   scatterWorldTufts(overlay, layout);

@@ -1,9 +1,10 @@
 import { runTacticalScenarios } from './scenarios';
 import { runObjectiveChecks } from '../../match/objectives/runChecks';
 import { runDraftChecks } from '../../draft/runChecks';
+import { runMapChecks } from '../../map/runChecks';
 import { moveGoal } from './move';
 import { smashBatHits, smashHitsTarget } from '../../heroes/abilities/death/smashHit';
-import { atFarEdge, roamHuntPoint } from '../../config/arena';
+import { atFarEdge, roamHuntPoint, ARENA } from '../../config/arena';
 import { kitProfileOf } from './kitProfile';
 import { personalityFromSeed } from './personality';
 import { pickOpeningForTest } from './strategy';
@@ -33,19 +34,19 @@ if (!smashAhead || !smashHandle || smashSide || smashBehind || !smashSwept) {
 }
 
 const body = {
-  x: 2040,
-  y: 640,
+  x: ARENA.width - 80,
+  y: ARENA.laneY.mid,
   team: 'alpha' as const,
   attackRange: 70,
   role: 'frontliner',
   kind: 'hero' as const,
 };
-const hunt = moveGoal('search_for_target', body, 4000, 220, 640);
-const expected = roamHuntPoint('alpha', 640, Math.floor(4000 / 1800));
+const hunt = moveGoal('search_for_target', body, 4000, 220, ARENA.laneY.mid);
+const expected = roamHuntPoint('alpha', ARENA.laneY.mid, Math.floor(4000 / 1800));
 const huntOk =
   atFarEdge('alpha', body.x) &&
   Math.hypot(hunt.x - expected.x, hunt.y - expected.y) < 1 &&
-  hunt.x < 1600;
+  hunt.x < ARENA.width * 0.7;
 if (!huntOk) {
   failed += 1;
   console.log(`FAIL  far-edge roam  dest=(${hunt.x.toFixed(0)},${hunt.y.toFixed(0)}) halt=${hunt.halt}`);
@@ -97,9 +98,19 @@ for (const result of draftChecks) {
   console.log(`${mark}  ${result.name}  ${result.detail}`);
 }
 
+const mapChecks = runMapChecks();
+for (const result of mapChecks) {
+  const mark = result.ok ? 'ok' : 'FAIL';
+  if (!result.ok) {
+    failed += 1;
+  }
+  console.log(`${mark}  ${result.name}  ${result.detail}`);
+}
+
 if (failed > 0) {
   throw new Error(`${failed} tactical scenario(s) failed`);
 }
 console.log(`\n${results.length} tactical scenarios passed`);
 console.log(`${objectiveChecks.length} objective checks passed`);
 console.log(`${draftChecks.length} draft checks passed`);
+console.log(`${mapChecks.length} map checks passed`);

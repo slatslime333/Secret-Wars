@@ -1,4 +1,4 @@
-import { atFarEdge } from '../../config/arena';
+import { ARENA, atFarEdge } from '../../config/arena';
 import { TACTIC } from './constants';
 import { isRangedLike } from './kitProfile';
 import { assessObjective, isZoneObjective } from './objectiveIntel';
@@ -381,7 +381,7 @@ const movingToward = (from: CombatantView, toX: number, toY: number): boolean =>
 };
 
 const retreatingFrom = (enemy: CombatantView, self: CombatantView, homeX: number): boolean => {
-  const away = movingToward(enemy, homeX > 1100 ? 1980 : 220, enemy.y) || movingToward(enemy, enemy.x + (enemy.x - self.x), enemy.y + (enemy.y - self.y));
+  const away = movingToward(enemy, homeX > ARENA.width / 2 ? ARENA.teamSpawnX.bravo : ARENA.teamSpawnX.alpha, enemy.y) || movingToward(enemy, enemy.x + (enemy.x - self.x), enemy.y + (enemy.y - self.y));
   const speed = Math.hypot(enemy.vx, enemy.vy);
   if (speed < 20) {
     return false;

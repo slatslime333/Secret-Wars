@@ -1,12 +1,24 @@
-import { ARENA, LANES } from '../config/arena';
-import type { TeamId } from '../config/hero';
+import { ARENA } from '../config/arena';
+import { CRATE } from '../config/crate';
 import { APPROACH_KINDS, CENTER_KINDS, SPAWN_KINDS, templateOf, type ChunkTemplate } from './chunks';
+import {
+  COVER_CLUSTERS,
+  EDGE_CLUSTERS,
+  plantCratesBeside,
+  stampCluster,
+  templateById,
+  type ClusterId,
+} from './clusters';
 import { MAP, chunkSize, mapPlayable } from './config';
 import { buildFallbackLayout } from './fallback';
 import { inflate, rectsOverlap } from './geometry';
+import { generateRoads } from './roads';
+import { buildReservedZones, reservedBlocks, spawnZonesOf } from './reserved';
+import { visualForProp } from './scale';
 import { SeededRNG } from './seed';
 import type {
   ChunkKind,
+  EnvHierarchy,
   GenerateOptions,
   GenerateResult,
   MapChunkInstance,
@@ -16,6 +28,7 @@ import type {
   MapRegionId,
   MapRoute,
   Rect,
+  ReservedZone,
   SpawnZone,
 } from './types';
 import { acceptLayout, largestOpenRects, scoreLayout, validateLayout } from './validate';
@@ -40,61 +53,28 @@ const chunkRect = (col: number, row: number, playable: Rect, size: { w: number; 
   h: size.h,
 });
 
-const spawnZones = (): SpawnZone[] => {
-  const zones: SpawnZone[] = [];
-  for (const team of ['alpha', 'bravo'] as TeamId[]) {
-    for (const lane of LANES) {
-      const hero = ARENA.laneSpawns[team][lane];
-      zones.push({
-        team,
-        role: 'hero',
-        lane,
-        x: hero.x,
-        y: hero.y,
-        radius: MAP.spawnHeroRadius,
-      });
-      zones.push({
-        team,
-        role: 'minion',
-        lane,
-        x: ARENA.minionSpawnX[team],
-        y: ARENA.laneY[lane],
-        radius: MAP.spawnMinionRadius,
-      });
-    }
+const hierarchyOf = (kind: MapObstacle['kind']): EnvHierarchy => {
+  if (kind === 'building' || kind === 'vehicle') {
+    return 'landmark';
   }
-  return zones;
+  if (kind === 'crate' || kind === 'barricade' || kind === 'sandbag' || kind === 'fence' || kind === 'wall' || kind === 'rubble' || kind === 'tree') {
+    return 'cover';
+  }
+  return 'detail';
 };
 
-const inExclusion = (x: number, y: number, w: number, h: number, zones: SpawnZone[]): boolean => {
-  const rect = { x: x - w / 2, y: y - h / 2, w, h };
-  return zones.some((zone) => {
-    const nearestX = Math.max(rect.x, Math.min(zone.x, rect.x + rect.w));
-    const nearestY = Math.max(rect.y, Math.min(zone.y, rect.y + rect.h));
-    return Math.hypot(zone.x - nearestX, zone.y - nearestY) < zone.radius;
-  });
-};
-
-const visualFor = (kind: MapObstacle['kind'], variant: string, cx: number, cy: number, w: number, h: number): Rect => {
-  if (kind === 'tree') {
-    const vw = variant === 'broad' ? 30 : variant === 'medium' ? 26 : 22;
-    const vh = variant === 'broad' ? 28 : variant === 'medium' ? 32 : 28;
-    return { x: cx - vw / 2, y: cy - vh + 8, w: vw, h: vh };
+const keepoutOf = (kind: MapObstacle['kind'], collision: Rect, visual: Rect): Rect => {
+  if (kind === 'building' || kind === 'vehicle') {
+    return inflate(visual, 8);
   }
-  if (kind === 'crate' && variant === 'stack') {
-    return { x: cx - 9, y: cy - 14, w: 18, h: 26 };
-  }
-  if (kind === 'crate' && variant === 'pair') {
-    return { x: cx - 16, y: cy - 10, w: 32, h: 18 };
-  }
-  return { x: cx - w / 2, y: cy - h / 2, w, h };
+  return inflate(collision, 6);
 };
 
 const instantiate = (
   template: ChunkTemplate,
   rect: Rect,
   mirror: boolean,
-  zones: SpawnZone[],
+  reserved: ReservedZone[],
   existing: MapObstacle[],
   idBase: string,
 ): { obstacles: MapObstacle[]; decorations: MapDecoration[] } => {
@@ -105,16 +85,22 @@ const instantiate = (
     const nx = mirror ? 1 - local.nx : local.nx;
     const cx = rect.x + nx * rect.w;
     const cy = rect.y + local.ny * rect.h;
-    if (inExclusion(cx, cy, local.w, local.h, zones)) {
+    const collision = {
+      x: cx - local.spec.w / 2,
+      y: cy - local.spec.h / 2,
+      w: local.spec.w,
+      h: local.spec.h,
+    };
+    if (reservedBlocks(collision, reserved, 2)) {
       continue;
     }
-    const collision = { x: cx - local.w / 2, y: cy - local.h / 2, w: local.w, h: local.h };
-    if (existing.some((obs) => rectsOverlap(inflate(obs.collision, 8), inflate(collision, 8)))) {
+    if (existing.some((obs) => obs.blocksMovement && rectsOverlap(inflate(obs.collision, 8), inflate(collision, 8)))) {
       continue;
     }
     if (obstacles.some((obs) => rectsOverlap(inflate(obs.collision, 6), inflate(collision, 6)) && obs.kind !== 'crate')) {
       continue;
     }
+    const visual = visualForProp(local.spec, cx, cy);
     obstacles.push({
       id: `${idBase}-${n}`,
       kind: local.kind,
@@ -122,11 +108,14 @@ const instantiate = (
       x: cx,
       y: cy,
       collision,
-      visual: visualFor(local.kind, local.variant, cx, cy, local.w, local.h),
+      visual,
+      keepout: keepoutOf(local.kind, collision, visual),
       blocksMovement: true,
-      blocksProjectiles: true,
-      blocksLos: true,
+      blocksProjectiles: local.kind !== 'fence',
+      blocksLos: local.kind === 'building' || local.kind === 'vehicle' || local.kind === 'wall',
       destructible: local.kind === 'crate',
+      hierarchy: hierarchyOf(local.kind),
+      hp: local.kind === 'crate' ? CRATE.maxHealth : undefined,
     });
     n += 1;
   }
@@ -187,11 +176,64 @@ const buildRoutes = (playable: Rect): MapRoute[] => {
   ];
 };
 
+const clusterPoolFor = (row: number, col: number): readonly ClusterId[] => {
+  if (row === 1) {
+    return COVER_CLUSTERS;
+  }
+  if (col === 2) {
+    return COVER_CLUSTERS;
+  }
+  return EDGE_CLUSTERS;
+};
+
+const placeApproachCluster = (
+  rng: SeededRNG,
+  rect: Rect,
+  row: number,
+  col: number,
+  mirror: boolean,
+  reserved: ReservedZone[],
+  existing: MapObstacle[],
+  idBase: string,
+): { obstacles: MapObstacle[]; decorations: MapDecoration[] } => {
+  const pool = clusterPoolFor(row, col);
+  const tries = [...pool];
+  for (let i = tries.length - 1; i > 0; i -= 1) {
+    const j = rng.int(0, i);
+    const a = tries[i];
+    const b = tries[j];
+    if (a && b) {
+      tries[i] = b;
+      tries[j] = a;
+    }
+  }
+  const offsets = [
+    { nx: 0.34, ny: 0.16 },
+    { nx: 0.66, ny: 0.84 },
+    { nx: 0.28, ny: 0.84 },
+    { nx: 0.72, ny: 0.16 },
+  ];
+  for (const id of tries) {
+    const template = templateById(id);
+    for (const slot of offsets) {
+      const nx = mirror ? 1 - slot.nx : slot.nx;
+      const cx = rect.x + nx * rect.w;
+      const cy = rect.y + slot.ny * rect.h;
+      const stamped = stampCluster(template, cx, cy, mirror, reserved, existing, `${idBase}-${id}`);
+      if (stamped) {
+        return stamped;
+      }
+    }
+  }
+  return { obstacles: [], decorations: [] };
+};
+
 export const assemble = (seed: number, attempt: number): MapLayout => {
   const rng = new SeededRNG(seed);
   const playable = mapPlayable();
   const size = chunkSize();
-  const zones = spawnZones();
+  const zones: SpawnZone[] = spawnZonesOf();
+  const reserved = buildReservedZones(playable, zones);
   const chunks: MapChunkInstance[] = [];
   const obstacles: MapObstacle[] = [];
   const decorations: MapDecoration[] = [];
@@ -218,11 +260,27 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
     for (const cell of plan) {
       const rect = chunkRect(cell.col, row, playable, size);
       chunks.push({ col: cell.col, row, kind: cell.kind, rect });
-      const built = instantiate(templateOf(cell.kind), rect, cell.mirror, zones, obstacles, `${cell.col}-${row}`);
+      const built = instantiate(templateOf(cell.kind), rect, cell.mirror, reserved, obstacles, `${cell.col}-${row}`);
       obstacles.push(...built.obstacles);
       decorations.push(...built.decorations);
+      if (cell.col === 1 || cell.col === 3) {
+        const cluster = placeApproachCluster(
+          rng,
+          rect,
+          row,
+          cell.col,
+          cell.mirror,
+          reserved,
+          obstacles,
+          `cl-${cell.col}-${row}`,
+        );
+        obstacles.push(...cluster.obstacles);
+        decorations.push(...cluster.decorations);
+      }
     }
   }
+
+  obstacles.push(...plantCratesBeside(obstacles, reserved, obstacles));
 
   const layout: MapLayout = {
     seed,
@@ -245,6 +303,8 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
     chunks,
     obstacles,
     decorations,
+    roads: generateRoads(playable, seed),
+    reserved,
     spawnZones: zones,
     routes: buildRoutes(playable),
     openAreas: [],

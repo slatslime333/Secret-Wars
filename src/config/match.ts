@@ -70,7 +70,7 @@ export const MATCH = {
   orbs: {
     speed: 620,
     arriveRadius: 18,
-    /** Long enough to cross the 2200-wide map; then the orb is discarded. */
+    /** Long enough to cross the enlarged battlefield; then the orb is discarded. */
     lifetimeMs: 6_500,
     radius: 5,
   },

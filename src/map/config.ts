@@ -2,7 +2,7 @@ import { ARENA } from '../config/arena';
 
 export const MAP = {
   maxAttempts: 50,
-  qualityThreshold: 68,
+  qualityThreshold: 64,
   grid: {
     cols: 5,
     rows: 3,
@@ -13,10 +13,10 @@ export const MAP = {
   spawnHeroRadius: 150,
   spawnMinionRadius: 92,
   openSpaceMin: 0.55,
-  obstacleAreaMin: 0.012,
-  obstacleAreaMax: 0.18,
+  obstacleAreaMin: 0.01,
+  obstacleAreaMax: 0.16,
   minObstacles: 8,
-  maxObstacles: 48,
+  maxObstacles: 64,
   maxChokeChunks: 2,
   cell: 28,
   logPrefix: '[map]',
