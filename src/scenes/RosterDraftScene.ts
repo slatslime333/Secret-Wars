@@ -199,8 +199,9 @@ export class RosterDraftScene extends Phaser.Scene {
     const art = this.add.graphics();
     art.setPosition(x - width / 2 + 36, y + 30);
     PLAYABLE_HEROES[heroId].draw(art, {
-      facing: theirs ? 'west' : 'east',
+      facing: 'south',
       team: (theirs ? 'bravo' : 'alpha') as TeamId,
+      rival: theirs,
     });
 
     const name = this.add
