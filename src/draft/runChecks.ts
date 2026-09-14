@@ -28,6 +28,7 @@ const scenarioClassMap = (): CheckResult => {
     HERO_DRAFT_CLASS.shadow === 'frontliner' &&
     HERO_DRAFT_CLASS.ninja === 'support' &&
     HERO_DRAFT_CLASS.rope === 'support' &&
+    HERO_DRAFT_CLASS.mender === 'support' &&
     HERO_DRAFT_CLASS.witch === 'tank' &&
     HERO_DRAFT_CLASS.death === 'tank' &&
     otherHeroOfClass('cole') === 'shadow' &&

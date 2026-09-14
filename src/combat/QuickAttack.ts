@@ -3,6 +3,8 @@ import { COMBAT, ComboStep, comboStepOf, lightAttackStaminaCost } from '../confi
 import { COLE_ATTACK, COLE_SHOCKWAVE } from '../heroes/abilities/cole/tunables';
 import { DEATH_ATTACK } from '../heroes/abilities/death/tunables';
 import { ROPE_SHOT } from '../heroes/abilities/rope/tunables';
+import { MENDER_PULSE } from '../heroes/abilities/mender/tunables';
+import { menderArmOrigin } from '../heroes/drawMender';
 import { sweepKnockback, swingSignFor } from '../heroes/abilities/death/sweep';
 import { deathIdleBatAngle } from '../heroes/drawDeath';
 import { facingFromAim } from '../heroes/drawNinja';
@@ -48,6 +50,7 @@ export class QuickAttack {
   private deathPairLockUntil = 0;
   private ropeArm: -1 | 1 = -1;
   private readonly ropeShots: Projectile[] = [];
+  private readonly menderShots: Projectile[] = [];
   private readonly witchBarrages: WitchSkullBarrage[] = [];
 
   constructor(
@@ -68,10 +71,12 @@ export class QuickAttack {
     this.pendingTaps = 0;
     this.pendingImpact = undefined;
     this.clearRopeShots();
+    this.clearMenderShots();
   }
 
   destroy(): void {
     this.clearRopeShots();
+    this.clearMenderShots();
     this.clearWitchBarrages();
   }
 
@@ -84,12 +89,13 @@ export class QuickAttack {
     defenderBlock?: BlockController,
   ): void {
     this.tickRopeShots(now, attacker, enemies, defenderBlock);
+    this.tickMenderShots(now, attacker, enemies, defenderBlock);
     this.tickWitchBarrage(now, attacker, enemies, defenderBlock);
     this.resolveImpactIfReady(now, attacker, enemies, defenderBlock);
 
     const tapQueued = this.pendingTaps > 0;
     this.combo.expire(now, COMBAT.comboWindowMs, held || tapQueued || pressed);
-    if (pressed && attacker.heroId !== 'witch' && attacker.heroId !== 'rope' && attacker.heroId !== 'shadow') {
+    if (pressed && attacker.heroId !== 'witch' && attacker.heroId !== 'rope' && attacker.heroId !== 'shadow' && attacker.heroId !== 'mender') {
       this.pendingTaps = Math.min(3, this.pendingTaps + 1);
       this.lastPendingAt = now;
     }
@@ -126,7 +132,7 @@ export class QuickAttack {
     if (this.pendingTaps > 0) {
       this.combo.tap(now, COMBAT.comboWindowMs);
       this.pendingTaps -= 1;
-      if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch' && attacker.heroId !== 'shadow') {
+      if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch' && attacker.heroId !== 'shadow' && attacker.heroId !== 'mender') {
         spawnCombatCallout(
           this.scene,
           attacker.x,
@@ -169,6 +175,8 @@ export class QuickAttack {
       }
     } else if (attacker.heroId === 'rope') {
       this.fireRopeLight(now, attacker);
+    } else if (attacker.heroId === 'mender') {
+      this.fireMenderLight(now, attacker);
     } else if (attacker.heroId === 'witch') {
       this.fireWitchLight(now, attacker);
     } else if (attacker.heroId === 'shadow') {
@@ -177,13 +185,13 @@ export class QuickAttack {
       attacker.playAttackAnimation(now, step);
       this.spawnWhiteLineSlice(attacker, step);
     }
-    if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch') {
+    if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch' && attacker.heroId !== 'mender') {
       this.pendingImpact = { at: now + profile.impactDelayMs, step };
     }
   }
 
   private nextComboStep(now: number, attacker: NinjaBody): ComboStep {
-    if (attacker.heroId === 'rope' || attacker.heroId === 'witch' || attacker.heroId === 'shadow') {
+    if (attacker.heroId === 'rope' || attacker.heroId === 'witch' || attacker.heroId === 'shadow' || attacker.heroId === 'mender') {
       return 1;
     }
     if (this.pendingTaps > 0) {
@@ -223,6 +231,84 @@ export class QuickAttack {
       jumpY: -Math.sin(frac * Math.PI) * 7,
       swayX: attacker.aim.x * 3 * Math.sin(frac * Math.PI),
     }));
+  }
+
+  private fireMenderLight(now: number, attacker: NinjaBody): void {
+    const arm = this.ropeArm;
+    this.ropeArm = arm === -1 ? 1 : -1;
+    const aim = Math.atan2(attacker.aim.y, attacker.aim.x);
+    const origin = menderArmOrigin(attacker.x, attacker.y, aim, arm, MENDER_PULSE.armReach);
+    const spread = (Math.random() - 0.5) * 2 * MENDER_PULSE.spreadRad;
+    const shotAngle = aim + arm * MENDER_PULSE.armOffsetRad + spread;
+    const sx = Math.cos(shotAngle);
+    const sy = Math.sin(shotAngle);
+    const shot = new Projectile(
+      this.scene,
+      origin.x + sx * 4,
+      origin.y + sy * 4,
+      sx * MENDER_PULSE.speed,
+      sy * MENDER_PULSE.speed,
+      MENDER_PULSE.radius,
+      MENDER_PULSE.lifetimeMs,
+      MENDER_PULSE.color,
+      'spark',
+      attacker.stats.attackRange,
+      { x: attacker.x, y: attacker.y },
+      attacker.team,
+    );
+    this.menderShots.push(shot);
+    attacker.playCustomAttack(now, 140, (frac) => ({
+      armLiftLeft: arm === -1 ? Math.sin(frac * Math.PI) : 0.1,
+      armLiftRight: arm === 1 ? Math.sin(frac * Math.PI) : 0.1,
+      swayX: attacker.aim.x * 4 * Math.sin(frac * Math.PI),
+    }));
+  }
+
+  private tickMenderShots(
+    now: number,
+    attacker: NinjaBody,
+    enemies: NinjaBody[],
+    defenderBlock?: BlockController,
+  ): void {
+    const dt = this.scene.game.loop.delta / 1000;
+    for (let i = this.menderShots.length - 1; i >= 0; i -= 1) {
+      const shot = this.menderShots[i];
+      const result = shot.update(now, dt, enemies);
+      if (!result) {
+        continue;
+      }
+      this.menderShots.splice(i, 1);
+      if (result === 'dead') {
+        continue;
+      }
+      const kind = resolveAbilityHit(
+        this.scene,
+        now,
+        attacker,
+        result.target,
+        {
+          rawDamage: attacker.stats.attackDamage,
+          knockback: attacker.stats.knockbackPower * MENDER_PULSE.knockbackMul,
+          staminaDamage: MENDER_PULSE.staminaDamage,
+          dirX: result.target.x - attacker.x,
+          dirY: result.target.y - attacker.y,
+          step: 1,
+          heavy: false,
+          sourceKind: 'light',
+        },
+        defenderBlock,
+      );
+      if (kind === 'hit') {
+        result.target.status.applySlow(now, MENDER_PULSE.hitSlowMs, MENDER_PULSE.hitSlowMul);
+      }
+    }
+  }
+
+  private clearMenderShots(): void {
+    for (const shot of this.menderShots) {
+      shot.destroy();
+    }
+    this.menderShots.length = 0;
   }
 
   private fireWitchLight(now: number, attacker: NinjaBody): void {

@@ -114,6 +114,20 @@ const KIT_OVERRIDES: Record<string, KitOverride> = {
     escapeIds: [],
     ultSaveUntilFoes: 2,
   },
+  mender: {
+    stance: 'support',
+    preferredRangeMul: 0.86,
+    comfortMinMul: 0.5,
+    comfortMaxMul: 1.18,
+    wantsInitiate: false,
+    wantsPoke: true,
+    wantsFlank: false,
+    wantsProtect: true,
+    setupIds: [],
+    defensiveIds: ['mender-guardian-angel', 'mender-soul-dash'],
+    escapeIds: ['mender-soul-dash'],
+    ultSaveUntilFoes: 2,
+  },
 };
 
 const stanceFromRole = (role: string, attackRange: number): KitStance => {

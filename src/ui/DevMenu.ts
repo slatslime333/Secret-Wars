@@ -169,7 +169,7 @@ export class DevMenu {
       () => options.onToggleDummy(),
     );
     add(() => `CPU HERO  ${(options.cpuHeroId?.() ?? 'ninja').toUpperCase()}`, () => {
-      const order: HeroId[] = ['ninja', 'cole', 'death', 'rope', 'witch', 'shadow'];
+      const order: HeroId[] = ['ninja', 'cole', 'death', 'rope', 'witch', 'shadow', 'mender'];
       const current = options.cpuHeroId?.() ?? 'ninja';
       const next = order[(order.indexOf(current) + 1) % order.length];
       options.onSetCpuHero?.(next);

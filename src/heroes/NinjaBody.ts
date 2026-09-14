@@ -16,6 +16,7 @@ import { drawMagicVortex } from './abilities/witch/vortex';
 import { drawClawMark, drawRageFire } from './abilities/shadow/clawFx';
 import { SHADOW_MARK, SHADOW_RAGE } from './abilities/shadow/tunables';
 import { dismissWitchSkeletons, unregisterWitchSkeleton } from './abilities/witch/skeletonPack';
+import { absorbGuardianAngel, clearGuardian } from './abilities/mender/shieldState';
 import { DEV_CHEATS } from '../debug/devCheats';
 import { MATCH } from '../config/match';
 import { MINION } from '../config/minion';
@@ -84,6 +85,7 @@ export class NinjaBody {
   private rageCastUntil = 0;
   private readonly baseMaxStamina: number;
   private rageStaminaUntil = 0;
+  private fairyForm = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: FighterOptions = {}) {
     this.scene = scene;
@@ -217,6 +219,21 @@ export class NinjaBody {
       return;
     }
     const incoming = options.damage;
+    const converted = absorbGuardianAngel(this, incoming, now);
+    if (converted > 0) {
+      emitCombatBlocked({ defender: this, amount: converted, at: now });
+      this.lastDrawnFlash = true;
+      this.redrawIdle();
+      this.view.setScale(1.1);
+      this.scene.tweens.add({
+        targets: this.view,
+        scale: 1,
+        duration: 90,
+        ease: 'Stepped',
+        easeParams: [3],
+      });
+      return;
+    }
     const shielded = this.absorbShield(incoming, now);
     const hpDamage = incoming - shielded;
     const applied = Math.min(this.health, hpDamage);
@@ -279,6 +296,8 @@ export class NinjaBody {
       this.clearMagicVortex();
       this.clearClawMark();
       this.clearRage();
+      this.setFairyForm(false);
+      clearGuardian(this);
       dismissWitchSkeletons(this);
       if (applied > 0) {
         playDeath(this);
@@ -418,6 +437,7 @@ export class NinjaBody {
           hitFlash: this.status.isFlashingHit(this.now()),
           rival: this.rival,
           team: this.team,
+          fairyForm: this.fairyForm,
         });
         this.art.setPosition(
           lungeX * swordAnimState.lungeFrac,
@@ -483,6 +503,7 @@ export class NinjaBody {
           batOnBack: pose.batOnBack,
           showUzi: pose.showUzi,
           staffRaise: pose.staffRaise,
+          fairyForm: this.fairyForm,
         });
         this.art.setPosition(pose.swayX ?? 0, pose.jumpY ?? 0);
       },
@@ -621,6 +642,8 @@ export class NinjaBody {
     this.clearTempShield();
     this.clearMagicVortex();
     this.clearClawMark();
+    this.setFairyForm(false);
+    clearGuardian(this);
   }
 
   heal(amount: number): void {
@@ -650,6 +673,8 @@ export class NinjaBody {
       this.clearTempShield();
       this.clearClawMark();
       this.clearRage();
+      this.setFairyForm(false);
+      clearGuardian(this);
       dismissWitchSkeletons(this);
     }
   }
@@ -706,6 +731,15 @@ export class NinjaBody {
     }
   }
 
+  setFairyForm(value: boolean): void {
+    if (this.fairyForm === value) {
+      return;
+    }
+    this.fairyForm = value;
+    this.view.setScale(value ? 0.72 : 1);
+    this.redrawIdle();
+  }
+
   clearMagicVortex(): void {
     this.vortexUntil = 0;
     this.vortexGfx?.destroy();
@@ -741,6 +775,11 @@ export class NinjaBody {
     if (this.down || !this.present || amount <= 0) {
       return;
     }
+    const converted = absorbGuardianAngel(this, amount, now);
+    if (converted > 0) {
+      emitCombatBlocked({ defender: this, amount: converted, at: now });
+      return;
+    }
     const applied = Math.min(this.health, amount);
     this.health = Math.max(0, this.health - amount);
     if (applied > 0) {
@@ -759,6 +798,8 @@ export class NinjaBody {
       this.clearMagicVortex();
       this.clearClawMark();
       this.clearRage();
+      this.setFairyForm(false);
+      clearGuardian(this);
       dismissWitchSkeletons(this);
       if (applied > 0) {
         playDeath(this);
@@ -1011,6 +1052,8 @@ export class NinjaBody {
     this.clearRage();
     unregisterWitchSkeleton(this);
     dismissWitchSkeletons(this);
+    this.setFairyForm(false);
+    clearGuardian(this);
     this.sprite.destroy();
     this.view.destroy();
   }
@@ -1024,6 +1067,7 @@ export class NinjaBody {
       hitFlash: this.status.isFlashingHit(this.now()),
       rival: this.rival,
       team: this.team,
+      fairyForm: this.fairyForm,
     });
   }
 

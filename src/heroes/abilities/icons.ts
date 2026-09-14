@@ -25,6 +25,9 @@ export const ABILITY_ICON = {
   shadowClaw: 'ability-icon-shadow-claw',
   shadowDash: 'ability-icon-shadow-dash',
   shadowRage: 'ability-icon-shadow-rage',
+  guardianAngel: 'ability-icon-guardian-angel',
+  soulDash: 'ability-icon-soul-dash',
+  secondWind: 'ability-icon-second-wind',
 } as const;
 
 const SIZE = 128;
@@ -50,6 +53,9 @@ export const ensureAbilityIcons = (scene: Phaser.Scene): void => {
   drawIfMissing(scene, ABILITY_ICON.shadowClaw, drawShadowClawIcon);
   drawIfMissing(scene, ABILITY_ICON.shadowDash, drawShadowDashIcon);
   drawIfMissing(scene, ABILITY_ICON.shadowRage, drawShadowRageIcon);
+  drawIfMissing(scene, ABILITY_ICON.guardianAngel, drawGuardianAngelIcon);
+  drawIfMissing(scene, ABILITY_ICON.soulDash, drawSoulDashIcon);
+  drawIfMissing(scene, ABILITY_ICON.secondWind, drawSecondWindIcon);
   drawIfMissing(scene, CONTROL_ICON.dash, drawDashIcon);
   drawIfMissing(scene, CONTROL_ICON.shield, drawShieldIcon);
 };
@@ -659,6 +665,76 @@ const drawShadowRageIcon = (ctx: CanvasRenderingContext2D, size: number): void =
   ctx.fillStyle = '#c8b8e8';
   ctx.beginPath();
   ctx.arc(c, c - 4, 6, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+const drawGuardianAngelIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = '#102030';
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#4aa8ff';
+  ctx.beginPath();
+  ctx.arc(c, c, 22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#dff4ff';
+  ctx.beginPath();
+  ctx.arc(c - 5, c - 6, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = cyan;
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(c, c, 38, 0.2, 2.4);
+  ctx.stroke();
+};
+
+const drawSoulDashIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#e03040';
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  ctx.ellipse(c + 8, c + 4, 22, 16, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#f0d050';
+  ctx.beginPath();
+  ctx.arc(c - 8, c - 4, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#dff8ff';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.ellipse(c - 18, c - 2, 8, 14, -0.5, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(c + 2, c - 8, 8, 14, 0.5, 0, Math.PI * 2);
+  ctx.stroke();
+};
+
+const drawSecondWindIcon = (ctx: CanvasRenderingContext2D, size: number): void => {
+  const c = size / 2;
+  ctx.fillStyle = panel;
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f0d050';
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath();
+  ctx.arc(c, c, 40, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = '#fff2a0';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(c, c, 34, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = '#ffe878';
+  ctx.beginPath();
+  ctx.arc(c, c, 10, 0, Math.PI * 2);
   ctx.fill();
 };
 

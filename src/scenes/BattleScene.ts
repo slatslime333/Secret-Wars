@@ -28,6 +28,7 @@ import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
 import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT } from '../heroes/abilities/rope/tunables';
 import { witchHexAllyRange } from '../heroes/abilities/witch/tunables';
 import { SHADOW_CLAW, SHADOW_DASH } from '../heroes/abilities/shadow/tunables';
+import { MENDER_ANGEL, MENDER_PULSE, MENDER_SOUL } from '../heroes/abilities/mender/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { stampKitPressure } from '../heroes/kitPressure';
 import { BattleInput } from '../input/BattleInput';
@@ -431,6 +432,17 @@ export class BattleScene extends Phaser.Scene {
         this.attacks.nextRopeArm,
         ROPE_SHOT.armOffsetRad,
       );
+    } else if (this.ninja.heroId === 'mender' && !frame.ability1Aiming && !frame.ability2Aiming) {
+      this.marker.syncPulseAim(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        this.ninja.stats.attackRange,
+        frame.attackHeld,
+        this.attacks.nextRopeArm,
+        MENDER_PULSE.armOffsetRad,
+      );
     } else if (this.ninja.heroId === 'witch') {
       this.marker.syncWitchAim(
         this.ninja.x,
@@ -442,6 +454,8 @@ export class BattleScene extends Phaser.Scene {
         witchHexAllyRange(),
       );
     } else if (this.ninja.heroId === 'rope') {
+      this.marker.clearRange();
+    } else if (this.ninja.heroId === 'mender') {
       this.marker.clearRange();
     } else {
       const range = this.ninja.heroId === 'cole' ? COLE_ATTACK.range : this.ninja.stats.attackRange;
@@ -511,6 +525,25 @@ export class BattleScene extends Phaser.Scene {
         SHADOW_DASH.distance,
         true,
         SHADOW_DASH.aimHalfWidth,
+      );
+    } else if (this.ninja.heroId === 'mender' && frame.ability1Aiming) {
+      this.marker.syncBallAim(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        MENDER_ANGEL.radius,
+        true,
+      );
+    } else if (this.ninja.heroId === 'mender' && frame.ability2Aiming) {
+      this.marker.syncKickAim(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        MENDER_SOUL.dashDistance,
+        true,
+        this.ninja.stats.bodyRadius * 2 + 8,
       );
     } else if (this.ninja.heroId === 'rope' && frame.ability1Aiming && !this.abilities.isBusy()) {
       this.marker.syncRopeGrabAim(
