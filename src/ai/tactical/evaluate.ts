@@ -1045,15 +1045,104 @@ const scoreObjective = (
     if (obj.occupyingEnemies >= 2 && self.hpRatio < 0.4 && personality.caution > 0.55) {
       contest -= 8;
     }
+  } else if (obj.kind === 'bounty_target') {
+    const selfMarked =
+      obj.allyX !== undefined && Math.hypot(obj.allyX - self.x, (obj.allyY ?? self.y) - self.y) < 40;
+    const huntD =
+      obj.enemyX !== undefined ? Math.hypot(obj.enemyX - self.x, (obj.enemyY ?? self.y) - self.y) : d;
+    const allyD =
+      obj.allyX !== undefined ? Math.hypot(obj.allyX - self.x, (obj.allyY ?? self.y) - self.y) : 999;
+    const hunt = enemies.find(
+      (enemy) => enemy.kind === 'hero' && enemy.visible && obj.enemyX !== undefined && Math.hypot(enemy.x - obj.enemyX, enemy.y - (obj.enemyY ?? enemy.y)) < 48,
+    );
+    const isolatedHunt = hunt ? isolation(hunt, enemies) : 0;
+    contest -= 4;
+    if (selfMarked) {
+      contest -= 8 + personality.caution * 10;
+      if (hunt && isolatedHunt > 0.6 && self.hpRatio > 0.45) {
+        contest += 10 + personality.aggression * 8;
+      }
+      if (self.hpRatio < 0.38) {
+        contest -= 14;
+      }
+    } else if (obj.allyX !== undefined) {
+      contest += 6 + personality.protectionInstinct * 10 - allyD / 420;
+      if (self.hpRatio < 0.32) {
+        contest -= 12;
+      }
+    }
+    if (hunt && isolatedHunt > 0.55 && self.hpRatio > 0.4) {
+      contest += 12 + personality.opportunism * 8;
+    }
+    if (hunt && !isolatedHunt && huntD < 220 && personality.caution > 0.6) {
+      contest -= 8;
+    }
+    contest -= (huntD / Math.max(180, situation.vision)) * 6;
+  } else if (obj.kind === 'healing_shrine') {
+    const tanky = front || self.role === 'ranged-tank';
+    if (self.hpRatio < 0.62) {
+      contest += 10 + (1 - self.hpRatio) * 16;
+    }
+    if (self.hpRatio > 0.82) {
+      contest -= 10;
+    }
+    if (tanky) {
+      contest += 6;
+    }
+    if (ranged && d < obj.radius * 0.4) {
+      contest -= 5;
+    }
+    if (support && obj.occupyingAllies > 0) {
+      contest += 7 + personality.protectionInstinct * 5;
+    }
+    if (obj.contested && self.hpRatio < 0.4 && personality.caution > 0.55) {
+      contest -= 14;
+    }
+    if (obj.contested && tanky && self.hpRatio > 0.45) {
+      contest += 8;
+    }
+    if (obj.occupyingEnemies >= obj.occupyingAllies + 2 && self.hpRatio < 0.5) {
+      contest -= 12;
+    }
+  } else if (obj.kind === 'executioner') {
+    if (obj.selfProgress >= 0.78 && self.hpRatio > 0.28) {
+      contest += 14;
+    }
+    if (obj.enemyProgress >= 0.78) {
+      contest += 12 + personality.aggression * 6;
+    }
+    if (obj.selfProgress + 0.12 < obj.enemyProgress && personality.caution > 0.6 && self.hpRatio < 0.4) {
+      contest -= 8;
+    }
+    if (ranged) {
+      contest += 3;
+    } else if (d < obj.radius + 50 && self.hpRatio < 0.35) {
+      contest -= 12;
+    }
+    if (obj.occupyingEnemies >= 2 && self.hpRatio < 0.38 && personality.caution > 0.55) {
+      contest -= 10;
+    }
+    if (d > 420 && obj.selfProgress < 0.2 && obj.enemyProgress < 0.35 && self.hpRatio < 0.5) {
+      contest -= 12;
+    }
   }
   if (situation.lastSurvivor && obj.occupyingEnemies >= 2) {
     contest -= 14;
   }
   const focus = enemies.find(
-    (enemy) => enemy.kind === 'hero' && enemy.visible && Math.hypot(enemy.x - obj.x, enemy.y - obj.y) < obj.radius + 80,
+    (enemy) =>
+      enemy.kind === 'hero' &&
+      enemy.visible &&
+      (obj.enemyX !== undefined
+        ? Math.hypot(enemy.x - obj.enemyX, enemy.y - (obj.enemyY ?? enemy.y)) < 56
+        : Math.hypot(enemy.x - obj.x, enemy.y - obj.y) < obj.radius + 80),
   );
   const ally = allies.find(
-    (friend) => friend.kind === 'hero' && Math.hypot(friend.x - obj.x, friend.y - obj.y) < obj.radius + 90,
+    (friend) =>
+      friend.kind === 'hero' &&
+      (obj.allyX !== undefined
+        ? Math.hypot(friend.x - obj.allyX, friend.y - (obj.allyY ?? friend.y)) < 56
+        : Math.hypot(friend.x - obj.x, friend.y - obj.y) < obj.radius + 90),
   );
   return write(
     out,

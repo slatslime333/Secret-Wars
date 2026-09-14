@@ -167,6 +167,10 @@ export class TacticalMind {
             x: this.situation.objective.x,
             y: this.situation.objective.y,
             radius: this.situation.objective.radius,
+            huntX: this.situation.objective.enemyX,
+            huntY: this.situation.objective.enemyY,
+            guardX: this.situation.objective.allyX,
+            guardY: this.situation.objective.allyY,
           }
         : undefined,
     };

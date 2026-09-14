@@ -11,6 +11,7 @@ import { MatchScene } from './scenes/MatchScene';
 import { SettingsScene } from './scenes/SettingsScene';
 import { ControlLayoutScene } from './scenes/ControlLayoutScene';
 import { SimulatorSetupScene } from './scenes/SimulatorSetupScene';
+import { RosterDraftScene } from './scenes/RosterDraftScene';
 import { TitleScene } from './scenes/TitleScene';
 import { getGameSize } from './ui/theme';
 import { applyBackingStore, installBackingStore } from './ui/layout/backingStore';
@@ -61,7 +62,7 @@ const game = new Phaser.Game({
       debug: false,
     },
   },
-  scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, ControlLayoutScene, CharacterSelectScene, SimulatorSetupScene, BattleScene, MatchScene],
+  scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, ControlLayoutScene, CharacterSelectScene, RosterDraftScene, SimulatorSetupScene, BattleScene, MatchScene],
   render: {
     pixelArt: true,
     antialias: false,

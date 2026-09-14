@@ -18,7 +18,7 @@ export const OBJECTIVE = {
   cooldownMs: 60_000,
   announcementMs: 2_400,
   arrowMs: 2_600,
-  kinds: ['capture_zone', 'golden_piggy'] as const,
+  kinds: ['capture_zone', 'golden_piggy', 'bounty_target', 'healing_shrine', 'executioner'] as const,
   /** After the first event, prefer a different kind this often. */
   rerollSameKind: 0.72,
   capture: {
@@ -35,7 +35,35 @@ export const OBJECTIVE = {
     breakDamage: Math.round(COLE.attackDamage * 30),
     projectileDamage: COLE.attackDamage,
   },
-  scoreReward: 2,
+  bounty: {
+    levelReward: 2,
+    buffMs: 20_000,
+    moveMul: 1.3,
+    attackMul: 1.3,
+  },
+  shrine: {
+    radius: Math.round(COLE_CONVERTED_RANGE * 0.72),
+    durationMs: 20_000,
+    healPerSecond: 9,
+  },
+  executioner: {
+    radius: 48,
+    breakDamage: Math.round(COLE.attackDamage * 40),
+    projectileDamage: COLE.attackDamage,
+    moveSpeed: 74,
+    attackMs: 1_550,
+    attackRange: 88,
+    damage: Math.round(COLE.attackDamage * 2.15),
+    knockback: 3.7,
+    pursueRange: 440,
+    buffMs: 20_000,
+    moveMul: 1.18,
+    attackMul: 1.18,
+    staminaMul: 1.18,
+  },
+  /** Team score awarded for Golden Piggy Bank. */
+  scoreReward: 1,
+  auraTint: 0xe23b3b,
 } as const;
 
 export type ObjectiveKind = (typeof OBJECTIVE.kinds)[number];
@@ -43,6 +71,9 @@ export type ObjectiveKind = (typeof OBJECTIVE.kinds)[number];
 export const OBJECTIVE_LABEL: Record<ObjectiveKind, string> = {
   capture_zone: 'CAPTURE ZONE!',
   golden_piggy: 'GOLDEN PIGGY BANK!',
+  bounty_target: 'BOUNTY TARGET!',
+  healing_shrine: 'HEALING SHRINE!',
+  executioner: 'EXECUTIONER!',
 };
 
 export const canStartObjective = (
