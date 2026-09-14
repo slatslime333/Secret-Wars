@@ -9,6 +9,8 @@ export class HeroPlate {
   private readonly fill: Phaser.GameObjects.Rectangle;
   private readonly shieldFill: Phaser.GameObjects.Rectangle;
   private readonly levelText: Phaser.GameObjects.Text;
+  private readonly rageTrack: Phaser.GameObjects.Rectangle;
+  private readonly rageFill: Phaser.GameObjects.Rectangle;
 
   constructor(
     scene: Phaser.Scene,
@@ -32,6 +34,11 @@ export class HeroPlate {
       })
       .setOrigin(0.5, 1);
     this.root = scene.add.container(body.x, body.y - 48, [track, this.shieldFill, this.fill, this.levelText]).setDepth(26);
+    this.rageTrack = scene.add.rectangle(0, 8, 78, 4, COLORS.ink, 0.9);
+    this.rageFill = scene.add.rectangle(-39, 8, 0, 3, 0xff6a18).setOrigin(0, 0.5);
+    this.root.add([this.rageTrack, this.rageFill]);
+    this.rageTrack.setVisible(false);
+    this.rageFill.setVisible(false);
   }
 
   setVisible(value: boolean): void {
@@ -57,6 +64,12 @@ export class HeroPlate {
       this.shieldFill.width = Math.max(0, 78 * shield);
     }
     this.shieldFill.setVisible(shield > 0);
+    const showRage = this.body.heroId === 'demon';
+    this.rageTrack.setVisible(showRage);
+    this.rageFill.setVisible(showRage);
+    if (showRage) {
+      this.rageFill.width = Math.max(0, 78 * this.body.demonRage);
+    }
     this.levelText.setText(`LV ${this.progression.level}`);
   }
 

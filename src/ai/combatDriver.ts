@@ -13,6 +13,7 @@ import { FightSense } from './tactical/fightSense';
 import type { TacticalMind } from './tactical/mind';
 import { dodgeDirFor, scanProjectileThreat } from './tactical/shots';
 import { pickBestSupportAlly, purposesOf } from './tactical/supportSense';
+import { hellBatAim } from './tactical/demonSense';
 
 const SLOTS: AbilitySlot[] = SLOT_ORDER;
 
@@ -198,6 +199,12 @@ export class CombatDriver {
       const ally = pickBestSupportAlly(situation, def.tactics?.range ?? 220, purposes, situation.supportFocusId ?? -1);
       if (ally) {
         ctx.aimOverride = { x: ally.x - body.x, y: ally.y - body.y };
+      }
+    }
+    if (def.id === 'demon-hell-bat') {
+      const aim = hellBatAim(situation.self, situation.enemies);
+      if (aim) {
+        ctx.aimOverride = aim;
       }
     }
     const fired = abilities.tryActivate(bestSlot, ctx);

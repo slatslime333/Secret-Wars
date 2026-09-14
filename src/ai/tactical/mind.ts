@@ -242,6 +242,9 @@ export class TacticalMind {
       staminaRatio: selfFact.staminaRatio,
       abilityReady: selfFact.abilityReady,
       dashCharges: selfFact.dashCharges,
+      rageRatio: selfFact.rageRatio,
+      demonForm: selfFact.demonForm,
+      transformLeftMs: selfFact.transformLeftMs,
     });
     this.situation.kit = this.kit;
     this.situation.hasAllySupport = self.kitHasAllySupport;
@@ -517,8 +520,27 @@ export class TacticalMind {
       staminaRatio: self.stamina / Math.max(1, self.stats.maxStamina),
       abilityReady: self.kitAbilityReady,
       dashCharges: self.kitDashCharges,
+      rageRatio: self.demonRage,
+      demonForm: self.demonForm,
+      transformLeftMs: Math.max(0, self.demonTransformUntil - now),
     };
     if (isShadowDry(self.heroId, kitLive) && AGGRESSIVE.has(intent.action)) {
+      return true;
+    }
+    if (
+      self.heroId === 'demon' &&
+      self.demonForm !== 'big' &&
+      self.demonRage > 0.88 &&
+      AGGRESSIVE.has(intent.action)
+    ) {
+      return true;
+    }
+    if (
+      self.heroId === 'demon' &&
+      self.demonForm === 'big' &&
+      kitLive.transformLeftMs < 1600 &&
+      (intent.action === 'chase' || intent.action === 'flank')
+    ) {
       return true;
     }
     if (
@@ -695,6 +717,9 @@ const blankView = (): CombatantView => ({
   blocking: false,
   abilityReady: true,
   dashCharges: 2,
+  rageRatio: 0,
+  demonForm: 'little',
+  transformLeftMs: 0,
 });
 
 const copyView = (dest: CombatantView, src: CombatantView): void => {
@@ -724,6 +749,9 @@ const copyView = (dest: CombatantView, src: CombatantView): void => {
   dest.blocking = src.blocking;
   dest.abilityReady = src.abilityReady;
   dest.dashCharges = src.dashCharges;
+  dest.rageRatio = src.rageRatio;
+  dest.demonForm = src.demonForm;
+  dest.transformLeftMs = src.transformLeftMs;
 };
 
 const cloneView = (src: CombatantView): CombatantView => {

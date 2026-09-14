@@ -22,7 +22,7 @@ export class Projectile {
   private alive = true;
   private readonly endsAt: number;
   private flicker = 0;
-  private readonly style: 'spark' | 'slug' | 'arrow' | 'rope' | 'skull';
+  private readonly style: 'spark' | 'slug' | 'arrow' | 'rope' | 'skull' | 'flame';
   private readonly originX: number;
   private readonly originY: number;
   private readonly maxRange: number;
@@ -37,7 +37,7 @@ export class Projectile {
     private readonly radius: number,
     lifetimeMs: number,
     color: number,
-    style: 'spark' | 'slug' | 'arrow' | 'rope' | 'skull' = 'spark',
+    style: 'spark' | 'slug' | 'arrow' | 'rope' | 'skull' | 'flame' = 'spark',
     maxRange = Number.POSITIVE_INFINITY,
     rangeFrom?: { x: number; y: number },
     team?: TeamId,
@@ -90,6 +90,8 @@ export class Projectile {
       this.drawRope();
     } else if (this.style === 'skull') {
       this.drawSkull();
+    } else if (this.style === 'flame') {
+      this.drawFlame();
     }
     const traveled = Math.hypot(this.x - this.originX, this.y - this.originY);
     const map = battlefieldOf(this.view.scene);
@@ -158,6 +160,23 @@ export class Projectile {
     g.fillCircle(0, 0, 2.4);
     g.fillStyle(0xd4a06a, 0.9);
     g.fillCircle(tx * 2, ty * 2, 1.4);
+  }
+
+  private drawFlame(): void {
+    const g = this.sparks;
+    g.clear();
+    const t = this.flicker;
+    g.fillStyle(0xff3a10, 0.35);
+    g.fillCircle(0, 0, this.radius + 3.4);
+    g.fillStyle(0xff7a20, 0.95);
+    g.fillCircle(0, 0, this.radius + 0.6);
+    g.fillStyle(0xfff080, 0.95);
+    g.fillCircle(-0.6, -0.8, this.radius * 0.55);
+    for (let i = 0; i < 3; i += 1) {
+      const ang = (t * 0.5 + i * 2.1) % (Math.PI * 2);
+      g.fillStyle(i % 2 === 0 ? 0xffc030 : 0xff6a18, 0.8);
+      g.fillEllipse(Math.cos(ang) * 3.2, Math.sin(ang) * 3.2, 3.4, 5.2);
+    }
   }
 
   private drawSparks(): void {

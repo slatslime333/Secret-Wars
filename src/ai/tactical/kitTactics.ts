@@ -1,5 +1,6 @@
 import { defHasAllySupport, type AbilityDef, type AbilityRole, type AbilitySlot, type AbilityTactics } from '../../heroes/abilities/types';
 import { scoreSupportAbility } from './supportSense';
+import { scoreDemonAbility } from './demonSense';
 import type { CombatantView, Situation } from './types';
 
 const dist = (a: CombatantView, b: CombatantView): number => Math.hypot(a.x - b.x, a.y - b.y);
@@ -167,6 +168,8 @@ export const scoreKitSlot = (
       score -= 14;
     }
   }
+
+  score += scoreDemonAbility(def, situation);
 
   return score;
 };

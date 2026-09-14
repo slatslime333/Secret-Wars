@@ -125,6 +125,8 @@ export class AbilityButton {
     this.icon.setTint(state.consumed ? 0x667088 : 0xffffff);
     if (state.consumed) {
       this.timer.setText('');
+    } else if (state.def.chargeMode === 'meter' && state.meter < 1) {
+      this.timer.setText(`${Math.round(state.meter * 100)}`);
     } else if (state.maxCharges > 1 && state.ready) {
       this.timer.setText(`${state.charges}`);
     } else if (!state.ready && state.cooldownRemainingMs > 0) {
@@ -218,6 +220,22 @@ export class AbilityButton {
       this.overlay.moveTo(this.x - cut, this.y - cut);
       this.overlay.lineTo(this.x + cut, this.y + cut);
       this.overlay.strokePath();
+      return;
+    }
+    if (state.def.chargeMode === 'meter' && state.meter < 1) {
+      this.overlay.fillStyle(COLORS.ink, 0.62 * TOUCH_CONTROL_ALPHA);
+      this.overlay.beginPath();
+      this.overlay.moveTo(this.x, this.y);
+      this.overlay.arc(
+        this.x,
+        this.y,
+        this.radius - 2,
+        -Math.PI / 2,
+        -Math.PI / 2 + Math.PI * 2 * (1 - state.meter),
+        false,
+      );
+      this.overlay.closePath();
+      this.overlay.fillPath();
       return;
     }
     if (state.cooldownRatio <= 0) {

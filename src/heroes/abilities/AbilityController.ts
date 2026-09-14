@@ -10,6 +10,7 @@ import {
   defForSlot,
 } from './types';
 import { moveAbilityAudio, startAbilityAudio, stopAbilityAudio } from '../../audio';
+import { tryAutoDemonRage } from './demon/rage';
 import { DEV_CHEATS } from '../../debug/devCheats';
 
 const OPEN_CONTROL: AbilityControlFlags = {
@@ -112,8 +113,10 @@ export class AbilityController {
       runtime.charges = Math.max(0, runtime.charges - 1);
       runtime.meter = 0;
     } else if (def.chargeMode === 'meter') {
-      runtime.charges = Math.max(0, runtime.charges - 1);
-      runtime.meter = 0;
+      if (def.id !== 'demon-rage') {
+        runtime.charges = Math.max(0, runtime.charges - 1);
+        runtime.meter = 0;
+      }
     } else if (def.deferCooldown) {
       this.deferredSlot = slot;
     } else if (usesChargePool(def)) {
@@ -135,6 +138,10 @@ export class AbilityController {
   }
 
   update(ctx: AbilityContext): void {
+    if (this.kit.heroId === 'demon') {
+      this.slots.ultimate.meter = ctx.caster.demonRage;
+      tryAutoDemonRage(ctx, () => this.tryActivate('ultimate', ctx));
+    }
     this.tickChargePools(ctx.now);
     if (!this.active) {
       return;
@@ -165,6 +172,7 @@ export class AbilityController {
     const recastable = Boolean(this.active?.allowRecast && this.active.id === def.id);
     const channeling =
       !recastable && (this.heldSlots.has(slot) || (this.deferredSlot === slot && Boolean(this.active)));
+    const meterReady = def.chargeMode === 'meter' && (runtime.charges > 0 || runtime.meter >= 1);
     const ready =
       DEV_CHEATS.noCooldowns ||
       recastable ||
@@ -174,7 +182,7 @@ export class AbilityController {
           ? runtime.charges > 0
           : def.chargeMode === 'cooldown'
             ? remaining <= 0
-            : runtime.charges > 0 || runtime.meter >= 1));
+            : meterReady));
     const showRecharge = pooled && runtime.charges < def.maxCharges;
     return {
       def,

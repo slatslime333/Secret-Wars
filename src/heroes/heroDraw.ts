@@ -19,6 +19,7 @@ export type HeroDrawOptions = {
   showUzi?: boolean;
   staffRaise?: number;
   fairyForm?: boolean;
+  demonForm?: 'little' | 'transforming' | 'big' | 'bat';
 };
 
 export type HeroDrawFn = (graphics: Phaser.GameObjects.Graphics, options: HeroDrawOptions) => void;

@@ -91,7 +91,7 @@ export const clearanceFor = (
   const ranged = stance === 'ranged' || stance === 'support' || body.role === 'support' || body.role === 'ranged' || body.role === 'ranged-tank';
   const tank = body.role === 'frontliner' || body.role === 'tank' || body.role === 'ranged-tank';
   let gap = body.kind === 'minion' ? (body.role === 'minion' && body.attackRange > 80 ? 26 : 20) : ranged ? 44 : 30;
-  if (tank && body.kind === 'hero') {
+  if (tank && body.kind === 'hero' && !(stance === 'ranged' && body.role === 'frontliner')) {
     gap *= 0.78;
   }
   if (action === 'protect_ally') {

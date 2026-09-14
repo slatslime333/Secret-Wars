@@ -12,6 +12,7 @@ export { ROPE } from './rope';
 export { WITCH } from './witch';
 export { SHADOW } from './shadow';
 export { MENDER } from './mender';
+export { DEMON, DEMON_BIG } from './demon';
 export { MINION, SWORD_MINION, RANGER_MINION } from './minion';
 export type { HeroCombatConfig, TeamId } from './hero';
 export { INPUT } from './input';

@@ -25,6 +25,9 @@ const ABILITY_START: Record<string, SoundId> = {
   'mender-guardian-angel': 'cole-ball-cast',
   'mender-soul-dash': 'shadow-dash-whoosh',
   'mender-second-wind': 'witch-ult-cast',
+  'demon-hellfire': 'cole-ball-cast',
+  'demon-hell-bat': 'shadow-dash-whoosh',
+  'demon-rage': 'shadow-rage-cast',
 };
 
 const ABILITY_LOOP: Record<string, SoundId> = {
@@ -43,6 +46,7 @@ const HERO_SELECT: Record<string, SoundId> = {
   witch: 'ui-select-witch',
   shadow: 'ui-select-shadow',
   mender: 'ui-select-witch',
+  demon: 'ui-select-cole',
 };
 
 const LIGHT_ATTACK: Record<string, SoundId> = {
@@ -53,6 +57,7 @@ const LIGHT_ATTACK: Record<string, SoundId> = {
   witch: 'witch-light',
   shadow: 'shadow-light',
   mender: 'death-gun-shot',
+  demon: 'cole-light',
 };
 
 export const abilityLoopKey = (abilityId: string, caster: Pick<AudioBody, 'heroId' | 'team'>): string =>

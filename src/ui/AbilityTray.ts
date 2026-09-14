@@ -117,7 +117,15 @@ export class AbilityTray {
         this.labels[i].setText('');
         return;
       }
-      if (!state.ready && state.cooldownRemainingMs > 0) {
+      if (state.def.chargeMode === 'meter' && state.meter < 1) {
+        overlay.fillStyle(COLORS.ink, 0.6);
+        overlay.beginPath();
+        overlay.moveTo(px, py);
+        overlay.arc(px, py, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - state.meter));
+        overlay.closePath();
+        overlay.fillPath();
+        this.labels[i].setText(`${Math.round(state.meter * 100)}`);
+      } else if (!state.ready && state.cooldownRemainingMs > 0) {
         overlay.fillStyle(COLORS.ink, 0.6);
         overlay.beginPath();
         overlay.moveTo(px, py);

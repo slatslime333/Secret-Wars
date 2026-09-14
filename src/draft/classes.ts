@@ -12,6 +12,7 @@ export const DRAFT_CLASSES: readonly DraftClass[] = ['frontliner', 'support', 't
 export const HERO_DRAFT_CLASS: Record<HeroId, DraftClass> = {
   cole: 'frontliner',
   shadow: 'frontliner',
+  demon: 'frontliner',
   ninja: 'support',
   rope: 'support',
   mender: 'support',
@@ -26,12 +27,12 @@ export const DRAFT_CLASS_LABEL: Record<DraftClass, string> = {
 };
 
 export const HEROES_BY_CLASS: Record<DraftClass, readonly HeroId[]> = {
-  frontliner: ['cole', 'shadow'],
+  frontliner: ['cole', 'shadow', 'demon'],
   support: ['ninja', 'rope', 'mender'],
   tank: ['witch', 'death'],
 };
 
-export const DRAFT_HERO_IDS: readonly HeroId[] = ['cole', 'shadow', 'ninja', 'rope', 'mender', 'witch', 'death'];
+export const DRAFT_HERO_IDS: readonly HeroId[] = ['cole', 'shadow', 'demon', 'ninja', 'rope', 'mender', 'witch', 'death'];
 
 export const draftClassOf = (heroId: HeroId): DraftClass => HERO_DRAFT_CLASS[heroId];
 

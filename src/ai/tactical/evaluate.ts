@@ -5,6 +5,7 @@ import { assessObjective, isZoneObjective } from './objectiveIntel';
 import type { ObjectiveIntel } from './objectiveIntel';
 import { clusterRiskOf } from './spacing';
 import { assessTeam, biasAction, type TeamIntel } from './teamIntel';
+import { applyDemonBias } from './demonSense';
 import { assessSupport } from './supportSense';
 import type {
   CombatantView,
@@ -229,9 +230,9 @@ const localRisk = (self: CombatantView, allies: CombatantView[], enemies: Combat
   if (self.hpRatio < TACTIC.criticalHp) {
     risk += 0.18;
   }
-  if ((self.role === 'tank' || self.role === 'frontliner') && self.hpRatio >= 0.42) {
+  if ((self.role === 'tank' || self.role === 'frontliner') && !(self.heroId === 'demon' && self.demonForm !== 'big') && self.hpRatio >= 0.42) {
     risk -= 0.14;
-  } else if ((self.role === 'tank' || self.role === 'frontliner') && self.hpRatio >= 0.3) {
+  } else if ((self.role === 'tank' || self.role === 'frontliner') && !(self.heroId === 'demon' && self.demonForm !== 'big') && self.hpRatio >= 0.3) {
     risk -= 0.06;
   }
   if ((self.role === 'disruptor' || self.role === 'assassin') && self.hpRatio < 0.38 && nearEnemies > 0) {
@@ -541,7 +542,9 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
   const objIntel = kind === 'hero' ? assessObjective(situation, { handledNearby, risk }) : undefined;
 
   const ranged = isRangedOf(self, situation.kit);
-  const front = self.role === 'frontliner' || self.role === 'tank';
+  const front =
+    (self.role === 'frontliner' || self.role === 'tank') &&
+    !(self.heroId === 'demon' && self.demonForm !== 'big');
   const support = self.role === 'support' || self.role === 'disruptor' || Boolean(situation.kit?.wantsProtect);
   const kit = situation.kit;
   const plan = situation.plan;
@@ -938,7 +941,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
   if (team.outnumbered && team.localEnemies >= 3) {
     disengage += 12;
   }
-  if ((self.role === 'tank' || self.role === 'frontliner') && self.hpRatio > 0.4 && !(team.outnumbered && team.localEnemies >= 3)) {
+  if ((self.role === 'tank' || self.role === 'frontliner') && !(self.heroId === 'demon' && self.demonForm !== 'big') && self.hpRatio > 0.4 && !(team.outnumbered && team.localEnemies >= 3)) {
     disengage -= 14;
   }
   disengage += strain * (8 + personality.retreatWillingness * 8);
@@ -1206,6 +1209,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
 
   if (kind === 'hero') {
     count = applySupportBias(out, count, situation, tune);
+    count = applyDemonBias(out, count, situation, write);
   }
 
   if (plan && kind === 'hero') {

@@ -5,6 +5,10 @@ import { DEATH_ATTACK } from '../heroes/abilities/death/tunables';
 import { ROPE_SHOT } from '../heroes/abilities/rope/tunables';
 import { MENDER_PULSE } from '../heroes/abilities/mender/tunables';
 import { menderArmOrigin } from '../heroes/drawMender';
+import { DEMON_ATTACK, DEMON_CLAW } from '../heroes/abilities/demon/tunables';
+import { demonCandleOrigin } from '../heroes/drawDemon';
+import { applyBurn } from '../heroes/abilities/demon/burnFx';
+import { grantDemonRage, demonRageFromCandle, isBigDemon } from '../heroes/abilities/demon/form';
 import { sweepKnockback, swingSignFor } from '../heroes/abilities/death/sweep';
 import { deathIdleBatAngle } from '../heroes/drawDeath';
 import { facingFromAim } from '../heroes/drawNinja';
@@ -51,6 +55,7 @@ export class QuickAttack {
   private ropeArm: -1 | 1 = -1;
   private readonly ropeShots: Projectile[] = [];
   private readonly menderShots: Projectile[] = [];
+  private readonly demonShots: Projectile[] = [];
   private readonly witchBarrages: WitchSkullBarrage[] = [];
 
   constructor(
@@ -72,11 +77,13 @@ export class QuickAttack {
     this.pendingImpact = undefined;
     this.clearRopeShots();
     this.clearMenderShots();
+    this.clearDemonShots();
   }
 
   destroy(): void {
     this.clearRopeShots();
     this.clearMenderShots();
+    this.clearDemonShots();
     this.clearWitchBarrages();
   }
 
@@ -90,12 +97,13 @@ export class QuickAttack {
   ): void {
     this.tickRopeShots(now, attacker, enemies, defenderBlock);
     this.tickMenderShots(now, attacker, enemies, defenderBlock);
+    this.tickDemonShots(now, attacker, enemies, defenderBlock);
     this.tickWitchBarrage(now, attacker, enemies, defenderBlock);
     this.resolveImpactIfReady(now, attacker, enemies, defenderBlock);
 
     const tapQueued = this.pendingTaps > 0;
     this.combo.expire(now, COMBAT.comboWindowMs, held || tapQueued || pressed);
-    if (pressed && attacker.heroId !== 'witch' && attacker.heroId !== 'rope' && attacker.heroId !== 'shadow' && attacker.heroId !== 'mender') {
+    if (pressed && attacker.heroId !== 'witch' && attacker.heroId !== 'rope' && attacker.heroId !== 'shadow' && attacker.heroId !== 'mender' && attacker.heroId !== 'demon') {
       this.pendingTaps = Math.min(3, this.pendingTaps + 1);
       this.lastPendingAt = now;
     }
@@ -132,7 +140,7 @@ export class QuickAttack {
     if (this.pendingTaps > 0) {
       this.combo.tap(now, COMBAT.comboWindowMs);
       this.pendingTaps -= 1;
-      if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch' && attacker.heroId !== 'shadow' && attacker.heroId !== 'mender') {
+      if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch' && attacker.heroId !== 'shadow' && attacker.heroId !== 'mender' && attacker.heroId !== 'demon') {
         spawnCombatCallout(
           this.scene,
           attacker.x,
@@ -177,6 +185,12 @@ export class QuickAttack {
       this.fireRopeLight(now, attacker);
     } else if (attacker.heroId === 'mender') {
       this.fireMenderLight(now, attacker);
+    } else if (attacker.heroId === 'demon') {
+      if (isBigDemon(attacker)) {
+        this.playDemonClaw(attacker, now);
+      } else {
+        this.fireDemonLight(now, attacker);
+      }
     } else if (attacker.heroId === 'witch') {
       this.fireWitchLight(now, attacker);
     } else if (attacker.heroId === 'shadow') {
@@ -185,13 +199,13 @@ export class QuickAttack {
       attacker.playAttackAnimation(now, step);
       this.spawnWhiteLineSlice(attacker, step);
     }
-    if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch' && attacker.heroId !== 'mender') {
+    if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch' && attacker.heroId !== 'mender' && !(attacker.heroId === 'demon' && !isBigDemon(attacker))) {
       this.pendingImpact = { at: now + profile.impactDelayMs, step };
     }
   }
 
   private nextComboStep(now: number, attacker: NinjaBody): ComboStep {
-    if (attacker.heroId === 'rope' || attacker.heroId === 'witch' || attacker.heroId === 'shadow' || attacker.heroId === 'mender') {
+    if (attacker.heroId === 'rope' || attacker.heroId === 'witch' || attacker.heroId === 'shadow' || attacker.heroId === 'mender' || attacker.heroId === 'demon') {
       return 1;
     }
     if (this.pendingTaps > 0) {
@@ -317,6 +331,124 @@ export class QuickAttack {
       shot.destroy();
     }
     this.menderShots.length = 0;
+  }
+
+  private fireDemonLight(now: number, attacker: NinjaBody): void {
+    const aim = Math.atan2(attacker.aim.y, attacker.aim.x);
+    const origin = demonCandleOrigin(attacker.x, attacker.y, aim);
+    const sx = Math.cos(aim);
+    const sy = Math.sin(aim);
+    const shot = new Projectile(
+      this.scene,
+      origin.x + sx * 3,
+      origin.y + sy * 3,
+      sx * DEMON_ATTACK.speed,
+      sy * DEMON_ATTACK.speed,
+      DEMON_ATTACK.radius,
+      DEMON_ATTACK.lifetimeMs,
+      DEMON_ATTACK.color,
+      'flame',
+      Number.POSITIVE_INFINITY,
+      undefined,
+      attacker.team,
+    );
+    this.demonShots.push(shot);
+    attacker.playCustomAttack(now, DEMON_ATTACK.animMs, (frac) => ({
+      armLiftRight: 0.15 + Math.sin(frac * Math.PI) * 0.85,
+      armLiftLeft: 0.08,
+      swayX: attacker.aim.x * 3 * Math.sin(frac * Math.PI),
+    }));
+  }
+
+  private tickDemonShots(
+    now: number,
+    attacker: NinjaBody,
+    enemies: NinjaBody[],
+    defenderBlock?: BlockController,
+  ): void {
+    const dt = this.scene.game.loop.delta / 1000;
+    for (let i = this.demonShots.length - 1; i >= 0; i -= 1) {
+      const shot = this.demonShots[i];
+      const result = shot.update(now, dt, enemies);
+      if (!result) {
+        continue;
+      }
+      this.demonShots.splice(i, 1);
+      if (result === 'dead') {
+        continue;
+      }
+      const kind = resolveAbilityHit(
+        this.scene,
+        now,
+        attacker,
+        result.target,
+        {
+          rawDamage: attacker.stats.attackDamage,
+          knockback: attacker.stats.knockbackPower * DEMON_ATTACK.knockbackMul,
+          staminaDamage: DEMON_ATTACK.staminaDamage,
+          dirX: result.target.x - attacker.x,
+          dirY: result.target.y - attacker.y,
+          step: 1,
+          heavy: false,
+          hitReactionMs: DEMON_ATTACK.hitReactionMs,
+          sourceKind: 'light',
+        },
+        defenderBlock,
+      );
+      if (kind === 'hit') {
+        applyBurn(result.target, now, 'candle', attacker);
+        grantDemonRage(attacker, demonRageFromCandle());
+      }
+    }
+  }
+
+  private clearDemonShots(): void {
+    for (const shot of this.demonShots) {
+      shot.destroy();
+    }
+    this.demonShots.length = 0;
+  }
+
+  private playDemonClaw(attacker: NinjaBody, now: number): void {
+    const len = Math.hypot(attacker.aim.x, attacker.aim.y) || 1;
+    const nx = attacker.aim.x / len;
+    const ny = attacker.aim.y / len;
+    attacker.playCustomAttack(now, DEMON_CLAW.animMs, (frac) => ({
+      armLiftRight: frac < 0.4 ? 0.3 + frac * 2 : Math.max(0.18, 1.2 - (frac - 0.4) * 1.8),
+      armLiftLeft: 0.2 + Math.sin(frac * Math.PI) * 0.7,
+      swayX: nx * (frac < 0.35 ? -4 : 10) * Math.min(1, frac * 1.7),
+    }));
+    spawnShadowSlash(this.scene, attacker.x, attacker.y, nx, ny, attacker.stats.attackRange, true);
+  }
+
+  private resolveDemonClaw(
+    now: number,
+    attacker: NinjaBody,
+    enemies: NinjaBody[],
+    step: ComboStep,
+    defenderBlock?: BlockController,
+  ): void {
+    let connected = false;
+    for (const defender of enemies) {
+      if (defender.down) {
+        continue;
+      }
+      const result = resolveMelee(this.scene, now, attacker, defender, step, defenderBlock, {
+        alreadyClashed: connected,
+        knockbackMul: DEMON_CLAW.knockbackMul,
+      });
+      if (result === 'hit') {
+        connected = true;
+        defender.status.applyHitReaction(now, step, DEMON_CLAW.hitReactionMs);
+      }
+      if (result === 'blocked' || result === 'perfect-block' || result === 'clash') {
+        this.combo.reset();
+      }
+    }
+    if (!connected) {
+      attacker.status.applyAttackRecovery(now, COMBAT.combo[step].recoveryMs);
+      this.combo.reset();
+    }
   }
 
   private fireWitchLight(now: number, attacker: NinjaBody): void {
@@ -485,6 +617,10 @@ export class QuickAttack {
     }
     if (attacker.heroId === 'shadow') {
       this.resolveShadowImpact(now, attacker, enemies, pending.step, defenderBlock);
+      return;
+    }
+    if (attacker.heroId === 'demon' && isBigDemon(attacker)) {
+      this.resolveDemonClaw(now, attacker, enemies, pending.step, defenderBlock);
       return;
     }
 

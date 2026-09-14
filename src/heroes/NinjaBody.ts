@@ -17,6 +17,8 @@ import { drawClawMark, drawRageFire } from './abilities/shadow/clawFx';
 import { SHADOW_MARK, SHADOW_RAGE } from './abilities/shadow/tunables';
 import { dismissWitchSkeletons, unregisterWitchSkeleton } from './abilities/witch/skeletonPack';
 import { absorbGuardianAngel, clearGuardian } from './abilities/mender/shieldState';
+import { tickBurn, isBurning, clearBurn, drawBurnFlames } from './abilities/demon/burnFx';
+import { resetDemonForm, type DemonForm } from './abilities/demon/form';
 import { DEV_CHEATS } from '../debug/devCheats';
 import { MATCH } from '../config/match';
 import { MINION } from '../config/minion';
@@ -87,6 +89,12 @@ export class NinjaBody {
   private readonly baseMaxStamina: number;
   private rageStaminaUntil = 0;
   private fairyForm = false;
+  demonForm: DemonForm = 'little';
+  demonRage = 0;
+  demonTransformUntil = 0;
+  demonScaled = false;
+  readonly steer = new Phaser.Math.Vector2(0, 0);
+  private burnGfx?: Phaser.GameObjects.Graphics;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: FighterOptions = {}) {
     this.scene = scene;
@@ -172,6 +180,7 @@ export class NinjaBody {
     this.syncMagicVortex();
     this.syncClawMark();
     this.syncRageFire();
+    this.syncBurn();
     const now = this.now();
     if (this.heroId === 'rope' && now >= this.attackingUntil && this.present && !this.down) {
       const hop = Math.abs(Math.sin(now / 130)) * 3.4;
@@ -185,6 +194,7 @@ export class NinjaBody {
   }
 
   applyMove(move: Phaser.Math.Vector2): void {
+    this.steer.copy(move);
     const body = this.physics();
     if (!body) {
       return;
@@ -301,6 +311,8 @@ export class NinjaBody {
       this.clearClawMark();
       this.clearRage();
       this.setFairyForm(false);
+      resetDemonForm(this);
+      clearBurn(this);
       dismissWitchSkeletons(this);
       if (applied > 0) {
         playDeath(this);
@@ -441,6 +453,7 @@ export class NinjaBody {
           rival: this.rival,
           team: this.team,
           fairyForm: this.fairyForm,
+          demonForm: this.demonForm,
         });
         this.art.setPosition(
           lungeX * swordAnimState.lungeFrac,
@@ -507,6 +520,7 @@ export class NinjaBody {
           showUzi: pose.showUzi,
           staffRaise: pose.staffRaise,
           fairyForm: this.fairyForm,
+          demonForm: this.demonForm,
         });
         this.art.setPosition(pose.swayX ?? 0, pose.jumpY ?? 0);
       },
@@ -638,6 +652,8 @@ export class NinjaBody {
 
   healFull(): void {
     this.clearRage();
+    resetDemonForm(this);
+    clearBurn(this);
     this.health = this.stats.maxHealth;
     this.stamina = this.stats.maxStamina;
     this.maxBlockShield = blockShieldMaxFor(this.stats.maxHealth);
@@ -677,6 +693,8 @@ export class NinjaBody {
       this.clearClawMark();
       this.clearRage();
       this.setFairyForm(false);
+      resetDemonForm(this);
+      clearBurn(this);
       dismissWitchSkeletons(this);
     }
   }
@@ -773,7 +791,7 @@ export class NinjaBody {
     }
   }
 
-  takeDotDamage(amount: number, now: number): void {
+  takeDotDamage(amount: number, now: number, attacker?: NinjaBody): void {
     if (this.down || !this.present || amount <= 0) {
       return;
     }
@@ -786,13 +804,19 @@ export class NinjaBody {
     this.health = Math.max(0, this.health - amount);
     if (applied > 0) {
       emitCombatDamage({
-        attacker: null,
+        attacker: attacker ?? null,
         victim: this,
         amount: applied,
         kind: 'other',
         at: now,
+        attackerTeam: attacker?.team,
         victimTeam: this.team,
       });
+    }
+    if (attacker && attacker.team !== this.team) {
+      this.lastAttacker = attacker;
+      this.lastAttackerAt = now;
+      this.lastEnemyHitAt = now;
     }
     if (this.down) {
       this.stop();
@@ -801,6 +825,8 @@ export class NinjaBody {
       this.clearClawMark();
       this.clearRage();
       this.setFairyForm(false);
+      resetDemonForm(this);
+      clearBurn(this);
       dismissWitchSkeletons(this);
       if (applied > 0) {
         playDeath(this);
@@ -890,6 +916,20 @@ export class NinjaBody {
         ? 0.28 + 0.72 * (1 - (this.rageCastUntil - now) / SHADOW_RAGE.castMs)
         : 1;
     drawRageFire(gfx, this.x, this.y, now, intensity);
+  }
+
+  private syncBurn(): void {
+    const now = this.now();
+    tickBurn(this, now);
+    if (!isBurning(this, now)) {
+      this.burnGfx?.destroy();
+      this.burnGfx = undefined;
+      return;
+    }
+    if (!this.burnGfx || !this.burnGfx.active) {
+      this.burnGfx = this.scene.add.graphics().setDepth(12);
+    }
+    drawBurnFlames(this.burnGfx, this.x, this.y, now);
   }
 
   private syncRopeWrap(): void {
@@ -1054,6 +1094,9 @@ export class NinjaBody {
     unregisterWitchSkeleton(this);
     dismissWitchSkeletons(this);
     this.setFairyForm(false);
+    resetDemonForm(this);
+    clearBurn(this);
+    this.burnGfx?.destroy();
     clearGuardian(this);
     this.sprite.destroy();
     this.view.destroy();
@@ -1069,6 +1112,7 @@ export class NinjaBody {
       rival: this.rival,
       team: this.team,
       fairyForm: this.fairyForm,
+      demonForm: this.demonForm,
     });
   }
 
