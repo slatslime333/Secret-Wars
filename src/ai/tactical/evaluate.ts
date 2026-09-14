@@ -1,6 +1,6 @@
 import { ARENA, atFarEdge } from '../../config/arena';
 import { TACTIC } from './constants';
-import { isRangedLike } from './kitProfile';
+import { isRangedLike, isRopeDisarmed, isShadowDry } from './kitProfile';
 import { assessObjective, isZoneObjective } from './objectiveIntel';
 import type { ObjectiveIntel } from './objectiveIntel';
 import { assessTeam, biasAction, type TeamIntel } from './teamIntel';
@@ -582,6 +582,12 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (self.staminaRatio < 0.22) {
       attack -= 10 + personality.caution * 6;
     }
+    if (isShadowDry(self.heroId, self) && enemy.kind === 'hero') {
+      attack -= 26 + personality.caution * 8;
+    }
+    if (isRopeDisarmed(self.heroId, self) && d < range * 0.72) {
+      attack -= 14;
+    }
     if (objIntel && enemy.kind === 'hero') {
       const enemyOnObj = Math.hypot(enemy.x - objIntel.x, enemy.y - objIntel.y) < objIntel.radius + 90;
       if (isZoneObjective(objIntel.kind) && objIntel.inside && !enemyOnObj) {
@@ -609,6 +615,9 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         finish -= 16;
       }
       finish += personality.aggression * 6;
+      if (isShadowDry(self.heroId, self)) {
+        finish -= 18;
+      }
       count = write(out, count, 'finish_target', tune('finish_target', persist(enemy, finish * vis)), pile > 0.7 ? 'already handled' : 'finishable', enemy.id);
     }
 
@@ -628,6 +637,9 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       flank += personality.flankTendency * 18;
       if (kit?.wantsFlank) {
         flank += 6;
+      }
+      if (isShadowDry(self.heroId, self) && enemy.kind === 'hero') {
+        flank -= 16;
       }
       if (ranged) {
         flank -= 4;
@@ -655,6 +667,12 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         chase -= 12;
       }
       chase += personality.aggression * 8 + personality.persistence * 6;
+      if (isShadowDry(self.heroId, self) && enemy.kind === 'hero') {
+        chase -= 20;
+      }
+      if (isRopeDisarmed(self.heroId, self)) {
+        chase -= 12;
+      }
       if (objIntel && isZoneObjective(objIntel.kind) && objIntel.inside) {
         const enemyOnObj = Math.hypot(enemy.x - objIntel.x, enemy.y - objIntel.y) < objIntel.radius + 80;
         if (!enemyOnObj) {
@@ -836,6 +854,16 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     count = write(out, count, 'recover', recover, closeHero ? 'need space first' : 'recover');
   }
 
+  if (kind === 'hero' && isShadowDry(self.heroId, self)) {
+    const closeHero = enemies.some((enemy) => enemy.kind === 'hero' && enemy.visible && dist(self, enemy) < 240);
+    if (closeHero) {
+      let recover = 24 + (1 - self.staminaRatio) * 16 + personality.caution * 8;
+      recover += (1 - self.hpRatio) * 6;
+      count = write(out, count, 'recover', recover, 'no kit left');
+      count = write(out, count, 'reposition', recover - 2, 'disengage dry');
+    }
+  }
+
   const stuckAtEdge = atFarEdge(self.team, self.x);
   let nearestMinion: CombatantView | undefined;
   let minionGap = 1e9;
@@ -917,7 +945,11 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
   } else if (ranged && enemies.some((enemy) => dist(self, enemy) < self.attackRange * 0.5)) {
     count = write(out, count, 'reposition', 18 + personality.caution * 6, 'make space', enemies[0]?.id ?? -1);
   } else if (support && enemies.some((enemy) => dist(self, enemy) < self.attackRange * 1.15)) {
-    count = write(out, count, 'reposition', 16 + personality.flankTendency * 8, "don't trade", enemies[0]?.id ?? -1);
+    let repo = 16 + personality.flankTendency * 8;
+    if (isRopeDisarmed(self.heroId, self)) {
+      repo += 10;
+    }
+    count = write(out, count, 'reposition', repo, "don't trade", enemies[0]?.id ?? -1);
   }
 
   const farm = handledNearby || (urgent?.handled ?? false) || enemies.length === 0;
@@ -1148,6 +1180,9 @@ const scoreObjective = (
     }
     if (obj.kind === 'executioner' && d < obj.radius + 50 && self.hpRatio < 0.35) {
       contest -= 12;
+    }
+    if (obj.kind === 'executioner' && isShadowDry(self.heroId, self)) {
+      contest -= 16;
     }
     if (intel.occEnemies >= 2 && self.hpRatio < 0.4 && personality.caution > 0.55) {
       contest -= 8;

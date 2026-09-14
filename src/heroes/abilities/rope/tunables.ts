@@ -1,5 +1,6 @@
 import { COLE_STORM } from '../cole/tunables';
 import { GUN_BARRAGE_SPEED_BASE, DEATH_SMASH } from '../death/tunables';
+import { NINJA_KICK } from '../ninja/tunables';
 import { abilityDamage } from '../../../config/ratings';
 
 /** Rope Man combat numbers. Light shots reuse converted ratings. */
@@ -10,9 +11,9 @@ export const ROPE_SHOT = {
   radius: 4.5,
   lifetimeMs: 5000,
   /** Tighter grouping around the aim line. */
-  spreadRad: 0.018,
+  spreadRad: 0.011,
   /** Small left/right split so alternating shots still hug aim. */
-  armOffsetRad: 0.028,
+  armOffsetRad: 0.016,
   armReach: 16,
   knockbackMul: 1.15,
   staminaDamage: 3,
@@ -45,6 +46,8 @@ export const ROPE_GRAB = {
   slingMs: 160,
   hitSlowMul: 0.5,
   hitSlowMs: 2500,
+  /** 25% more than Ninja's backflip kick. */
+  damage: NINJA_KICK.damage * 1.25,
 } as const;
 
 export const ROPE_PUNCH = {
@@ -68,7 +71,7 @@ export const ROPE_SPRAY = {
   /** Same effective reach as Cole's Thunderstorm. */
   range: COLE_STORM.radius,
   intervalMs: 300,
-  shotsPerPulse: 2,
+  shotsPerPulse: 3,
   speed: Math.round(GUN_BARRAGE_SPEED_BASE * 1.2),
   radius: 4.5,
   damageRating: 36,

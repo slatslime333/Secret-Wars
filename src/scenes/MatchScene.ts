@@ -335,6 +335,9 @@ export class MatchScene extends Phaser.Scene {
     this.battlefield?.update(now, delta);
     this.orbs.update(now, delta);
     this.abilityWorld.update(now, this.allCombatants(), delta);
+    for (const unit of this.heroes) {
+      unit.syncKitPressure(now);
+    }
     this.tactics.refresh(now, this.livingFighters());
     this.minions.update(now, delta, this.abilityWorld, this.tactics);
 

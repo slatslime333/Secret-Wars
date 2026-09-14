@@ -25,8 +25,8 @@ type PinnedStats = {
 /** Live gameplay numbers from before the 50-baseline conversion. Do not drift. */
 export const PINNED_GAMEPLAY: Record<'ninja' | 'cole' | 'death', PinnedStats> = {
   ninja: {
-    maxHealth: 147,
-    maxStamina: 122,
+    maxHealth: 143,
+    maxStamina: 112,
     moveSpeed: 205,
     attackDamage: 13,
     defense: 26,

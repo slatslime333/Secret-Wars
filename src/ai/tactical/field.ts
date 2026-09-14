@@ -202,6 +202,8 @@ export class TacticalField {
       lastAttackerId: -1,
       visible: true,
       blocking: false,
+      abilityReady: true,
+      dashCharges: 2,
       ref: undefined as unknown as NinjaBody,
     };
     this.facts[index] = created;
@@ -236,6 +238,8 @@ export class TacticalField {
     fact.canAttack = body.canAttack(now);
     fact.visible = true;
     fact.blocking = body.blocking;
+    fact.abilityReady = body.kitAbilityReady;
+    fact.dashCharges = body.kitDashCharges;
     fact.lastAttackerId = -1;
   }
 }

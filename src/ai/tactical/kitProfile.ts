@@ -1,5 +1,23 @@
 import type { KitProfile, KitStance } from './types';
 
+export type KitLiveFlags = {
+  staminaRatio: number;
+  abilityReady?: boolean;
+  dashCharges?: number;
+};
+
+const abilityReadyOf = (live: KitLiveFlags): boolean => live.abilityReady !== false;
+
+const dashChargesOf = (live: KitLiveFlags): number => live.dashCharges ?? 2;
+
+/** Shadow with no stamina, no kit, and no dashes should stop committing. */
+export const isShadowDry = (heroId: string, live: KitLiveFlags): boolean =>
+  heroId === 'shadow' && live.staminaRatio < 0.34 && !abilityReadyOf(live) && dashChargesOf(live) <= 0;
+
+/** Rope without a grab/punch/spray ready should stay at poke range. */
+export const isRopeDisarmed = (heroId: string, live: KitLiveFlags): boolean =>
+  heroId === 'rope' && !abilityReadyOf(live);
+
 type KitOverride = Partial<Omit<KitProfile, 'heroId' | 'preferredRange' | 'comfortMin' | 'comfortMax'>> & {
   preferredRangeMul?: number;
   comfortMinMul?: number;
@@ -127,20 +145,49 @@ export const isRangedLike = (role: string, attackRange: number, stance?: KitStan
   return role === 'ranged' || role === 'ranged-tank' || role === 'support' || (role === 'minion' && attackRange > 80);
 };
 
-export const kitProfileOf = (heroId: string, role: string, attackRange: number): KitProfile => {
+export const kitProfileOf = (
+  heroId: string,
+  role: string,
+  attackRange: number,
+  live?: KitLiveFlags,
+): KitProfile => {
   const override = KIT_OVERRIDES[heroId] ?? {};
   const stance = override.stance ?? stanceFromRole(role, attackRange);
-  const preferredMul = override.preferredRangeMul ?? (stance === 'ranged' || stance === 'support' ? 0.88 : 0.7);
-  const minMul = override.comfortMinMul ?? (stance === 'ranged' || stance === 'support' ? 0.55 : 0.32);
-  const maxMul = override.comfortMaxMul ?? (stance === 'ranged' || stance === 'support' ? 1.18 : 1.08);
+  let preferredMul = override.preferredRangeMul ?? (stance === 'ranged' || stance === 'support' ? 0.88 : 0.7);
+  let minMul = override.comfortMinMul ?? (stance === 'ranged' || stance === 'support' ? 0.55 : 0.32);
+  let maxMul = override.comfortMaxMul ?? (stance === 'ranged' || stance === 'support' ? 1.18 : 1.08);
+  let wantsInitiate = override.wantsInitiate ?? stance === 'melee';
+  let wantsPoke = override.wantsPoke ?? (stance === 'ranged' || stance === 'support' || stance === 'skirmish');
+  if (heroId === 'rope' && live) {
+    if (isRopeDisarmed(heroId, live)) {
+      preferredMul = 0.94;
+      minMul = 0.62;
+      maxMul = 1.12;
+      wantsInitiate = false;
+      wantsPoke = true;
+    } else {
+      preferredMul = 0.76;
+      minMul = 0.4;
+      maxMul = 1.02;
+      wantsInitiate = true;
+      wantsPoke = true;
+    }
+  }
+  if (heroId === 'shadow' && live && isShadowDry(heroId, live)) {
+    preferredMul = 0.84;
+    minMul = 0.52;
+    maxMul = 1.1;
+    wantsInitiate = false;
+    wantsPoke = true;
+  }
   return {
     heroId,
     stance,
     preferredRange: attackRange * preferredMul,
     comfortMin: attackRange * minMul,
     comfortMax: attackRange * maxMul,
-    wantsInitiate: override.wantsInitiate ?? (stance === 'melee'),
-    wantsPoke: override.wantsPoke ?? (stance === 'ranged' || stance === 'support' || stance === 'skirmish'),
+    wantsInitiate,
+    wantsPoke,
     wantsFlank: override.wantsFlank ?? (role === 'assassin' || role === 'disruptor'),
     wantsProtect: override.wantsProtect ?? (role === 'support' || role === 'tank' || role === 'ranged-tank'),
     setupIds: override.setupIds ?? [],

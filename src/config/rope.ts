@@ -6,16 +6,16 @@ import { gameplayFromRatings, type CoreRatings } from './ratings';
  * Long-range harasser / support. Ratings stay inside the same power band as
  * Ninja / Cole / Death: high range and speed, low HP and light-attack damage.
  *
- * Attack Speed 59 converts to a faster rope cadence than the old 53 rating.
+ * Attack Speed 64 is a quicker rope cadence than the previous 59 rating.
  */
 export const ROPE_RATINGS = {
   health: 38,
   stamina: 62,
-  staminaRegen: 78,
+  staminaRegen: 66,
   damage: 32,
   defense: 48,
   speed: 86,
-  attackSpeed: 59,
+  attackSpeed: 64,
   attackRange: 90,
   knockback: 36,
 } as const satisfies CoreRatings;

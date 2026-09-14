@@ -13,6 +13,7 @@ import { TacticalMind } from './tactical/mind';
 import { MovementCommit } from './tactical/locomotion';
 import { moveGoal } from './tactical/move';
 import type { TacticalDebugInfo } from './tactical/types';
+import { stampKitPressure } from '../heroes/kitPressure';
 
 /**
  * Play Test rival. Same attack / shield / dash kit as the player, with
@@ -55,6 +56,7 @@ export class RivalBrain {
 
     field.fillEnemies(cpu, this.foes);
     const foes = this.foes;
+    stampKitPressure(cpu, now, this.abilities, this.dash);
     cpu.regenHealth(delta, now);
     cpu.regenStamina(delta, now);
     cpu.regenBlockShield(delta, now);
