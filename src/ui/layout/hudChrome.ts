@@ -1,4 +1,4 @@
-import { PC_COMBAT_HUD } from '../pcCombatHud';
+import { layoutPcCombatHud, PC_COMBAT_HUD } from '../pcCombatHud';
 import { clamp, type ViewportFrame } from './viewport';
 
 export type HudChromeLayout = {
@@ -161,5 +161,54 @@ export const layoutHudChrome = (frame: ViewportFrame): HudChromeLayout => {
       height: miniH,
     },
     verbVisible: false,
+  };
+};
+
+export type SpectatorPlateLayout = {
+  cx: number;
+  cy: number;
+  width: number;
+  height: number;
+  bottom: number;
+  prevX: number;
+  nextX: number;
+  buttonY: number;
+  titleY: number;
+  watchingY: number;
+};
+
+/**
+ * Compact PREV/NEXT spectate plate. Parks on the right, just above the
+ * health / XP cluster, so it no longer covers the bottom HUD.
+ */
+export const layoutSpectatorPlate = (frame: ViewportFrame): SpectatorPlateLayout => {
+  const chrome = layoutHudChrome(frame);
+  const width = Math.round(clamp(frame.isMobile ? frame.width * 0.38 : 168, 132, frame.isMobile ? 156 : 168));
+  const height = frame.isMobile ? 44 : 52;
+  const marginR = Math.max(10, frame.contentInset.right);
+  const cx = frame.width - marginR - width / 2;
+  let floor: number;
+  if (frame.isMobile) {
+    const hpTop = chrome.bars.hpY - chrome.bars.hpH / 2;
+    floor = Math.min(hpTop, chrome.match.phaseY) - 8;
+  } else {
+    const pc = layoutPcCombatHud(frame.width, frame.height);
+    floor = pc.hpY - pc.hpHeight / 2 - 10;
+  }
+  const minTop = chrome.menuY + chrome.menuH / 2 + 8;
+  const top = Math.max(minTop, floor - height);
+  const bottom = top + height;
+  const cy = (top + bottom) / 2;
+  return {
+    cx,
+    cy,
+    width,
+    height,
+    bottom,
+    prevX: cx - 34,
+    nextX: cx + 34,
+    buttonY: bottom - 12,
+    titleY: top + 10,
+    watchingY: top + 22,
   };
 };

@@ -1,4 +1,4 @@
-import { canStartObjective, OBJECTIVE, pickObjectiveKind, pickObjectiveStartAt } from '../../config/objective';
+import { canStartObjective, nextObjectiveKind, OBJECTIVE, pickObjectiveKind, pickObjectiveStartAt } from '../../config/objective';
 import { COLE_CONVERTED_RANGE } from '../../config/cole';
 import { emptyCapture, tickCapture } from './captureLogic';
 
@@ -53,6 +53,40 @@ const scenarioKindReroll = (): CheckResult => {
   const other = pickObjectiveKind('capture_zone', rngOf([0.1, 0.1]));
   const ok = Boolean(first) && same === 'capture_zone' && other === 'golden_piggy';
   return { name: 'objective kind variety', ok, detail: `first=${first} same=${same} other=${other}` };
+};
+
+const scenarioKindDeck = (): CheckResult => {
+  const queue: Array<(typeof OBJECTIVE.kinds)[number]> = [];
+  const firstCycle = new Set<string>();
+  for (let i = 0; i < OBJECTIVE.kinds.length; i += 1) {
+    firstCycle.add(nextObjectiveKind(queue, rngOf([0.2, 0.8, 0.4, 0.6])));
+  }
+  const second = nextObjectiveKind(queue, rngOf([0.3]));
+  const ok = firstCycle.size === OBJECTIVE.kinds.length && OBJECTIVE.kinds.includes(second);
+  return {
+    name: 'objective kind deck covers every registered event',
+    ok,
+    detail: `cycle=${[...firstCycle].join(',')} next=${second} kinds=${OBJECTIVE.kinds.join(',')}`,
+  };
+};
+
+const scenarioFirstEventFitsSecond = (): CheckResult => {
+  const firstHi = pickObjectiveStartAt(OBJECTIVE.earliestStartMs, OBJECTIVE.firstLatestStartMs, rngOf([0.999]));
+  const afterCaptureCool = (OBJECTIVE.firstLatestStartMs - 1) + OBJECTIVE.capture.captureMs + OBJECTIVE.cooldownMs;
+  const second = pickObjectiveStartAt(afterCaptureCool, Math.min(afterCaptureCool + 8_000, OBJECTIVE.latestStartMs), rngOf([0]));
+  const tooLateFirst = pickObjectiveStartAt(OBJECTIVE.firstLatestStartMs, OBJECTIVE.firstLatestStartMs, rngOf([0.2]));
+  const ok =
+    firstHi !== undefined &&
+    firstHi < OBJECTIVE.firstLatestStartMs &&
+    afterCaptureCool < OBJECTIVE.latestStartMs &&
+    second !== undefined &&
+    second >= afterCaptureCool &&
+    tooLateFirst === undefined;
+  return {
+    name: 'first event leaves room for every other kind',
+    ok,
+    detail: `firstHi=${firstHi?.toFixed(0)} coolDone=${afterCaptureCool} second=${second?.toFixed(0)} none=${tooLateFirst}`,
+  };
 };
 
 const scenarioCaptureRadius = (): CheckResult => {
@@ -125,6 +159,8 @@ export const runObjectiveChecks = (): CheckResult[] => [
   scenarioTimingWindow(),
   scenarioRandomStart(),
   scenarioKindReroll(),
+  scenarioKindDeck(),
+  scenarioFirstEventFitsSecond(),
   scenarioCaptureRadius(),
   scenarioSecondEventWindow(),
   scenarioCaptureRules(),

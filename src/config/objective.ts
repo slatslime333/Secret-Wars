@@ -2,11 +2,17 @@ import { COLE, COLE_CONVERTED_RANGE } from './cole';
 
 /**
  * Random mid-match objective tunables. Timing is match-elapsed, not remaining
- * clock. Keep new event types out of this file — they register themselves.
+ * clock. Every kind listed here is in the live rotation; ObjectiveManager's
+ * factory must handle each one so unknown types cannot collapse to Capture Zone.
  */
 export const OBJECTIVE = {
   /** No event may start before this elapsed time. */
   earliestStartMs: 20_000,
+  /**
+   * First event must start early enough that a later kind still fits after
+   * the 60s cooldown. Valid first-start window is [20s, 50s].
+   */
+  firstLatestStartMs: 50_000,
   /** Starts at or after 2:20 elapsed are illegal. Valid window is [20s, 2:19]. */
   latestStartMs: 140_000,
   cooldownMs: 60_000,
@@ -76,4 +82,28 @@ export const pickObjectiveKind = (previous: ObjectiveKind | undefined, rng: () =
   }
   const others = kinds.filter((kind) => kind !== previous);
   return others[Math.floor(rng() * others.length)] ?? previous;
+};
+
+/** Fisher–Yates copy so every registered kind appears before any repeat. */
+export const shuffleObjectiveKinds = (rng: () => number): ObjectiveKind[] => {
+  const deck = [...OBJECTIVE.kinds];
+  for (let i = deck.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    const a = deck[i];
+    const b = deck[j];
+    if (a === undefined || b === undefined) {
+      continue;
+    }
+    deck[i] = b;
+    deck[j] = a;
+  }
+  return deck;
+};
+
+/** Consume the next kind from a shuffled deck, refilling when empty. */
+export const nextObjectiveKind = (queue: ObjectiveKind[], rng: () => number): ObjectiveKind => {
+  if (queue.length === 0) {
+    queue.push(...shuffleObjectiveKinds(rng));
+  }
+  return queue.shift() ?? OBJECTIVE.kinds[0] ?? 'capture_zone';
 };

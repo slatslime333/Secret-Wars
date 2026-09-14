@@ -1,4 +1,4 @@
-import { layoutHudChrome } from './hudChrome';
+import { layoutHudChrome, layoutSpectatorPlate } from './hudChrome';
 import { measureViewport } from './viewport';
 import { findLayoutOverlaps, getTouchControlLayout } from '../touchLayout';
 import { resolveControls } from '../controlLayout';
@@ -23,6 +23,7 @@ const checkSize = (label: string, width: number, height: number): Check[] => {
   const layout = getTouchControlLayout(width, height);
   const resolved = resolveControls(width, height, {});
   const chrome = layoutHudChrome(measureViewport(width, height, true));
+  const spec = layoutSpectatorPlate(measureViewport(width, height, true));
   const overlaps = findLayoutOverlaps(width, height);
   const rightBand = width * 0.55;
   const leftBand = width * 0.32;
@@ -47,6 +48,8 @@ const checkSize = (label: string, width: number, height: number): Check[] => {
   const moveRight = layout.leftStick.x + layout.radius;
   const aimLeft = layout.rightStick.x - layout.radius;
   const barsInGap = chrome.bars.x >= moveRight + 4 && barRight <= aimLeft - 4;
+  const hpTop = chrome.bars.hpY - chrome.bars.hpH / 2;
+  const specAboveHealth = spec.bottom <= hpTop - 2 && spec.width <= 168 && spec.cx > width * 0.55;
   return [
     {
       name: `${label} no control overlap`,
@@ -79,6 +82,11 @@ const checkSize = (label: string, width: number, height: number): Check[] => {
       name: `${label} sticks stay in the corners`,
       ok: controlsAtBottom && barsInGap,
       detail: `stickFloor=${stickFloor.toFixed(0)} bars=${chrome.bars.x}-${barRight} gap=${moveRight.toFixed(0)}-${aimLeft.toFixed(0)}`,
+    },
+    {
+      name: `${label} spectator plate above health`,
+      ok: specAboveHealth,
+      detail: `bottom=${spec.bottom.toFixed(0)} hpTop=${hpTop.toFixed(0)} w=${spec.width} cx=${spec.cx.toFixed(0)}`,
     },
   ];
 };
