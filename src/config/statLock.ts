@@ -49,7 +49,7 @@ export const PINNED_GAMEPLAY: Record<'ninja' | 'cole' | 'death', PinnedStats> = 
     maxStamina: 140,
     moveSpeed: 148,
     attackDamage: 17,
-    defense: 36,
+    defense: 40,
     knockbackPower: 231,
     attackCooldownMs: 230,
     attackRange: 134,
@@ -123,14 +123,14 @@ export const assertFoundationalStatLock = (): void => {
     }
   });
 
-  if (SHADOW.ratings.damage !== 56) {
-    mismatches.push(`shadow damage rating ${SHADOW.ratings.damage} !== 56`);
+  if (SHADOW.ratings.damage !== 52) {
+    mismatches.push(`shadow damage rating ${SHADOW.ratings.damage} !== 52`);
   }
-  if (SHADOW.attackDamage !== 14) {
-    mismatches.push(`shadow attackDamage ${SHADOW.attackDamage} !== 14`);
+  if (SHADOW.attackDamage !== 13) {
+    mismatches.push(`shadow attackDamage ${SHADOW.attackDamage} !== 13`);
   }
-  if (SHADOW.attackRange !== 161) {
-    mismatches.push(`shadow attackRange ${SHADOW.attackRange} !== 161`);
+  if (SHADOW.attackRange !== 145) {
+    mismatches.push(`shadow attackRange ${SHADOW.attackRange} !== 145`);
   }
   if (SHADOW_CLAW.radius !== 186) {
     mismatches.push(`shadow claw radius ${SHADOW_CLAW.radius} !== 186`);
@@ -142,6 +142,9 @@ export const assertFoundationalStatLock = (): void => {
   const dashWas = abilityDamage(44);
   if (Math.abs(SHADOW_DASH.damage - dashWas * 1.35) > 0.001) {
     mismatches.push(`shadow dash damage ${SHADOW_DASH.damage} !== ${dashWas * 1.35}`);
+  }
+  if (Math.abs(SHADOW_DASH.knockbackMul - 3.4 * 1.25) > 0.001) {
+    mismatches.push(`shadow dash knockbackMul ${SHADOW_DASH.knockbackMul} !== ${3.4 * 1.25}`);
   }
   const shadowCost = lightAttackStaminaCost(1, SHADOW.attackStaminaMul);
   const coleCost = lightAttackStaminaCost(1, COLE.attackStaminaMul);
@@ -156,6 +159,12 @@ export const assertFoundationalStatLock = (): void => {
   }
   if (DEATH_SMASH.knockback > 600 || DEATH_SMASH.knockback < 350) {
     mismatches.push(`death smash knockback ${DEATH_SMASH.knockback} is not a heavy shove`);
+  }
+  if (DEATH_GUN.intervalMs !== 238) {
+    mismatches.push(`gun barrage interval ${DEATH_GUN.intervalMs} !== 238`);
+  }
+  if (DEATH_GUN.speed !== 750) {
+    mismatches.push(`gun barrage speed ${DEATH_GUN.speed} !== 750`);
   }
 
   if (mismatches.length > 0) {

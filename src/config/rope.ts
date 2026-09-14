@@ -11,7 +11,7 @@ import { gameplayFromRatings, type CoreRatings } from './ratings';
 export const ROPE_RATINGS = {
   health: 38,
   stamina: 62,
-  staminaRegen: 65,
+  staminaRegen: 78,
   damage: 32,
   defense: 48,
   speed: 86,

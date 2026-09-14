@@ -2,6 +2,9 @@ import { NINJA_BASE_RANGE } from '../../../config/ninja';
 import { DEATH } from '../../../config/death';
 import { abilityDamage } from '../../../config/ratings';
 
+/** Pre-velocity-buff gun speed. Rope kits keep this so gun buffs do not leak. */
+export const GUN_BARRAGE_SPEED_BASE = 625;
+
 /** 1 → 2 is the fast pair. Then a short pause before the next pair. */
 export const DEATH_ATTACK = {
   pairDelayMs: 820,
@@ -27,8 +30,10 @@ export const DEATH_DASH = {
 export const DEATH_GUN = {
   cooldownMs: 14500,
   bullets: 18,
-  intervalMs: 280,
-  speed: 625,
+  /** 15% faster than the previous 280ms cadence. */
+  intervalMs: Math.round(280 * 0.85),
+  /** 20% more velocity than the previous 625px/s. */
+  speed: Math.round(GUN_BARRAGE_SPEED_BASE * 1.2),
   radius: 4,
   lifetimeMs: 5000,
   damageRating: 16,

@@ -40,7 +40,7 @@ export const SHADOW_DASH = {
   pathPadding: 10,
   damageRating: 44,
   damage: abilityDamage(44) * 1.35,
-  knockbackMul: 3.4,
+  knockbackMul: 4.25,
   staminaDamage: 4,
   slowMul: 0.8,
   attackSlowMul: 1.2,
