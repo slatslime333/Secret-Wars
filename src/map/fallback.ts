@@ -4,6 +4,8 @@ import { templateOf } from './chunks';
 import { generateRoads } from './roads';
 import { buildReservedZones, reservedBlocks, spawnZonesOf } from './reserved';
 import { visualForProp } from './scale';
+import { scatterFieldDetails } from './scatter';
+import { SeededRNG } from './seed';
 import type { ChunkKind, MapChunkInstance, MapDecoration, MapLayout, MapObstacle, MapRegionId, Rect } from './types';
 import { largestOpenRects, scoreLayout, validateLayout } from './validate';
 
@@ -89,6 +91,8 @@ export const buildFallbackLayout = (seed: number, attempt: number): MapLayout =>
       }
     }
   }
+
+  decorations.push(...scatterFieldDetails(new SeededRNG(seed ^ 0x7e2a), obstacles));
 
   const layout: MapLayout = {
     seed,

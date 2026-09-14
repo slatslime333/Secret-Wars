@@ -15,6 +15,7 @@ import { inflate, rectsOverlap } from './geometry';
 import { generateRoads } from './roads';
 import { buildReservedZones, reservedBlocks, spawnZonesOf } from './reserved';
 import { visualForProp } from './scale';
+import { scatterFieldDetails } from './scatter';
 import { SeededRNG } from './seed';
 import type {
   ChunkKind,
@@ -280,7 +281,26 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
     }
   }
 
+  const nearMid: Array<{ id: ClusterId; x: number; y: number; mirror: boolean }> = [
+    { id: 'collapsed-building', x: 700, y: 430, mirror: false },
+    { id: 'wrecked-car', x: 920, y: 508, mirror: false },
+    { id: 'overrun-barricade', x: 920, y: 996, mirror: false },
+    { id: 'abandoned-convoy', x: 1664, y: 508, mirror: true },
+    { id: 'supply-dump', x: 1664, y: 996, mirror: true },
+    { id: 'rubble-slide', x: 820, y: 628, mirror: false },
+    { id: 'defensive-nest', x: 1764, y: 876, mirror: true },
+    { id: 'overgrown-ruin', x: 1880, y: 1034, mirror: true },
+  ];
+  for (const [index, site] of nearMid.entries()) {
+    const stamp = stampCluster(templateById(site.id), site.x, site.y, site.mirror, reserved, obstacles, `mid-${index}`);
+    if (stamp) {
+      obstacles.push(...stamp.obstacles);
+      decorations.push(...stamp.decorations);
+    }
+  }
+
   obstacles.push(...plantCratesBeside(obstacles, reserved, obstacles));
+  decorations.push(...scatterFieldDetails(new SeededRNG(seed ^ 0x7e2a), obstacles));
 
   const layout: MapLayout = {
     seed,

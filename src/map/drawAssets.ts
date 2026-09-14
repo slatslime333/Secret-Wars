@@ -76,6 +76,69 @@ const crateFace = (ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   fillPx(ctx, ENV.oliveLite, x + Math.floor(w / 2) - 3, y + 12, 6, 2);
 };
 
+const paintWheel = (ctx: CanvasRenderingContext2D, x: number, y: number): void => {
+  fillPx(ctx, ENV.ink, x, y, 16, 12);
+  fillPx(ctx, ENV.inkSoft, x + 2, y + 2, 12, 8);
+  fillPx(ctx, ENV.metal, x + 5, y + 4, 6, 5);
+};
+
+export const drawVehicle = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
+  const truck = variant === 'truck';
+  fillPx(ctx, ENV.inkSoft, 6, h - 16, w - 12, 8);
+  fillPx(ctx, ENV.ink, 4, 10, w - 8, h - 20);
+  fillPx(ctx, truck ? ENV.oliveDark : ENV.metal, 6, 12, w - 12, h - 24);
+  fillPx(ctx, truck ? ENV.olive : ENV.metalLite, 8, 14, w - 16, h - 30);
+  const cab = truck ? Math.floor(w * 0.3) : Math.floor(w * 0.4);
+  fillPx(ctx, ENV.ink, 8, 8, cab, h - 24);
+  fillPx(ctx, truck ? ENV.oliveLite : ENV.metalLite, 10, 10, cab - 6, h - 30);
+  fillPx(ctx, ENV.glass, 14, 16, cab - 16, 14);
+  fillPx(ctx, ENV.paper, 16, 18, 6, 4);
+  fillPx(ctx, ENV.ink, 18, 22, cab - 28, 6);
+  fillPx(ctx, ENV.burn, cab + 6, 20, 24, 10);
+  fillPx(ctx, ENV.rust, w - 30, h - 30, 18, 10);
+  const wheelY = h - 16;
+  paintWheel(ctx, 12, wheelY);
+  paintWheel(ctx, w - 32, wheelY);
+  if (truck) {
+    paintWheel(ctx, Math.floor(w * 0.42), wheelY);
+    fillPx(ctx, ENV.oliveLite, cab + 4, 14, w - cab - 16, 8);
+    fillPx(ctx, ENV.crateDark, cab + 12, 26, 22, 16);
+    fillPx(ctx, ENV.crate, cab + 14, 28, 18, 12);
+    fillPx(ctx, ENV.inkSoft, cab + 36, 28, 10, 14);
+    fillPx(ctx, ENV.metalLite, cab + 8, h - 28, w - cab - 22, 4);
+  } else {
+    fillPx(ctx, ENV.rustLite, cab + 8, 28, 18, 4);
+    fillPx(ctx, ENV.glass, cab + 12, 16, 18, 8);
+  }
+};
+
+export const drawBuilding = (ctx: CanvasRenderingContext2D, _variant: string, w: number, h: number): void => {
+  fillPx(ctx, ENV.ink, 8, 6, w - 22, 20);
+  fillPx(ctx, ENV.brickDark, 10, 8, w - 28, 16);
+  fillPx(ctx, ENV.brickLite, 14, 10, 36, 6);
+  fillPx(ctx, ENV.ink, 6, 20, w - 12, h - 26);
+  fillPx(ctx, ENV.brick, 8, 22, w - 16, h - 32);
+  for (let y = 28; y < h - 22; y += 9) {
+    fillPx(ctx, ENV.brickDark, 8, y, w - 16, 1);
+    for (let x = 14 + ((y / 9) % 2) * 7; x < w - 20; x += 15) {
+      fillPx(ctx, ENV.inkSoft, x, y + 1, 1, 7);
+    }
+  }
+  fillPx(ctx, ENV.ink, 18, 36, 16, 18);
+  fillPx(ctx, ENV.glass, 20, 38, 12, 14);
+  fillPx(ctx, ENV.ink, w - 42, 42, 14, 16);
+  fillPx(ctx, ENV.burn, w - 40, 44, 10, 12);
+  fillPx(ctx, ENV.inkSoft, w - 30, 8, 26, 36);
+  fillPx(ctx, ENV.concreteDark, w - 26, 28, 20, 22);
+  fillPx(ctx, ENV.dirt, 12, h - 16, 32, 8);
+  fillPx(ctx, ENV.concrete, 8, h - 12, w - 18, 8);
+  fillPx(ctx, ENV.concreteLite, 10, h - 10, w - 28, 3);
+  fillPx(ctx, ENV.grass, w - 24, h - 18, 16, 6);
+  fillPx(ctx, ENV.ink, 24, h - 48, 18, 32);
+  fillPx(ctx, ENV.inkSoft, 26, h - 46, 14, 28);
+  fillPx(ctx, ENV.woodDark, 36, h - 32, 3, 6);
+};
+
 export const drawCrate = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
   if (variant === 'stack') {
     crateFace(ctx, 4, h - 34, 32, 30);
@@ -83,59 +146,11 @@ export const drawCrate = (ctx: CanvasRenderingContext2D, variant: string, w: num
     return;
   }
   if (variant === 'pair') {
-    crateFace(ctx, 2, 4, 36, 28);
-    crateFace(ctx, 40, 6, 36, 28);
+    crateFace(ctx, 1, 4, 36, 28);
+    crateFace(ctx, 41, 6, 36, 28);
     return;
   }
   crateFace(ctx, 2, 2, w - 4, h - 4);
-};
-
-export const drawBuilding = (ctx: CanvasRenderingContext2D, _variant: string, w: number, h: number): void => {
-  fillPx(ctx, ENV.ink, 4, 18, w - 8, h - 20);
-  fillPx(ctx, ENV.brickDark, 6, 22, w - 12, h - 26);
-  fillPx(ctx, ENV.brick, 8, 24, w - 16, h - 32);
-  for (let y = 30; y < h - 18; y += 10) {
-    fillPx(ctx, ENV.brickDark, 8, y, w - 16, 1);
-    for (let x = 12 + ((y / 10) % 2) * 8; x < w - 16; x += 16) {
-      fillPx(ctx, ENV.inkSoft, x, y + 1, 1, 8);
-    }
-  }
-  fillPx(ctx, ENV.ink, 18, 34, 14, 16);
-  fillPx(ctx, ENV.glass, 20, 36, 10, 12);
-  fillPx(ctx, ENV.ink, w - 36, 40, 12, 14);
-  fillPx(ctx, ENV.burn, w - 34, 42, 8, 10);
-  fillPx(ctx, ENV.ink, 0, 8, w, 16);
-  fillPx(ctx, ENV.brickDark, 2, 10, w - 18, 12);
-  fillPx(ctx, ENV.brickLite, 6, 12, 28, 4);
-  fillPx(ctx, ENV.inkSoft, w - 28, 8, 28, 22);
-  fillPx(ctx, ENV.concreteDark, w - 24, 24, 20, 16);
-  fillPx(ctx, ENV.dirt, 10, h - 14, 28, 8);
-  fillPx(ctx, ENV.concrete, 8, h - 10, w - 20, 6);
-  fillPx(ctx, ENV.concreteLite, 10, h - 9, w - 28, 2);
-  fillPx(ctx, ENV.grass, w - 22, h - 16, 14, 6);
-};
-
-export const drawVehicle = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
-  const truck = variant === 'truck';
-  fillPx(ctx, ENV.ink, 2, 8, w - 4, h - 14);
-  fillPx(ctx, truck ? ENV.oliveDark : ENV.metal, 4, 10, w - 8, h - 18);
-  fillPx(ctx, truck ? ENV.olive : ENV.metalLite, 6, 12, w - 12, h - 24);
-  const cab = truck ? Math.floor(w * 0.28) : Math.floor(w * 0.38);
-  fillPx(ctx, ENV.inkSoft, 6, 12, cab, h - 26);
-  fillPx(ctx, ENV.glass, 10, 16, cab - 10, 10);
-  fillPx(ctx, ENV.ink, 12, 18, cab - 16, 6);
-  fillPx(ctx, ENV.burn, cab + 8, 18, 22, 8);
-  fillPx(ctx, ENV.rust, w - 22, h - 22, 14, 6);
-  fillPx(ctx, ENV.ink, 10, h - 12, 12, 8);
-  fillPx(ctx, ENV.ink, w - 24, h - 12, 12, 8);
-  fillPx(ctx, ENV.metalLite, 12, h - 10, 8, 4);
-  fillPx(ctx, ENV.metalLite, w - 22, h - 10, 8, 4);
-  if (truck) {
-    fillPx(ctx, ENV.oliveLite, cab + 4, 14, w - cab - 14, 6);
-    fillPx(ctx, ENV.crateDark, cab + 10, 22, 16, 12);
-    fillPx(ctx, ENV.crate, cab + 12, 24, 12, 8);
-  }
-  fillPx(ctx, ENV.rustLite, 20, h - 20, 18, 3);
 };
 
 export const drawBarricade = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
@@ -215,8 +230,8 @@ export const ASSET_SIZE: Record<string, { w: number; h: number }> = {
   'crate:pair': { w: 78, h: 36 },
   'building:house': { w: 120, h: 108 },
   'building:stub': { w: 120, h: 108 },
-  'vehicle:truck': { w: 136, h: 64 },
-  'vehicle:car': { w: 104, h: 52 },
+  'vehicle:truck': { w: 156, h: 74 },
+  'vehicle:car': { w: 118, h: 62 },
   'barricade:wood': { w: 82, h: 30 },
   'barricade:metal': { w: 82, h: 30 },
   'sandbag:line': { w: 68, h: 26 },

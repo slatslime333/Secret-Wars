@@ -77,7 +77,7 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
     [
       { kind: 'vehicle', variant: 'truck', ox: -10, oy: 0, spec: PROP.truck, hierarchy: 'landmark' },
       { kind: 'rubble', variant: 'chunk', ox: 70, oy: 18, spec: PROP.rubbleSmall, hierarchy: 'cover' },
-      { kind: 'crate', variant: 'pair', ox: 62, oy: -16, spec: PROP.cratePair, hierarchy: 'cover', destructible: true },
+      { kind: 'crate', variant: 'single', ox: 62, oy: -16, spec: PROP.crate, hierarchy: 'cover', destructible: true },
       { kind: 'crate', variant: 'single', ox: 88, oy: 10, spec: PROP.crate, hierarchy: 'cover', destructible: true },
     ],
     [
@@ -327,7 +327,7 @@ export const plantCratesBeside = (
   const anchors = hosts.filter((obs) => obs.kind === 'building' || obs.kind === 'vehicle' || obs.kind === 'barricade');
   let n = 0;
   for (const host of anchors) {
-    if (existing.filter((obs) => obs.kind === 'crate').length + extras.length >= 12) {
+    if (existing.filter((obs) => obs.kind === 'crate').length + extras.length >= 16) {
       break;
     }
     const already = [...existing, ...extras].filter(
@@ -346,8 +346,8 @@ export const plantCratesBeside = (
       if (placed >= 2) {
         break;
       }
-      const spec = placed === 0 && host.kind === 'vehicle' ? PROP.cratePair : PROP.crate;
-      const variant = spec === PROP.cratePair ? 'pair' : 'single';
+      const spec = PROP.crate;
+      const variant = 'single';
       const crate = crateObstacle(`supply-${host.id}-${n}`, slot.x, slot.y, spec, variant);
       if (reservedBlocks(crate.collision, reserved, 2)) {
         continue;

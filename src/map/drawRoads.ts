@@ -49,8 +49,9 @@ const drawPatch = (g: Phaser.GameObjects.Graphics, patch: PavementPatch): void =
     g.fillRect(patch.x + patch.w / 2 - 1, patch.y + 8, 2, patch.h - 16);
   }
   if (patch.kind === 'intersection') {
-    g.fillStyle(ENV.asphaltDark, 0.55);
-    g.fillRect(patch.x + 6, patch.y + 6, patch.w - 12, patch.h - 12);
+    g.fillStyle(ENV.asphaltDark, 0.35);
+    g.fillRect(patch.x + 10, patch.y + 10, patch.w - 20, patch.h - 20);
+    return;
   }
 };
 

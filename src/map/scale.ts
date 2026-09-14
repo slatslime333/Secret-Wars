@@ -42,8 +42,8 @@ export const PROP = {
   treeBroad: spec(20, 18, 64, 60, 20),
   rubble: spec(52, 36, 58, 42, 3),
   rubbleSmall: spec(28, 20, 32, 24, 2),
-  car: spec(96, 44, 104, 52, 4),
-  truck: spec(128, 56, 136, 64, 5),
+  car: spec(108, 50, 118, 62, 5),
+  truck: spec(140, 62, 156, 74, 6),
   /** Collision is the remaining south wall; the ruin visual is taller and walkable. */
   building: spec(100, 26, 120, 108, 36),
   buildingWall: spec(108, 22, 112, 28, 3),

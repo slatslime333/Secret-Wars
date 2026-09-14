@@ -16,7 +16,7 @@ export const MAP = {
   obstacleAreaMin: 0.01,
   obstacleAreaMax: 0.16,
   minObstacles: 8,
-  maxObstacles: 64,
+  maxObstacles: 88,
   maxChokeChunks: 2,
   cell: 28,
   logPrefix: '[map]',

@@ -293,9 +293,11 @@ const drawDecorations = (graphics: Phaser.GameObjects.Graphics, layout: MapLayou
     }
     if (mark.kind === 'debris') {
       graphics.fillStyle(0x5a5348, 1);
-      graphics.fillRect(mark.x - 4, mark.y - 2, 7 + mark.variant, 4);
+      graphics.fillRect(mark.x - 6, mark.y - 3, 11 + mark.variant, 5);
       graphics.fillStyle(0x3a3428, 1);
-      graphics.fillRect(mark.x + 2, mark.y, 5, 3);
+      graphics.fillRect(mark.x + 2, mark.y, 7, 4);
+      graphics.fillStyle(0x6e5a4a, 1);
+      graphics.fillRect(mark.x - 3, mark.y + 2, 6, 3);
       continue;
     }
     if (mark.kind === 'burn') {

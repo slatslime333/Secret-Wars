@@ -39,6 +39,7 @@ export const runMapChecks = (): CheckResult[] => {
   let objectivesOk = true;
   let compact = true;
   let blocked = false;
+  let landmarksNearMid = 0;
   for (const seed of seeds) {
     const result = generateBattlefield({ seed, log: false });
     if (result.usedFallback) {
@@ -50,9 +51,16 @@ export const runMapChecks = (): CheckResult[] => {
     if (result.layout.roads.patches.length < 8) {
       roadsOk = false;
     }
-    if (result.layout.obstacles.length > 64) {
+    if (result.layout.obstacles.length > 88) {
       compact = false;
     }
+    const midLandmarks = result.layout.obstacles.filter((obs) => {
+      if (obs.hierarchy !== 'landmark' && obs.kind !== 'vehicle' && obs.kind !== 'building') {
+        return false;
+      }
+      return Math.abs(obs.x - ARENA.width / 2) < 520 && Math.abs(obs.y - ARENA.height / 2) < 320;
+    }).length;
+    landmarksNearMid = Math.max(landmarksNearMid, midLandmarks);
     const query = new MapQuery(result.layout);
     const loc = pickObjectiveLocation(query, OBJECTIVE.piggy.radius, () => 0.4);
     if (!query.clearForObjective(loc.x, loc.y, OBJECTIVE.piggy.radius * 0.5)) {
@@ -90,7 +98,7 @@ export const runMapChecks = (): CheckResult[] => {
   });
   results.push({
     name: 'crates placed with structures',
-    ok: crateMin >= 2 && crateMax <= 20,
+    ok: crateMin >= 2 && crateMax <= 24,
     detail: `crates ${crateMin}-${crateMax}`,
   });
   results.push({
@@ -102,6 +110,11 @@ export const runMapChecks = (): CheckResult[] => {
     name: 'still a compact 3v3 field',
     ok: compact && ARENA.width < 3200,
     detail: `maxObstaclesOk=${compact} width=${ARENA.width}`,
+  });
+  results.push({
+    name: 'landmarks visible from midfield',
+    ok: landmarksNearMid >= 2,
+    detail: `nearMidLandmarks=${landmarksNearMid}`,
   });
 
   return results;
