@@ -26,8 +26,8 @@ export const COLE_BALL = {
   speed: 420,
   lifetimeMs: 2200,
   radius: 20,
-  damageRating: 60,
-  damage: abilityDamage(60),
+  damageRating: 75,
+  damage: abilityDamage(75),
   knockbackMul: 5.2,
   /** Lets the ball exceed the shared launch cap so the extra mul actually reads. */
   launchCap: 780,

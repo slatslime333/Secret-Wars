@@ -134,7 +134,7 @@ const ABILITY_TEXT: Record<string, string> = {
   'demon-hell-bat':
     `Launch forward and become a fire bat with ${faster(DEMON_HELL_BAT.moveMul)} movement and ${more(DEMON_HELL_BAT.defenseMul)} defense. Forced flight — you steer but cannot stop. Recast or wait ${seconds(DEMON_HELL_BAT.maxDurationMs)} to explode for ${hit(DEMON_HELL_BAT.damage)} damage in a Smoke Bomb radius, knocks everyone back, and slows move and attack speed 25% for ${seconds(DEMON_HELL_BAT.slowMs)}. The blast throws Demon backward. The cooldown starts when you explode.`,
   'demon-rage':
-    `Demon Rage fills by dealing damage to heroes as Little Demon — minions do not count, and it takes 35% more damage to fill. At 100% he automatically transforms: 1 second locked, then ${seconds(DEMON_RAGE.durationMs)} as Big Demon. Other abilities are locked while transformed. Demon Rage does not build while transformed and resets to 0 after.`,
+    `Demon Rage fills by converting 20% of damage dealt to heroes as Little Demon — minions do not count, and it takes 35% more to fill. At 100% he automatically transforms: 1 second locked, then ${seconds(DEMON_RAGE.durationMs)} as Big Demon. Other abilities are locked while transformed. Demon Rage does not build while transformed and resets to 0 after.`,
 };
 
 const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
@@ -182,7 +182,7 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
   },
   demon: {
     description:
-      'A fragile ranged harasser who builds Demon Rage, then becomes a melee frontliner for 8 seconds.',
+      'A fragile ranged harasser who builds Demon Rage, then becomes a melee frontliner for 11 seconds.',
     light:
       `Candle Flame: a long-range fireball for ${hit(DEMON.attackDamage)} damage with low hitstun. Applies Burn (${DEMON_BURN.candleDamage} every 0.5s for ${seconds(DEMON_BURN.candleDurationMs)}, no stack). Built to poke and fill Demon Rage, not to burst.`,
   },

@@ -5,7 +5,7 @@ import { resolveAbilityHit } from '../resolveAbilityHit';
 import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { DEMON_HELL_BAT, demonHellBatRecoil } from './tunables';
-import { grantDemonRage, demonRageFromHellBat, type DemonForm } from './form';
+import { grantDemonRage, demonRageFromAbilityDamage, type DemonForm } from './form';
 import { distanceBetween } from '../geometry';
 import type { NinjaBody } from '../../NinjaBody';
 
@@ -181,7 +181,7 @@ class HellBatAbility implements ActiveAbility {
       if (kind === 'hit') {
         enemy.status.applySlow(now, DEMON_HELL_BAT.slowMs, DEMON_HELL_BAT.slowMul);
         enemy.status.applyAttackSpeedSlow(now, DEMON_HELL_BAT.slowMs, DEMON_HELL_BAT.attackSlowMul);
-        grantDemonRage(caster, demonRageFromHellBat(), enemy);
+        grantDemonRage(caster, demonRageFromAbilityDamage(DEMON_HELL_BAT.damage), enemy);
       }
     }
     const recoil = demonHellBatRecoil(DEMON_HELL_BAT.recoilDistance);

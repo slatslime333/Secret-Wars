@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { NinjaBody } from '../../NinjaBody';
 import { DEMON_BURN } from './tunables';
-import { grantDemonRage, demonRageFromBurn } from './form';
+import { grantDemonRage, demonRageFromAbilityDamage } from './form';
 
 export type BurnKind = 'candle' | 'hellfire';
 
@@ -71,7 +71,7 @@ export const tickBurn = (target: NinjaBody, now: number): void => {
     state.tickAt += state.tickMs;
     target.takeDotDamage(state.damage, now, state.attacker);
     if (state.attacker && !target.down) {
-      grantDemonRage(state.attacker, demonRageFromBurn(), target);
+      grantDemonRage(state.attacker, demonRageFromAbilityDamage(state.damage), target);
     }
     if (target.down) {
       burns.delete(target);

@@ -13,10 +13,10 @@ import { gameplayFromRatings, type CoreRatings, MELEE_BASE_RANGE } from './ratin
  */
 export const DEATH_RATINGS = {
   health: 72,
-  stamina: 70,
+  stamina: 73,
   staminaRegen: 50,
   damage: 75,
-  defense: 76,
+  defense: 75,
   speed: 30,
   attackSpeed: 77,
   attackRange: 54,
