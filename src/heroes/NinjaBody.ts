@@ -51,6 +51,9 @@ export class NinjaBody {
   kitAbilityReady = true;
   kitDashCharges = 2;
   kitHasAllySupport = false;
+  /** Stamped from Progression so tactical views can see levels without a second AI. */
+  kitLevel = 1;
+  kitXpRatio = 0;
   lastAttacker?: NinjaBody;
   lastAttackerAt = 0;
   /** Last time an enemy actually dealt HP damage. Minion heals / regen do not touch this. */

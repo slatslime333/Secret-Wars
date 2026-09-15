@@ -222,6 +222,8 @@ export class TacticalField {
       blocking: false,
       abilityReady: true,
       dashCharges: 2,
+      level: 1,
+      xpRatio: 0,
       rageRatio: 0,
       demonForm: 'little',
       transformLeftMs: 0,
@@ -261,6 +263,8 @@ export class TacticalField {
     fact.blocking = body.blocking;
     fact.abilityReady = body.kitAbilityReady;
     fact.dashCharges = body.kitDashCharges;
+    fact.level = body.kitLevel;
+    fact.xpRatio = body.kitXpRatio;
     fact.rageRatio = body.demonRage;
     fact.demonForm = body.demonForm;
     fact.transformLeftMs = Math.max(0, body.demonTransformUntil - now);

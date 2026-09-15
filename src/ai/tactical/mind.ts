@@ -729,6 +729,8 @@ const blankView = (): CombatantView => ({
   blocking: false,
   abilityReady: true,
   dashCharges: 2,
+  level: 1,
+  xpRatio: 0,
   rageRatio: 0,
   demonForm: 'little',
   transformLeftMs: 0,
@@ -761,6 +763,8 @@ const copyView = (dest: CombatantView, src: CombatantView): void => {
   dest.blocking = src.blocking;
   dest.abilityReady = src.abilityReady;
   dest.dashCharges = src.dashCharges;
+  dest.level = src.level;
+  dest.xpRatio = src.xpRatio;
   dest.rageRatio = src.rageRatio;
   dest.demonForm = src.demonForm;
   dest.transformLeftMs = src.transformLeftMs;

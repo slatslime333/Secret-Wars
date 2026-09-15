@@ -236,7 +236,7 @@ export const biasAction = (
     next += 10 + personality.opportunism * 4;
   }
   if (team.allyInDanger && (action === 'protect_ally' || action === 'assist_ally' || action === 'intercept')) {
-    next += 5;
+    next += personality.protectionInstinct * 10;
   }
   if (team.enemyIsolated && team.snowballing && (action === 'attack' || action === 'chase' || action === 'finish_target')) {
     next += 5;

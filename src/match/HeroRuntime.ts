@@ -148,7 +148,7 @@ export class HeroRuntime {
   }
 
   syncKitPressure(now: number): void {
-    stampKitPressure(this.body, now, this.abilities, this.dash);
+    stampKitPressure(this.body, now, this.abilities, this.dash, this.progression);
   }
 
   destroy(): void {

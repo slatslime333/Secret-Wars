@@ -160,6 +160,10 @@ export type CombatantView = {
   blocking: boolean;
   abilityReady: boolean;
   dashCharges: number;
+  /** Match level. Defaults to 1 when omitted so old tests stay even. */
+  level?: number;
+  /** 0..1 progress toward the next level. */
+  xpRatio?: number;
   rageRatio?: number;
   demonForm?: 'little' | 'transforming' | 'big' | 'bat';
   transformLeftMs?: number;

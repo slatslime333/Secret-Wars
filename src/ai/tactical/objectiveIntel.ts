@@ -1,4 +1,6 @@
 import { OBJECTIVE, type ObjectiveKind } from '../../config/objective';
+import { OBJECTIVE_SCORE } from '../../config/score';
+import { clockPhaseOf } from './warSense';
 import type { CombatantView, Situation } from './types';
 
 export type ObjectiveFamily = 'capture' | 'destroy' | 'shrine' | 'bounty' | 'banner' | 'rage' | 'hazard';
@@ -313,6 +315,24 @@ export const assessObjective = (
     urgency = obj.urgency;
   }
   urgency = clamp(urgency + (extras.handledNearby ? 0.08 : 0), 0, 1);
+  const scorePts = OBJECTIVE_SCORE[obj.kind] ?? 0;
+  const clock = clockPhaseOf(situation.remainingMs);
+  if (scorePts > 0) {
+    urgency += 0.04;
+    if (situation.teamScore && situation.teamScore.self + 80 < situation.teamScore.enemy) {
+      urgency += 0.08;
+    }
+    if (clock === 'closing' || clock === 'last_seconds') {
+      urgency += 0.1;
+    }
+  }
+  if (situation.remainingMs !== undefined && travelMs > situation.remainingMs + 500 && !inside) {
+    urgency *= 0.2;
+  }
+  if (clock === 'last_seconds' && scorePts === 0 && family !== 'shrine') {
+    urgency *= 0.55;
+  }
+  urgency = clamp(urgency, 0, 1);
 
   const localRisk = clamp(
     (extras.risk ?? 0) * 0.5 +

@@ -1,4 +1,4 @@
-import { NEUTRAL_PERSONALITY, type CombatantView, type ScoredAction, type Situation, type TacticalAction } from './types';
+import { NEUTRAL_PERSONALITY, type CombatantView, type Personality, type ScoredAction, type Situation, type TacticalAction } from './types';
 import { ensureScoreBuffer, scoreSituation } from './evaluate';
 import { kitProfileOf } from './kitProfile';
 import { OBJECTIVE } from '../../config/objective';
@@ -1107,6 +1107,226 @@ const scenarioBD = (): ScenarioResult => {
   return { name: 'BD shadow dash-in keeps last charge', ok, detail: `go=${go?.kind ?? 'none'} keep=${keep?.kind ?? 'none'}` };
 };
 
+const minionAt = (id: number, x: number, y: number): CombatantView =>
+  unit({ id, team: 'bravo', x, y, kind: 'minion', role: 'minion', heroId: 'minion', hpRatio: 0.8, power: 0.3, attackRange: 44 });
+
+const scenarioBE = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.88, level: 3, xpRatio: 0.2, heroId: 'death' });
+  const minions = [0, 1, 2, 3, 4].map((i) => minionAt(20 + i, 430 + i * 12, 760 + (i % 2) * 10));
+  const far = [unit({ id: 10, team: 'bravo', x: 1600, y: 750, hpRatio: 0.95, level: 5 })];
+  const rows = rankActions(
+    situationOf(self, [], [...minions, ...far], { remainingMs: 200_000, teamScore: { self: 80, enemy: 80 } }),
+  );
+  const farm = scoreOf(rows, 'farm_minions');
+  const ok = among(rows, ['farm_minions'], 2) && farm > scoreOf(rows, 'chase') && farm > scoreOf(rows, 'attack', 10);
+  return { name: 'BE safe grouped farm beats a distant even fight', ok, detail: `best=${best(rows)} farm=${farm.toFixed(1)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioBF = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.85, level: 4 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 470, y: 750, hpRatio: 0.16, recentlyHit: true })];
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 500, y: 750, hpRatio: 0.8, attacking: true, lastAttackerId: 2 }),
+    minionAt(21, 390, 820),
+  ];
+  const rows = rankActions(
+    situationOf(self, allies, enemies, { remainingMs: 150_000, teamScore: { self: 200, enemy: 200 } }),
+  );
+  const ok = among(rows, ['protect_ally', 'assist_ally', 'attack', 'intercept'], 2) && !['farm_minions'].includes(best(rows));
+  return { name: 'BF stop farming to peel a collapsing ally', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioBG = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.8, level: 4 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 430, y: 760, hpRatio: 0.75, level: 3 })];
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 470, y: 752, hpRatio: 0.18, recentlyHit: true, level: 6 }),
+    unit({ id: 11, team: 'bravo', x: 1100, y: 640, hpRatio: 0.9, level: 5 }),
+    unit({ id: 12, team: 'bravo', x: 1080, y: 700, hpRatio: 0.88, level: 5 }),
+  ];
+  const rows = rankActions(
+    situationOf(self, allies, enemies, { remainingMs: 140_000, teamScore: { self: 240, enemy: 400 } }),
+  );
+  const ok = among(rows, ['finish_target', 'attack', 'chase'], 2);
+  return { name: 'BG isolated low-HP enemy is worth taking despite a level deficit', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioBH = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.7, level: 5 });
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 470, y: 740, hpRatio: 0.92, level: 4 }),
+    unit({ id: 11, team: 'bravo', x: 480, y: 770, hpRatio: 0.9, level: 4 }),
+    unit({ id: 12, team: 'bravo', x: 460, y: 800, hpRatio: 0.88, level: 5 }),
+  ];
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      remainingMs: 30_000,
+      teamScore: { self: 900, enemy: 700 },
+      teamMomentum: 0.4,
+    }),
+  );
+  const ok = among(rows, ['retreat', 'escape', 'reposition', 'wait_for_opening', 'hold_position'], 3);
+  return { name: 'BH a lead with 30s left refuses a 1v3', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioBI = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 980, y: 640, hpRatio: 0.82, level: 4 });
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 1010, y: 650, hpRatio: 0.22, recentlyHit: true, level: 5 }),
+    minionAt(21, 400, 900),
+  ];
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      remainingMs: 30_000,
+      teamScore: { self: 650, enemy: 900 },
+      objective: captureAt({ x: 1020, y: 640, urgency: 0.55, occupyingEnemies: 0 }),
+    }),
+  );
+  const farm = scoreOf(rows, 'farm_minions');
+  const ok = among(rows, ['finish_target', 'attack', 'contest_objective'], 2) && farm < scoreOf(rows, 'finish_target');
+  return { name: 'BI behind at 0:30 prefers a kill or objective over a stray minion', ok, detail: `best=${best(rows)} farm=${farm.toFixed(1)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioBJ = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.9, heroId: 'cole', level: 3, xpRatio: 0.8 });
+  const minions = [0, 1, 2, 3, 4].map((i) => minionAt(20 + i, 440 + i * 8, 755 + (i % 2) * 8));
+  const rows = rankActions(situationOf(self, [], minions, { remainingMs: 180_000 }));
+  const farm = scoreOf(rows, 'farm_minions');
+  const ok = among(rows, ['farm_minions'], 1) && farm > 20;
+  return { name: 'BJ AoE hero farms a packed wave', ok, detail: `best=${best(rows)} farm=${farm.toFixed(1)}` };
+};
+
+const scenarioBK = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.9, level: 4 });
+  const enemies = [minionAt(21, 1400, 400)];
+  const rows = rankActions(situationOf(self, [], enemies, { remainingMs: 120_000, teamScore: { self: 300, enemy: 280 } }));
+  const farm = scoreOf(rows, 'farm_minions');
+  const ok = !['farm_minions'].includes(best(rows)) || farm < 12;
+  return { name: 'BK will not cross the map for one minion', ok, detail: `best=${best(rows)} farm=${farm.toFixed(1)}` };
+};
+
+const scenarioBL = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 980, y: 640, hpRatio: 0.8, level: 3 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 940, y: 650, hpRatio: 0.75, level: 3 })];
+  const enemies = [unit({ id: 10, team: 'bravo', x: 1600, y: 400, hpRatio: 0.9, level: 5 })];
+  const rows = rankActions(
+    situationOf(self, allies, enemies, {
+      remainingMs: 90_000,
+      teamScore: { self: 500, enemy: 700 },
+      objective: captureAt({ x: 1020, y: 640, urgency: 0.5, occupyingEnemies: 0, nearbyEnemies: 0 }),
+    }),
+  );
+  const contest = scoreOf(rows, 'contest_objective');
+  const ok = among(rows, ['contest_objective'], 2) && contest > 12;
+  return { name: 'BL behind in score and levels finds a free capture attractive', ok, detail: `best=${best(rows)} contest=${contest.toFixed(1)}` };
+};
+
+const scenarioBM = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 900, y: 640, hpRatio: 0.78, level: 5 });
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 1020, y: 640, hpRatio: 0.9, level: 5 }),
+    unit({ id: 11, team: 'bravo', x: 1040, y: 620, hpRatio: 0.88, level: 5 }),
+    unit({ id: 12, team: 'bravo', x: 1040, y: 670, hpRatio: 0.86, level: 5 }),
+  ];
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      remainingMs: 40_000,
+      teamScore: { self: 900, enemy: 700 },
+      objective: captureAt({
+        x: 1020,
+        y: 640,
+        urgency: 0.7,
+        occupyingEnemies: 3,
+        nearbyEnemies: 3,
+        enemyProgress: 0.4,
+        owner: 'bravo',
+      }),
+    }),
+  );
+  const ok = !['contest_objective'].includes(best(rows));
+  return { name: 'BM ahead team does not dive a 1v3 capture', ok, detail: `best=${best(rows)} contest=${scoreOf(rows, 'contest_objective').toFixed(1)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioBN = (): ScenarioResult => {
+  const minions = [0, 1, 2, 3].map((i) => minionAt(20 + i, 680 + (i % 2) * 10, 880 + Math.floor(i / 2) * 10));
+  const ally = unit({ id: 2, team: 'alpha', x: 390, y: 760, hpRatio: 0.42, recentlyHit: true });
+  const enemy = unit({ id: 10, team: 'bravo', x: 430, y: 760, hpRatio: 0.78, attacking: true, lastAttackerId: 2 });
+  const objective = captureAt({ x: 1000, y: 600, urgency: 0.6, occupyingEnemies: 0, nearbyEnemies: 0 });
+  const peel: Personality = {
+    ...NEUTRAL_PERSONALITY,
+    protectionInstinct: 0.95,
+    teamwork: 0.9,
+    assistTendency: 0.92,
+    opportunism: 0.18,
+    independence: 0.12,
+    aggression: 0.32,
+    caution: 0.55,
+  };
+  const grab: Personality = {
+    ...NEUTRAL_PERSONALITY,
+    opportunism: 0.94,
+    aggression: 0.84,
+    protectionInstinct: 0.16,
+    assistTendency: 0.18,
+    independence: 0.78,
+    caution: 0.22,
+    teamwork: 0.28,
+  };
+  const farm: Personality = {
+    ...NEUTRAL_PERSONALITY,
+    caution: 0.9,
+    independence: 0.9,
+    opportunism: 0.18,
+    protectionInstinct: 0.16,
+    assistTendency: 0.14,
+    aggression: 0.24,
+    teamwork: 0.28,
+  };
+  const world = (personality: Personality): Situation =>
+    situationOf(unit({ id: 1, team: 'alpha', x: 640, y: 720, hpRatio: 0.88 }), [ally], [enemy, ...minions], {
+      personality,
+      remainingMs: 120_000,
+      teamScore: { self: 400, enemy: 400 },
+      objective,
+    });
+  const a = best(rankActions(world(peel)));
+  const b = best(rankActions(world(grab)));
+  const c = best(rankActions(world(farm)));
+  const unique = new Set([a, b, c]);
+  const ok = unique.size >= 2;
+  return { name: 'BN three personalities do not hive-mind the same play', ok, detail: `peel=${a} grab=${b} farm=${c}` };
+};
+
+const scenarioBO = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 980, y: 640, hpRatio: 0.8, level: 5 });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 1010, y: 645, hpRatio: 0.28, recentlyHit: true, level: 5 }), minionAt(21, 420, 900)];
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      remainingMs: 8_000,
+      teamScore: { self: 820, enemy: 815 },
+      objective: captureAt({ x: 1020, y: 640, urgency: 0.7, selfProgress: 0.6 }),
+    }),
+  );
+  const farm = scoreOf(rows, 'farm_minions');
+  const ok = among(rows, ['finish_target', 'attack', 'contest_objective'], 2) && farm < 8;
+  return { name: 'BO final seconds drop XP farm for a score swing', ok, detail: `best=${best(rows)} farm=${farm.toFixed(1)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioBP = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 500, y: 750, hpRatio: 0.55, level: 5 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 560, y: 750, hpRatio: 0.14, recentlyHit: true, level: 5 })];
+  const enemies = [unit({ id: 10, team: 'bravo', x: 590, y: 750, hpRatio: 0.7, attacking: true, lastAttackerId: 2, level: 4 })];
+  const rows = rankActions(
+    situationOf(self, allies, enemies, {
+      remainingMs: 9_000,
+      teamScore: { self: 920, enemy: 780 },
+      teamMomentum: 0.3,
+    }),
+  );
+  const ok = among(rows, ['protect_ally', 'assist_ally', 'intercept', 'attack'], 2);
+  return { name: 'BP a lead in the last 10s peels instead of gambling', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -1164,4 +1384,16 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioBB(),
   scenarioBC(),
   scenarioBD(),
+  scenarioBE(),
+  scenarioBF(),
+  scenarioBG(),
+  scenarioBH(),
+  scenarioBI(),
+  scenarioBJ(),
+  scenarioBK(),
+  scenarioBL(),
+  scenarioBM(),
+  scenarioBN(),
+  scenarioBO(),
+  scenarioBP(),
 ];

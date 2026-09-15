@@ -6,6 +6,7 @@ import { assessObjective, isZoneObjective } from './objectiveIntel';
 import type { ObjectiveIntel } from './objectiveIntel';
 import { clusterRiskOf } from './spacing';
 import { assessTeam, biasAction, type TeamIntel } from './teamIntel';
+import { assessWar, isAoeFarmer, minionPackSize, objectiveScoreValue, warBiasAction } from './warSense';
 import { applyDemonBias } from './demonSense';
 import { assessSupport } from './supportSense';
 import { pickHealMinion } from './retreat';
@@ -540,6 +541,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     }
   }
   const team = assessTeam(situation, handledNearby);
+  const war = assessWar(situation, team);
   const risk = clamp(riskOfSituation(situation) + team.riskDelta, 0, 1);
   const objIntel = kind === 'hero' ? assessObjective(situation, { handledNearby, risk }) : undefined;
 
@@ -561,7 +563,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
   const allyHeroes = situation.allyHeroCount ?? allies.filter((ally) => ally.kind === 'hero').length;
   let count = 0;
   const tune = (action: TacticalAction, score: number): number =>
-    biasAction(action, score, team, personality, self);
+    warBiasAction(action, biasAction(action, score, team, personality, self), team, war, self, personality);
 
   const persist = (enemy: CombatantView, score: number): number =>
     enemy.id === situation.currentTargetId
@@ -619,6 +621,17 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     }
     if (kind === 'minion' && pile < 0.5) {
       attack += 4;
+    }
+    if (enemy.kind === 'minion') {
+      const pack = minionPackSize(enemy, enemies);
+      const heroNearMinion = enemies.some(
+        (other) => other.kind === 'hero' && other.visible && dist(other, enemy) < 210,
+      );
+      if (pack >= 3 && !heroNearMinion) {
+        attack -= 12 + (isAoeFarmer(self.heroId) ? 6 : 0);
+      } else if (pack <= 1 && d > 220) {
+        attack -= 14;
+      }
     }
     if (self.hpRatio < personality.retreatHp && pile < 0.4 && !finishable) {
       const poke =
@@ -689,6 +702,20 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         attack += 10;
       }
     }
+    if (enemy.kind === 'hero') {
+      if (war.clock === 'last_seconds' || war.clock === 'closing') {
+        attack += 4;
+        if (enemy.hpRatio < 0.4) {
+          attack += 5;
+        }
+      }
+      if (war.levelLead <= -1.4 && enemy.hpRatio > 0.72 && iso < 0.4 && !finishable) {
+        attack -= 8;
+      }
+      if (war.levelLead <= -1.4 && iso > 0.55 && enemy.hpRatio < 0.35) {
+        attack += 9;
+      }
+    }
     count = write(out, count, 'attack', tune('attack', persist(enemy, attack * vis)), pile > 0.7 ? 'already handled' : enemy.blocking ? 'shield up' : victim ? 'press the threat' : 'take the fight', enemy.id);
 
     if (enemy.hpRatio <= TACTIC.finishHp) {
@@ -702,6 +729,12 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       }
       if (protectorsOf(enemy, enemies).length > 0 && enemy.hpRatio > 0.08) {
         finish -= 16;
+      }
+      if (iso > 0.55 && enemy.hpRatio < 0.3 && war.levelLead <= -1) {
+        finish += 10;
+      }
+      if (war.clock === 'last_seconds') {
+        finish += 8;
       }
       finish += personality.aggression * 6;
       if (isShadowDry(self.heroId, self)) {
@@ -1028,10 +1061,10 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       }
     }
   }
-  if (nearestMinion && (kind === 'hero' || stuckAtEdge)) {
-    const pack = nearestMinion;
+    if (nearestMinion && (kind === 'hero' || stuckAtEdge)) {
+    const cluster = nearestMinion;
     const heroThreat = enemies.some(
-      (enemy) => enemy.kind === 'hero' && enemy.visible && dist(enemy, pack) < 210,
+      (enemy) => enemy.kind === 'hero' && enemy.visible && dist(enemy, cluster) < 210,
     );
     const selfPressed = enemies.some(
       (enemy) => enemy.kind === 'hero' && enemy.visible && dist(self, enemy) < self.attackRange * 1.45 + 36,
@@ -1061,12 +1094,36 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (stuckAtEdge) {
       farmScore += 18;
     }
+    const packSize = minionPackSize(cluster, enemies);
     if (objIntel && objIntel.free && objIntel.canArriveInTime && self.hpRatio > 0.26 && !stuckAtEdge) {
-      farmScore -= 22 + objIntel.urgency * 10;
+      const dump = 8 + personality.opportunism * 18 + objIntel.urgency * (6 + personality.opportunism * 8);
+      farmScore -= packSize >= 3 && !heroThreat ? dump * (0.35 + personality.opportunism * 0.55) : dump;
     } else if (objIntel && objIntel.urgency >= 0.72 && objIntel.canArriveInTime && !objIntel.tooLate) {
       farmScore -= 14;
-    } else     if (objIntel && objIntel.alliesHandling) {
+    } else if (objIntel && objIntel.alliesHandling) {
       farmScore += 4;
+    }
+    if (packSize >= 3) {
+      farmScore += 10 + packSize + (isAoeFarmer(self.heroId) ? 8 : 3);
+      if (!heroThreat && !selfPressed) {
+        farmScore += 8;
+      }
+    } else if (packSize <= 1 && minionGap > 240) {
+      farmScore -= 16;
+    }
+    if (minionGap > situation.vision * 0.68) {
+      farmScore -= 12;
+    }
+    if (war.xpSoon && packSize >= 2 && !heroThreat) {
+      farmScore += 6;
+    }
+    if (war.clock === 'early' && !heroThreat && !objIntel) {
+      farmScore += 4;
+    }
+    if (war.clock === 'last_seconds') {
+      farmScore -= 16;
+    } else if (war.clock === 'closing' && team.scoreLead < 0) {
+      farmScore -= 10;
     }
     const remainingMs = situation.remainingMs;
     if (remainingMs !== undefined && remainingMs > MATCH.durationMs - 60_000) {
@@ -1585,6 +1642,23 @@ const scoreObjective = (
   }
   if (team.fightHandled && intel.free) {
     contest += 8;
+  }
+  const pts = objectiveScoreValue(obj.kind);
+  if (pts > 0) {
+    contest += Math.min(10, pts / 16);
+  }
+  const left = situation.remainingMs;
+  if (left !== undefined && intel.travelMs > left + 400 && !intel.inside) {
+    contest -= 22;
+  }
+  if (team.comfortable && intel.dangerous) {
+    contest -= 10;
+  }
+  if (team.desperate && pts >= 100) {
+    contest += 8;
+  }
+  if (intel.family === 'shrine' && (self.hpRatio < 0.45 || team.allyInDanger)) {
+    contest += 6;
   }
   const focus = intel.focus ?? enemies.find(
     (enemy) =>
