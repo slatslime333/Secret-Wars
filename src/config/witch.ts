@@ -4,9 +4,7 @@ import { NINJA } from './ninja';
 import { gameplayFromRatings, type CoreRatings } from './ratings';
 
 /**
- * Rapid skull barrages. Attack Speed 38 converts to a slower grouping cadence
- * than the previous 53 rating, then the 20% grouping gap and shared 1.22 swing
- * multiplier.
+ * Attack Speed 38 is the live barrage cadence. Displayed rating matches conversion.
  */
 export const WITCH_RATINGS = {
   health: 65,
@@ -36,8 +34,6 @@ export const WITCH = {
    * Aim ring and skull `maxRange` read `WITCH.attackRange`.
    */
   attackRange: Math.round(WITCH_KIT_RANGE * 1.2),
-  /** Grouping cadence is 20% slower than the converted 400ms barrage. */
-  attackCooldownMs: Math.round(witchGameplay.attackCooldownMs * 1.2),
   attackArcDegrees: 22,
   bodyRadius: NINJA.bodyRadius,
   /** 7 barrages × 12 stamina ≈ 84 of 122 — meaningful recharge, leftover for kit. */
