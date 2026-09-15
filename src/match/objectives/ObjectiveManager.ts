@@ -237,20 +237,51 @@ export class ObjectiveManager {
       setObjectiveWorld(undefined);
       return;
     }
+    const complete = this.withContributors(event);
     if (!this.rewarded) {
       this.rewarded = true;
-      this.grantRewards(event, now);
+      this.grantRewards(complete, now);
     }
-    if (event.winner && event.kind !== 'healing_shrine') {
-      this.hud.celebrate(event.winner, celebrateLine(event.kind, event.winner));
+    if (complete.winner && complete.kind !== 'healing_shrine') {
+      this.hud.celebrate(complete.winner, celebrateLine(complete.kind, complete.winner));
     }
-    this.onComplete?.(event);
+    this.onComplete?.(complete);
     this.active?.cleanup();
     this.active = undefined;
     const gap = pickEventGapMs(this.rng);
     this.cooldownUntil = elapsed + gap;
     this.nextAt = this.cooldownUntil;
     setObjectiveWorld(undefined);
+  }
+
+  private withContributors(event: ObjectiveCompleteEvent): ObjectiveCompleteEvent {
+    if (event.contributors && event.contributors.length > 0) {
+      return event;
+    }
+    if (event.assassin) {
+      return { ...event, contributors: [event.assassin] };
+    }
+    if (!this.active) {
+      return event;
+    }
+    const obj = this.active;
+    const pad = event.kind === 'bounty_target' ? 0 : obj.radius + 36;
+    const nearby = this.heroesOf().filter((hero) => {
+      if (!hero.alive) {
+        return false;
+      }
+      return Math.hypot(hero.body.x - obj.x, hero.body.y - obj.y) <= pad;
+    });
+    if (!event.winner) {
+      if (event.kind === 'rage_zone' || event.kind === 'meteor_storm') {
+        return { ...event, contributors: nearby.map((hero) => hero.body) };
+      }
+      return event;
+    }
+    return {
+      ...event,
+      contributors: nearby.filter((hero) => hero.team === event.winner).map((hero) => hero.body),
+    };
   }
 
   private grantRewards(event: ObjectiveCompleteEvent, now: number): void {

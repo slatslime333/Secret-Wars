@@ -36,8 +36,9 @@ export class MatchHud {
   private readonly xpTrack: Phaser.GameObjects.Rectangle;
   private barWidth = 224;
   private cluster: ScoreCluster = { x: 0, y: 22, originX: 0.5, originY: 0.5, compact: false, size: 16 };
+  private readonly tapTarget: Phaser.GameObjects.Rectangle;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, private readonly onOpenScoreboard?: () => void) {
     const width = scene.scale.width;
     this.timer = scene.add
       .text(width / 2, 46, `TIME  ${formatMatchClock(MATCH.durationMs, 'PLAYING')}`, {
@@ -129,6 +130,10 @@ export class MatchHud {
       .setOrigin(1, 0)
       .setScrollFactor(0)
       .setDepth(102);
+    this.tapTarget = scene.add
+      .rectangle(width / 2, 40, 280, 56, 0x000000, 0.001)
+      .setScrollFactor(0)
+      .setDepth(107);
     this.layout(width, scene.scale.height);
     adoptHud(
       scene,
@@ -143,7 +148,18 @@ export class MatchHud {
       this.xpFill,
       this.level,
       this.xpText,
+      this.tapTarget,
     );
+    this.bindScoreboardToggle();
+  }
+
+  private bindScoreboardToggle(): void {
+    if (!this.onOpenScoreboard) {
+      this.tapTarget.disableInteractive();
+      return;
+    }
+    this.tapTarget.setInteractive({ useHandCursor: true });
+    this.tapTarget.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.onOpenScoreboard?.());
   }
 
   layout(width: number, height = 0): void {
@@ -205,6 +221,7 @@ export class MatchHud {
     this.xpFill.setVisible(visible);
     this.xpText.setVisible(visible);
     this.xpTrack.setVisible(visible);
+    this.tapTarget.setVisible(visible);
   }
 
   sync(match: MatchSnapshot, score: TeamScore, progression: Progression): void {
@@ -252,5 +269,15 @@ export class MatchHud {
       part.setOrigin(0, originY).setPosition(cursor, y);
       cursor += part.width + gap;
     }
+    const left = parts[0].x;
+    const right = cursor - gap;
+    const timerTop = this.timer.originY === 1 ? this.timer.y - this.timer.height : this.timer.y;
+    const timerBottom = this.timer.originY === 1 ? this.timer.y : this.timer.y + this.timer.height;
+    const scoreTop = originY === 1 ? y - 22 : y;
+    const scoreBottom = originY === 1 ? y : y + 22;
+    const top = Math.min(timerTop, scoreTop) - 4;
+    const bottom = Math.max(timerBottom, scoreBottom) + 4;
+    this.tapTarget.setPosition((left + right) / 2, (top + bottom) / 2);
+    this.tapTarget.setSize(Math.max(160, right - left + 24), Math.max(36, bottom - top));
   }
 }

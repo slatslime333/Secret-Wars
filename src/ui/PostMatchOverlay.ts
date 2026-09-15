@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
 import { MATCH } from '../config/match';
-import { formatWarScore } from '../config/score';
 import type { TeamId } from '../config/hero';
 import type { HeroStatLine } from '../match/CombatStatsTracker';
 import type { TeamScore } from '../match/ScoreManager';
@@ -9,7 +8,7 @@ import { ActionButton } from './ActionButton';
 import { ScrollPanel } from './layout/ScrollPanel';
 import { measureViewport } from './layout/viewport';
 import { adoptHud } from './layout/hudCamera';
-import { addScoreboardSized } from './ScoreboardView';
+import { ScoreboardPanel, scoreboardPanelWidth } from './ScoreboardView';
 import { COLORS, FONTS, hex } from './theme';
 
 export type PostMatchHandlers = {
@@ -58,18 +57,8 @@ export class PostMatchOverlay {
         strokeThickness: 6,
       })
       .setOrigin(0.5, 0);
-    const war = this.scene.add
-      .text(width / 2, inset.top + 42, score ? `${formatWarScore(score.alpha)}  —  ${formatWarScore(score.bravo)}` : '', {
-        fontFamily: FONTS.display,
-        fontSize: frame.isPortrait ? '16px' : '18px',
-        color: hex(COLORS.paper),
-        letterSpacing: 2,
-        stroke: hex(COLORS.ink),
-        strokeThickness: 4,
-      })
-      .setOrigin(0.5, 0);
     const sub = this.scene.add
-      .text(width / 2, inset.top + (score ? 64 : 48), 'MATCH REPORT', {
+      .text(width / 2, inset.top + 42, 'MATCH REPORT', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
@@ -77,18 +66,28 @@ export class PostMatchOverlay {
         letterSpacing: 3,
       })
       .setOrigin(0.5, 0);
-
-    this.root.add([veil, title, war, sub]);
+    this.root.add([veil, title, sub]);
 
     const footerH = 72;
-    const scrollY = inset.top + (score ? 94 : 78);
+    const scrollY = inset.top + 78;
     const scrollH = Math.max(80, height - scrollY - footerH - inset.bottom);
-    this.scroller = new ScrollPanel(this.scene, inset.left, scrollY, width - inset.left - inset.right, scrollH, {
+    const areaW = width - inset.left - inset.right;
+    const boardW = scoreboardPanelWidth(areaW);
+    const boardX = inset.left + Math.round((areaW - boardW) / 2);
+    this.scroller = new ScrollPanel(this.scene, boardX, scrollY, boardW, scrollH, {
       depth: 241,
       scrollFactor: 0,
     });
-    const board = addScoreboardSized(this.scene, this.scroller.content, lines, 0, width - inset.left - inset.right);
-    this.scroller.setContentSize(board.width, board.height + 8);
+    const board = new ScoreboardPanel(
+      this.scene,
+      this.scroller.content,
+      boardW,
+      0,
+      () => Boolean(this.scroller?.wasDragged),
+    );
+    board.onResizeContent((h) => this.scroller?.setContentSize(board.size.width, h + 8));
+    board.render(lines, score ? { score, remainingMs: 0, finished: true } : undefined);
+    this.scroller.setContentSize(board.size.width, board.size.height + 8);
     this.root.add(this.scroller.root);
 
     const btnW = Math.min(190, (width - inset.left - inset.right - 16) / 2);

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { adoptHud } from './hudCamera';
 
 export type ScrollAxis = 'y' | 'x';
 
@@ -69,6 +70,9 @@ export class ScrollPanel {
     }
     this.redrawMask();
     this.root.setMask(this.maskGfx.createGeometryMask());
+    if (options.scrollFactor === 0) {
+      adoptHud(scene, this.root, this.maskGfx);
+    }
 
     this.onDown = (pointer) => {
       if (!this.contains(pointer.x, pointer.y) || !this.root.visible) {
