@@ -142,6 +142,18 @@ export class BattleHud {
     this.verbText.setVisible(true).setPosition(width / 2, hud.hpY - hud.hpHeight / 2 - 78).setOrigin(0.5, 1);
   }
 
+  hpAnchor(): { x: number; y: number } {
+    if (isPcCombatHud()) {
+      return { x: this.ninjaFill.x, y: this.hpTrack.y - 40 };
+    }
+    return { x: this.ninjaFill.x, y: this.staminaTrack.y + 16 };
+  }
+
+  /** Just right of the player's HP bar so status chips stay glanceable. */
+  chipAnchor(): { x: number; y: number } {
+    return { x: this.ninjaFill.x + this.barWidth + 8, y: this.hpTrack.y + 6 };
+  }
+
   placeCombo(x: number, y: number): void {
     this.comboText.setPosition(x, y);
   }

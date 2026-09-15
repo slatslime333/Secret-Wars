@@ -2,11 +2,18 @@ import { MATCH, xpToNextLevel, type StatGrowthKey } from '../config/match';
 import type { HeroCombatConfig } from '../config/hero';
 import type { NinjaBody } from '../heroes/NinjaBody';
 
+export type LevelGrant = {
+  level: number;
+  stat: StatGrowthKey;
+  amount: number;
+};
+
 export type LevelUpResult = {
   leveled: boolean;
   levelsGained: number;
   newLevel: number;
   stat: StatGrowthKey | null;
+  grants: LevelGrant[];
 };
 
 /**
@@ -41,34 +48,33 @@ export class Progression {
 
   grantXp(amount: number): LevelUpResult {
     if (amount <= 0 || this.atCap) {
-      return { leveled: false, levelsGained: 0, newLevel: this.level, stat: null };
+      return { leveled: false, levelsGained: 0, newLevel: this.level, stat: null, grants: [] };
     }
     this.xp += amount;
-    let levelsGained = 0;
-    let lastStat: StatGrowthKey | null = null;
+    const grants: LevelGrant[] = [];
     while (!this.atCap && this.xp >= this.xpToNext) {
       this.xp -= this.xpToNext;
-      lastStat = this.applyLevel();
-      levelsGained += 1;
+      grants.push(this.applyLevel());
     }
     if (this.atCap) {
       this.xp = 0;
     }
     return {
-      leveled: levelsGained > 0,
-      levelsGained,
+      leveled: grants.length > 0,
+      levelsGained: grants.length,
       newLevel: this.level,
-      stat: lastStat,
+      stat: grants[grants.length - 1]?.stat ?? null,
+      grants,
     };
   }
 
   giveLevel(): LevelUpResult {
     if (this.atCap) {
-      return { leveled: false, levelsGained: 0, newLevel: this.level, stat: null };
+      return { leveled: false, levelsGained: 0, newLevel: this.level, stat: null, grants: [] };
     }
     this.xp = 0;
-    const stat = this.applyLevel();
-    return { leveled: true, levelsGained: 1, newLevel: this.level, stat };
+    const grant = this.applyLevel();
+    return { leveled: true, levelsGained: 1, newLevel: this.level, stat: grant.stat, grants: [grant] };
   }
 
   private nextStat(): StatGrowthKey {
@@ -76,7 +82,7 @@ export class Progression {
     return order[(this.level - MATCH.xp.startLevel) % order.length];
   }
 
-  private applyLevel(): StatGrowthKey {
+  private applyLevel(): LevelGrant {
     const stat = this.nextStat();
     const amount = MATCH.growth.perLevel[stat];
     this.level += 1;
@@ -88,6 +94,6 @@ export class Progression {
     } else {
       this.body.stats.defense += amount;
     }
-    return stat;
+    return { level: this.level, stat, amount };
   }
 }

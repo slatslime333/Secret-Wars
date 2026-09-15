@@ -59,6 +59,7 @@ export type ObjectiveContext = {
 export type ObjectiveCompleteEvent = {
   kind: ObjectiveKind;
   winner?: TeamId;
+  assassin?: HeroRuntime['body'];
 };
 
 export type ObjectiveDeathEvent = {

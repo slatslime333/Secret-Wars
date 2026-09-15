@@ -49,6 +49,7 @@ export class BountyTargetObjective implements MatchObjective {
   private alpha?: Mark;
   private bravo?: Mark;
   private lastWinner?: TeamId;
+  private lastAssassin?: NinjaBody;
   private pulse = 0;
   private failed = false;
 
@@ -94,7 +95,7 @@ export class BountyTargetObjective implements MatchObjective {
     this.tryResolve(this.bravo, 'alpha', ctx.now, ctx.heroes);
     this.refreshAnchor();
     if (this.alpha.resolved && this.bravo.resolved) {
-      return { kind: this.kind, winner: this.lastWinner };
+      return { kind: this.kind, winner: this.lastWinner, assassin: this.lastAssassin };
     }
     return undefined;
   }
@@ -234,6 +235,7 @@ export class BountyTargetObjective implements MatchObjective {
       return;
     }
     this.lastWinner = winningTeam;
+    this.lastAssassin = killer;
     grantTeamLevels(winningTeam, heroes, this.grantLevel, this.orbs, mark.hero.body.x, mark.hero.body.y, OBJECTIVE.bounty.levelReward);
     audio.play('objective-complete');
     const assassinMark = winningTeam === 'alpha' ? this.alpha : this.bravo;

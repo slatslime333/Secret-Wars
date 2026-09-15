@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { NinjaBody } from '../../heroes/NinjaBody';
 import type { Progression } from '../../match/Progression';
 import { COLORS, FONTS, hex } from '../theme';
+import { StatusChips } from '../combatFeedback/StatusChips';
 
 /** Compact world-space HP + level plate above a hero. */
 export class HeroPlate {
@@ -11,6 +12,7 @@ export class HeroPlate {
   private readonly levelText: Phaser.GameObjects.Text;
   private readonly rageTrack: Phaser.GameObjects.Rectangle;
   private readonly rageFill: Phaser.GameObjects.Rectangle;
+  private readonly chips?: StatusChips;
 
   constructor(
     scene: Phaser.Scene,
@@ -39,15 +41,20 @@ export class HeroPlate {
     this.root.add([this.rageTrack, this.rageFill]);
     this.rageTrack.setVisible(false);
     this.rageFill.setVisible(false);
+    if (player) {
+      this.chips = new StatusChips(scene, { parent: this.root, localX: 0, localY: -32 });
+    }
   }
 
   setVisible(value: boolean): void {
     this.root.setVisible(value);
+    this.chips?.setVisible(value);
   }
 
   sync(): void {
     if (!this.body.isPresent) {
       this.root.setVisible(false);
+      this.chips?.setVisible(false);
       return;
     }
     this.root.setVisible(true);
@@ -71,9 +78,11 @@ export class HeroPlate {
       this.rageFill.width = Math.max(0, 78 * this.body.demonRage);
     }
     this.levelText.setText(`LV ${this.progression.level}`);
+    this.chips?.sync(this.body, this.root.scene.time.now);
   }
 
   destroy(): void {
+    this.chips?.destroy();
     this.root.destroy();
   }
 }

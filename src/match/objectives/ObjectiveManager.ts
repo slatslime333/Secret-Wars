@@ -31,6 +31,7 @@ export type ObjectiveManagerDeps = {
   heroes: () => readonly HeroRuntime[];
   grantLevel: (hero: HeroRuntime) => void;
   rng?: () => number;
+  onComplete?: (event: ObjectiveCompleteEvent) => void;
 };
 
 /**
@@ -46,6 +47,7 @@ export class ObjectiveManager {
   private readonly heroesOf: () => readonly HeroRuntime[];
   private readonly grantLevel: (hero: HeroRuntime) => void;
   private readonly rng: () => number;
+  private readonly onComplete?: (event: ObjectiveCompleteEvent) => void;
   private readonly hud: ObjectiveHud;
   private active?: MatchObjective;
   private nextAt?: number;
@@ -64,6 +66,7 @@ export class ObjectiveManager {
     this.heroesOf = deps.heroes;
     this.grantLevel = deps.grantLevel;
     this.rng = deps.rng ?? Math.random;
+    this.onComplete = deps.onComplete;
     this.hud = new ObjectiveHud(deps.scene);
     this.nextAt = pickObjectiveStartAt(OBJECTIVE.earliestStartMs, OBJECTIVE.firstLatestStartMs, this.rng);
   }
@@ -217,6 +220,7 @@ export class ObjectiveManager {
       }
       this.hud.celebrate(event.winner, celebrateLine(event.kind, event.winner));
     }
+    this.onComplete?.(event);
     this.lastKind = event.kind;
     this.active?.cleanup();
     this.active = undefined;

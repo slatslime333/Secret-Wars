@@ -21,7 +21,9 @@ import { DEMON_HELLFIRE, DEMON_HELL_BAT, DEMON_RAGE } from '../../heroes/abiliti
 import { SHADOW_CLAW } from '../../heroes/abilities/shadow/tunables';
 import { NINJA_SMOKE } from '../../heroes/abilities/ninja/tunables';
 import { abilityDamage } from '../../config/ratings';
-import { MENDER_PULSE, MENDER_SOUL, MENDER_ANGEL } from '../../heroes/abilities/mender/tunables';
+import { MENDER_PULSE, MENDER_SOUL, MENDER_ANGEL, MENDER_WIND } from '../../heroes/abilities/mender/tunables';
+import { NINJA_BASE_RANGE } from '../../config/ninja';
+import { runCombatFeedbackChecks } from '../../ui/combatFeedback/runChecks';
 import { WITCH_SKELETON } from '../../heroes/abilities/witch/tunables';
 import { ComboTracker } from '../../combat/ComboTracker';
 import { COLE_BALL } from '../../heroes/abilities/cole/tunables';
@@ -220,6 +222,15 @@ for (const result of objectiveChecks) {
   console.log(`${mark}  ${result.name}  ${result.detail}`);
 }
 
+const feedbackChecks = runCombatFeedbackChecks();
+for (const result of feedbackChecks) {
+  const mark = result.ok ? 'ok' : 'FAIL';
+  if (!result.ok) {
+    failed += 1;
+  }
+  console.log(`${mark}  ${result.name}  ${result.detail}`);
+}
+
 const draftChecks = runDraftChecks();
 for (const result of draftChecks) {
   const mark = result.ok ? 'ok' : 'FAIL';
@@ -285,6 +296,15 @@ if (MENDER_ANGEL.aimLength < MENDER_ANGEL.maxRange * 1.4) {
   console.log(`FAIL  mender angel aim  len=${MENDER_ANGEL.aimLength} range=${MENDER_ANGEL.maxRange}`);
 } else {
   console.log(`ok  mender angel aim  len=${MENDER_ANGEL.aimLength}`);
+}
+{
+  const expectedWind = Math.round(Math.round(NINJA_BASE_RANGE * 2.35) * 0.85);
+  if (MENDER_WIND.radius !== expectedWind) {
+    failed += 1;
+    console.log(`FAIL  mender wind radius  ${MENDER_WIND.radius} !== ${expectedWind}`);
+  } else {
+    console.log(`ok  mender wind radius  ${MENDER_WIND.radius} (15% smaller)`);
+  }
 }
 
 if (
@@ -358,13 +378,19 @@ if (COLE.ratings.attackSpeed !== 33 || COLE.ratings.speed !== 52) {
 } else {
   console.log('ok  cole ratings  attack 33 / speed 52');
 }
-if (WITCH.ratings.damage !== 42 || WITCH.ratings.attackSpeed !== 38 || WITCH.ratings.stamina !== 53) {
+if (
+  WITCH.ratings.health !== 64 ||
+  WITCH.ratings.damage !== 45 ||
+  WITCH.ratings.defense !== 59 ||
+  WITCH.ratings.attackSpeed !== 38 ||
+  WITCH.ratings.stamina !== 53
+) {
   failed += 1;
   console.log(
-    `FAIL  witch ratings  dmg=${WITCH.ratings.damage} atk=${WITCH.ratings.attackSpeed} stam=${WITCH.ratings.stamina}`,
+    `FAIL  witch ratings  hp=${WITCH.ratings.health} dmg=${WITCH.ratings.damage} def=${WITCH.ratings.defense} atk=${WITCH.ratings.attackSpeed} stam=${WITCH.ratings.stamina}`,
   );
 } else {
-  console.log('ok  witch ratings  damage 42 / attack 38 / stamina 53');
+  console.log('ok  witch ratings  health 64 / damage 45 / defense 59');
 }
 if (Math.abs(SHADOW_CLAW.damage - abilityDamage(64) * 2.7 * 0.9 * 0.77) > 0.001) {
   failed += 1;
@@ -700,5 +726,6 @@ if (failed > 0) {
 }
 console.log(`\n${results.length} tactical scenarios passed`);
 console.log(`${objectiveChecks.length} objective checks passed`);
+console.log(`${feedbackChecks.length} combat feedback checks passed`);
 console.log(`${draftChecks.length} draft checks passed`);
 console.log(`${mapChecks.length} map checks passed`);

@@ -36,6 +36,8 @@ import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
 import { AbilityTray } from '../ui/AbilityTray';
 import { BattleHud } from '../ui/BattleHud';
+import { CombatFeedback } from '../ui/combatFeedback/CombatFeedback';
+import { StatusChips } from '../ui/combatFeedback/StatusChips';
 import { DevMenu } from '../ui/DevMenu';
 import { Minimap } from '../ui/Minimap';
 import {
@@ -92,6 +94,8 @@ export class BattleScene extends Phaser.Scene {
   private tactics = new TacticalField();
   private aiOverlay?: TacticalOverlay;
   private hud!: BattleHud;
+  private feedback!: CombatFeedback;
+  private statusChips?: StatusChips;
   private wasStunned = false;
   private wasParalyzed = false;
   private round!: RoundOverlay;
@@ -143,7 +147,10 @@ export class BattleScene extends Phaser.Scene {
       orbs: this.orbs,
       grantXp: (body, amount) => {
         if (body === this.ninja) {
-          this.progression.grantXp(amount);
+          const result = this.progression.grantXp(amount);
+          if (result.leveled) {
+            this.feedback.levelUps(result.grants);
+          }
         }
       },
     });
@@ -181,6 +188,9 @@ export class BattleScene extends Phaser.Scene {
       });
     }
     this.hud = new BattleHud(this);
+    this.feedback = new CombatFeedback(this);
+    this.statusChips = new StatusChips(this, { hud: true });
+    this.feedback.setAnchor(this.hud.hpAnchor().x, this.hud.hpAnchor().y);
     this.layoutAbilityTray(this.scale.width, this.scale.height);
     this.round = new RoundOverlay(this, {
       onRestart: () => this.restartBattle(),
@@ -223,12 +233,14 @@ export class BattleScene extends Phaser.Scene {
         audio.play('ui-xp');
         if (result.leveled) {
           audio.play('ui-level-up');
+          this.feedback.levelUps(result.grants);
         }
       },
       onGiveLevel: () => {
         const result = this.progression.giveLevel();
         if (result.leveled) {
           audio.play('ui-level-up');
+          this.feedback.levelUps(result.grants);
         }
       },
       mapSeed: () => this.mapSeed,
@@ -292,6 +304,8 @@ export class BattleScene extends Phaser.Scene {
       this.offDamage?.();
       this.offBlocked?.();
       this.pauseOverlay?.destroy();
+      this.feedback?.destroy();
+      this.statusChips?.destroy();
       this.minimap?.destroy();
       this.aiOverlay?.destroy();
       this.battlefield?.destroy();
@@ -307,6 +321,7 @@ export class BattleScene extends Phaser.Scene {
     this.drawSandboxDebug(now);
     if (this.sandboxPaused) {
       this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
+      this.syncFeedback(now);
       this.cuePlayerCrowdControl(now);
       this.syncAbilityUi(now);
       return;
@@ -323,6 +338,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.round.isLocked) {
       this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
+      this.syncFeedback(now);
       this.cuePlayerCrowdControl(now);
       this.syncAbilityUi(now);
       return;
@@ -640,6 +656,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
+    this.syncFeedback(now);
     this.cuePlayerCrowdControl(now);
     this.inputReader.syncButtons({
       dashCharges: this.dash.chargeCount,
@@ -826,6 +843,10 @@ export class BattleScene extends Phaser.Scene {
     this.titleText?.setPosition(chrome.titleX, chrome.titleY).setVisible(chrome.titleVisible);
     this.menuButton?.setPosition(chrome.menuX, chrome.menuY);
     this.hud?.layout(width, height);
+    if (this.hud && this.feedback) {
+      const anchor = this.hud.hpAnchor();
+      this.feedback.setAnchor(anchor.x, anchor.y);
+    }
     this.inputReader?.layout(width, height);
     this.layoutAbilityTray(width, height);
     this.devMenu?.layout(width, height);
@@ -1021,6 +1042,14 @@ export class BattleScene extends Phaser.Scene {
     }
     const hud = layoutPcCombatHud(width, height);
     this.abilityTray.layout(hud.abilityXs[0], hud.abilityY, hud.abilityScale);
+  }
+
+  private syncFeedback(now: number): void {
+    const chip = this.hud.chipAnchor();
+    this.statusChips?.setPosition(chip.x, chip.y);
+    this.statusChips?.sync(this.ninja, now);
+    const anchor = this.hud.hpAnchor();
+    this.feedback.setAnchor(anchor.x, anchor.y);
   }
 
   private cuePlayerCrowdControl(now: number): void {

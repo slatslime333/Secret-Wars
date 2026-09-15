@@ -63,7 +63,8 @@ export const MENDER_SOUL = {
 
 export const MENDER_WIND = {
   durationMs: 8500,
-  radius: Math.round(NINJA_BASE_RANGE * 2.35),
+  /** 15% smaller than the previous Ninja-range × 2.35 field. */
+  radius: Math.round(Math.round(NINJA_BASE_RANGE * 2.35) * 0.85),
   healPerSecond: 4,
   staminaRegenMul: 1.22,
   defenseMul: 1.4,
