@@ -26,6 +26,9 @@ import { WITCH_SKELETON } from '../../heroes/abilities/witch/tunables';
 import { ComboTracker } from '../../combat/ComboTracker';
 import { COLE_BALL } from '../../heroes/abilities/cole/tunables';
 import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT, ROPE_SPRAY } from '../../heroes/abilities/rope/tunables';
+import { steerAround } from '../../map/query';
+import { StuckTracker, WallProbe } from './stuck';
+import { NEUTRAL_PERSONALITY } from './types';
 
 const results = runTacticalScenarios();
 let failed = 0;
@@ -335,6 +338,12 @@ if (DEMON_RAGE.abilityDamageToRage !== 0.2) {
 } else {
   console.log('ok  demon ability damage  20% to rage');
 }
+if (DEMON_RAGE.staminaOnActivate !== 0.2) {
+  failed += 1;
+  console.log(`FAIL  demon rage stamina grant  ${DEMON_RAGE.staminaOnActivate}`);
+} else {
+  console.log('ok  demon rage  restores 20% max stamina');
+}
 if (DEMON_BIG.attackRange !== Math.round(SHADOW.attackRange * 0.75)) {
   failed += 1;
   console.log(`FAIL  big demon range  ${DEMON_BIG.attackRange}`);
@@ -347,13 +356,13 @@ if (COLE.ratings.attackSpeed !== 33 || COLE.ratings.speed !== 52) {
 } else {
   console.log('ok  cole ratings  attack 33 / speed 52');
 }
-if (WITCH.ratings.damage !== 49 || WITCH.ratings.attackSpeed !== 38 || WITCH.ratings.stamina !== 53) {
+if (WITCH.ratings.damage !== 42 || WITCH.ratings.attackSpeed !== 38 || WITCH.ratings.stamina !== 53) {
   failed += 1;
   console.log(
     `FAIL  witch ratings  dmg=${WITCH.ratings.damage} atk=${WITCH.ratings.attackSpeed} stam=${WITCH.ratings.stamina}`,
   );
 } else {
-  console.log('ok  witch ratings  damage 49 / attack 38 / stamina 53');
+  console.log('ok  witch ratings  damage 42 / attack 38 / stamina 53');
 }
 if (Math.abs(SHADOW_CLAW.damage - abilityDamage(64) * 2.7 * 0.9 * 0.77) > 0.001) {
   failed += 1;
@@ -367,11 +376,11 @@ if (DEATH.ratings.damage !== 75) {
 } else {
   console.log('ok  death damage  75');
 }
-if (WITCH_SKELETON.maxHealth !== 165 || WITCH_SKELETON.attackDamage !== 6) {
+if (WITCH_SKELETON.maxHealth !== 150 || WITCH_SKELETON.attackDamage !== 6) {
   failed += 1;
   console.log(`FAIL  witch skeleton  hp=${WITCH_SKELETON.maxHealth} dmg=${WITCH_SKELETON.attackDamage}`);
 } else {
-  console.log('ok  witch skeleton  165 hp / 6 damage');
+  console.log('ok  witch skeleton  150 hp / 6 damage');
 }
 {
   const combo = new ComboTracker();
@@ -445,6 +454,68 @@ if (Math.round(COLE_BALL.damage) !== 30) {
   console.log(`FAIL  electric ball damage  ${COLE_BALL.damage}`);
 } else {
   console.log('ok  electric ball damage  30');
+}
+
+{
+  const blocked = (px: number) => px > 178 && px < 222;
+  const steered = steerAround((x, _y, r) => blocked(x + r * 0.2), 150, 200, 1, 0, 34);
+  const openSide = Math.abs(steered.y) > 0.35 && !blocked(150 + steered.x * 34);
+  if (!openSide) {
+    failed += 1;
+    console.log(`FAIL  steer around wall  dir=(${steered.x.toFixed(2)},${steered.y.toFixed(2)})`);
+  } else {
+    console.log(`ok  steer around wall  dir=(${steered.x.toFixed(2)},${steered.y.toFixed(2)})`);
+  }
+}
+
+{
+  const wall = new WallProbe(180, 40);
+  const tracker = new StuckTracker();
+  const personality = { ...NEUTRAL_PERSONALITY, caution: 0.4, movementPrecision: 0.55 };
+  const kit = kitProfileOf('shadow', 'frontliner', 145);
+  let x = 150;
+  let y = 200;
+  let recovered = false;
+  let heldY: number | undefined;
+  let flipped = false;
+  for (let step = 0; step < 18; step += 1) {
+    const now = step * 50;
+    const desired = { x: 1, y: 0 };
+    const steered = wall.steer(x, y, 1, 0);
+    const dir = tracker.filter(now, x, y, desired, steered, 180, wall, personality, kit, undefined, 'frontliner');
+    if (tracker.recovering) {
+      recovered = true;
+      if (heldY === undefined) {
+        heldY = Math.sign(dir.y || 0.0001);
+      } else if (Math.sign(dir.y || 0.0001) !== heldY && step < 10) {
+        flipped = true;
+      }
+      x += dir.x * 9;
+      y += dir.y * 9;
+    }
+  }
+  if (!recovered || flipped || Math.abs(y - 200) < 8) {
+    failed += 1;
+    console.log(`FAIL  stuck recovery  recovered=${recovered} flip=${flipped} y=${y.toFixed(0)}`);
+  } else {
+    console.log(`ok  stuck recovery  y=${y.toFixed(0)} label=${tracker.label || 'cleared'}`);
+  }
+}
+
+{
+  const wall = new WallProbe(180, 40);
+  const tracker = new StuckTracker();
+  const personality = { ...NEUTRAL_PERSONALITY };
+  const desired = { x: 1, y: 0 };
+  tracker.filter(0, 150, 200, desired, { x: 0, y: 0 }, 180, wall, personality, undefined);
+  const early = tracker.recovering;
+  tracker.filter(80, 150, 200, desired, { x: 0, y: 0 }, 180, wall, personality, undefined);
+  if (early || tracker.recovering) {
+    failed += 1;
+    console.log(`FAIL  stuck ignores short stalls  early=${early} later=${tracker.recovering}`);
+  } else {
+    console.log('ok  stuck ignores short stalls');
+  }
 }
 
 if (failed > 0) {

@@ -1,4 +1,5 @@
-import type { Personality } from './types';
+import type { KitProfile, Personality } from './types';
+import { StuckTracker, type WalkMate, type WalkQuery } from './stuck';
 
 /**
  * Hold a movement heading for a short window so CPUs do not snap to a new
@@ -11,6 +12,7 @@ export class MovementCommit {
   private until = 0;
   private armed = false;
   readonly rangeBias: number;
+  readonly stuck = new StuckTracker();
 
   constructor(personality: Personality) {
     const overshoot = (personality.aggression - personality.caution) * 0.1;
@@ -52,5 +54,46 @@ export class MovementCommit {
 
   reset(): void {
     this.armed = false;
+    this.stuck.reset();
   }
 }
+
+export const resolveCpuWalk = (
+  now: number,
+  x: number,
+  y: number,
+  desiredX: number,
+  desiredY: number,
+  loco: MovementCommit,
+  personality: Personality,
+  kit: KitProfile | undefined,
+  query: WalkQuery | undefined,
+  speed: number,
+  mates?: WalkMate[],
+  role?: string,
+): { x: number; y: number; stop: boolean } => {
+  const len = Math.hypot(desiredX, desiredY) || 1;
+  if (len < 12) {
+    loco.reset();
+    return { x: 0, y: 0, stop: true };
+  }
+  const committed = loco.heading(now, desiredX / len, desiredY / len, personality);
+  const steered = query?.steer(x, y, committed.x, committed.y) ?? committed;
+  const dir = loco.stuck.filter(
+    now,
+    x,
+    y,
+    committed,
+    steered,
+    speed,
+    query,
+    personality,
+    kit,
+    mates,
+    role,
+  );
+  if (dir.x === 0 && dir.y === 0 && !loco.stuck.recovering) {
+    return { x: 0, y: 0, stop: true };
+  }
+  return { x: dir.x, y: dir.y, stop: false };
+};

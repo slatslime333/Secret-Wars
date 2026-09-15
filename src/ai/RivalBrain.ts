@@ -11,7 +11,7 @@ import { battlefieldOf } from '../map';
 import { CombatDriver } from './combatDriver';
 import { TacticalField } from './tactical/field';
 import { TacticalMind } from './tactical/mind';
-import { MovementCommit } from './tactical/locomotion';
+import { MovementCommit, resolveCpuWalk } from './tactical/locomotion';
 import { moveGoal } from './tactical/move';
 import { SwingIntent } from './tactical/swingIntent';
 import type { TacticalDebugInfo } from './tactical/types';
@@ -108,6 +108,7 @@ export class RivalBrain {
       scene,
       foes,
       rng: Math.random,
+      stuck: this.loco.stuck,
     });
     if (this.combat.consumeDashLand()) {
       this.mind.think(now, cpu, field, scene, true);
@@ -137,6 +138,9 @@ export class RivalBrain {
       }
     } else {
       this.walk(now, cpu, scene);
+    }
+    if (this.loco.stuck.consumeCleared()) {
+      this.mind.think(now, cpu, field, scene, true);
     }
 
     this.swing.decide({
@@ -225,15 +229,28 @@ export class RivalBrain {
       dx = dx * 0.35 + strafe.x * 80;
       dy = dy * 0.35 + strafe.y * 80;
     }
-    const len = Math.hypot(dx, dy) || 1;
-    if (len < 12) {
-      this.loco.reset();
+    const walk = resolveCpuWalk(
+      now,
+      cpu.x,
+      cpu.y,
+      dx,
+      dy,
+      this.loco,
+      this.mind.personality,
+      this.mind.situationView().kit,
+      battlefieldOf(scene)?.query,
+      cpu.stats.moveSpeed,
+      this.mind.moveHint()?.mates,
+      cpu.stats.role,
+    );
+    if (this.loco.stuck.label) {
+      this.mind.noteCombat(this.loco.stuck.label);
+    }
+    if (walk.stop) {
       cpu.stop();
       return;
     }
-    const committed = this.loco.heading(now, dx / len, dy / len, this.mind.personality);
-    const steered = battlefieldOf(scene)?.query.steer(cpu.x, cpu.y, committed.x, committed.y) ?? committed;
-    this.chase.set(steered.x, steered.y);
+    this.chase.set(walk.x, walk.y);
     cpu.applyMove(this.chase);
   }
 }

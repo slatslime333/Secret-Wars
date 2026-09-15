@@ -70,6 +70,8 @@ export const DEMON_RAGE = {
   fillCostMul: 1.35,
   /** 20% of ability damage converts into rage, relative to the rating-50 ability hit. */
   abilityDamageToRage: 0.20,
+  /** Restored when Big Demon form actually starts. */
+  staminaOnActivate: 0.2,
 } as const;
 
 export const DEMON_CLAW = {

@@ -15,7 +15,10 @@ import { dodgeDirFor, scanProjectileThreat } from './tactical/shots';
 import { pickBestSupportAlly, purposesOf } from './tactical/supportSense';
 import { hellBatAim } from './tactical/demonSense';
 import { DEMON_HELL_BAT } from '../heroes/abilities/demon/tunables';
+import { COMBAT } from '../config/combat';
+import { battlefieldOf } from '../map';
 import { evaluateOffensiveDash } from './tactical/dashOffense';
+import type { StuckTracker } from './tactical/stuck';
 
 const SLOTS: AbilitySlot[] = SLOT_ORDER;
 
@@ -87,8 +90,9 @@ export class CombatDriver {
     scene: Phaser.Scene;
     foes: NinjaBody[];
     rng: () => number;
+    stuck?: StuckTracker;
   }): CombatDriverResult {
-    const { now, body, mind, block, dash, abilities, abilityCtx, world, scene, foes, rng } = args;
+    const { now, body, mind, block, dash, abilities, abilityCtx, world, scene, foes, rng, stuck } = args;
     const p = mind.personality;
     let usedAbility = false;
     this.sense.observe(now, body, mind.target);
@@ -149,6 +153,54 @@ export class CombatDriver {
         mind.noteCombat('dash-out');
         block.setHeld(now, body, false);
         return { blocking: false, usedAbility };
+      }
+    }
+
+    if (
+      stuck?.recovering &&
+      now >= this.nextDashAt &&
+      dash.chargeCount > 0 &&
+      !dash.isActive(now) &&
+      !abilities?.control.dash
+    ) {
+      const escape = stuck.dashEscape(now);
+      if (escape) {
+        const kit = mind.situationView().kit;
+        let chance = 0.14 + p.riskTolerance * 0.12;
+        if (kit?.stance === 'melee' || kit?.stance === 'skirmish') {
+          chance += 0.2;
+        }
+        if (kit?.stance === 'ranged') {
+          chance -= 0.04;
+        }
+        if (kit?.stance === 'support') {
+          chance -= 0.08;
+        }
+        if (String(body.stats.role) === 'tank') {
+          chance -= 0.03;
+        }
+        if (dash.chargeCount <= 1) {
+          chance *= 0.52;
+        }
+        const query = battlefieldOf(scene)?.query;
+        const landX = body.x + escape.x * COMBAT.dashDistance;
+        const landY = body.y + escape.y * COMBAT.dashDistance;
+        if (query?.blocksMovement(landX, landY, 14)) {
+          chance = 0;
+        }
+        if (rng() < chance) {
+          this.dashDir.set(escape.x, escape.y);
+          if (this.dashDir.lengthSq() > 4 && dash.tryStart(now, this.dashDir, body.aim, body)) {
+            this.noteDeathDash(now, body, dash, world, scene, foes);
+            stuck.markDashed(now);
+            this.blockUntil = 0;
+            this.nextDashAt = now + 720 + p.thinkJitterMs;
+            this.nextOffensiveDashAt = now + 900;
+            mind.noteCombat('dash-unstuck');
+            block.setHeld(now, body, false);
+            return { blocking: false, usedAbility };
+          }
+        }
       }
     }
 

@@ -126,30 +126,93 @@ export class MapQuery {
 
   /** Nudge a desired walk vector around nearby solids. */
   steer(x: number, y: number, dx: number, dy: number, look = 34): Point {
-    const length = Math.hypot(dx, dy) || 1;
-    const nx = dx / length;
-    const ny = dy / length;
-    if (!this.blocksMovement(x + nx * look, y + ny * look, 12)) {
-      return { x: nx, y: ny };
+    if (this.blocksMovement(x, y, 8)) {
+      return escapeAround((px, py, radius) => this.blocksMovement(px, py, radius), x, y, dx, dy, 22);
     }
-    const sides = [
-      { x: nx, y: 0 },
-      { x: 0, y: ny },
-      { x: -ny, y: nx },
-      { x: ny, y: -nx },
-      { x: -nx, y: -ny },
-    ];
-    for (const dir of sides) {
-      const slen = Math.hypot(dir.x, dir.y);
-      if (slen < 0.2) {
-        continue;
-      }
-      const sx = dir.x / slen;
-      const sy = dir.y / slen;
-      if (!this.blocksMovement(x + sx * look, y + sy * look, 12)) {
-        return { x: sx, y: sy };
-      }
-    }
-    return { x: 0, y: 0 };
+    return steerAround((px, py, radius) => this.blocksMovement(px, py, radius), x, y, dx, dy, look);
+  }
+
+  /** Best free heading when already pressed into geometry. */
+  escapeHeading(x: number, y: number, dx: number, dy: number, look = 36): Point {
+    return escapeAround((px, py, radius) => this.blocksMovement(px, py, radius), x, y, dx, dy, look);
   }
 }
+
+type BlockFn = (x: number, y: number, radius: number) => boolean;
+
+const RECOVER_ANGLES = [0.62, -0.62, Math.PI / 2, -Math.PI / 2, 2.15, -2.15, Math.PI];
+
+const rotate = (nx: number, ny: number, ang: number): { x: number; y: number } => {
+  const ca = Math.cos(ang);
+  const sa = Math.sin(ang);
+  return { x: nx * ca - ny * sa, y: nx * sa + ny * ca };
+};
+
+/** Local slide: keep the original heading when open, else pick a free nearby angle. */
+export const steerAround = (
+  blocked: BlockFn,
+  x: number,
+  y: number,
+  dx: number,
+  dy: number,
+  look = 34,
+  radius = 12,
+): Point => {
+  const length = Math.hypot(dx, dy) || 1;
+  const nx = dx / length;
+  const ny = dy / length;
+  if (!blocked(x + nx * look, y + ny * look, radius)) {
+    return { x: nx, y: ny };
+  }
+  let best: Point | undefined;
+  let bestScore = -1e9;
+  for (const ang of RECOVER_ANGLES) {
+    const dir = rotate(nx, ny, ang);
+    if (blocked(x + dir.x * look, y + dir.y * look, radius)) {
+      continue;
+    }
+    const far = !blocked(x + dir.x * look * 1.55, y + dir.y * look * 1.55, radius);
+    const align = dir.x * nx + dir.y * ny;
+    const score = align * 1.15 + (far ? 0.4 : 0);
+    if (score > bestScore) {
+      bestScore = score;
+      best = dir;
+    }
+  }
+  return best ?? { x: 0, y: 0 };
+};
+
+const FAN_ANGLES = [0, 0.7, -0.7, Math.PI / 2, -Math.PI / 2, 2.2, -2.2, Math.PI];
+
+/** Sample nearby headings and pick the most open one with some progress toward the want. */
+export const escapeAround = (
+  blocked: BlockFn,
+  x: number,
+  y: number,
+  dx: number,
+  dy: number,
+  look = 32,
+  radius = 12,
+): Point => {
+  const length = Math.hypot(dx, dy) || 1;
+  const nx = dx / length;
+  const ny = dy / length;
+  let best: Point | undefined;
+  let bestScore = -1e9;
+  for (const ang of FAN_ANGLES) {
+    const dir = rotate(nx, ny, ang);
+    const near = blocked(x + dir.x * look * 0.7, y + dir.y * look * 0.7, radius);
+    const mid = blocked(x + dir.x * look, y + dir.y * look, radius);
+    if (near && mid) {
+      continue;
+    }
+    const far = !blocked(x + dir.x * look * 1.6, y + dir.y * look * 1.6, radius);
+    const align = dir.x * nx + dir.y * ny;
+    const score = (mid ? -0.8 : 1.1) + (near ? -0.5 : 0.2) + align * 0.55 + (far ? 0.35 : 0);
+    if (score > bestScore) {
+      bestScore = score;
+      best = dir;
+    }
+  }
+  return best ?? { x: -nx, y: -ny };
+};

@@ -12,6 +12,7 @@ import { battlefieldOf } from '../map';
 import { TacticalField } from '../ai/tactical/field';
 import { TacticalMind } from '../ai/tactical/mind';
 import { moveGoal } from '../ai/tactical/move';
+import { StuckTracker } from '../ai/tactical/stuck';
 import { guardHome, minionLaneSpread, type CrowdMate } from '../ai/tactical/spacing';
 import type { TacticalAction, UnitFact } from '../ai/tactical/types';
 
@@ -50,6 +51,7 @@ export class MinionBrain {
   private acquireY = 0;
   private attacking = false;
   private readonly steer = new Phaser.Math.Vector2();
+  private readonly stuck = new StuckTracker();
   readonly mind: TacticalMind;
   private readonly guard?: NinjaBody;
   private readonly windupMs: number;
@@ -186,12 +188,23 @@ export class MinionBrain {
     dx = spread.x;
     dy = spread.y;
     const len = Math.hypot(dx, dy) || 1;
-    const steered = battlefieldOf(scene)?.query.steer(this.body.x, this.body.y, dx / len, dy / len);
-    if (steered) {
-      this.steer.set(steered.x, steered.y);
-    } else {
-      this.steer.set(dx / len, dy / len);
-    }
+    const query = battlefieldOf(scene)?.query;
+    const wanted = { x: dx / len, y: dy / len };
+    const steered = query?.steer(this.body.x, this.body.y, wanted.x, wanted.y) ?? wanted;
+    const dir = this.stuck.filter(
+      now,
+      this.body.x,
+      this.body.y,
+      wanted,
+      steered,
+      this.body.stats.moveSpeed,
+      query,
+      this.mind.personality,
+      undefined,
+      this.crowdMates(field),
+      'minion',
+    );
+    this.steer.set(dir.x, dir.y);
     this.body.applyMove(this.steer);
     this.state = nearest ? 'attack' : 'push_lane';
   }
@@ -265,6 +278,7 @@ export class MinionBrain {
     );
     if (goal.halt) {
       this.body.stop();
+      this.stuck.reset();
       return;
     }
     let dx = goal.x - this.body.x;
@@ -294,12 +308,23 @@ export class MinionBrain {
     dx = spread.x;
     dy = spread.y;
     const len = Math.hypot(dx, dy) || 1;
-    const steered = battlefieldOf(scene)?.query.steer(this.body.x, this.body.y, dx / len, dy / len);
-    if (steered) {
-      this.steer.set(steered.x, steered.y);
-    } else {
-      this.steer.set(dx / len, dy / len);
-    }
+    const query = battlefieldOf(scene)?.query;
+    const wanted = { x: dx / len, y: dy / len };
+    const steered = query?.steer(this.body.x, this.body.y, wanted.x, wanted.y) ?? wanted;
+    const dir = this.stuck.filter(
+      now,
+      this.body.x,
+      this.body.y,
+      wanted,
+      steered,
+      this.body.stats.moveSpeed,
+      query,
+      this.mind.personality,
+      undefined,
+      this.mind.moveHint()?.mates,
+      'minion',
+    );
+    this.steer.set(dir.x, dir.y);
     this.body.applyMove(this.steer);
   }
 
