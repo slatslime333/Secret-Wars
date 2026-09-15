@@ -8,7 +8,7 @@ import { abilityDamage } from '../../../config/ratings';
 
 export const MENDER_PULSE = {
   speed: Math.round(GUN_BARRAGE_SPEED_BASE * 1.12),
-  radius: 4.2,
+  radius: 3.4,
   /** Safety cap only. Shots are not range-limited; they fly until a hit or the map edge. */
   lifetimeMs: 8000,
   /** Dual uzis stay close to the aim line. */
@@ -19,6 +19,9 @@ export const MENDER_PULSE = {
   staminaDamage: 2,
   hitSlowMul: 0.88,
   hitSlowMs: 450,
+  /** Ally Pulse hits restore a sliver of health and stamina. */
+  healHealth: 0.75,
+  healStamina: 0.5,
   color: 0x4ec8ff,
 } as const;
 
@@ -29,6 +32,8 @@ export const MENDER_ANGEL = {
   radius: 18,
   lifetimeMs: 1600,
   maxRange: Math.round(MENDER.attackRange * 1.15),
+  /** Throw line is longer than the ball's travel so the aim reads at range. */
+  aimLength: Math.round(MENDER.attackRange * 1.85),
   healRatio: 1 / 5,
   staminaRatio: 0.35,
   staminaCap: 22,
@@ -52,7 +57,7 @@ export const MENDER_SOUL = {
   backflipMs: NINJA_KICK.backflipMs,
   backflipDistance: NINJA_KICK.backflipDistance,
   jumpHeight: NINJA_KICK.jumpHeight,
-  attachOffset: 20,
+  attachOffset: 36,
   auraTint: 0xe03040,
 } as const;
 

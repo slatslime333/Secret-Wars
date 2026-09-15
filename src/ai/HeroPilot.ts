@@ -12,6 +12,7 @@ import { MovementCommit } from './tactical/locomotion';
 import { moveGoal } from './tactical/move';
 import { SwingIntent } from './tactical/swingIntent';
 import type { TacticalDebugInfo } from './tactical/types';
+import { menderPulseHealTarget } from './tactical/supportSense';
 
 /**
  * Match CPU. Movement and swings still use the hero kit; decisions come from
@@ -61,9 +62,11 @@ export class HeroPilot {
 
     this.mind.think(now, body, field, scene);
     const target = this.mind.target;
+    const heal = body.heroId === 'mender' ? menderPulseHealTarget(this.mind.situationView(), this.mind.intent.ally) : undefined;
+    const focus = heal ?? target;
     const objective = this.mind.situationView().objective;
-    if (target) {
-      const lead = this.combat.sense.aimLead(target, Math.random);
+    if (focus) {
+      const lead = this.combat.sense.aimLead(focus, Math.random);
       body.setAim(lead.x - body.x, lead.y - body.y);
     } else if (this.mind.action === 'contest_objective' && objective) {
       body.setAim(objective.x - body.x, objective.y - body.y);
@@ -103,7 +106,7 @@ export class HeroPilot {
       ) {
         body.stop();
       }
-      unit.attacks.update(now, false, false, body, foes, foeBlock);
+      unit.attacks.update(now, false, false, body, foes, foeBlock, allies);
       return;
     }
 
@@ -111,10 +114,10 @@ export class HeroPilot {
     this.swing.decide({
       now,
       body,
-      target,
+      target: focus ?? target,
       objective,
       action: this.mind.action,
-      wantsAttack: this.mind.wantsAttack(),
+      wantsAttack: this.mind.wantsAttack() || Boolean(heal),
       personality: this.mind.personality,
       kit: this.mind.situationView().kit,
       sense: this.combat.sense,
@@ -123,11 +126,13 @@ export class HeroPilot {
     });
 
     const smashRange = objectiveInHitRange(body, objective, this.mind.action);
-    const inRange = target
-      ? distance(body, target) <= body.stats.attackRange * 1.32
+    const rangeMul = heal ? 2.15 : 1.32;
+    const inRange = focus
+      ? distance(body, focus) <= body.stats.attackRange * rangeMul
       : smashRange;
     const committed =
       this.mind.wantsAttack() ||
+      Boolean(heal) ||
       this.combat.sense.chaining(now) ||
       this.combat.sense.counterReady(now);
     const buttons = this.swing.buttons(now, inRange, body.canAttack(now), committed);
@@ -138,9 +143,9 @@ export class HeroPilot {
       !unit.dash.isActive(now) &&
       !body.status.cannotAttack(now)
     ) {
-      unit.attacks.update(now, buttons.held, buttons.pressed, body, foes, foeBlock);
+      unit.attacks.update(now, buttons.held, buttons.pressed, body, foes, foeBlock, allies);
     } else {
-      unit.attacks.update(now, false, false, body, foes, foeBlock);
+      unit.attacks.update(now, false, false, body, foes, foeBlock, allies);
     }
   }
 

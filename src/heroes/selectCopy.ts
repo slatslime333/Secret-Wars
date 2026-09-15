@@ -27,7 +27,7 @@ import {
   witchHexAllyRange,
 } from './abilities/witch/tunables';
 import { SHADOW_CLAW, SHADOW_DASH, SHADOW_MARK, SHADOW_RAGE } from './abilities/shadow/tunables';
-import { MENDER_ANGEL, MENDER_SOUL, MENDER_WIND } from './abilities/mender/tunables';
+import { MENDER_ANGEL, MENDER_PULSE, MENDER_SOUL, MENDER_WIND } from './abilities/mender/tunables';
 import { DEMON_BURN, DEMON_HELLFIRE, DEMON_HELL_BAT, DEMON_RAGE } from './abilities/demon/tunables';
 
 export type HeroSelectCopy = {
@@ -178,7 +178,7 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
     description:
       'A fragile ranged support. Mender pokes with dual uzis, then spends her kit protecting teammates instead of finishing fights herself.',
     light:
-      `Pulse: alternating cyan SMG shots. Each shot deals ${hit(MENDER.attackDamage)} damage at long range with light knockback and a brief slow. Fast, readable dual-uzi fire — support pressure, not a finisher.`,
+      `Pulse: alternating cyan SMG shots. Enemy hits deal ${hit(MENDER.attackDamage)} damage with light knockback and a brief slow. Ally hits restore ${MENDER_PULSE.healHealth} health and ${MENDER_PULSE.healStamina} stamina. Mender splits fire between poking and topping off teammates.`,
   },
   demon: {
     description:

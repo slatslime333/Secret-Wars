@@ -55,6 +55,7 @@ export class QuickAttack {
   private ropeArm: -1 | 1 = -1;
   private readonly ropeShots: Projectile[] = [];
   private readonly menderShots: Projectile[] = [];
+  private readonly pulseHealed = new WeakMap<Projectile, WeakSet<NinjaBody>>();
   private readonly demonShots: Projectile[] = [];
   private readonly witchBarrages: WitchSkullBarrage[] = [];
 
@@ -94,9 +95,10 @@ export class QuickAttack {
     attacker: NinjaBody,
     enemies: NinjaBody[],
     defenderBlock?: BlockController,
+    allies: NinjaBody[] = [],
   ): void {
     this.tickRopeShots(now, attacker, enemies, defenderBlock);
-    this.tickMenderShots(now, attacker, enemies, defenderBlock);
+    this.tickMenderShots(now, attacker, enemies, allies, defenderBlock);
     this.tickDemonShots(now, attacker, enemies, defenderBlock);
     this.tickWitchBarrage(now, attacker, enemies, defenderBlock);
     this.resolveImpactIfReady(now, attacker, enemies, defenderBlock);
@@ -271,7 +273,7 @@ export class QuickAttack {
       attacker.team,
     );
     this.menderShots.push(shot);
-    const flash = this.scene.add.circle(origin.x, origin.y, 3.4, MENDER_PULSE.color, 0.9).setDepth(16);
+    const flash = this.scene.add.circle(origin.x, origin.y, 2.4, MENDER_PULSE.color, 0.9).setDepth(16);
     this.scene.tweens.add({
       targets: flash,
       alpha: 0,
@@ -290,12 +292,24 @@ export class QuickAttack {
     now: number,
     attacker: NinjaBody,
     enemies: NinjaBody[],
+    allies: NinjaBody[],
     defenderBlock?: BlockController,
   ): void {
     const dt = this.scene.game.loop.delta / 1000;
+    const healTargets = allies.filter(
+      (ally) => ally !== attacker && !ally.down && ally.isPresent && ally.stats.role !== 'minion',
+    );
     for (let i = this.menderShots.length - 1; i >= 0; i -= 1) {
       const shot = this.menderShots[i];
       const result = shot.update(now, dt, enemies);
+      if (result !== 'dead') {
+        const pose = shot.pose();
+        for (const ally of healTargets) {
+          if (Math.hypot(ally.x - pose.x, ally.y - pose.y) <= pose.radius + ally.stats.bodyRadius) {
+            this.grantPulseHeal(shot, ally);
+          }
+        }
+      }
       if (!result) {
         continue;
       }
@@ -324,6 +338,20 @@ export class QuickAttack {
         result.target.status.applySlow(now, MENDER_PULSE.hitSlowMs, MENDER_PULSE.hitSlowMul);
       }
     }
+  }
+
+  private grantPulseHeal(shot: Projectile, ally: NinjaBody): void {
+    let seen = this.pulseHealed.get(shot);
+    if (!seen) {
+      seen = new WeakSet();
+      this.pulseHealed.set(shot, seen);
+    }
+    if (seen.has(ally)) {
+      return;
+    }
+    seen.add(ally);
+    ally.heal(MENDER_PULSE.healHealth);
+    ally.stamina = Math.min(ally.stats.maxStamina, ally.stamina + MENDER_PULSE.healStamina);
   }
 
   private clearMenderShots(): void {

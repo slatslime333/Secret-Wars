@@ -77,6 +77,7 @@ class SoulDashAbility implements ActiveAbility {
     this.lockInvulnerable(ctx.now);
     spawnCombatCallout(ctx.scene, ctx.caster.x, ctx.caster.y, 'SOUL', 0xe03040);
     playWorld('shadow-dash-whoosh', ctx.caster);
+    ctx.caster.setGhostHeroes(true);
     attached.set(this.caster, this);
   }
 
@@ -141,6 +142,7 @@ class SoulDashAbility implements ActiveAbility {
     attached.delete(this.caster);
     this.unlockInvulnerable();
     this.caster.setFairyForm(false);
+    this.caster.setGhostHeroes(false);
     this.caster.setSpeedCap(COMBAT.physicsMaxSpeed);
   }
 
@@ -187,6 +189,7 @@ class SoulDashAbility implements ActiveAbility {
     this.control = { move: true, attack: true, dash: true, block: true, abilities: true };
     this.unlockInvulnerable();
     ctx.caster.setFairyForm(false);
+    ctx.caster.setGhostHeroes(false);
     const aimLen = Math.hypot(this.ally.aim.x, this.ally.aim.y) || 1;
     const ex = -this.ally.aim.x / aimLen;
     const ey = -this.ally.aim.y / aimLen;
@@ -206,6 +209,7 @@ class SoulDashAbility implements ActiveAbility {
     attached.delete(ctx.caster);
     this.unlockInvulnerable();
     ctx.caster.setFairyForm(false);
+    ctx.caster.setGhostHeroes(false);
     ctx.caster.setSpeedCap(COMBAT.physicsMaxSpeed);
   }
 

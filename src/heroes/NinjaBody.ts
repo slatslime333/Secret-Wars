@@ -89,6 +89,7 @@ export class NinjaBody {
   private readonly baseMaxStamina: number;
   private rageStaminaUntil = 0;
   private fairyForm = false;
+  private ghostHeroes = false;
   demonForm: DemonForm = 'little';
   demonRage = 0;
   demonTransformUntil = 0;
@@ -756,12 +757,35 @@ export class NinjaBody {
   }
 
   setFairyForm(value: boolean): void {
-    if (this.fairyForm === value) {
+    if (this.fairyForm !== value) {
+      this.fairyForm = value;
+      this.view.setScale(value ? 0.72 : 1);
+      this.setPhysicsEnabled(!value);
+      this.redrawIdle();
+    }
+    this.refreshSkipHeroCollide();
+  }
+
+  /** Soul Dash flies through allies so the host CPU is not collider-frozen. */
+  setGhostHeroes(value: boolean): void {
+    this.ghostHeroes = value;
+    this.refreshSkipHeroCollide();
+  }
+
+  /** Fairy attach disables collision so the host CPU can keep walking. */
+  setPhysicsEnabled(enabled: boolean): void {
+    const body = this.body;
+    if (!body) {
       return;
     }
-    this.fairyForm = value;
-    this.view.setScale(value ? 0.72 : 1);
-    this.redrawIdle();
+    body.enable = enabled;
+    if (!enabled) {
+      body.setVelocity(0, 0);
+    }
+  }
+
+  private refreshSkipHeroCollide(): void {
+    this.sprite.setData('skipHeroCollide', this.fairyForm || this.ghostHeroes);
   }
 
   setDemonForm(form: DemonForm): void {
@@ -1141,3 +1165,10 @@ export class NinjaBody {
     drawColeElectricity(this.sparks, this.facing, this.now(), this.armLiftLeft, this.armLiftRight);
   }
 }
+
+/** Arcade processCallback: skip hero-hero collide while Soul Dash is ghosting or attached. */
+export const allowsHeroCollide = (a: object, b: object): boolean => {
+  const left = a as Phaser.GameObjects.GameObject;
+  const right = b as Phaser.GameObjects.GameObject;
+  return left.getData('skipHeroCollide') !== true && right.getData('skipHeroCollide') !== true;
+};
