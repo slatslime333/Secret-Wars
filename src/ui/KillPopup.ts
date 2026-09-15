@@ -7,12 +7,14 @@ export const spawnKillPopup = (
   scene: Phaser.Scene,
   kind: 'KILL' | 'ASSIST',
   victimName: string,
+  points?: number,
 ): void => {
   const width = scene.scale.width;
   const height = scene.scale.height;
   const color = kind === 'KILL' ? COLORS.orange : COLORS.cyan;
+  const awarded = kind === 'KILL' && points && points > 0 ? `  +${points}` : '';
   const label = scene.add
-    .text(width / 2, height * 0.28, `${kind}  ${victimName.toUpperCase()}`, {
+    .text(width / 2, height * 0.28, `${kind}  ${victimName.toUpperCase()}${awarded}`, {
       fontFamily: FONTS.display,
       fontSize: kind === 'KILL' ? '36px' : '28px',
       color: hex(color),

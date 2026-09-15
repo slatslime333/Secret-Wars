@@ -199,6 +199,8 @@ export type Situation = {
   objective?: ObjectiveHint;
   teamScore?: { self: number; enemy: number; lastKillAt?: number };
   teamMomentum?: number;
+  remainingMs?: number;
+  elapsedMs?: number;
   /** Own stamina change since last think. Positive = recovering. */
   staminaTrend?: number;
   /** True when this fighter's kit defs include ally heal / shield / buff. */

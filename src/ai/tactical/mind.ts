@@ -486,6 +486,8 @@ export class TacticalMind {
     const score = scoreHintFor(selfFact.team);
     this.situation.teamScore = { self: score.self, enemy: score.enemy, lastKillAt: score.lastKillAt };
     this.situation.teamMomentum = score.momentum;
+    this.situation.remainingMs = score.remainingMs;
+    this.situation.elapsedMs = score.elapsedMs;
     this.lastAllyCount = allyHeroes.length;
   }
 

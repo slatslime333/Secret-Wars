@@ -1,5 +1,6 @@
 import type { StatGrowthKey } from '../../config/match';
 import { OBJECTIVE, type ObjectiveKind } from '../../config/objective';
+import { objectiveScoreLine } from '../../config/score';
 import type { LevelGrant } from '../../match/Progression';
 
 export type StatusChipInfo = {
@@ -76,6 +77,10 @@ export const describeObjectiveRewards = (ctx: ObjectiveRewardContext): Objective
   const lines: string[] = [];
   switch (ctx.kind) {
     case 'capture_zone': {
+      const score = objectiveScoreLine(ctx.kind);
+      if (score) {
+        lines.push(score);
+      }
       lines.push(xpShareLine(OBJECTIVE.capture.xpShare));
       const spd = formatMulStat(OBJECTIVE.capture.moveMul, 'SPD');
       if (spd) {
@@ -83,17 +88,30 @@ export const describeObjectiveRewards = (ctx: ObjectiveRewardContext): Objective
       }
       break;
     }
-    case 'golden_piggy':
+    case 'golden_piggy': {
+      const score = objectiveScoreLine(ctx.kind);
+      if (score) {
+        lines.push(score);
+      }
       lines.push(xpShareLine(OBJECTIVE.piggy.xpShare));
-      lines.push(`+${OBJECTIVE.scoreReward} SCORE`);
       break;
-    case 'bounty_target':
+    }
+    case 'bounty_target': {
+      const score = objectiveScoreLine(ctx.kind);
+      if (score) {
+        lines.push(score);
+      }
       lines.push(`+${OBJECTIVE.bounty.levelReward} LEVEL`);
       break;
+    }
     case 'healing_shrine':
       lines.push(`HEAL ${OBJECTIVE.shrine.healPerSecond}/S WHILE HELD`);
       break;
     case 'executioner': {
+      const score = objectiveScoreLine(ctx.kind);
+      if (score) {
+        lines.push(score);
+      }
       const spd = formatMulStat(OBJECTIVE.executioner.moveMul, 'SPD');
       const atk = formatMulStat(OBJECTIVE.executioner.attackMul, 'ATK SPD');
       const stam = formatMulStat(OBJECTIVE.executioner.staminaMul, 'STAM');
@@ -109,10 +127,14 @@ export const describeObjectiveRewards = (ctx: ObjectiveRewardContext): Objective
       lines.push(xpShareLine(OBJECTIVE.executioner.xpShare));
       break;
     }
-    case 'war_banner':
+    case 'war_banner': {
+      const score = objectiveScoreLine(ctx.kind);
+      if (score) {
+        lines.push(score);
+      }
       lines.push(xpShareLine(OBJECTIVE.banner.xpShare));
-      lines.push(`+${OBJECTIVE.scoreReward} SCORE`);
       break;
+    }
     case 'rage_zone':
     case 'meteor_storm':
       break;

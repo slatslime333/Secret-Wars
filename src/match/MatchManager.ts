@@ -15,8 +15,8 @@ export type MatchSnapshot = {
 };
 
 /**
- * Explicit match clock and phase machine.
- * PLAYING → (tie) OVERTIME → (tie) SUDDEN_DEATH → FINISHED
+ * Fixed 4-minute War Score clock. At 0:00 the match ends; highest score wins.
+ * Overtime / sudden death are not a war-score win path.
  */
 export class MatchManager {
   phase: MatchPhase = 'PLAYING';
@@ -26,16 +26,14 @@ export class MatchManager {
   winner: TeamId | 'draw' | null = null;
   reason: MatchEndReason | null = null;
 
-  constructor(
-    private readonly scores: () => { alpha: number; bravo: number },
-  ) {}
+  constructor(private readonly decideWinner: () => TeamId | 'draw') {}
 
   get finished(): boolean {
     return this.phase === 'FINISHED';
   }
 
   get playing(): boolean {
-    return this.phase === 'PLAYING' || this.phase === 'OVERTIME' || this.phase === 'SUDDEN_DEATH';
+    return this.phase === 'PLAYING' && !this.finished;
   }
 
   snapshot(): MatchSnapshot {
@@ -43,8 +41,8 @@ export class MatchManager {
       phase: this.phase,
       remainingMs: this.remainingMs,
       elapsedMs: this.elapsedMs,
-      overtime: this.phase === 'OVERTIME',
-      suddenDeath: this.phase === 'SUDDEN_DEATH',
+      overtime: false,
+      suddenDeath: false,
       finished: this.finished,
       winner: this.winner,
       reason: this.reason,
@@ -67,27 +65,15 @@ export class MatchManager {
       return;
     }
     this.elapsedMs += delta;
-    if (this.phase === 'SUDDEN_DEATH') {
-      return;
-    }
     this.remainingMs = Math.max(0, this.remainingMs - delta);
     if (this.remainingMs > 0) {
       return;
     }
-    this.onClockExpired();
+    this.finish(this.decideWinner(), 'time');
   }
 
-  /** Call after every hero kill so sudden death can close the match. */
-  notifyHeroKill(): void {
-    if (this.phase !== 'SUDDEN_DEATH' || this.finished) {
-      return;
-    }
-    const { alpha, bravo } = this.scores();
-    if (alpha === bravo) {
-      return;
-    }
-    this.finish(alpha > bravo ? 'alpha' : 'bravo', 'sudden-death');
-  }
+  /** War Score does not use sudden death. Kept so call sites stay compiling. */
+  notifyHeroKill(): void {}
 
   reset(): void {
     this.phase = 'PLAYING';
@@ -96,25 +82,6 @@ export class MatchManager {
     this.paused = false;
     this.winner = null;
     this.reason = null;
-  }
-
-  private onClockExpired(): void {
-    const { alpha, bravo } = this.scores();
-    if (alpha !== bravo) {
-      this.finish(alpha > bravo ? 'alpha' : 'bravo', this.phase === 'OVERTIME' ? 'overtime' : 'time');
-      return;
-    }
-    if (this.phase === 'PLAYING') {
-      this.phase = 'OVERTIME';
-      this.remainingMs = MATCH.overtimeMs;
-      return;
-    }
-    if (this.phase === 'OVERTIME' && MATCH.suddenDeathEnabled) {
-      this.phase = 'SUDDEN_DEATH';
-      this.remainingMs = 0;
-      return;
-    }
-    this.finish('draw', this.phase === 'OVERTIME' ? 'overtime' : 'time');
   }
 
   private finish(winner: TeamId | 'draw', reason: MatchEndReason): void {

@@ -1,3 +1,4 @@
+import { MATCH } from '../config/match';
 import type { TeamId } from '../config/hero';
 import type { TeamScore } from './ScoreManager';
 
@@ -7,6 +8,8 @@ export type ScoreWorld = {
   alphaMomentum: number;
   bravoMomentum: number;
   lastKillAt: number;
+  remainingMs: number;
+  elapsedMs: number;
 };
 
 const clamp = (n: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, n));
@@ -17,6 +20,8 @@ let world: ScoreWorld = {
   alphaMomentum: 0,
   bravoMomentum: 0,
   lastKillAt: 0,
+  remainingMs: MATCH.durationMs,
+  elapsedMs: 0,
 };
 
 /** HUD-visible team score plus a short fight-momentum EMA from hero kills. */
@@ -38,6 +43,11 @@ export const publishScore = (score: TeamScore, killer?: TeamId, now = 0): void =
   world.lastKillAt = now;
 };
 
+export const publishMatchClock = (clock: { remainingMs: number; elapsedMs: number }): void => {
+  world.remainingMs = clock.remainingMs;
+  world.elapsedMs = clock.elapsedMs;
+};
+
 export const resetScoreWorld = (): void => {
   world = {
     alpha: 0,
@@ -45,17 +55,30 @@ export const resetScoreWorld = (): void => {
     alphaMomentum: 0,
     bravoMomentum: 0,
     lastKillAt: 0,
+    remainingMs: MATCH.durationMs,
+    elapsedMs: 0,
   };
 };
 
 export const scoreWorld = (): ScoreWorld => world;
 
-export const scoreHintFor = (team: TeamId): { self: number; enemy: number; momentum: number; lastKillAt: number } => {
+export const scoreHintFor = (
+  team: TeamId,
+): {
+  self: number;
+  enemy: number;
+  momentum: number;
+  lastKillAt: number;
+  remainingMs: number;
+  elapsedMs: number;
+} => {
   const foe: TeamId = team === 'alpha' ? 'bravo' : 'alpha';
   return {
     self: team === 'alpha' ? world.alpha : world.bravo,
     enemy: foe === 'alpha' ? world.alpha : world.bravo,
     momentum: team === 'alpha' ? world.alphaMomentum : world.bravoMomentum,
     lastKillAt: world.lastKillAt,
+    remainingMs: world.remainingMs,
+    elapsedMs: world.elapsedMs,
   };
 };

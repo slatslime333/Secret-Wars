@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { ARENA, LANES, type LaneId } from '../config/arena';
-import { MATCH } from '../config/match';
+import { MATCH, xpForMinion } from '../config/match';
 import { DEV_CHEATS, resetDevCheats } from '../debug/devCheats';
 import { MinionWorld } from '../minions/MinionWorld';
 import { PLAYABLE_HEROES, getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
@@ -45,11 +45,14 @@ import { fadeToScene } from './fadeToScene';
 import { HeroRuntime } from '../match/HeroRuntime';
 import { MatchManager } from '../match/MatchManager';
 import { ScoreManager } from '../match/ScoreManager';
+import { resolveWarWinner, teamAvgHp } from '../match/resolveWinner';
+import { publishMatchClock } from '../match/scoreBoard';
 import { CombatStatsTracker } from '../match/CombatStatsTracker';
 import { WaveDirector } from '../match/WaveDirector';
 import { XpOrbWorld } from '../match/XpOrbWorld';
 import { ObjectiveManager } from '../match/objectives/ObjectiveManager';
 import type { ObjectiveKind } from '../config/objective';
+import { OBJECTIVE_SCORE } from '../config/score';
 import { buildMatchGameState, type MatchGameState } from '../match/MatchQuery';
 import { SpectatorCamera } from '../match/SpectatorCamera';
 import {
@@ -64,7 +67,6 @@ import {
   rememberPlayerSpawn,
   type PlayDraft,
 } from '../draft/rosterBuild';
-import { xpForMinion } from '../config/match';
 import { audio } from '../audio';
 import type { TeamId } from '../config/hero';
 
@@ -170,8 +172,8 @@ export class MatchScene extends Phaser.Scene {
       ARENA.height - ARENA.wallThickness * 2,
     );
 
-    this.score = new ScoreManager();
-    this.match = new MatchManager(() => this.score.snapshot());
+    this.score = new ScoreManager(() => this.match?.playing);
+    this.match = new MatchManager(() => this.decideWarWinner());
     this.stats = new CombatStatsTracker();
     this.abilityWorld = new AbilityWorld();
     this.minions = new MinionWorld(this);
@@ -186,6 +188,9 @@ export class MatchScene extends Phaser.Scene {
       orbs: this.orbs,
       heroes: () => this.heroes,
       grantLevel: (hero) => {
+        if (!this.match.playing) {
+          return;
+        }
         this.noteProgression(hero, hero.progression.giveLevel());
       },
       grantXp: (hero, amount) => this.applyXp(hero, amount),
@@ -195,6 +200,7 @@ export class MatchScene extends Phaser.Scene {
       if (!event.killer || !isHeroFighter(event.killer) || !event.killer.isPresent || event.killer.down) {
         return;
       }
+      this.score.awardMinion(event.killer.team, event.kind, this.time.now);
       this.orbs.spawn(event.x, event.y, event.killer, xpForMinion(event.kind), event.team);
     };
 
@@ -214,7 +220,7 @@ export class MatchScene extends Phaser.Scene {
       orbs: this.orbs,
       grantXp: (body, amount) => {
         const runtime = this.heroes.find((unit) => unit.body === body);
-        if (!runtime || !body.isPresent || body.down) {
+        if (!runtime || !body.isPresent || body.down || !this.match.playing) {
           return;
         }
         const leveled = runtime.progression.grantXp(amount);
@@ -327,17 +333,19 @@ export class MatchScene extends Phaser.Scene {
     }
 
     this.match.update(delta);
+    publishMatchClock({ remainingMs: this.match.remainingMs, elapsedMs: this.match.elapsedMs });
     for (const unit of this.heroes) {
       unit.sync();
     }
 
     if (this.match.finished) {
+      this.score.lock();
       this.objectives?.endMatch();
       this.freezeField();
       this.syncHud(now);
       this.spectatorOverlay.hide();
       if (!this.results.isOpen) {
-        this.results.show(this.match.winner, this.player.team, this.stats.allLines());
+        this.results.show(this.match.winner, this.player.team, this.stats.allLines(), this.score.snapshot());
       }
       return;
     }
@@ -510,6 +518,22 @@ export class MatchScene extends Phaser.Scene {
     });
   }
 
+  private decideWarWinner(): TeamId | 'draw' {
+    const snap = this.score.snapshot();
+    return resolveWarWinner({
+      score: { self: snap.alpha, enemy: snap.bravo },
+      heroKills: { self: this.score.heroKills.alpha, enemy: this.score.heroKills.bravo },
+      objectives: { self: this.score.objectives.alpha, enemy: this.score.objectives.bravo },
+      avgHp: teamAvgHp(
+        this.heroes.map((hero) => ({
+          team: hero.team,
+          kind: 'hero',
+          hp: hero.dead || !hero.body.isPresent ? 0 : hero.body.health,
+        })),
+      ),
+    });
+  }
+
   private noteXp(hero: HeroRuntime, amount: number): void {
     if (!hero.isPlayer || amount <= 0) {
       return;
@@ -518,6 +542,9 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private applyXp(hero: HeroRuntime, amount: number): LevelUpResult {
+    if (!this.match.playing) {
+      return { leveled: false, levelsGained: 0, newLevel: hero.progression.level, stat: null, grants: [] };
+    }
     const result = hero.progression.grantXp(amount);
     if (hero.isPlayer && amount > 0) {
       audio.play('ui-xp');
@@ -549,10 +576,19 @@ export class MatchScene extends Phaser.Scene {
       winner: event.winner,
       assassinBonus: event.assassin === this.player.body,
     });
+    const awarded =
+      event.kind === 'capture_zone' ||
+      event.kind === 'golden_piggy' ||
+      event.kind === 'bounty_target' ||
+      event.kind === 'executioner' ||
+      event.kind === 'war_banner';
+    if (awarded) {
+      this.feedback.scoreGain(OBJECTIVE_SCORE[event.kind] ?? 0);
+    }
   }
 
   private grantMinionReward(target: NinjaBody, amount: number): void {
-    if (!target.isPresent || target.down) {
+    if (!target.isPresent || target.down || !this.match.playing) {
       return;
     }
     const runtime = this.heroes.find((hero) => hero.body === target);
@@ -575,18 +611,27 @@ export class MatchScene extends Phaser.Scene {
       }
       const result = this.stats.registerHeroDeath(unit.body, now);
       if (result.killer && result.killer.team !== unit.team) {
-        this.score.addKill(result.killer.team, now);
+        const awarded = this.score.awardHeroKill(result.killer.team, unit.instanceId, now);
+        if (result.killer.team === this.player.team && awarded > 0) {
+          this.feedback.scoreGain(awarded);
+        }
+        const popupHero =
+          this.spectator.enabled && this.spectator.target ? this.spectator.target : this.player;
+        if (result.killer === popupHero.body) {
+          spawnKillPopup(this, 'KILL', unit.body.stats.displayName, awarded);
+        } else if (result.assists.includes(popupHero.body)) {
+          spawnKillPopup(this, 'ASSIST', unit.body.stats.displayName);
+        }
+      } else {
+        const popupHero =
+          this.spectator.enabled && this.spectator.target ? this.spectator.target : this.player;
+        if (result.assists.includes(popupHero.body)) {
+          spawnKillPopup(this, 'ASSIST', unit.body.stats.displayName);
+        }
       }
       this.objectives?.notifyHeroDeath(now, unit, result.killer ?? undefined);
       unit.markDead(now);
       this.match.notifyHeroKill();
-      const popupHero =
-        this.spectator.enabled && this.spectator.target ? this.spectator.target : this.player;
-      if (result.killer === popupHero.body && result.killer.team !== unit.team) {
-        spawnKillPopup(this, 'KILL', unit.body.stats.displayName);
-      } else if (result.assists.includes(popupHero.body)) {
-        spawnKillPopup(this, 'ASSIST', unit.body.stats.displayName);
-      }
       if (unit.isPlayer) {
         this.cameras.main.stopFollow();
       }
@@ -1172,11 +1217,15 @@ export class MatchScene extends Phaser.Scene {
         return result;
       },
       giveLevel: () => {
+        if (!this.match.playing) {
+          return this.player.progression.level;
+        }
         const result = this.player.progression.giveLevel();
         this.noteProgression(this.player, result);
         return result;
       },
       scores: () => this.score.snapshot(),
+      warScore: () => this.score.telemetry(this.match.elapsedMs),
       phase: () => this.match.snapshot(),
       spawnObjective: (kind?: ObjectiveKind) => this.objectives?.debugSpawn(kind),
       toggleAi: () => {

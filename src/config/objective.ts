@@ -104,8 +104,6 @@ export const OBJECTIVE = {
     strikesPerWave: 2,
     radius: 72,
   },
-  /** Team score awarded for Golden Piggy Bank and War Banner. */
-  scoreReward: 1,
   auraTint: 0xe23b3b,
 } as const;
 

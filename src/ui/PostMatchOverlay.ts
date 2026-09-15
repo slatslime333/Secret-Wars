@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
 import { MATCH } from '../config/match';
+import { formatWarScore } from '../config/score';
 import type { TeamId } from '../config/hero';
 import type { HeroStatLine } from '../match/CombatStatsTracker';
+import type { TeamScore } from '../match/ScoreManager';
 import { ActionButton } from './ActionButton';
 import { ScrollPanel } from './layout/ScrollPanel';
 import { measureViewport } from './layout/viewport';
@@ -29,7 +31,7 @@ export class PostMatchOverlay {
     return this.visible;
   }
 
-  show(winner: TeamId | 'draw' | null, playerTeam: TeamId, lines: HeroStatLine[]): void {
+  show(winner: TeamId | 'draw' | null, playerTeam: TeamId, lines: HeroStatLine[], score?: TeamScore): void {
     this.scroller?.destroy();
     this.scroller = undefined;
     this.root.removeAll(true);
@@ -56,8 +58,18 @@ export class PostMatchOverlay {
         strokeThickness: 6,
       })
       .setOrigin(0.5, 0);
+    const war = this.scene.add
+      .text(width / 2, inset.top + 42, score ? `${formatWarScore(score.alpha)}  —  ${formatWarScore(score.bravo)}` : '', {
+        fontFamily: FONTS.display,
+        fontSize: frame.isPortrait ? '16px' : '18px',
+        color: hex(COLORS.paper),
+        letterSpacing: 2,
+        stroke: hex(COLORS.ink),
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5, 0);
     const sub = this.scene.add
-      .text(width / 2, inset.top + 48, 'MATCH REPORT', {
+      .text(width / 2, inset.top + (score ? 64 : 48), 'MATCH REPORT', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
@@ -66,10 +78,10 @@ export class PostMatchOverlay {
       })
       .setOrigin(0.5, 0);
 
-    this.root.add([veil, title, sub]);
+    this.root.add([veil, title, war, sub]);
 
     const footerH = 72;
-    const scrollY = inset.top + 78;
+    const scrollY = inset.top + (score ? 94 : 78);
     const scrollH = Math.max(80, height - scrollY - footerH - inset.bottom);
     this.scroller = new ScrollPanel(this.scene, inset.left, scrollY, width - inset.left - inset.right, scrollH, {
       depth: 241,

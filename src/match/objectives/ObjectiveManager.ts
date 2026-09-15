@@ -263,17 +263,20 @@ export class ObjectiveManager {
     const y = this.active?.y ?? 0;
     switch (event.kind) {
       case 'capture_zone':
+        this.score.awardObjective(winner, event.kind, now, `${event.kind}:${now}`);
         grantTeamXpShare(winner, heroes, this.grantXp, this.orbs, x, y, OBJECTIVE.capture.xpShare);
         applyObjectiveHasteToTeam(winner, heroes, now, OBJECTIVE.capture.buffMs, OBJECTIVE.capture.moveMul, 1);
         break;
       case 'golden_piggy':
-        this.score.addPoints(winner, OBJECTIVE.scoreReward);
+        this.score.awardObjective(winner, event.kind, now, `${event.kind}:${now}`);
         grantTeamXpShare(winner, heroes, this.grantXp, this.orbs, x, y, OBJECTIVE.piggy.xpShare);
         break;
       case 'bounty_target':
+        this.score.awardObjective(winner, event.kind, now, `${event.kind}:${now}`);
         grantTeamLevels(winner, heroes, this.grantLevel, this.orbs, x, y, OBJECTIVE.bounty.levelReward);
         break;
       case 'executioner':
+        this.score.awardObjective(winner, event.kind, now, `${event.kind}:${now}`);
         grantTeamXpShare(winner, heroes, this.grantXp, this.orbs, x, y, OBJECTIVE.executioner.xpShare);
         applyObjectiveHasteToTeam(
           winner,
@@ -286,7 +289,7 @@ export class ObjectiveManager {
         );
         break;
       case 'war_banner':
-        this.score.addPoints(winner, OBJECTIVE.scoreReward);
+        this.score.awardObjective(winner, event.kind, now, `${event.kind}:${now}`);
         grantTeamXpShare(winner, heroes, this.grantXp, this.orbs, x, y, OBJECTIVE.banner.xpShare);
         break;
       case 'healing_shrine':

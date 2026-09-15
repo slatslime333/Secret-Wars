@@ -85,8 +85,8 @@ const scenarioEventPool = (): CheckResult => {
 };
 
 const scenarioPiggyReward = (): CheckResult => {
-  const ok = OBJECTIVE.scoreReward === 1 && OBJECTIVE.piggy.xpShare === 0.25;
-  return { name: 'piggy bank team score is +1 with 25% XP', ok, detail: `score=${OBJECTIVE.scoreReward} xp=${OBJECTIVE.piggy.xpShare}` };
+  const ok = OBJECTIVE.piggy.xpShare === 0.25;
+  return { name: 'piggy bank keeps 25% XP (war score is separate)', ok, detail: `xp=${OBJECTIVE.piggy.xpShare}` };
 };
 
 const scenarioBuffDurations = (): CheckResult => {

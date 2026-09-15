@@ -1,6 +1,7 @@
 import { CombatStatus } from '../../combat/CombatStatus';
 import { MATCH } from '../../config/match';
 import { OBJECTIVE } from '../../config/objective';
+import { WAR_SCORE } from '../../config/score';
 import {
   describeObjectiveRewards,
   formatCooldownStat,
@@ -59,14 +60,18 @@ const scenarioCopy = (): FeedbackCheck[] => {
     check(
       'objective rewards use live tunables',
       piggy.lines.includes('+25% LEVEL XP') &&
-        piggy.lines.includes(`+${OBJECTIVE.scoreReward} SCORE`) &&
+        piggy.lines.includes(`+${WAR_SCORE.piggy} SCORE`) &&
+        capture.lines.includes(`+${WAR_SCORE.capture} SCORE`) &&
         capture.lines.includes('+75% LEVEL XP') &&
         capture.lines.some((line) => line.includes('+10% SPD')) &&
+        bounty.lines.includes(`+${WAR_SCORE.bounty} SCORE`) &&
         bounty.lines.includes('+1 LEVEL') &&
         !bounty.lines.includes('+30% SPD') &&
+        exec.lines.includes(`+${WAR_SCORE.executioner} SCORE`) &&
         exec.lines.includes('+10% SPD') &&
         exec.lines.includes('+50% LEVEL XP') &&
         shrine.lines.some((line) => line.includes(`${OBJECTIVE.shrine.healPerSecond}`)) &&
+        banner.lines.includes(`+${WAR_SCORE.banner} SCORE`) &&
         banner.lines.includes('+75% LEVEL XP') &&
         meteor.lines.length === 0,
       `piggy=${piggy.lines.join(',')} bounty=${bounty.lines.join(',')} capture=${capture.lines.join(',')}`,

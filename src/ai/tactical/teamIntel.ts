@@ -1,3 +1,5 @@
+import { MATCH } from '../../config/match';
+import { WAR_SCORE } from '../../config/score';
 import type { CombatantView, Personality, Situation, TacticalAction } from './types';
 
 export type TeamStance = 'winning' | 'slightly_winning' | 'even' | 'slightly_losing' | 'losing_badly';
@@ -6,6 +8,10 @@ export type TeamIntel = {
   stance: TeamStance;
   momentum: number;
   scoreLead: number;
+  remainingMs: number;
+  lateGame: boolean;
+  desperate: boolean;
+  comfortable: boolean;
   aliveAllies: number;
   localAllies: number;
   localEnemies: number;
@@ -71,6 +77,7 @@ export const assessTeam = (situation: Situation, handledNearby = false): TeamInt
   }
 
   const scoreLead = (situation.teamScore?.self ?? 0) - (situation.teamScore?.enemy ?? 0);
+  const killLead = scoreLead / WAR_SCORE.heroKill;
   let momentum = situation.teamMomentum ?? 0;
   if (situation.now && situation.teamScore) {
     const age = situation.now - (situation.teamScore.lastKillAt ?? 0);
@@ -81,18 +88,25 @@ export const assessTeam = (situation: Situation, handledNearby = false): TeamInt
     }
   }
   const fieldTilt = clamp((allyPower - enemyPower) * 0.18 + (localAllies - localEnemies) * 0.08, -0.35, 0.35);
-  const blended = clamp(scoreLead * 0.18 + momentum * 0.55 + fieldTilt, -1, 1);
+  const blended = clamp(killLead * 0.18 + momentum * 0.55 + fieldTilt, -1, 1);
 
   let stance: TeamStance = 'even';
-  if (blended <= -0.55 || scoreLead <= -3) {
+  if (blended <= -0.55 || killLead <= -2.5) {
     stance = 'losing_badly';
-  } else if (blended <= -0.22 || scoreLead <= -2) {
+  } else if (blended <= -0.22 || killLead <= -1.25) {
     stance = 'slightly_losing';
-  } else if (blended >= 0.55 || scoreLead >= 3) {
+  } else if (blended >= 0.55 || killLead >= 2.5) {
     stance = 'winning';
-  } else if (blended >= 0.22 || scoreLead >= 2) {
+  } else if (blended >= 0.22 || killLead >= 1.25) {
     stance = 'slightly_winning';
   }
+
+  const remainingMs = situation.remainingMs ?? MATCH.durationMs;
+  const lateGame = remainingMs <= WAR_SCORE.finalMinuteMs;
+  const lastHalfMinute = remainingMs <= 30_000;
+  const desperate =
+    lateGame && (stance === 'losing_badly' || (stance === 'slightly_losing' && lastHalfMinute));
+  const comfortable = lateGame && (stance === 'winning' || (stance === 'slightly_winning' && lastHalfMinute));
 
   const outnumbered = localEnemies >= localAllies + 2 || (localEnemies >= 2 && localAllies === 0);
   const numbersAdvantage = localAllies >= localEnemies + 1 && localAllies >= 1;
@@ -155,6 +169,10 @@ export const assessTeam = (situation: Situation, handledNearby = false): TeamInt
     stance,
     momentum,
     scoreLead,
+    remainingMs,
+    lateGame,
+    desperate,
+    comfortable,
     aliveAllies: allyHeroes.length,
     localAllies,
     localEnemies,
@@ -224,6 +242,34 @@ export const biasAction = (
     next += 5;
   }
   if (team.regrouping && action === 'regroup') {
+    next += 6;
+  }
+  if (team.desperate && !team.outnumbered) {
+    if (action === 'farm_minions') {
+      next -= 10;
+    }
+    if (action === 'contest_objective') {
+      next += 8;
+    }
+    if (action === 'attack' || action === 'chase' || action === 'finish_target') {
+      next += 5;
+    }
+  }
+  if (team.comfortable) {
+    if (action === 'farm_minions') {
+      next -= 4;
+    }
+    if (action === 'contest_objective') {
+      next += 6;
+    }
+    if (action === 'protect_ally' || action === 'regroup') {
+      next += 4;
+    }
+    if ((action === 'attack' || action === 'chase' || action === 'finish_target') && !team.outnumbered) {
+      next += 2;
+    }
+  }
+  if (team.lateGame && Math.abs(team.scoreLead) < WAR_SCORE.heroKill && action === 'contest_objective') {
     next += 6;
   }
   return next;

@@ -2,6 +2,7 @@ import { NEUTRAL_PERSONALITY, type CombatantView, type ScoredAction, type Situat
 import { ensureScoreBuffer, scoreSituation } from './evaluate';
 import { kitProfileOf } from './kitProfile';
 import { OBJECTIVE } from '../../config/objective';
+import { WAR_SCORE } from '../../config/score';
 import { ARENA } from '../../config/arena';
 import { assessSupport } from './supportSense';
 import { scoreKitSlot } from './kitTactics';
@@ -625,7 +626,7 @@ const scenarioAD = (): ScenarioResult => {
     situationOf(self, allies, enemies, {
       isolated: true,
       allyHeroCount: 1,
-      teamScore: { self: 1, enemy: 5 },
+      teamScore: { self: WAR_SCORE.heroKill, enemy: WAR_SCORE.heroKill * 5 },
       teamMomentum: -0.6,
     }),
   );
@@ -637,7 +638,7 @@ const scenarioAE = (): ScenarioResult => {
   const self = unit({ id: 1, team: 'alpha', x: 500, y: 750, hpRatio: 0.8 });
   const allies = [unit({ id: 2, team: 'alpha', x: 560, y: 750, hpRatio: 0.18, recentlyHit: true })];
   const enemies = [unit({ id: 10, team: 'bravo', x: 590, y: 750, attacking: true, lastAttackerId: 2, vx: -40 })];
-  const rows = rankActions(situationOf(self, allies, enemies, { teamScore: { self: 2, enemy: 2 } }));
+  const rows = rankActions(situationOf(self, allies, enemies, { teamScore: { self: WAR_SCORE.heroKill * 2, enemy: WAR_SCORE.heroKill * 2 } }));
   const ok = among(rows, ['protect_ally', 'assist_ally', 'attack', 'intercept'], 2);
   return { name: 'AE protect a collapsing ally', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
 };
@@ -651,7 +652,7 @@ const scenarioAF = (): ScenarioResult => {
   ];
   const rows = rankActions(
     situationOf(self, [], enemies, {
-      teamScore: { self: 6, enemy: 1 },
+      teamScore: { self: WAR_SCORE.heroKill * 6, enemy: WAR_SCORE.heroKill },
       teamMomentum: 0.7,
     }),
   );

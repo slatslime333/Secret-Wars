@@ -24,6 +24,7 @@ import { abilityDamage } from '../../config/ratings';
 import { MENDER_PULSE, MENDER_SOUL, MENDER_ANGEL, MENDER_WIND } from '../../heroes/abilities/mender/tunables';
 import { NINJA_BASE_RANGE } from '../../config/ninja';
 import { runCombatFeedbackChecks } from '../../ui/combatFeedback/runChecks';
+import { runWarScoreChecks } from '../../match/score/runChecks';
 import { WITCH_SKELETON } from '../../heroes/abilities/witch/tunables';
 import { ComboTracker } from '../../combat/ComboTracker';
 import { COLE_BALL } from '../../heroes/abilities/cole/tunables';
@@ -215,6 +216,15 @@ if (!gameplayZoomOk) {
 
 const objectiveChecks = runObjectiveChecks();
 for (const result of objectiveChecks) {
+  const mark = result.ok ? 'ok' : 'FAIL';
+  if (!result.ok) {
+    failed += 1;
+  }
+  console.log(`${mark}  ${result.name}  ${result.detail}`);
+}
+
+const warScoreChecks = runWarScoreChecks();
+for (const result of warScoreChecks) {
   const mark = result.ok ? 'ok' : 'FAIL';
   if (!result.ok) {
     failed += 1;
@@ -759,6 +769,7 @@ if (failed > 0) {
 }
 console.log(`\n${results.length} tactical scenarios passed`);
 console.log(`${objectiveChecks.length} objective checks passed`);
+console.log(`${warScoreChecks.length} war score checks passed`);
 console.log(`${feedbackChecks.length} combat feedback checks passed`);
 console.log(`${draftChecks.length} draft checks passed`);
 console.log(`${mapChecks.length} map checks passed`);

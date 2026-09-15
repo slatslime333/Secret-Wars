@@ -1,4 +1,5 @@
 import { ARENA } from '../../config/arena';
+import { WAR_SCORE } from '../../config/score';
 import { isShadowDry } from './kitProfile';
 import type {
   CombatantView,
@@ -215,7 +216,7 @@ const nextState = (situation: Situation, kit: KitProfile, opening: OpeningPlan, 
   if (situation.self.hpRatio < p.retreatHp || (situation.lastSurvivor && foes.length >= 2)) {
     return situation.self.hpRatio < 0.22 ? 'retreat' : 'recover';
   }
-  if (situation.isolated && allyHeroesOf(situation).length > 0 && (p.teamwork > 0.4 || situation.self.hpRatio < 0.55 || (situation.teamScore && situation.teamScore.self + 2 < situation.teamScore.enemy))) {
+  if (situation.isolated && allyHeroesOf(situation).length > 0 && (p.teamwork > 0.4 || situation.self.hpRatio < 0.55 || (situation.teamScore && situation.teamScore.self + WAR_SCORE.heroKill < situation.teamScore.enemy))) {
     return 'regroup';
   }
   if (foes.length === 0) {

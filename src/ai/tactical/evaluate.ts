@@ -1,4 +1,5 @@
 import { ARENA, atFarEdge } from '../../config/arena';
+import { MATCH } from '../../config/match';
 import { TACTIC } from './constants';
 import { isRangedLike, isRopeDisarmed, isShadowDry } from './kitProfile';
 import { assessObjective, isZoneObjective } from './objectiveIntel';
@@ -1064,8 +1065,16 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       farmScore -= 22 + objIntel.urgency * 10;
     } else if (objIntel && objIntel.urgency >= 0.72 && objIntel.canArriveInTime && !objIntel.tooLate) {
       farmScore -= 14;
-    } else if (objIntel && objIntel.alliesHandling) {
+    } else     if (objIntel && objIntel.alliesHandling) {
       farmScore += 4;
+    }
+    const remainingMs = situation.remainingMs;
+    if (remainingMs !== undefined && remainingMs > MATCH.durationMs - 60_000) {
+      farmScore += 4;
+    }
+    const lead = (situation.teamScore?.self ?? 0) - (situation.teamScore?.enemy ?? 0);
+    if (remainingMs !== undefined && remainingMs <= 30_000 && lead < 0) {
+      farmScore -= 10;
     }
     count = write(
       out,

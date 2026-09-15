@@ -66,19 +66,31 @@ export class CombatFeedback {
     });
   }
 
+  scoreGain(amount: number): void {
+    const value = Math.round(amount);
+    if (value <= 0) {
+      return;
+    }
+    this.floatLabel(`+${value}`, COLORS.cyan, 0);
+  }
+
   xpGain(amount: number): void {
     const value = Math.round(amount);
     if (value <= 0) {
       return;
     }
+    this.floatLabel(`+${value} XP`, COLORS.yellow, 18);
+  }
+
+  private floatLabel(copy: string, color: number, xShift: number): void {
     const scene = this.scene;
-    const x = this.xpAnchor.x || this.anchor.x || scene.scale.width * 0.22;
+    const x = (this.xpAnchor.x || this.anchor.x || scene.scale.width * 0.22) + xShift;
     const y = this.xpAnchor.y || this.anchor.y || scene.scale.height * 0.72;
     const label = scene.add
-      .text(x, y, `+${value} XP`, {
+      .text(x, y, copy, {
         fontFamily: FONTS.display,
         fontSize: '20px',
-        color: hex(COLORS.yellow),
+        color: hex(color),
         letterSpacing: 1,
         stroke: hex(COLORS.ink),
         strokeThickness: 6,
