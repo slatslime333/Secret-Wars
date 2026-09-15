@@ -387,11 +387,11 @@ if (DEMON_RAGE.fillCostMul !== 1.35) {
 } else {
   console.log('ok  rage fill cost  1.35');
 }
-if (DEMON_RAGE.durationMs !== 15000) {
+if (DEMON_RAGE.lockMs !== 1000 || DEMON_RAGE.durationMs !== 9000) {
   failed += 1;
-  console.log(`FAIL  demon rage duration  ${DEMON_RAGE.durationMs}`);
+  console.log(`FAIL  demon rage duration  lock=${DEMON_RAGE.lockMs} big=${DEMON_RAGE.durationMs}`);
 } else {
-  console.log('ok  demon rage duration  15s');
+  console.log('ok  demon rage duration  1s lock then 9s');
 }
 if (DEMON_RAGE.abilityDamageToRage !== 0.2) {
   failed += 1;
