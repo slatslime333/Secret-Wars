@@ -95,12 +95,13 @@ export const OBJECTIVE = {
   },
   meteor: {
     durationMs: 15_000,
-    warningMs: 850,
+    warningMs: 1_100,
     impactRadius: 72,
     damage: Math.round(COLE.attackDamage * 2.6),
     knockback: 290,
-    intervalMs: 2_200,
+    intervalMs: 2_400,
     firstDelayMs: 450,
+    strikesPerWave: 2,
     radius: 72,
   },
   /** Team score awarded for Golden Piggy Bank and War Banner. */

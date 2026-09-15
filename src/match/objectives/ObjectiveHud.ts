@@ -49,6 +49,7 @@ const edgePoint = (sx: number, sy: number, w: number, h: number, m: number): { x
  */
 export class ObjectiveHud {
   private readonly banner: Phaser.GameObjects.Text;
+  private readonly status: Phaser.GameObjects.Text;
   private readonly arrow: Phaser.GameObjects.Triangle;
   private readonly scene: Phaser.Scene;
   private hideBannerAt = 0;
@@ -74,13 +75,27 @@ export class ObjectiveHud {
       .setScrollFactor(0)
       .setDepth(205)
       .setVisible(false);
+    this.status = scene.add
+      .text(scene.scale.width / 2, 78, '', {
+        fontFamily: FONTS.display,
+        fontSize: '16px',
+        color: hex(COLORS.yellow),
+        letterSpacing: 2,
+        stroke: hex(COLORS.ink),
+        strokeThickness: 6,
+        align: 'center',
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(205)
+      .setVisible(false);
     this.arrow = scene.add
       .triangle(0, 0, 0, -14, -11, 12, 11, 12, COLORS.yellow)
       .setStrokeStyle(2, COLORS.ink, 0.95)
       .setScrollFactor(0)
       .setDepth(204)
       .setVisible(false);
-    adoptHud(scene, this.banner, this.arrow);
+    adoptHud(scene, this.banner, this.status, this.arrow);
   }
 
   announce(kind: ObjectiveKind, x: number, y: number, now: number): void {
@@ -147,8 +162,15 @@ export class ObjectiveHud {
       this.targetY = ui.y;
     }
     this.banner.setPosition(this.scene.scale.width / 2, this.scene.scale.height * 0.18);
+    this.status.setPosition(this.scene.scale.width / 2, 78);
     if (now >= this.hideBannerAt) {
       this.banner.setVisible(false);
+    }
+    if (ui) {
+      const secs = ui.remainingMs !== undefined ? `  ${Math.ceil(Math.max(0, ui.remainingMs) / 1000)}s` : '';
+      this.status.setText(`${TITLE[ui.kind]}${secs}`).setVisible(now >= this.hideBannerAt);
+    } else {
+      this.status.setVisible(false);
     }
     const showArrow = this.active && now < this.hideArrowAt && Boolean(ui);
     if (!showArrow) {
@@ -178,10 +200,12 @@ export class ObjectiveHud {
 
   layout(width: number, height: number): void {
     this.banner.setPosition(width / 2, height * 0.18);
+    this.status.setPosition(width / 2, 78);
   }
 
   destroy(): void {
     this.banner.destroy();
+    this.status.destroy();
     this.arrow.destroy();
   }
 }

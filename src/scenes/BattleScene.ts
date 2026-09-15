@@ -192,6 +192,7 @@ export class BattleScene extends Phaser.Scene {
     this.feedback = new CombatFeedback(this);
     this.statusChips = new StatusChips(this, { hud: true });
     this.feedback.setAnchor(this.hud.hpAnchor().x, this.hud.hpAnchor().y);
+    this.feedback.setXpAnchor(this.hud.chipAnchor().x, this.hud.chipAnchor().y);
     this.layoutAbilityTray(this.scale.width, this.scale.height);
     this.round = new RoundOverlay(this, {
       onRestart: () => this.restartBattle(),
@@ -847,7 +848,9 @@ export class BattleScene extends Phaser.Scene {
     this.hud?.layout(width, height);
     if (this.hud && this.feedback) {
       const anchor = this.hud.hpAnchor();
+      const chip = this.hud.chipAnchor();
       this.feedback.setAnchor(anchor.x, anchor.y);
+      this.feedback.setXpAnchor(chip.x, chip.y);
     }
     this.inputReader?.layout(width, height);
     this.layoutAbilityTray(width, height);
@@ -1052,6 +1055,7 @@ export class BattleScene extends Phaser.Scene {
     this.statusChips?.sync(this.ninja, now);
     const anchor = this.hud.hpAnchor();
     this.feedback.setAnchor(anchor.x, anchor.y);
+    this.feedback.setXpAnchor(chip.x, chip.y);
   }
 
   private cuePlayerCrowdControl(now: number): void {

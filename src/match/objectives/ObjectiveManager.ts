@@ -241,7 +241,7 @@ export class ObjectiveManager {
       this.rewarded = true;
       this.grantRewards(event, now);
     }
-    if (event.winner) {
+    if (event.winner && event.kind !== 'healing_shrine') {
       this.hud.celebrate(event.winner, celebrateLine(event.kind, event.winner));
     }
     this.onComplete?.(event);

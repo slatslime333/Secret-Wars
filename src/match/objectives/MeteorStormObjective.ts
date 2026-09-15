@@ -91,12 +91,11 @@ export class MeteorStormObjective implements MatchObjective {
     if (this.awarded || !ctx.playing) {
       return undefined;
     }
-    const cluster = pickFightCluster(ctx.heroes, this.rng);
-    this.posX = cluster.x;
-    this.posY = cluster.y;
-    this.barRoot.setPosition(this.posX, this.posY - 48);
     if (ctx.now >= this.nextAt && ctx.now < this.endsAt - OBJECTIVE.meteor.warningMs) {
-      this.queueStrike(ctx);
+      this.retarget(ctx);
+      for (let n = 0; n < OBJECTIVE.meteor.strikesPerWave; n += 1) {
+        this.queueStrike(ctx);
+      }
       this.nextAt = ctx.now + OBJECTIVE.meteor.intervalMs;
     }
     this.resolveStrikes(ctx);
@@ -170,6 +169,13 @@ export class MeteorStormObjective implements MatchObjective {
       radius: OBJECTIVE.meteor.impactRadius,
       impactAt: strike.impactAt,
     }));
+  }
+
+  private retarget(ctx: ObjectiveContext): void {
+    const cluster = pickFightCluster(ctx.heroes, this.rng);
+    this.posX = cluster.x;
+    this.posY = cluster.y;
+    this.barRoot.setPosition(this.posX, this.posY - 48);
   }
 
   private queueStrike(ctx: ObjectiveContext): void {

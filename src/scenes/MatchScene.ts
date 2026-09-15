@@ -252,6 +252,7 @@ export class MatchScene extends Phaser.Scene {
     this.hud = new BattleHud(this);
     this.feedback = new CombatFeedback(this);
     this.feedback.setAnchor(this.hud.hpAnchor().x, this.hud.hpAnchor().y);
+    this.feedback.setXpAnchor(this.hud.chipAnchor().x, this.hud.chipAnchor().y);
     this.hud.placeCombo(this.scale.width / 2, layoutHudChrome(measureViewport(this.scale.width, this.scale.height)).comboY);
     this.matchHud = new MatchHud(this);
     this.layoutAbilityTray(this.scale.width, this.scale.height);
@@ -537,6 +538,9 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private noteObjective(event: ObjectiveCompleteEvent): void {
+    if (event.kind === 'healing_shrine' || event.kind === 'rage_zone' || event.kind === 'meteor_storm') {
+      return;
+    }
     if (!this.player || this.player.team !== event.winner) {
       return;
     }
@@ -911,7 +915,9 @@ export class MatchScene extends Phaser.Scene {
       spectating,
     );
     const anchor = this.hud.hpAnchor();
+    const chip = this.hud.chipAnchor();
     this.feedback.setAnchor(anchor.x, anchor.y);
+    this.feedback.setXpAnchor(chip.x, chip.y);
     this.matchHud.sync(this.match.snapshot(), this.score.snapshot(), focus.progression);
     this.titleText?.setText(
       `${this.simulator ? 'SIMULATOR' : 'SECRET WARS'}  //  ${focus.body.stats.displayName.toUpperCase()}`,
@@ -1053,7 +1059,9 @@ export class MatchScene extends Phaser.Scene {
     this.hud?.layout(width, height);
     if (this.hud && this.feedback) {
       const anchor = this.hud.hpAnchor();
+      const chip = this.hud.chipAnchor();
       this.feedback.setAnchor(anchor.x, anchor.y);
+      this.feedback.setXpAnchor(chip.x, chip.y);
     }
     this.hud?.placeCombo(width / 2, chrome.comboY);
     this.matchHud?.layout(width, height);

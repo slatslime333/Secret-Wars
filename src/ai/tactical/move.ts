@@ -212,9 +212,10 @@ export const moveGoal = (
       ? regroupStand(body, ally, isRangedMove(body, hint), flankSign, slot)
       : idleAnchor(body, now, slot, hint);
     const spread = applyCrowd(dest, body, action, slot, hint);
-    const gap = Math.hypot(spread.x - body.x, spread.y - body.y);
-    const aim = target ? aimTo(target.x, target.y) : aimTo(spread.x, spread.y);
-    return { x: spread.x, y: spread.y, halt: gap < 36, ...aim };
+    const dodged = dodgeHazards(spread.x, spread.y, hint);
+    const gap = Math.hypot(dodged.x - body.x, dodged.y - body.y);
+    const aim = target ? aimTo(target.x, target.y) : aimTo(dodged.x, dodged.y);
+    return { x: dodged.x, y: dodged.y, halt: gap < 36, ...aim };
   }
 
   if (action === 'contest_objective' && hint?.objective) {

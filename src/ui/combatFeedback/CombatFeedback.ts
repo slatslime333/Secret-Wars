@@ -26,6 +26,7 @@ export class CombatFeedback {
   private queue: Banner[] = [];
   private playing = false;
   private anchor = { x: 0, y: 0 };
+  private xpAnchor = { x: 0, y: 0 };
   private active?: Phaser.GameObjects.Container;
 
   constructor(scene: Phaser.Scene) {
@@ -34,6 +35,10 @@ export class CombatFeedback {
 
   setAnchor(x: number, y: number): void {
     this.anchor = { x, y };
+  }
+
+  setXpAnchor(x: number, y: number): void {
+    this.xpAnchor = { x, y };
   }
 
   levelUps(grants: LevelGrant[]): void {
@@ -67,12 +72,12 @@ export class CombatFeedback {
       return;
     }
     const scene = this.scene;
-    const x = this.anchor.x || scene.scale.width * 0.22;
-    const y = this.anchor.y || scene.scale.height * 0.18;
+    const x = this.xpAnchor.x || this.anchor.x || scene.scale.width * 0.22;
+    const y = this.xpAnchor.y || this.anchor.y || scene.scale.height * 0.72;
     const label = scene.add
-      .text(x + 12, y - 10, `+${value} XP`, {
+      .text(x, y, `+${value} XP`, {
         fontFamily: FONTS.display,
-        fontSize: '18px',
+        fontSize: '20px',
         color: hex(COLORS.yellow),
         letterSpacing: 1,
         stroke: hex(COLORS.ink),
@@ -84,9 +89,9 @@ export class CombatFeedback {
     adoptHud(scene, label);
     scene.tweens.add({
       targets: label,
-      y: y - 36,
+      y: y - 42,
       alpha: 0,
-      duration: 720,
+      duration: 980,
       ease: 'Quad.easeOut',
       onComplete: () => label.destroy(),
     });

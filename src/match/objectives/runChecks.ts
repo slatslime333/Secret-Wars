@@ -105,6 +105,8 @@ const scenarioBuffDurations = (): CheckResult => {
     OBJECTIVE.banner.claimMs === 3_000 &&
     OBJECTIVE.rage.moveMul === 1.4 &&
     OBJECTIVE.meteor.durationMs === 15_000 &&
+    OBJECTIVE.meteor.strikesPerWave === 2 &&
+    OBJECTIVE.meteor.warningMs >= 1_000 &&
     OBJECTIVE.executioner.attackMs >= 1_200 &&
     OBJECTIVE.executioner.moveSpeed < 120;
   return {
