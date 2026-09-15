@@ -16,6 +16,7 @@ import { moveGoal } from './tactical/move';
 import { SwingIntent } from './tactical/swingIntent';
 import type { TacticalDebugInfo } from './tactical/types';
 import { stampKitPressure } from '../heroes/kitPressure';
+import { menderPulseHealTarget } from './tactical/supportSense';
 
 /**
  * Play Test rival. Same attack / shield / dash kit as the player, with
@@ -64,8 +65,10 @@ export class RivalBrain {
     this.mind.think(now, cpu, field, scene);
     const objective = this.mind.situationView().objective;
     const target = this.mind.action === 'contest_objective' ? this.mind.target : (this.mind.target ?? foes[0]);
-    if (target) {
-      const lead = this.combat.sense.aimLead(target, Math.random);
+    const heal = cpu.heroId === 'mender' ? menderPulseHealTarget(this.mind.situationView(), this.mind.intent.ally) : undefined;
+    const focus = heal ?? target;
+    if (focus) {
+      const lead = this.combat.sense.aimLead(focus, Math.random);
       cpu.setAim(lead.x - cpu.x, lead.y - cpu.y);
     } else if (this.mind.action === 'contest_objective' && objective) {
       cpu.setAim(objective.x - cpu.x, objective.y - cpu.y);
@@ -112,12 +115,12 @@ export class RivalBrain {
     const control = this.abilities?.control;
     if (cpu.status.isBlockStunned(now) || cpu.status.isClashLocked(now)) {
       cpu.stop();
-      this.attacks.update(now, false, false, cpu, foes, this.playerBlock);
+      this.attacks.update(now, false, false, cpu, foes, this.playerBlock, this.mates);
       return;
     }
 
     if (this.dash.isActive(now) || control?.move) {
-      this.attacks.update(now, false, false, cpu, foes, this.playerBlock);
+      this.attacks.update(now, false, false, cpu, foes, this.playerBlock, this.mates);
       return;
     }
 
@@ -136,10 +139,10 @@ export class RivalBrain {
     this.swing.decide({
       now,
       body: cpu,
-      target,
+      target: focus ?? target,
       objective,
       action: this.mind.action,
-      wantsAttack: this.mind.wantsAttack(),
+      wantsAttack: this.mind.wantsAttack() || Boolean(heal),
       personality: this.mind.personality,
       kit: this.mind.situationView().kit,
       sense: this.combat.sense,
@@ -151,11 +154,13 @@ export class RivalBrain {
       objective &&
       (objective.kind === 'golden_piggy' || objective.kind === 'executioner') &&
       Math.hypot(cpu.x - objective.x, cpu.y - objective.y) <= cpu.stats.attackRange + objective.radius + 10;
-    const inRange = target
-      ? Math.hypot(target.x - cpu.x, target.y - cpu.y) <= cpu.stats.attackRange * 1.32
+    const rangeMul = heal ? 2.15 : 1.32;
+    const inRange = focus
+      ? Math.hypot(focus.x - cpu.x, focus.y - cpu.y) <= cpu.stats.attackRange * rangeMul
       : Boolean(smashRange);
     const committed =
       this.mind.wantsAttack() ||
+      Boolean(heal) ||
       this.combat.sense.chaining(now) ||
       this.combat.sense.counterReady(now);
     const buttons = this.swing.buttons(now, inRange, cpu.canAttack(now), committed);
@@ -166,9 +171,9 @@ export class RivalBrain {
       !this.dash.isActive(now) &&
       !cpu.status.cannotAttack(now)
     ) {
-      this.attacks.update(now, buttons.held, buttons.pressed, cpu, foes, this.playerBlock);
+      this.attacks.update(now, buttons.held, buttons.pressed, cpu, foes, this.playerBlock, this.mates);
     } else {
-      this.attacks.update(now, false, false, cpu, foes, this.playerBlock);
+      this.attacks.update(now, false, false, cpu, foes, this.playerBlock, this.mates);
     }
   }
 

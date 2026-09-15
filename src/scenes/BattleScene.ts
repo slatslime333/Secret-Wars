@@ -30,7 +30,7 @@ import { witchHexAllyRange } from '../heroes/abilities/witch/tunables';
 import { SHADOW_CLAW, SHADOW_DASH } from '../heroes/abilities/shadow/tunables';
 import { MENDER_ANGEL, MENDER_PULSE, MENDER_SOUL } from '../heroes/abilities/mender/tunables';
 import { DEMON_HELLFIRE } from '../heroes/abilities/demon/tunables';
-import { NinjaBody } from '../heroes/NinjaBody';
+import { NinjaBody, allowsHeroCollide } from '../heroes/NinjaBody';
 import { stampKitPressure } from '../heroes/kitPressure';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
@@ -545,12 +545,12 @@ export class BattleScene extends Phaser.Scene {
         SHADOW_DASH.aimHalfWidth,
       );
     } else if (this.ninja.heroId === 'mender' && frame.ability1Aiming) {
-      this.marker.syncBallAim(
+      this.marker.syncAngelAim(
         this.ninja.x,
         this.ninja.y,
         this.ninja.aim.x,
         this.ninja.aim.y,
-        MENDER_ANGEL.radius,
+        MENDER_ANGEL.aimLength,
         true,
       );
     } else if (this.ninja.heroId === 'mender' && frame.ability2Aiming) {
@@ -614,9 +614,29 @@ export class BattleScene extends Phaser.Scene {
       !this.block.isActive(now) &&
       !this.dash.isActive(now)
     ) {
-      this.attacks.update(now, frame.attackHeld, frame.attackPressed, this.ninja, this.livingEnemies(), this.rivalBlock);
+      this.attacks.update(
+        now,
+        frame.attackHeld,
+        frame.attackPressed,
+        this.ninja,
+        this.livingEnemies(),
+        this.rivalBlock,
+        this.livingFighters().filter(
+          (unit) => unit.team === this.ninja.team && unit !== this.ninja && unit.stats.role !== 'minion',
+        ),
+      );
     } else {
-      this.attacks.update(now, false, false, this.ninja, this.livingEnemies(), this.rivalBlock);
+      this.attacks.update(
+        now,
+        false,
+        false,
+        this.ninja,
+        this.livingEnemies(),
+        this.rivalBlock,
+        this.livingFighters().filter(
+          (unit) => unit.team === this.ninja.team && unit !== this.ninja && unit.stats.role !== 'minion',
+        ),
+      );
     }
 
     this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
@@ -662,7 +682,12 @@ export class BattleScene extends Phaser.Scene {
     });
     this.sandboxStats.register(this.rival, { instanceId: dummy ? 'playtest-dummy' : 'playtest-cpu', player: false });
     this.rival.setAim(pad.facingX, 0);
-    this.rivalCollider = this.physics.add.collider(this.ninja.sprite, this.rival.sprite);
+    this.rivalCollider = this.physics.add.collider(
+      this.ninja.sprite,
+      this.rival.sprite,
+      undefined,
+      (a, b) => allowsHeroCollide(a, b),
+    );
     this.battlefield?.attachMover(this.rival.sprite);
     this.rivalAttacks = new QuickAttack(this);
     this.rivalBlock = new BlockController(this);
@@ -959,7 +984,12 @@ export class BattleScene extends Phaser.Scene {
     lockCameraFollow(this.cameras.main, this.ninja.sprite);
     this.rivalCollider?.destroy();
     if (this.rival) {
-      this.rivalCollider = this.physics.add.collider(this.ninja.sprite, this.rival.sprite);
+      this.rivalCollider = this.physics.add.collider(
+        this.ninja.sprite,
+        this.rival.sprite,
+        undefined,
+        (a, b) => allowsHeroCollide(a, b),
+      );
     }
     this.progression = new Progression(this.ninja);
     this.sandboxStats.register(this.ninja, { instanceId: 'playtest-player', player: true });

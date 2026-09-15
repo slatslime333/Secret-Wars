@@ -1,4 +1,5 @@
 import type { AbilityDef } from '../../heroes/abilities/types';
+import type { NinjaBody } from '../../heroes/NinjaBody';
 import type { CombatantView, Situation, SupportMode } from './types';
 
 export type SupportPurpose = 'heal' | 'shield' | 'buff';
@@ -11,6 +12,43 @@ export type SupportRead = {
 };
 
 const dist = (a: CombatantView, b: CombatantView): number => Math.hypot(a.x - b.x, a.y - b.y);
+
+/**
+ * CPU Mender Pulse aim. Mix mode splits fire; save/support stay on the needy ally.
+ */
+export const menderPulseHealTarget = (
+  situation: Situation,
+  ally: NinjaBody | undefined,
+): NinjaBody | undefined => {
+  if (situation.self.heroId !== 'mender' || !ally || ally.down || !ally.isPresent) {
+    return undefined;
+  }
+  if (ally.stats.role === 'minion') {
+    return undefined;
+  }
+  const mode = situation.supportMode ?? 'attack';
+  if (mode === 'attack') {
+    return undefined;
+  }
+  const hp = ally.health / Math.max(1, ally.stats.maxHealth);
+  const stam = ally.stamina / Math.max(1, ally.stats.maxStamina);
+  const recentlyHit = ally.lastEnemyHitAt > (situation.now ?? 0) - 1400;
+  if (mode === 'save') {
+    return hp < 0.96 || stam < 0.78 || recentlyHit ? ally : undefined;
+  }
+  if (mode === 'support') {
+    return hp < 0.9 || stam < 0.58 || recentlyHit ? ally : undefined;
+  }
+  const needsHeal = hp < 0.9 || stam < 0.55 || recentlyHit;
+  if (!needsHeal) {
+    return undefined;
+  }
+  if (hp < 0.55 || stam < 0.22) {
+    return ally;
+  }
+  const tick = Math.floor((situation.now ?? 0) / 640);
+  return tick % 2 === 0 ? ally : undefined;
+};
 
 export const purposesOf = (def: AbilityDef): SupportPurpose[] => {
   const roles = def.tactics?.roles ?? [];

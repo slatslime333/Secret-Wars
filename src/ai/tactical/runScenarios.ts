@@ -19,7 +19,7 @@ import { DEMON_HELLFIRE, DEMON_HELL_BAT, DEMON_RAGE } from '../../heroes/abiliti
 import { SHADOW_CLAW } from '../../heroes/abilities/shadow/tunables';
 import { NINJA_SMOKE } from '../../heroes/abilities/ninja/tunables';
 import { abilityDamage } from '../../config/ratings';
-import { MENDER_PULSE } from '../../heroes/abilities/mender/tunables';
+import { MENDER_PULSE, MENDER_SOUL, MENDER_ANGEL } from '../../heroes/abilities/mender/tunables';
 
 const results = runTacticalScenarios();
 let failed = 0;
@@ -247,15 +247,33 @@ if (MENDER.ratings.staminaRegen !== 80 || MENDER.ratings.stamina !== 58) {
 } else {
   console.log('ok  mender stamina  recovery 80 / pool 58');
 }
-if (MENDER_PULSE.radius >= 5.6 || MENDER_PULSE.armOffsetRad >= 0.028 || MENDER_PULSE.spreadRad >= 0.07) {
+if (
+  MENDER_PULSE.radius >= 4 ||
+  MENDER_PULSE.healHealth !== 0.75 ||
+  MENDER_PULSE.healStamina !== 0.5 ||
+  MENDER_PULSE.armOffsetRad >= 0.028 ||
+  MENDER_PULSE.spreadRad >= 0.07
+) {
   failed += 1;
   console.log(
-    `FAIL  mender pulse shape  r=${MENDER_PULSE.radius} offset=${MENDER_PULSE.armOffsetRad} spread=${MENDER_PULSE.spreadRad}`,
+    `FAIL  mender pulse  r=${MENDER_PULSE.radius} heal=${MENDER_PULSE.healHealth}/${MENDER_PULSE.healStamina} offset=${MENDER_PULSE.armOffsetRad} spread=${MENDER_PULSE.spreadRad}`,
   );
 } else {
   console.log(
-    `ok  mender pulse shape  r=${MENDER_PULSE.radius} offset=${MENDER_PULSE.armOffsetRad} spread=${MENDER_PULSE.spreadRad}`,
+    `ok  mender pulse  r=${MENDER_PULSE.radius} heal ${MENDER_PULSE.healHealth} hp / ${MENDER_PULSE.healStamina} stam`,
   );
+}
+if (MENDER_SOUL.attachOffset < 32) {
+  failed += 1;
+  console.log(`FAIL  mender soul attach  offset=${MENDER_SOUL.attachOffset}`);
+} else {
+  console.log(`ok  mender soul attach  offset=${MENDER_SOUL.attachOffset}`);
+}
+if (MENDER_ANGEL.aimLength < MENDER_ANGEL.maxRange * 1.4) {
+  failed += 1;
+  console.log(`FAIL  mender angel aim  len=${MENDER_ANGEL.aimLength} range=${MENDER_ANGEL.maxRange}`);
+} else {
+  console.log(`ok  mender angel aim  len=${MENDER_ANGEL.aimLength}`);
 }
 
 if (

@@ -16,7 +16,7 @@ import { witchHexAllyRange } from '../heroes/abilities/witch/tunables';
 import { SHADOW_CLAW, SHADOW_DASH } from '../heroes/abilities/shadow/tunables';
 import { MENDER_ANGEL, MENDER_PULSE, MENDER_SOUL } from '../heroes/abilities/mender/tunables';
 import { DEMON_HELLFIRE } from '../heroes/abilities/demon/tunables';
-import { NinjaBody } from '../heroes/NinjaBody';
+import { NinjaBody, allowsHeroCollide } from '../heroes/NinjaBody';
 import { onCombatDamage, onCombatBlocked, isHeroFighter } from '../combat/damageEvents';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
@@ -201,7 +201,7 @@ export class MatchScene extends Phaser.Scene {
     }
 
     this.heroGroup = this.physics.add.group(this.heroes.map((unit) => unit.body.sprite));
-    this.physics.add.collider(this.heroGroup, this.heroGroup);
+    this.physics.add.collider(this.heroGroup, this.heroGroup, undefined, (a, b) => allowsHeroCollide(a, b));
     this.battlefield.attachGroup(this.heroGroup);
     this.battlefield.configureCrates({
       heroes: () => this.heroes.map((unit) => unit.body),
@@ -461,9 +461,25 @@ export class MatchScene extends Phaser.Scene {
     this.player.block.sync(now, this.player.body);
 
     if (!control.attack && !this.player.body.down && !this.player.block.isActive(now) && !this.player.dash.isActive(now)) {
-      this.player.attacks.update(now, frame.attackHeld, frame.attackPressed, this.player.body, this.livingEnemies());
+      this.player.attacks.update(
+        now,
+        frame.attackHeld,
+        frame.attackPressed,
+        this.player.body,
+        this.livingEnemies(),
+        undefined,
+        this.livingAlliesFor(this.player.body),
+      );
     } else {
-      this.player.attacks.update(now, false, false, this.player.body, this.livingEnemies());
+      this.player.attacks.update(
+        now,
+        false,
+        false,
+        this.player.body,
+        this.livingEnemies(),
+        undefined,
+        this.livingAlliesFor(this.player.body),
+      );
     }
 
     this.resolveHeroDeaths(now);
@@ -790,7 +806,14 @@ export class MatchScene extends Phaser.Scene {
         SHADOW_DASH.aimHalfWidth,
       );
     } else if (ninja.heroId === 'mender' && frame.ability1Aiming) {
-      this.marker.syncBallAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, MENDER_ANGEL.radius, true);
+      this.marker.syncAngelAim(
+        ninja.x,
+        ninja.y,
+        ninja.aim.x,
+        ninja.aim.y,
+        MENDER_ANGEL.aimLength,
+        true,
+      );
     } else if (ninja.heroId === 'mender' && frame.ability2Aiming) {
       this.marker.syncKickAim(
         ninja.x,

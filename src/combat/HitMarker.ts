@@ -182,6 +182,32 @@ export class HitMarker {
     g.fillCircle(nx * length, ny * length, 3);
   }
 
+  /** Guardian Angel throw line. Length matches the live ball travel. */
+  syncAngelAim(
+    x: number,
+    y: number,
+    aimX: number,
+    aimY: number,
+    length: number,
+    aiming: boolean,
+  ): void {
+    const angle = Math.atan2(aimY, aimX);
+    const g = this.ballAim;
+    g.clear();
+    g.setPosition(x, y);
+    const alpha = aiming ? 0.92 : 0.55;
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    g.lineStyle(6, 0x1a4060, alpha * 0.2);
+    g.lineBetween(nx * 8, ny * 8, nx * length, ny * length);
+    g.lineStyle(aiming ? 3.2 : 2.4, 0x4ec8ff, alpha);
+    g.lineBetween(nx * 8, ny * 8, nx * length, ny * length);
+    g.fillStyle(0xdff4ff, alpha);
+    g.fillCircle(nx * length, ny * length, 7);
+    g.lineStyle(1.6, 0x7ecbff, alpha * 0.85);
+    g.strokeCircle(nx * length, ny * length, 14);
+  }
+
   /** Cyan dual-uzi aim line for Mender Pulse. */
   syncPulseAim(
     x: number,
