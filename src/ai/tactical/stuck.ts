@@ -129,7 +129,7 @@ export class StuckTracker {
 
     const trigger = triggerMs(speed, personality, kit, role);
     if (this.phase === 'clear' && (inside || this.stillMs >= trigger)) {
-      this.begin(now, x, y, desired, query, personality, kit, 1, 'strafe');
+      this.begin(now, x, y, desired, query, personality, kit, openSide(x, y, desired, query), 'strafe');
     }
 
     if (this.phase === 'clear') {
@@ -311,6 +311,28 @@ const pickRecover = (
   return escapeAround(blocked, x, y, nx, ny, 36);
 };
 
+/** Prefer the lateral side with more free space so recovery does not guess blindly. */
+const openSide = (
+  x: number,
+  y: number,
+  desired: { x: number; y: number },
+  query: WalkQuery | undefined,
+): number => {
+  const nlen = hypot(desired.x, desired.y) || 1;
+  const nx = desired.x / nlen;
+  const ny = desired.y / nlen;
+  const score = (side: number): number => {
+    const lx = -ny * side;
+    const ly = nx * side;
+    const near = Boolean(query?.blocksMovement(x + lx * 28, y + ly * 28, 12));
+    const mid = Boolean(query?.blocksMovement(x + lx * 44, y + ly * 44, 12));
+    const far = Boolean(query?.blocksMovement(x + lx * 62, y + ly * 62, 12));
+    const toward = Boolean(query?.blocksMovement(x + nx * 16 + lx * 36, y + ny * 16 + ly * 36, 12));
+    return (near ? 0 : 1.2) + (mid ? 0 : 0.8) + (far ? 0 : 0.4) + (toward ? 0 : 0.35);
+  };
+  return score(-1) > score(1) ? -1 : 1;
+};
+
 /** Blocker used by scenario tests: a vertical wall spanning y. */
 export class WallProbe implements WalkQuery {
   constructor(
@@ -320,6 +342,25 @@ export class WallProbe implements WalkQuery {
 
   blocksMovement(x: number, _y: number, radius = 12): boolean {
     return x + radius > this.wallX && x - radius < this.wallX + this.wallW;
+  }
+
+  steer(x: number, y: number, dx: number, dy: number, look = 34): { x: number; y: number } {
+    if (this.blocksMovement(x, y, 8)) {
+      return escapeAround((px, py, radius) => this.blocksMovement(px, py, radius), x, y, dx, dy, 22);
+    }
+    return steerAround((px, py, radius) => this.blocksMovement(px, py, radius), x, y, dx, dy, look);
+  }
+}
+
+/** L-shaped corner: solid east of `wallX` or south of `wallY`. */
+export class CornerProbe implements WalkQuery {
+  constructor(
+    private readonly wallX: number,
+    private readonly wallY: number,
+  ) {}
+
+  blocksMovement(x: number, y: number, radius = 12): boolean {
+    return x + radius > this.wallX || y + radius > this.wallY;
   }
 
   steer(x: number, y: number, dx: number, dy: number, look = 34): { x: number; y: number } {

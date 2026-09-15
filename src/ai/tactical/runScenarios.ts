@@ -27,7 +27,9 @@ import { ComboTracker } from '../../combat/ComboTracker';
 import { COLE_BALL } from '../../heroes/abilities/cole/tunables';
 import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT, ROPE_SPRAY } from '../../heroes/abilities/rope/tunables';
 import { steerAround } from '../../map/query';
-import { StuckTracker, WallProbe } from './stuck';
+import { StuckTracker, WallProbe, CornerProbe } from './stuck';
+import { generateFromSeed } from '../../map/generate';
+import { MapQuery } from '../../map/query';
 import { NEUTRAL_PERSONALITY } from './types';
 
 const results = runTacticalScenarios();
@@ -515,6 +517,181 @@ if (Math.round(COLE_BALL.damage) !== 30) {
     console.log(`FAIL  stuck ignores short stalls  early=${early} later=${tracker.recovering}`);
   } else {
     console.log('ok  stuck ignores short stalls');
+  }
+}
+
+{
+  const corner = new CornerProbe(180, 180);
+  const tracker = new StuckTracker();
+  const personality = { ...NEUTRAL_PERSONALITY, caution: 0.35, movementPrecision: 0.5 };
+  const kit = kitProfileOf('shadow', 'frontliner', 145);
+  let x = 155;
+  let y = 155;
+  const start = { x, y };
+  let recovered = false;
+  let held: { x: number; y: number } | undefined;
+  let flipped = false;
+  for (let step = 0; step < 28; step += 1) {
+    const now = step * 50;
+    const desired = { x: 1, y: 1 };
+    const steered = corner.steer(x, y, 1, 1);
+    const dir = tracker.filter(now, x, y, desired, steered, 180, corner, personality, kit, undefined, 'frontliner');
+    if (tracker.recovering) {
+      recovered = true;
+      if (!held) {
+        held = { x: Math.sign(dir.x || 0.0001), y: Math.sign(dir.y || 0.0001) };
+      } else if (step < 12 && (Math.sign(dir.x || 0.0001) !== held.x || Math.sign(dir.y || 0.0001) !== held.y)) {
+        flipped = true;
+      }
+      x += dir.x * 9;
+      y += dir.y * 9;
+    }
+  }
+  const backedOut = x + y < start.x + start.y - 12;
+  if (!recovered || flipped || !backedOut) {
+    failed += 1;
+    console.log(
+      `FAIL  corner recovery  recovered=${recovered} flip=${flipped} pos=${x.toFixed(0)},${y.toFixed(0)}`,
+    );
+  } else {
+    console.log(`ok  corner recovery  pos=${x.toFixed(0)},${y.toFixed(0)} label=${tracker.label || 'cleared'}`);
+  }
+}
+
+{
+  const wall = new WallProbe(180, 40);
+  const tracker = new StuckTracker();
+  const personality = { ...NEUTRAL_PERSONALITY };
+  const kit = kitProfileOf('shadow', 'frontliner', 145);
+  let escaped = false;
+  let x = 190;
+  let y = 200;
+  for (let step = 0; step < 24; step += 1) {
+    const now = step * 50;
+    const desired = { x: 1, y: 0 };
+    const steered = wall.steer(x, y, 1, 0);
+    const dir = tracker.filter(now, x, y, desired, steered, 180, wall, personality, kit);
+    x += dir.x * 10;
+    y += dir.y * 10;
+    if (!wall.blocksMovement(x, y, 8)) {
+      escaped = true;
+      break;
+    }
+  }
+  if (!escaped) {
+    failed += 1;
+    console.log(`FAIL  inside-asset escape  x=${x.toFixed(0)} y=${y.toFixed(0)}`);
+  } else {
+    console.log(`ok  inside-asset escape  x=${x.toFixed(0)} y=${y.toFixed(0)}`);
+  }
+}
+
+{
+  const tracker = new StuckTracker();
+  const personality = { ...NEUTRAL_PERSONALITY };
+  const desired = { x: 1, y: 0 };
+  const mates = [{ x: 168, y: 200 }];
+  let recovered = false;
+  for (let step = 0; step < 14; step += 1) {
+    const now = step * 50;
+    tracker.filter(now, 150, 200, desired, { x: 1, y: 0 }, 180, undefined, personality, undefined, mates);
+    if (tracker.recovering) {
+      recovered = true;
+      break;
+    }
+  }
+  const early = new StuckTracker();
+  early.filter(0, 150, 200, desired, { x: 1, y: 0 }, 180, undefined, personality, undefined, mates);
+  early.filter(80, 150, 200, desired, { x: 1, y: 0 }, 180, undefined, personality, undefined, mates);
+  if (!recovered || early.recovering) {
+    failed += 1;
+    console.log(`FAIL  mate deadlock  recovered=${recovered} early=${early.recovering}`);
+  } else {
+    console.log('ok  mate deadlock  recovery after a stall, not on contact');
+  }
+}
+
+{
+  const wall = new WallProbe(180, 40);
+  const tracker = new StuckTracker();
+  const personality = { ...NEUTRAL_PERSONALITY };
+  const kit = kitProfileOf('shadow', 'frontliner', 145);
+  let earlyDash = false;
+  let lateDash = false;
+  for (let step = 0; step < 16; step += 1) {
+    const now = step * 50;
+    tracker.filter(now, 150, 200, { x: 1, y: 0 }, { x: 0, y: 0 }, 180, wall, personality, kit);
+    const escape = tracker.dashEscape(now);
+    if (escape && now < 520) {
+      earlyDash = true;
+    }
+    if (escape && now >= 520) {
+      lateDash = true;
+    }
+  }
+  if (earlyDash || !tracker.recovering || !lateDash) {
+    failed += 1;
+    console.log(`FAIL  dash waits  early=${earlyDash} recovering=${tracker.recovering} late=${lateDash}`);
+  } else {
+    console.log('ok  dash waits for a real stall');
+  }
+}
+
+{
+  const generated = generateFromSeed(7, false);
+  const query = new MapQuery(generated.layout);
+  const wall = generated.layout.obstacles.find(
+    (obs) => obs.blocksMovement && obs.collision.w >= 36 && obs.collision.h >= 36,
+  );
+  if (!wall) {
+    failed += 1;
+    console.log('FAIL  live map walk  no blocking obstacle');
+  } else {
+    const tracker = new StuckTracker();
+    const personality = { ...NEUTRAL_PERSONALITY, caution: 0.4 };
+    const kit = kitProfileOf('cole', 'frontliner', 160);
+    let x = wall.collision.x - 28;
+    let y = wall.collision.y + wall.collision.h / 2;
+    const start = { x, y };
+    let flipped = 0;
+    let lastSign = 0;
+    for (let step = 0; step < 36; step += 1) {
+      const now = step * 50;
+      const steered = query.steer(x, y, 1, 0);
+      const dir = tracker.filter(
+        now,
+        x,
+        y,
+        { x: 1, y: 0 },
+        steered,
+        170,
+        query,
+        personality,
+        kit,
+        undefined,
+        'frontliner',
+      );
+      if (tracker.recovering) {
+        const sign = Math.sign(dir.y || 0.0001);
+        if (lastSign && sign !== lastSign) {
+          flipped += 1;
+        }
+        lastSign = sign;
+      }
+      x += dir.x * 8.5;
+      y += dir.y * 8.5;
+    }
+    const moved = Math.hypot(x - start.x, y - start.y);
+    const slid = Math.abs(y - start.y) > 14;
+    const cleared = x > wall.collision.x + wall.collision.w || x < start.x - 10;
+    if (flipped > 3 || (!slid && !cleared && moved < 18)) {
+      failed += 1;
+      console.log(
+        `FAIL  live map walk  flip=${flipped} moved=${moved.toFixed(0)} y=${(y - start.y).toFixed(0)}`,
+      );
+    } else {
+      console.log(`ok  live map walk  slid=${(y - start.y).toFixed(0)} moved=${moved.toFixed(0)}`);
+    }
   }
 }
 

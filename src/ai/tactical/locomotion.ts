@@ -73,7 +73,7 @@ export const resolveCpuWalk = (
   role?: string,
 ): { x: number; y: number; stop: boolean } => {
   const len = Math.hypot(desiredX, desiredY) || 1;
-  if (len < 12) {
+  if (len < 12 && !loco.stuck.recovering) {
     loco.reset();
     return { x: 0, y: 0, stop: true };
   }

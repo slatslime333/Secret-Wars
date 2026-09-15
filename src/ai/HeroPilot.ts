@@ -189,7 +189,7 @@ export class HeroPilot {
       this.mind.goal,
       this.mind.moveHint(),
     );
-    if (goal.halt) {
+    if (goal.halt && !this.loco.stuck.recovering) {
       this.loco.reset();
       body.stop();
       return;

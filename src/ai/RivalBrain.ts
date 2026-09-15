@@ -217,7 +217,7 @@ export class RivalBrain {
       this.mind.goal,
       this.mind.moveHint(),
     );
-    if (goal.halt) {
+    if (goal.halt && !this.loco.stuck.recovering) {
       this.loco.reset();
       cpu.stop();
       return;
