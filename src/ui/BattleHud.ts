@@ -143,7 +143,10 @@ export class BattleHud {
   }
 
   hpAnchor(): { x: number; y: number } {
-    return { x: this.ninjaFill.x, y: this.staminaTrack.y + 18 };
+    if (isPcCombatHud()) {
+      return { x: this.ninjaFill.x, y: this.hpTrack.y - 40 };
+    }
+    return { x: this.ninjaFill.x, y: this.staminaTrack.y + 16 };
   }
 
   /** Just right of the player's HP bar so status chips stay glanceable. */

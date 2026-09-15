@@ -116,6 +116,12 @@ export class CombatFeedback {
         lineSpacing: 4,
       })
       .setOrigin(0, 0);
+    const growUp = y > scene.scale.height * 0.45;
+    if (growUp) {
+      const blockH = title.height + 2 + body.height;
+      title.setY(-blockH);
+      body.setY(-blockH + title.height + 2);
+    }
     const root = scene.add.container(x, y, [title, body]).setDepth(208).setScrollFactor(0).setScale(1.12).setAlpha(1);
     adoptHud(scene, root);
     this.active = root;
