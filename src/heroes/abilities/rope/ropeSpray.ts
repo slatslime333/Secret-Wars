@@ -80,8 +80,11 @@ class RopeSprayAbility implements ActiveAbility {
       const ang = Math.random() * Math.PI * 2;
       const nx = Math.cos(ang);
       const ny = Math.sin(ang);
-      const arm: -1 | 1 = i === 0 ? -1 : 1;
-      const origin = ropeArmOrigin(caster.x, caster.y, ang, arm, 12);
+      const arm: -1 | 1 | 0 = i % 3 === 0 ? -1 : i % 3 === 1 ? 1 : 0;
+      const origin =
+        arm === 0
+          ? { x: caster.x, y: caster.y - 8 }
+          : ropeArmOrigin(caster.x, caster.y, ang, arm, 12);
       spawnRopeProjectile({
         scene: ctx.scene,
         world: ctx.world,

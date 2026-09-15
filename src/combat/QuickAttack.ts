@@ -8,7 +8,7 @@ import { menderArmOrigin } from '../heroes/drawMender';
 import { DEMON_ATTACK, DEMON_CLAW } from '../heroes/abilities/demon/tunables';
 import { demonCandleOrigin } from '../heroes/drawDemon';
 import { applyBurn } from '../heroes/abilities/demon/burnFx';
-import { grantDemonRage, demonRageFromCandle, isBigDemon } from '../heroes/abilities/demon/form';
+import { grantDemonRage, demonRageFromAbilityDamage, isBigDemon } from '../heroes/abilities/demon/form';
 import { sweepKnockback, swingSignFor } from '../heroes/abilities/death/sweep';
 import { deathIdleBatAngle } from '../heroes/drawDeath';
 import { facingFromAim } from '../heroes/drawNinja';
@@ -425,7 +425,7 @@ export class QuickAttack {
       );
       if (kind === 'hit') {
         applyBurn(result.target, now, 'candle', attacker);
-        grantDemonRage(attacker, demonRageFromCandle(), result.target);
+        grantDemonRage(attacker, demonRageFromAbilityDamage(attacker.stats.attackDamage), result.target);
       }
     }
   }

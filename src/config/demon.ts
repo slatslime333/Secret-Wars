@@ -63,7 +63,7 @@ export const DEMON_BIG = {
   dashMaxCharges: 2,
 } as const satisfies HeroCombatConfig;
 
-/** Live-stat multipliers so level-ups survive the 8-second transform. */
+/** Live-stat multipliers so level-ups survive the 11-second transform. */
 export const DEMON_BIG_MUL = {
   maxHealth: DEMON_BIG.maxHealth / DEMON.maxHealth,
   maxStamina: DEMON_BIG.maxStamina / DEMON.maxStamina,

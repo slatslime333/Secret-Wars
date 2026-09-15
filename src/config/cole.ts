@@ -29,8 +29,8 @@ export const COLE = {
   role: 'frontliner',
   ratings: COLE_RATINGS,
   ...coleGameplay,
-  /** Light-attack / hit-marker reach. Previous live 0.75, then +15%, then +17%. */
-  attackRange: Math.round(Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.15) * 1.17),
+  /** Light-attack / hit-marker reach. Previous live 0.75, then +15%, then +17%, then +13%. */
+  attackRange: Math.round(Math.round(Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.15) * 1.17) * 1.13),
   /** 20% tighter than the previous 81° Cole wedge. */
   attackArcDegrees: 65,
   bodyRadius: NINJA.bodyRadius,

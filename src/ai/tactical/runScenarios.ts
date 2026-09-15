@@ -12,7 +12,9 @@ import { clusterRiskOf, guardHome, nudgeOffMates, protectStand, regroupStand } f
 import { cameraPrefs } from '../../config/cameraPrefs';
 import { MENDER } from '../../config/mender';
 import { DEMON, DEMON_BIG } from '../../config/demon';
-import { COLE } from '../../config/cole';
+import { COLE, COLE_CONVERTED_RANGE } from '../../config/cole';
+import { DEATH } from '../../config/death';
+import { ROPE } from '../../config/rope';
 import { WITCH } from '../../config/witch';
 import { SHADOW } from '../../config/shadow';
 import { DEMON_HELLFIRE, DEMON_HELL_BAT, DEMON_RAGE } from '../../heroes/abilities/demon/tunables';
@@ -20,6 +22,8 @@ import { SHADOW_CLAW } from '../../heroes/abilities/shadow/tunables';
 import { NINJA_SMOKE } from '../../heroes/abilities/ninja/tunables';
 import { abilityDamage } from '../../config/ratings';
 import { MENDER_PULSE, MENDER_SOUL, MENDER_ANGEL } from '../../heroes/abilities/mender/tunables';
+import { COLE_BALL } from '../../heroes/abilities/cole/tunables';
+import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT, ROPE_SPRAY } from '../../heroes/abilities/rope/tunables';
 
 const results = runTacticalScenarios();
 let failed = 0;
@@ -317,6 +321,18 @@ if (DEMON_RAGE.fillCostMul !== 1.35) {
 } else {
   console.log('ok  rage fill cost  1.35');
 }
+if (DEMON_RAGE.durationMs !== 11000) {
+  failed += 1;
+  console.log(`FAIL  demon rage duration  ${DEMON_RAGE.durationMs}`);
+} else {
+  console.log('ok  demon rage duration  11s');
+}
+if (DEMON_RAGE.abilityDamageToRage !== 0.2) {
+  failed += 1;
+  console.log(`FAIL  demon rage convert  ${DEMON_RAGE.abilityDamageToRage}`);
+} else {
+  console.log('ok  demon ability damage  20% to rage');
+}
 if (DEMON_BIG.attackRange !== Math.round(SHADOW.attackRange * 0.75)) {
   failed += 1;
   console.log(`FAIL  big demon range  ${DEMON_BIG.attackRange}`);
@@ -340,6 +356,67 @@ if (Math.abs(SHADOW_CLAW.damage - abilityDamage(64) * 2.7 * 0.9 * 0.77) > 0.001)
   console.log(`FAIL  shadow claw damage  ${SHADOW_CLAW.damage}`);
 } else {
   console.log('ok  shadow claw damage  -23%');
+}
+if (SHADOW.ratings.damage !== 61 || SHADOW.ratings.defense !== 39) {
+  failed += 1;
+  console.log(`FAIL  shadow ratings  dmg=${SHADOW.ratings.damage} def=${SHADOW.ratings.defense}`);
+} else {
+  console.log('ok  shadow ratings  damage 61 / defense 39');
+}
+if (
+  ROPE.ratings.damage !== 37 ||
+  ROPE.ratings.staminaRegen !== 70 ||
+  ROPE.ratings.attackSpeed !== 69
+) {
+  failed += 1;
+  console.log(
+    `FAIL  rope ratings  dmg=${ROPE.ratings.damage} regen=${ROPE.ratings.staminaRegen} atk=${ROPE.ratings.attackSpeed}`,
+  );
+} else {
+  console.log('ok  rope ratings  damage 37 / stam regen 70 / attack 69');
+}
+if (ROPE_SHOT.crippleMs !== 5000) {
+  failed += 1;
+  console.log(`FAIL  rope light slow  ${ROPE_SHOT.crippleMs}`);
+} else {
+  console.log('ok  rope light slow  5s');
+}
+if (Math.round(ROPE_GRAB.damage) !== 31) {
+  failed += 1;
+  console.log(`FAIL  rope grab damage  ${ROPE_GRAB.damage}`);
+} else {
+  console.log('ok  rope grab damage  31');
+}
+if (Math.round(ROPE_PUNCH.damage) !== 26) {
+  failed += 1;
+  console.log(`FAIL  mega punch damage  ${ROPE_PUNCH.damage}`);
+} else {
+  console.log('ok  mega punch damage  26');
+}
+if (ROPE_SPRAY.shotsPerPulse !== 3) {
+  failed += 1;
+  console.log(`FAIL  rope spray pulse  ${ROPE_SPRAY.shotsPerPulse}`);
+} else {
+  console.log('ok  rope spray  3 random ropes per pulse');
+}
+if (DEATH.ratings.defense !== 75 || DEATH.ratings.stamina !== 73) {
+  failed += 1;
+  console.log(`FAIL  death ratings  def=${DEATH.ratings.defense} stam=${DEATH.ratings.stamina}`);
+} else {
+  console.log('ok  death ratings  defense 75 / stamina 73');
+}
+const coleRangeBefore = Math.round(Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.15) * 1.17);
+if (COLE.attackRange !== Math.round(coleRangeBefore * 1.13)) {
+  failed += 1;
+  console.log(`FAIL  cole attack radius  ${COLE.attackRange} !== ${Math.round(coleRangeBefore * 1.13)}`);
+} else {
+  console.log('ok  cole attack radius  +13%');
+}
+if (Math.round(COLE_BALL.damage) !== 30) {
+  failed += 1;
+  console.log(`FAIL  electric ball damage  ${COLE_BALL.damage}`);
+} else {
+  console.log('ok  electric ball damage  30');
 }
 
 if (failed > 0) {
