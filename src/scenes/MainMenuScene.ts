@@ -251,7 +251,7 @@ export class MainMenuScene extends Phaser.Scene {
       color: hex(COLORS.paper),
       letterSpacing: 1,
     });
-    this.add.text(x + 28, y + 128, '3 LANES  //  3:00  //  WAVES', {
+    this.add.text(x + 28, y + 128, '3 LANES  //  4:00  //  WAVES', {
       fontFamily: FONTS.body,
       fontSize: '17px',
       fontStyle: 'bold',

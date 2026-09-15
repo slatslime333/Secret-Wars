@@ -46,6 +46,8 @@ export type MoveHint = {
     huntY?: number;
     guardX?: number;
     guardY?: number;
+    remainingMs?: number;
+    hazards?: { x: number; y: number; radius: number; impactAt: number }[];
   };
 };
 
@@ -71,7 +73,8 @@ const preferredRange = (body: MoveBody, action: TacticalAction, hint?: MoveHint)
 
 const laneYOf = (y: number): number => ARENA.laneY[nearestLane(y)];
 
-const isZoneKind = (kind: ObjectiveKind): boolean => kind === 'capture_zone' || kind === 'healing_shrine';
+const isZoneKind = (kind: ObjectiveKind): boolean =>
+  kind === 'capture_zone' || kind === 'healing_shrine' || kind === 'rage_zone';
 
 const clampInCircle = (
   x: number,
@@ -124,6 +127,31 @@ const applyCrowd = (
   return nudgeOffMates(dest.x, dest.y, { ...body, id: body.id ?? slot }, hint?.mates, action, gap);
 };
 
+const dodgeHazards = (
+  x: number,
+  y: number,
+  hint?: MoveHint,
+): { x: number; y: number } => {
+  const hazards = hint?.objective?.hazards;
+  if (!hazards || hazards.length === 0) {
+    return { x, y };
+  }
+  let nx = x;
+  let ny = y;
+  for (const zone of hazards) {
+    const dx = nx - zone.x;
+    const dy = ny - zone.y;
+    const d = Math.hypot(dx, dy);
+    if (d >= zone.radius + 18) {
+      continue;
+    }
+    const len = d < 1 ? 1 : d;
+    nx = zone.x + (dx / len) * (zone.radius + 32);
+    ny = zone.y + (dy / len) * (zone.radius + 32);
+  }
+  return { x: nx, y: ny };
+};
+
 const idleAnchor = (body: MoveBody, now: number, slot: number, hint?: MoveHint): { x: number; y: number } => {
   if (hint?.anchorX !== undefined && hint.anchorY !== undefined) {
     return { x: hint.anchorX, y: hint.anchorY };
@@ -158,19 +186,21 @@ export const moveGoal = (
   };
   const finish = (sample: MoveSample): MoveSample => {
     const next = applyCrowd(sample, body, action, slot, hint);
-    return { ...sample, x: next.x, y: next.y };
+    const dodged = dodgeHazards(next.x, next.y, hint);
+    return { ...sample, x: dodged.x, y: dodged.y };
   };
 
   if (action === 'retreat' || action === 'escape' || action === 'recover') {
     const destX = retreatGoal?.x ?? homeX;
     const destY = retreatGoal?.y ?? homeY;
     const spread = applyCrowd({ x: destX, y: destY }, body, action, slot, hint);
-    const gap = Math.hypot(spread.x - body.x, spread.y - body.y);
-    const aim = target ? aimTo(target.x, target.y) : aimTo(spread.x, spread.y);
+    const dodged = dodgeHazards(spread.x, spread.y, hint);
+    const gap = Math.hypot(dodged.x - body.x, dodged.y - body.y);
+    const aim = target ? aimTo(target.x, target.y) : aimTo(dodged.x, dodged.y);
     const halt = action === 'recover' && gap < 40;
     return {
-      x: spread.x,
-      y: spread.y,
+      x: dodged.x,
+      y: dodged.y,
       halt,
       aimX: target ? -aim.aimX : aim.aimX,
       aimY: target ? -aim.aimY : aim.aimY,
@@ -196,7 +226,7 @@ export const moveGoal = (
       const stand = standInZone(body, obj, target, flankSign, ranged || support, slot);
       return finish({ ...stand, ...aim });
     }
-    if (obj.kind === 'bounty_target') {
+    if (obj.kind === 'bounty_target' || obj.kind === 'war_banner') {
       const huntX = obj.huntX ?? obj.x;
       const huntY = obj.huntY ?? obj.y;
       const guardX = obj.guardX;
@@ -334,7 +364,7 @@ export const moveGoal = (
     const obj = hint?.objective;
     const vx = target.vx ?? target.aimX * 90;
     const vy = target.vy ?? target.aimY * 90;
-    if (obj && obj.kind !== 'bounty_target') {
+    if (obj && obj.kind !== 'bounty_target' && obj.kind !== 'war_banner') {
       const toObjX = obj.x - target.x;
       const toObjY = obj.y - target.y;
       const toObj = Math.hypot(toObjX, toObjY) || 1;

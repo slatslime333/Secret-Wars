@@ -3,7 +3,7 @@ import {
   canStartObjective,
   nextObjectiveKind,
   OBJECTIVE,
-  pickObjectiveStartAt,
+  pickEventGapMs,
   type ObjectiveKind,
 } from '../../config/objective';
 import type { TeamId } from '../../config/hero';
@@ -18,8 +18,12 @@ import { GoldenPiggyBankObjective } from './GoldenPiggyBankObjective';
 import { BountyTargetObjective } from './BountyTargetObjective';
 import { HealingShrineObjective } from './HealingShrineObjective';
 import { ExecutionerObjective } from './ExecutionerObjective';
+import { WarBannerObjective } from './WarBannerObjective';
+import { RageZoneObjective } from './RageZoneObjective';
+import { MeteorStormObjective } from './MeteorStormObjective';
 import { ObjectiveHud } from './ObjectiveHud';
-import { pickObjectiveLocation } from './pickLocation';
+import { pickCenterObjectiveLocation, pickFightCluster, pickObjectiveLocation } from './pickLocation';
+import { applyObjectiveHasteToTeam, grantTeamLevels, grantTeamXpShare } from './rewards';
 import type { MatchObjective, ObjectiveCompleteEvent } from './types';
 
 export type ObjectiveManagerDeps = {
@@ -30,6 +34,7 @@ export type ObjectiveManagerDeps = {
   orbs: XpOrbWorld;
   heroes: () => readonly HeroRuntime[];
   grantLevel: (hero: HeroRuntime) => void;
+  grantXp: (hero: HeroRuntime, amount: number) => void;
   rng?: () => number;
   onComplete?: (event: ObjectiveCompleteEvent) => void;
 };
@@ -46,16 +51,17 @@ export class ObjectiveManager {
   private readonly orbs: XpOrbWorld;
   private readonly heroesOf: () => readonly HeroRuntime[];
   private readonly grantLevel: (hero: HeroRuntime) => void;
+  private readonly grantXp: (hero: HeroRuntime, amount: number) => void;
   private readonly rng: () => number;
   private readonly onComplete?: (event: ObjectiveCompleteEvent) => void;
   private readonly hud: ObjectiveHud;
   private active?: MatchObjective;
   private nextAt?: number;
   private cooldownUntil = 0;
-  private lastKind?: ObjectiveKind;
+  private readonly recent: ObjectiveKind[] = [];
   private lastBounty: { alpha?: string; bravo?: string } = {};
-  private readonly kindQueue: ObjectiveKind[] = [];
   private closed = false;
+  private rewarded = false;
 
   constructor(deps: ObjectiveManagerDeps) {
     this.scene = deps.scene;
@@ -65,17 +71,18 @@ export class ObjectiveManager {
     this.orbs = deps.orbs;
     this.heroesOf = deps.heroes;
     this.grantLevel = deps.grantLevel;
+    this.grantXp = deps.grantXp;
     this.rng = deps.rng ?? Math.random;
     this.onComplete = deps.onComplete;
     this.hud = new ObjectiveHud(deps.scene);
-    this.nextAt = pickObjectiveStartAt(OBJECTIVE.earliestStartMs, OBJECTIVE.firstLatestStartMs, this.rng);
+    this.nextAt = OBJECTIVE.openingAtMs;
   }
 
   update(now: number, delta: number): void {
     if (this.closed || this.match.paused) {
       return;
     }
-    if (this.match.finished || !this.match.playing) {
+    if (this.match.finished || this.match.phase !== 'PLAYING') {
       this.endMatch();
       return;
     }
@@ -87,12 +94,12 @@ export class ObjectiveManager {
         delta,
         elapsedMs: elapsed,
         heroes,
-        playing: this.match.playing && !this.match.finished,
+        playing: this.match.phase === 'PLAYING' && !this.match.finished,
       });
       this.publish(heroes);
       this.hud.sync(now, this.active.ui(), this.scene.cameras.main);
       if (done) {
-        this.finish(done, elapsed);
+        this.finish(done, elapsed, now);
       }
       return;
     }
@@ -100,14 +107,11 @@ export class ObjectiveManager {
     this.publish(undefined);
     this.hud.sync(now, undefined, this.scene.cameras.main);
     if (this.nextAt === undefined) {
-      this.nextAt = this.scheduleNext(Math.max(elapsed, this.cooldownUntil));
+      this.nextAt = elapsed + pickEventGapMs(this.rng);
+      this.cooldownUntil = this.nextAt;
     }
-    if (
-      this.nextAt !== undefined &&
-      elapsed >= this.nextAt &&
-      canStartObjective(elapsed, this.cooldownUntil, false)
-    ) {
-      this.spawn(nextObjectiveKind(this.kindQueue, this.rng), now);
+    if (this.nextAt !== undefined && elapsed >= this.nextAt && canStartObjective(elapsed, this.cooldownUntil, false)) {
+      this.spawn(nextObjectiveKind(this.recent, this.rng), now);
     }
   }
 
@@ -119,10 +123,10 @@ export class ObjectiveManager {
   }
 
   debugSpawn(kind?: ObjectiveKind, now = this.scene.time.now): boolean {
-    if (this.closed || this.active || this.match.finished) {
+    if (this.closed || this.active || this.match.finished || this.match.phase !== 'PLAYING') {
       return false;
     }
-    this.spawn(kind ?? nextObjectiveKind(this.kindQueue, this.rng), now);
+    this.spawn(kind ?? nextObjectiveKind(this.recent, this.rng), now);
     return true;
   }
 
@@ -156,9 +160,14 @@ export class ObjectiveManager {
     }
     const created = this.create(kind);
     this.active = created;
+    this.rewarded = false;
     created.spawn(now);
     this.hud.announce(kind, created.x, created.y, now);
     this.nextAt = undefined;
+    this.recent.push(kind);
+    if (this.recent.length > 6) {
+      this.recent.shift();
+    }
     this.publish(this.heroesOf());
   }
 
@@ -166,29 +175,18 @@ export class ObjectiveManager {
     switch (kind) {
       case 'golden_piggy': {
         const loc = pickObjectiveLocation(this.query, OBJECTIVE.piggy.radius, this.rng);
-        return new GoldenPiggyBankObjective({
-          scene: this.scene,
-          x: loc.x,
-          y: loc.y,
-          orbs: this.orbs,
-          grantLevel: this.grantLevel,
-        });
+        return new GoldenPiggyBankObjective({ scene: this.scene, x: loc.x, y: loc.y });
       }
       case 'capture_zone': {
-        const loc = pickObjectiveLocation(this.query, OBJECTIVE.capture.radius * 0.18, this.rng);
-        return new CaptureZoneObjective({
-          scene: this.scene,
-          x: loc.x,
-          y: loc.y,
-          orbs: this.orbs,
-          grantLevel: this.grantLevel,
-        });
+        const loc =
+          this.recent.length === 0
+            ? pickCenterObjectiveLocation(this.query, OBJECTIVE.capture.radius * 0.18)
+            : pickObjectiveLocation(this.query, OBJECTIVE.capture.radius * 0.18, this.rng);
+        return new CaptureZoneObjective({ scene: this.scene, x: loc.x, y: loc.y });
       }
       case 'bounty_target': {
         return new BountyTargetObjective({
           scene: this.scene,
-          orbs: this.orbs,
-          grantLevel: this.grantLevel,
           rng: this.rng,
           heroes: this.heroesOf,
           last: this.lastBounty,
@@ -210,32 +208,92 @@ export class ObjectiveManager {
           query: this.query,
         });
       }
+      case 'war_banner': {
+        const loc = pickCenterObjectiveLocation(this.query, OBJECTIVE.banner.radius * 0.2);
+        return new WarBannerObjective({ scene: this.scene, x: loc.x, y: loc.y });
+      }
+      case 'rage_zone': {
+        const cluster = pickFightCluster(this.heroesOf(), this.rng);
+        const loc = this.query.clearForObjective(cluster.x, cluster.y, 24)
+          ? cluster
+          : pickObjectiveLocation(this.query, OBJECTIVE.rage.radius * 0.2, this.rng);
+        return new RageZoneObjective({ scene: this.scene, x: loc.x, y: loc.y });
+      }
+      case 'meteor_storm': {
+        return new MeteorStormObjective({
+          scene: this.scene,
+          query: this.query,
+          rng: this.rng,
+          heroes: this.heroesOf,
+        });
+      }
     }
   }
 
-  private finish(event: ObjectiveCompleteEvent, elapsed: number): void {
+  private finish(event: ObjectiveCompleteEvent, elapsed: number, now: number): void {
+    if (this.match.phase !== 'PLAYING' || this.match.finished) {
+      this.active?.cleanup();
+      this.active = undefined;
+      setObjectiveWorld(undefined);
+      return;
+    }
+    if (!this.rewarded) {
+      this.rewarded = true;
+      this.grantRewards(event, now);
+    }
     if (event.winner) {
-      if (event.kind === 'golden_piggy') {
-        this.score.addPoints(event.winner, OBJECTIVE.scoreReward);
-      }
       this.hud.celebrate(event.winner, celebrateLine(event.kind, event.winner));
     }
     this.onComplete?.(event);
-    this.lastKind = event.kind;
     this.active?.cleanup();
     this.active = undefined;
-    this.cooldownUntil = elapsed + OBJECTIVE.cooldownMs;
-    this.nextAt = this.scheduleNext(this.cooldownUntil);
+    const gap = pickEventGapMs(this.rng);
+    this.cooldownUntil = elapsed + gap;
+    this.nextAt = this.cooldownUntil;
     setObjectiveWorld(undefined);
   }
 
-  private scheduleNext(earliestMs: number): number | undefined {
-    const lo = Math.max(earliestMs, OBJECTIVE.earliestStartMs);
-    const firstWave = this.lastKind === undefined;
-    const hi = firstWave
-      ? OBJECTIVE.firstLatestStartMs
-      : Math.min(lo + 8_000, OBJECTIVE.latestStartMs);
-    return pickObjectiveStartAt(lo, hi, this.rng);
+  private grantRewards(event: ObjectiveCompleteEvent, now: number): void {
+    const winner = event.winner;
+    if (!winner) {
+      return;
+    }
+    const heroes = this.heroesOf();
+    const x = this.active?.x ?? 0;
+    const y = this.active?.y ?? 0;
+    switch (event.kind) {
+      case 'capture_zone':
+        grantTeamXpShare(winner, heroes, this.grantXp, this.orbs, x, y, OBJECTIVE.capture.xpShare);
+        applyObjectiveHasteToTeam(winner, heroes, now, OBJECTIVE.capture.buffMs, OBJECTIVE.capture.moveMul, 1);
+        break;
+      case 'golden_piggy':
+        this.score.addPoints(winner, OBJECTIVE.scoreReward);
+        grantTeamXpShare(winner, heroes, this.grantXp, this.orbs, x, y, OBJECTIVE.piggy.xpShare);
+        break;
+      case 'bounty_target':
+        grantTeamLevels(winner, heroes, this.grantLevel, this.orbs, x, y, OBJECTIVE.bounty.levelReward);
+        break;
+      case 'executioner':
+        grantTeamXpShare(winner, heroes, this.grantXp, this.orbs, x, y, OBJECTIVE.executioner.xpShare);
+        applyObjectiveHasteToTeam(
+          winner,
+          heroes,
+          now,
+          OBJECTIVE.executioner.buffMs,
+          OBJECTIVE.executioner.moveMul,
+          OBJECTIVE.executioner.attackMul,
+          OBJECTIVE.executioner.staminaMul,
+        );
+        break;
+      case 'war_banner':
+        this.score.addPoints(winner, OBJECTIVE.scoreReward);
+        grantTeamXpShare(winner, heroes, this.grantXp, this.orbs, x, y, OBJECTIVE.banner.xpShare);
+        break;
+      case 'healing_shrine':
+      case 'rage_zone':
+      case 'meteor_storm':
+        break;
+    }
   }
 
   private publish(heroes: readonly HeroRuntime[] | undefined): void {
@@ -266,6 +324,8 @@ export class ObjectiveManager {
       alphaY: alpha.allyY,
       bravoX: bravo.allyX,
       bravoY: bravo.allyY,
+      remainingMs: alpha.remainingMs,
+      hazards: alpha.hazards,
     };
     setObjectiveWorld(world);
   }
@@ -279,6 +339,9 @@ const CELEBRATE: Record<ObjectiveKind, (team: string) => string> = {
   bounty_target: (team) => `${team} CLAIMS THE BOUNTY`,
   healing_shrine: (team) => `${team} HOLDS THE SHRINE`,
   executioner: (team) => `${team} SLAYS THE EXECUTIONER`,
+  war_banner: (team) => `${team} HOLDS THE BANNER`,
+  rage_zone: () => 'RAGE ZONE FADES',
+  meteor_storm: () => 'METEOR STORM ENDS',
 };
 
 const celebrateLine = (kind: ObjectiveKind, team: TeamId): string => CELEBRATE[kind](teamName(team));

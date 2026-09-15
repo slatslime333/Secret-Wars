@@ -188,6 +188,7 @@ export class MatchScene extends Phaser.Scene {
       grantLevel: (hero) => {
         this.noteProgression(hero, hero.progression.giveLevel());
       },
+      grantXp: (hero, amount) => this.applyXp(hero, amount),
       onComplete: (event) => this.noteObjective(event),
     });
     this.minions.onKilled = (event) => {
@@ -221,6 +222,7 @@ export class MatchScene extends Phaser.Scene {
         if (leveled.leveled) {
           audio.play('ui-level-up');
         }
+        this.noteXp(runtime, amount);
         this.noteProgression(runtime, leveled);
       },
     });
@@ -507,6 +509,26 @@ export class MatchScene extends Phaser.Scene {
     });
   }
 
+  private noteXp(hero: HeroRuntime, amount: number): void {
+    if (!hero.isPlayer || amount <= 0) {
+      return;
+    }
+    this.feedback.xpGain(amount);
+  }
+
+  private applyXp(hero: HeroRuntime, amount: number): LevelUpResult {
+    const result = hero.progression.grantXp(amount);
+    if (hero.isPlayer && amount > 0) {
+      audio.play('ui-xp');
+    }
+    if (result.leveled && hero.isPlayer) {
+      audio.play('ui-level-up');
+    }
+    this.noteXp(hero, amount);
+    this.noteProgression(hero, result);
+    return result;
+  }
+
   private noteProgression(hero: HeroRuntime, result: LevelUpResult): void {
     if (!hero.isPlayer || !result.leveled) {
       return;
@@ -537,6 +559,7 @@ export class MatchScene extends Phaser.Scene {
       audio.play('ui-level-up');
     }
     if (runtime && leveled) {
+      this.noteXp(runtime, amount);
       this.noteProgression(runtime, leveled);
     }
   }
@@ -1137,8 +1160,7 @@ export class MatchScene extends Phaser.Scene {
       snapshot: () => this.gameState(),
       forceWave: () => this.waves.spawnWave(),
       giveXp: (amount = MATCH.xp.debugGrant) => {
-        const result = this.player.progression.grantXp(amount);
-        this.noteProgression(this.player, result);
+        const result = this.applyXp(this.player, amount);
         return result;
       },
       giveLevel: () => {

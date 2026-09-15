@@ -1,26 +1,39 @@
 import { COLE, COLE_CONVERTED_RANGE } from './cole';
+import { MATCH } from './match';
 
 /**
- * Random mid-match objective tunables. Timing is match-elapsed, not remaining
- * clock. Every kind listed here is in the live rotation; ObjectiveManager's
- * factory must handle each one so unknown types cannot collapse to Capture Zone.
+ * Mid-match event tunables. Timing is match-elapsed, not remaining clock.
+ * Every kind listed here is in the live rotation; ObjectiveManager's factory
+ * must handle each one so unknown types cannot collapse to Capture Zone.
  */
 export const OBJECTIVE = {
-  /** No event may start before this elapsed time. */
-  earliestStartMs: 20_000,
+  /** Opening Capture Zone. Always within the first 10 seconds. */
+  earliestStartMs: 5_000,
+  openingLatestMs: 10_000,
+  openingAtMs: 5_000,
+  openingKind: 'capture_zone' as const,
   /**
-   * First event must start early enough that a later kind still fits after
-   * the 60s cooldown. Valid first-start window is [20s, 50s].
+   * Events may start until the match clock ends. This is not a late-game
+   * cutoff — it tracks MATCH.durationMs so the 4-minute window stays honest.
    */
-  firstLatestStartMs: 50_000,
-  /** Starts at or after 2:20 elapsed are illegal. Valid window is [20s, 2:19]. */
-  latestStartMs: 140_000,
-  cooldownMs: 60_000,
-  announcementMs: 2_400,
-  arrowMs: 2_600,
-  kinds: ['capture_zone', 'golden_piggy', 'bounty_target', 'healing_shrine', 'executioner'] as const,
-  /** After the first event, prefer a different kind this often. */
-  rerollSameKind: 0.72,
+  latestStartMs: MATCH.durationMs,
+  /** Short gap after an event ends before the next fair-random pick. */
+  gapMinMs: 2_500,
+  gapMaxMs: 4_500,
+  /** Exclude this many most-recent kinds from the next fair pick. */
+  antiRepeat: 2,
+  announcementMs: 3_200,
+  arrowMs: 2_800,
+  kinds: [
+    'capture_zone',
+    'golden_piggy',
+    'bounty_target',
+    'healing_shrine',
+    'executioner',
+    'war_banner',
+    'rage_zone',
+    'meteor_storm',
+  ] as const,
   capture: {
     /** 80% of Cole's light-attack reach. */
     radius: Math.round(COLE_CONVERTED_RANGE * 0.8),
@@ -28,23 +41,24 @@ export const OBJECTIVE = {
     graceMs: 5_000,
     /** Decay speed after grace. 1 = same rate as capturing. */
     decayMul: 1,
+    xpShare: 0.75,
+    buffMs: 10_000,
+    moveMul: 1.1,
   },
   piggy: {
     radius: 58,
     /** ~30 Cole lights. One hero can finish it; a team finishes much faster. */
     breakDamage: Math.round(COLE.attackDamage * 30),
     projectileDamage: COLE.attackDamage,
+    xpShare: 0.25,
   },
   bounty: {
-    levelReward: 2,
-    buffMs: 20_000,
-    moveMul: 1.3,
-    attackMul: 1.3,
+    levelReward: 1,
   },
   shrine: {
     radius: Math.round(COLE_CONVERTED_RANGE * 0.72),
     durationMs: 20_000,
-    healPerSecond: 9,
+    healPerSecond: 7,
   },
   executioner: {
     radius: 48,
@@ -58,12 +72,38 @@ export const OBJECTIVE = {
     damage: Math.round(COLE.attackDamage * 2.15 * 0.9),
     knockback: 3.7,
     pursueRange: 440,
-    buffMs: 20_000,
-    moveMul: 1.18,
-    attackMul: 1.18,
-    staminaMul: 1.18,
+    buffMs: 10_000,
+    moveMul: 1.1,
+    attackMul: 1.1,
+    staminaMul: 1.1,
+    xpShare: 0.5,
   },
-  /** Team score awarded for Golden Piggy Bank. */
+  banner: {
+    radius: 88,
+    durationMs: 20_000,
+    claimMs: 3_000,
+    carrierMoveMul: 0.85,
+    carrierDamageMul: 1.05,
+    xpShare: 0.75,
+  },
+  rage: {
+    radius: Math.round(COLE_CONVERTED_RANGE * 1.45),
+    durationMs: 16_000,
+    moveMul: 1.4,
+    attackMul: 1.1,
+    knockbackMul: 1.1,
+  },
+  meteor: {
+    durationMs: 15_000,
+    warningMs: 850,
+    impactRadius: 72,
+    damage: Math.round(COLE.attackDamage * 2.6),
+    knockback: 290,
+    intervalMs: 2_200,
+    firstDelayMs: 450,
+    radius: 72,
+  },
+  /** Team score awarded for Golden Piggy Bank and War Banner. */
   scoreReward: 1,
   auraTint: 0xe23b3b,
 } as const;
@@ -76,6 +116,20 @@ export const OBJECTIVE_LABEL: Record<ObjectiveKind, string> = {
   bounty_target: 'BOUNTY TARGET!',
   healing_shrine: 'HEALING SHRINE!',
   executioner: 'EXECUTIONER!',
+  war_banner: 'WAR BANNER!',
+  rage_zone: 'RAGE ZONE!',
+  meteor_storm: 'METEOR STORM!',
+};
+
+export const OBJECTIVE_PROMPT: Record<ObjectiveKind, string> = {
+  capture_zone: 'Control the zone!',
+  golden_piggy: 'Break the pig first!',
+  bounty_target: 'Kill the marked target!',
+  healing_shrine: 'Hold the shrine to heal!',
+  executioner: 'Slay the Executioner!',
+  war_banner: 'Claim and protect the banner!',
+  rage_zone: 'Fight inside the Rage Zone!',
+  meteor_storm: 'Dodge incoming meteors!',
 };
 
 export const canStartObjective = (
@@ -89,9 +143,6 @@ export const canStartObjective = (
   if (elapsedMs < OBJECTIVE.earliestStartMs) {
     return false;
   }
-  if (elapsedMs >= OBJECTIVE.latestStartMs) {
-    return false;
-  }
   return elapsedMs >= cooldownUntilMs;
 };
 
@@ -100,43 +151,31 @@ export const pickObjectiveStartAt = (
   latestExclusiveMs: number,
   rng: () => number,
 ): number | undefined => {
-  const lo = Math.max(OBJECTIVE.earliestStartMs, earliestMs);
-  const hi = Math.min(OBJECTIVE.latestStartMs, latestExclusiveMs) - 1;
+  const lo = Math.max(0, earliestMs);
+  const hi = latestExclusiveMs - 1;
   if (lo > hi) {
     return undefined;
   }
   return lo + rng() * (hi - lo);
 };
 
-export const pickObjectiveKind = (previous: ObjectiveKind | undefined, rng: () => number): ObjectiveKind => {
+export const pickFairObjectiveKind = (recent: readonly ObjectiveKind[], rng: () => number): ObjectiveKind => {
   const kinds = OBJECTIVE.kinds;
-  if (!previous || kinds.length < 2 || rng() > OBJECTIVE.rerollSameKind) {
-    return kinds[Math.floor(rng() * kinds.length)] ?? 'capture_zone';
-  }
-  const others = kinds.filter((kind) => kind !== previous);
-  return others[Math.floor(rng() * others.length)] ?? previous;
+  const blocked = new Set(recent.slice(-OBJECTIVE.antiRepeat));
+  const pool = kinds.filter((kind) => !blocked.has(kind));
+  const use = pool.length > 0 ? pool : [...kinds];
+  return use[Math.floor(rng() * use.length)] ?? 'capture_zone';
 };
 
-/** Fisher–Yates copy so every registered kind appears before any repeat. */
-export const shuffleObjectiveKinds = (rng: () => number): ObjectiveKind[] => {
-  const deck = [...OBJECTIVE.kinds];
-  for (let i = deck.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1));
-    const a = deck[i];
-    const b = deck[j];
-    if (a === undefined || b === undefined) {
-      continue;
-    }
-    deck[i] = b;
-    deck[j] = a;
+export const pickObjectiveKind = (previous: ObjectiveKind | undefined, rng: () => number): ObjectiveKind =>
+  pickFairObjectiveKind(previous ? [previous] : [], rng);
+
+export const nextObjectiveKind = (recent: readonly ObjectiveKind[], rng: () => number): ObjectiveKind => {
+  if (recent.length === 0) {
+    return OBJECTIVE.openingKind;
   }
-  return deck;
+  return pickFairObjectiveKind(recent, rng);
 };
 
-/** Consume the next kind from a shuffled deck, refilling when empty. */
-export const nextObjectiveKind = (queue: ObjectiveKind[], rng: () => number): ObjectiveKind => {
-  if (queue.length === 0) {
-    queue.push(...shuffleObjectiveKinds(rng));
-  }
-  return queue.shift() ?? OBJECTIVE.kinds[0] ?? 'capture_zone';
-};
+export const pickEventGapMs = (rng: () => number): number =>
+  OBJECTIVE.gapMinMs + rng() * (OBJECTIVE.gapMaxMs - OBJECTIVE.gapMinMs);

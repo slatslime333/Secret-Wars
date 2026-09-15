@@ -135,6 +135,7 @@ export class HealingShrineObjective implements MatchObjective {
       nearbyAllies: near[team],
       nearbyEnemies: near[team === 'alpha' ? 'bravo' : 'alpha'],
       urgency: Math.max(0, Math.min(1, urgency)),
+      remainingMs: this.started ? Math.max(0, this.endsAt - this.scene.time.now) : OBJECTIVE.shrine.durationMs,
     };
   }
 
@@ -153,6 +154,8 @@ export class HealingShrineObjective implements MatchObjective {
       alphaProgress: this.owner === 'alpha' ? 1 : 0,
       bravoProgress: this.owner === 'bravo' ? 1 : 0,
       barMode: 'single',
+      remainingMs: this.started ? Math.max(0, this.endsAt - this.scene.time.now) : OBJECTIVE.shrine.durationMs,
+      prompt: 'Hold the shrine to heal!',
     };
   }
 
@@ -188,7 +191,8 @@ export class HealingShrineObjective implements MatchObjective {
     this.gfx.strokeCircle(this.x, this.y, this.radius * 0.45);
     this.barFill.setFillStyle(color, 1);
     this.barFill.setSize(Math.max(2, 112 * left), 8);
-    this.barLabel.setText(label).setColor(hex(this.contested ? COLORS.orange : color));
+    const secs = Math.ceil(Math.max(0, this.endsAt - now) / 1000);
+    this.barLabel.setText(`${label}  ${secs}s`).setColor(hex(this.contested ? COLORS.orange : color));
     this.pedestal.setScale(1 + Math.sin(this.pulse * 0.01) * 0.03);
   }
 }

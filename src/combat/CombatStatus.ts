@@ -40,6 +40,15 @@ export class CombatStatus {
   private defenseMul = 1;
   private staminaRegenUntil = 0;
   private staminaRegenMul = 1;
+  private damageUntil = 0;
+  private damageMul = 1;
+  private knockbackUntil = 0;
+  private knockbackMul = 1;
+  private eventMoveMul = 1;
+  private eventAttackMul = 1;
+  private eventKnockbackMul = 1;
+  private carryMoveMul = 1;
+  private carryDamageMul = 1;
   private zone: AreaModifier = OPEN_ZONE;
   private lastSwingAt = -9999;
   private lastSwingStep: ComboStep = 1;
@@ -115,6 +124,12 @@ export class CombatStatus {
     if (now < this.staminaRegenUntil) {
       add('stam', formatMulStat(this.staminaRegenMul, 'STAM'), this.staminaRegenMul > 1);
     }
+    if (now < this.damageUntil) {
+      add('dmg', formatMulStat(this.damageMul, 'ATK'), this.damageMul > 1);
+    }
+    if (now < this.knockbackUntil) {
+      add('kb', formatMulStat(this.knockbackMul, 'KB'), this.knockbackMul > 1);
+    }
     if (now < this.crippleUntil && this.crippleAmount >= 0.04) {
       const pct = -Math.round(this.crippleAmount * 100);
       add('cripple-spd', formatSignedStat(pct, 'SPD'), false);
@@ -125,6 +140,21 @@ export class CombatStatus {
     }
     if (this.zone.attackSpeedMul !== 1) {
       add('zone-atk', formatMulStat(this.zone.attackSpeedMul, 'ATK SPD'), this.zone.attackSpeedMul > 1);
+    }
+    if (this.eventMoveMul !== 1) {
+      add('event-spd', formatMulStat(this.eventMoveMul, 'SPD'), this.eventMoveMul > 1);
+    }
+    if (this.eventAttackMul !== 1) {
+      add('event-atk', formatMulStat(this.eventAttackMul, 'ATK SPD'), this.eventAttackMul > 1);
+    }
+    if (this.eventKnockbackMul !== 1) {
+      add('event-kb', formatMulStat(this.eventKnockbackMul, 'KB'), this.eventKnockbackMul > 1);
+    }
+    if (this.carryMoveMul !== 1) {
+      add('carry-spd', formatMulStat(this.carryMoveMul, 'SPD'), this.carryMoveMul > 1);
+    }
+    if (this.carryDamageMul !== 1) {
+      add('carry-atk', formatMulStat(this.carryDamageMul, 'ATK'), this.carryDamageMul > 1);
     }
     return chips;
   }
@@ -209,6 +239,48 @@ export class CombatStatus {
     this.staminaRegenUntil = Math.max(this.staminaRegenUntil, until);
   }
 
+  applyDamageBuff(now: number, durationMs: number, mul: number): void {
+    this.damageUntil = now + durationMs;
+    this.damageMul = mul;
+  }
+
+  applyKnockbackBuff(now: number, durationMs: number, mul: number): void {
+    this.knockbackUntil = now + durationMs;
+    this.knockbackMul = mul;
+  }
+
+  setEventModifiers(modifiers: { moveMul?: number; attackSpeedMul?: number; knockbackMul?: number }): void {
+    this.eventMoveMul = modifiers.moveMul ?? 1;
+    this.eventAttackMul = modifiers.attackSpeedMul ?? 1;
+    this.eventKnockbackMul = modifiers.knockbackMul ?? 1;
+  }
+
+  clearEventModifiers(): void {
+    this.eventMoveMul = 1;
+    this.eventAttackMul = 1;
+    this.eventKnockbackMul = 1;
+  }
+
+  setCarryModifiers(modifiers: { moveMul?: number; damageMul?: number }): void {
+    this.carryMoveMul = modifiers.moveMul ?? 1;
+    this.carryDamageMul = modifiers.damageMul ?? 1;
+  }
+
+  clearCarryModifiers(): void {
+    this.carryMoveMul = 1;
+    this.carryDamageMul = 1;
+  }
+
+  damageMultiplier(now: number): number {
+    const timed = now < this.damageUntil ? this.damageMul : 1;
+    return timed * this.carryDamageMul;
+  }
+
+  knockbackMultiplier(now: number): number {
+    const timed = now < this.knockbackUntil ? this.knockbackMul : 1;
+    return timed * this.eventKnockbackMul;
+  }
+
   defenseMultiplier(now: number): number {
     return now < this.defenseUntil ? this.defenseMul : 1;
   }
@@ -225,6 +297,10 @@ export class CombatStatus {
     this.defenseMul = 1;
     this.staminaRegenUntil = 0;
     this.staminaRegenMul = 1;
+    this.damageUntil = 0;
+    this.damageMul = 1;
+    this.knockbackUntil = 0;
+    this.knockbackMul = 1;
   }
 
   applyParalyze(now: number, durationMs: number): void {
@@ -316,13 +392,14 @@ export class CombatStatus {
     const commit = now < this.commitSlowUntil ? this.commitSlowMul : 1;
     const haste = now < this.hasteUntil ? this.hasteMoveMul : 1;
     const cripple = now < this.crippleUntil ? 1 - this.crippleAmount : 1;
+    const eventMove = this.eventMoveMul * this.carryMoveMul;
     if (this.isBlockStunned(now) || this.isHitStopping(now)) {
-      return 0.2 * this.zone.moveMul * slow * commit * haste * cripple;
+      return 0.2 * this.zone.moveMul * eventMove * slow * commit * haste * cripple;
     }
     if (this.isHitReacting(now)) {
-      return COMBAT.hitMoveMultiplier * this.zone.moveMul * slow * commit * haste * cripple;
+      return COMBAT.hitMoveMultiplier * this.zone.moveMul * eventMove * slow * commit * haste * cripple;
     }
-    return this.zone.moveMul * slow * commit * haste * cripple;
+    return this.zone.moveMul * eventMove * slow * commit * haste * cripple;
   }
 
   extraSwingDelay(now: number): number {
@@ -341,6 +418,6 @@ export class CombatStatus {
     const haste = now < this.hasteUntil ? this.hasteAttackMul : 1;
     const debuff = now < this.asDebuffUntil ? this.asDebuffMul : 1;
     const cripple = now < this.crippleUntil ? 1 + this.crippleAmount : 1;
-    return (hitSlow * haste * debuff * cripple) / this.zone.attackSpeedMul;
+    return (hitSlow * haste * debuff * cripple) / (this.zone.attackSpeedMul * this.eventAttackMul);
   }
 }

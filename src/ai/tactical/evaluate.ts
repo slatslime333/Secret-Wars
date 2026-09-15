@@ -1222,6 +1222,13 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     count = write(out, count, 'escape', 24 + (self.hpRatio < 0.35 ? 8 : 0), 'shot incoming');
   }
 
+  const hazard = nearestIncomingHazard(situation, self);
+  if (hazard) {
+    const panic = 38 + personality.reactionQuality * 10 + (self.hpRatio < 0.4 ? 8 : 0);
+    count = write(out, count, 'reposition', panic, 'dodge meteor');
+    count = write(out, count, 'escape', 22 + (self.hpRatio < 0.35 ? 8 : 0), 'meteor incoming');
+  }
+
   if (kind === 'hero' && objIntel) {
     count = scoreObjective(out, count, situation, objIntel, team, risk, ranged, front, support, tune);
   }
@@ -1514,6 +1521,55 @@ const scoreObjective = (
     if (intel.occEnemies >= intel.occAllies + 2 && self.hpRatio < 0.5) {
       contest -= 12;
     }
+  } else if (intel.family === 'banner') {
+    const timeLeft = obj.remainingMs ?? 12_000;
+    contest += 8 + (1 - Math.min(1, timeLeft / 20_000)) * 16;
+    if (front) {
+      contest += 8;
+    }
+    if (support && obj.allyX !== undefined) {
+      contest += 8 + personality.protectionInstinct * 6;
+    }
+    if (intel.play === 'guard_banner') {
+      contest += 12 + personality.protectionInstinct * 8;
+    }
+    if (intel.play === 'hunt_banner' && self.hpRatio > 0.38) {
+      contest += 10 + personality.opportunism * 8;
+      if (self.heroId === 'shadow' || self.heroId === 'ninja' || self.heroId === 'demon') {
+        contest += 4;
+      }
+    }
+    if (intel.play === 'claim_banner' && intel.free) {
+      contest += 14;
+    }
+    if (intel.play === 'hold_back') {
+      contest -= 10;
+    }
+    if (ranged && intel.inside) {
+      contest -= 4;
+    }
+  } else if (intel.family === 'rage') {
+    contest -= 6;
+    if (self.hpRatio < 0.4) {
+      contest -= 16;
+    }
+    if (front && self.hpRatio > 0.45) {
+      contest += 10 + personality.aggression * 6;
+    }
+    if ((self.heroId === 'death' || self.heroId === 'shadow' || self.heroId === 'demon' || self.heroId === 'ninja') && self.hpRatio > 0.42) {
+      contest += 6;
+    }
+    if (ranged && d < obj.radius * 0.35) {
+      contest -= 5;
+    }
+    if (intel.play === 'hold_back') {
+      contest -= 12;
+    }
+  } else if (intel.family === 'hazard') {
+    contest -= 22;
+    if (intel.play === 'dodge_hazard') {
+      contest -= 8;
+    }
   }
   if (situation.lastSurvivor && intel.occEnemies >= 2) {
     contest -= 14;
@@ -1598,6 +1654,27 @@ const applyPlanBias = (
     count = write(out, count, 'reposition', 22, plan.reason);
   }
   return count;
+};
+
+const nearestIncomingHazard = (
+  situation: Situation,
+  self: CombatantView,
+): { dist: number; radius: number } | undefined => {
+  const hazards = situation.objective?.hazards;
+  if (!hazards || hazards.length === 0) {
+    return undefined;
+  }
+  let best: { dist: number; radius: number } | undefined;
+  for (const zone of hazards) {
+    const d = Math.hypot(self.x - zone.x, self.y - zone.y);
+    if (d > zone.radius + 22) {
+      continue;
+    }
+    if (!best || d < best.dist) {
+      best = { dist: d, radius: zone.radius };
+    }
+  }
+  return best;
 };
 
 export const pickScoredAction = (

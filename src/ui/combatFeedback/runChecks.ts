@@ -38,6 +38,8 @@ const scenarioCopy = (): FeedbackCheck[] => {
   const capture = describeObjectiveRewards({ kind: 'capture_zone' });
   const exec = describeObjectiveRewards({ kind: 'executioner' });
   const shrine = describeObjectiveRewards({ kind: 'healing_shrine' });
+  const banner = describeObjectiveRewards({ kind: 'war_banner' });
+  const meteor = describeObjectiveRewards({ kind: 'meteor_storm' });
   return [
     check('speed multiplier copy', slow === '-20% SPD' && haste === '+20% SPD', `${slow} / ${haste}`),
     check(
@@ -56,14 +58,18 @@ const scenarioCopy = (): FeedbackCheck[] => {
     ),
     check(
       'objective rewards use live tunables',
-      piggy.lines.includes('+1 LEVEL') &&
+      piggy.lines.includes('+25% LEVEL XP') &&
         piggy.lines.includes(`+${OBJECTIVE.scoreReward} SCORE`) &&
-        capture.lines.includes('+1 LEVEL') &&
-        bounty.lines.includes(`+${OBJECTIVE.bounty.levelReward} LEVELS`) &&
-        bounty.lines.includes('+30% SPD') &&
-        exec.lines.includes('+18% SPD') &&
-        shrine.lines.some((line) => line.includes(`${OBJECTIVE.shrine.healPerSecond}`)),
-      `piggy=${piggy.lines.join(',')} bounty=${bounty.lines.join(',')}`,
+        capture.lines.includes('+75% LEVEL XP') &&
+        capture.lines.some((line) => line.includes('+10% SPD')) &&
+        bounty.lines.includes('+1 LEVEL') &&
+        !bounty.lines.includes('+30% SPD') &&
+        exec.lines.includes('+10% SPD') &&
+        exec.lines.includes('+50% LEVEL XP') &&
+        shrine.lines.some((line) => line.includes(`${OBJECTIVE.shrine.healPerSecond}`)) &&
+        banner.lines.includes('+75% LEVEL XP') &&
+        meteor.lines.length === 0,
+      `piggy=${piggy.lines.join(',')} bounty=${bounty.lines.join(',')} capture=${capture.lines.join(',')}`,
     ),
   ];
 };

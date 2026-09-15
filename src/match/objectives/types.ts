@@ -10,6 +10,13 @@ export type ObjectiveState =
   | 'decaying'
   | 'complete';
 
+export type ObjectiveHazard = {
+  x: number;
+  y: number;
+  radius: number;
+  impactAt: number;
+};
+
 export type ObjectiveHint = {
   kind: ObjectiveKind;
   x: number;
@@ -31,6 +38,8 @@ export type ObjectiveHint = {
   allyY?: number;
   enemyX?: number;
   enemyY?: number;
+  remainingMs?: number;
+  hazards?: ObjectiveHazard[];
 };
 
 export type ObjectiveUiState = {
@@ -46,6 +55,8 @@ export type ObjectiveUiState = {
   alphaProgress: number;
   bravoProgress: number;
   barMode: 'single' | 'dual';
+  remainingMs?: number;
+  prompt?: string;
 };
 
 export type ObjectiveContext = {

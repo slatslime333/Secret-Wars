@@ -65,13 +65,15 @@ export const DEMON_HELL_BAT = {
 
 export const DEMON_RAGE = {
   lockMs: 1000,
-  durationMs: 11000,
+  durationMs: 15000,
   /** Meter needs 35% more damage to fill. */
   fillCostMul: 1.35,
   /** 20% of ability damage converts into rage, relative to the rating-50 ability hit. */
   abilityDamageToRage: 0.20,
   /** Restored when Big Demon form actually starts. */
   staminaOnActivate: 0.2,
+  /** Applied when the 1s transform pause ends and Big form begins. */
+  healOnActivate: 0.08,
 } as const;
 
 export const DEMON_CLAW = {

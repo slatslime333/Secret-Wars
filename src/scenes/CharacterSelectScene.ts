@@ -62,7 +62,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
 
     this.add
-      .text(width / 2, inset.top + (frame.isPortrait ? 22 : 28), 'DRAFT MATCH  //  3:00  //  THREE LANES', {
+      .text(width / 2, inset.top + (frame.isPortrait ? 22 : 28), 'DRAFT MATCH  //  4:00  //  THREE LANES', {
         fontFamily: FONTS.body,
         fontSize: frame.isPortrait ? '10px' : '12px',
         fontStyle: 'bold',

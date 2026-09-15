@@ -61,6 +61,37 @@ export class CombatFeedback {
     });
   }
 
+  xpGain(amount: number): void {
+    const value = Math.round(amount);
+    if (value <= 0) {
+      return;
+    }
+    const scene = this.scene;
+    const x = this.anchor.x || scene.scale.width * 0.22;
+    const y = this.anchor.y || scene.scale.height * 0.18;
+    const label = scene.add
+      .text(x + 12, y - 10, `+${value} XP`, {
+        fontFamily: FONTS.display,
+        fontSize: '18px',
+        color: hex(COLORS.yellow),
+        letterSpacing: 1,
+        stroke: hex(COLORS.ink),
+        strokeThickness: 6,
+      })
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(209);
+    adoptHud(scene, label);
+    scene.tweens.add({
+      targets: label,
+      y: y - 36,
+      alpha: 0,
+      duration: 720,
+      ease: 'Quad.easeOut',
+      onComplete: () => label.destroy(),
+    });
+  }
+
   destroy(): void {
     this.queue.length = 0;
     this.playing = false;

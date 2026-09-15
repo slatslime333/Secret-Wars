@@ -204,6 +204,8 @@ export class TacticalMind {
             huntY: this.situation.objective.enemyY,
             guardX: this.situation.objective.allyX,
             guardY: this.situation.objective.allyY,
+            remainingMs: this.situation.objective.remainingMs,
+            hazards: this.situation.objective.hazards,
           }
         : undefined,
     };
@@ -606,6 +608,8 @@ export class TacticalMind {
         intent.action === 'search_for_target';
       const freeish =
         live.kind !== 'bounty_target' &&
+        live.kind !== 'meteor_storm' &&
+        live.kind !== 'rage_zone' &&
         live.occupyingEnemies === 0 &&
         live.nearbyEnemies === 0 &&
         !live.contested;

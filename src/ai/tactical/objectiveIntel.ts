@@ -1,7 +1,7 @@
 import { OBJECTIVE, type ObjectiveKind } from '../../config/objective';
 import type { CombatantView, Situation } from './types';
 
-export type ObjectiveFamily = 'capture' | 'destroy' | 'shrine' | 'bounty';
+export type ObjectiveFamily = 'capture' | 'destroy' | 'shrine' | 'bounty' | 'banner' | 'rage' | 'hazard';
 
 export type ObjectivePlay =
   | 'free_take'
@@ -15,7 +15,12 @@ export type ObjectivePlay =
   | 'pressure_defenders'
   | 'heal'
   | 'hunt_bounty'
-  | 'guard_bounty';
+  | 'guard_bounty'
+  | 'claim_banner'
+  | 'guard_banner'
+  | 'hunt_banner'
+  | 'use_rage'
+  | 'dodge_hazard';
 
 export type ObjectiveIntel = {
   family: ObjectiveFamily;
@@ -53,7 +58,7 @@ export type ObjectiveIntel = {
   debug: string;
 };
 
-const ZONE: ReadonlySet<ObjectiveKind> = new Set(['capture_zone', 'healing_shrine']);
+const ZONE: ReadonlySet<ObjectiveKind> = new Set(['capture_zone', 'healing_shrine', 'rage_zone']);
 const DESTROY: ReadonlySet<ObjectiveKind> = new Set(['golden_piggy', 'executioner']);
 
 const clamp = (n: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, n));
@@ -69,6 +74,15 @@ export const familyOf = (kind: ObjectiveKind): ObjectiveFamily => {
   }
   if (kind === 'bounty_target') {
     return 'bounty';
+  }
+  if (kind === 'war_banner') {
+    return 'banner';
+  }
+  if (kind === 'rage_zone') {
+    return 'rage';
+  }
+  if (kind === 'meteor_storm') {
+    return 'hazard';
   }
   return 'destroy';
 };
@@ -99,6 +113,15 @@ const occupancyRadius = (kind: ObjectiveKind, radius: number): number => {
   if (kind === 'bounty_target') {
     return 56;
   }
+  if (kind === 'war_banner') {
+    return radius + 36;
+  }
+  if (kind === 'rage_zone') {
+    return radius;
+  }
+  if (kind === 'meteor_storm') {
+    return radius + 24;
+  }
   return radius;
 };
 
@@ -113,9 +136,11 @@ export const assessObjective = (
   const { self, allies, enemies, personality } = situation;
   const family = familyOf(obj.kind);
   const focusPoint =
-    family === 'bounty' && obj.enemyX !== undefined
+    (family === 'bounty' || family === 'banner') && obj.enemyX !== undefined
       ? { x: obj.enemyX, y: obj.enemyY ?? obj.y }
-      : { x: obj.x, y: obj.y };
+      : family === 'banner' && obj.allyX !== undefined && obj.owner === self.team
+        ? { x: obj.allyX, y: obj.allyY ?? obj.y }
+        : { x: obj.x, y: obj.y };
   const dist = hypot(self.x, self.y, focusPoint.x, focusPoint.y);
   const speed = Math.max(90, self.moveSpeed);
   const travelMs = (dist / speed) * 1000;
@@ -165,7 +190,7 @@ export const assessObjective = (
       approachingEnemies.push(enemy);
     }
   }
-  if (family === 'bounty' && obj.enemyX !== undefined) {
+  if ((family === 'bounty' || family === 'banner') && obj.enemyX !== undefined) {
     const marked = visibleEnemies.find(
       (enemy) => hypot(enemy.x, enemy.y, obj.enemyX ?? enemy.x, obj.enemyY ?? enemy.y) < 56,
     );
@@ -173,7 +198,7 @@ export const assessObjective = (
       focus = marked;
     }
   }
-  if (family === 'bounty' && obj.allyX !== undefined) {
+  if ((family === 'bounty' || family === 'banner') && obj.allyX !== undefined) {
     const markedAlly = heroAllies.find(
       (friend) => hypot(friend.x, friend.y, obj.allyX ?? friend.x, obj.allyY ?? friend.y) < 56,
     );
@@ -262,6 +287,28 @@ export const assessObjective = (
     if (self.hpRatio > 0.82 && !contested) {
       urgency *= 0.55;
     }
+  } else if (family === 'banner') {
+    const timeLeft = obj.remainingMs ?? 12_000;
+    urgency = 0.36 + (1 - Math.min(1, timeLeft / 20_000)) * 0.4;
+    if (obj.owner && obj.owner !== self.team) {
+      urgency += 0.12;
+    }
+    if (timeLeft < 6_000) {
+      urgency = Math.max(urgency, 0.82);
+    }
+    if (dangerous && self.hpRatio < 0.3) {
+      urgency *= 0.55;
+    }
+  } else if (family === 'rage') {
+    urgency = 0.2 + personality.aggression * 0.12;
+    if (self.hpRatio < 0.38) {
+      urgency *= 0.4;
+    }
+    if (inside && self.hpRatio > 0.4) {
+      urgency = Math.max(urgency, 0.34);
+    }
+  } else if (family === 'hazard') {
+    urgency = 0.12;
   } else {
     urgency = obj.urgency;
   }
@@ -348,7 +395,7 @@ export const assessObjective = (
       play = 'hold_back';
       reason = 'shrine is optional';
     }
-  } else {
+  } else if (family === 'bounty') {
     const selfMarked =
       obj.allyX !== undefined && hypot(obj.allyX, obj.allyY ?? self.y, self.x, self.y) < 48;
     if (selfMarked) {
@@ -361,6 +408,52 @@ export const assessObjective = (
       play = 'hunt_bounty';
       reason = 'hunt the bounty';
     }
+  } else if (family === 'banner') {
+    const selfCarry =
+      obj.allyX !== undefined && hypot(obj.allyX, obj.allyY ?? self.y, self.x, self.y) < 40;
+    if (selfCarry) {
+      play = 'guard_banner';
+      reason = 'carry the banner';
+    } else if (obj.owner === self.team && ally) {
+      play = 'guard_banner';
+      reason = 'protect the carrier';
+    } else if (obj.owner && obj.owner !== self.team) {
+      if (dangerous && self.hpRatio < 0.32) {
+        play = 'hold_back';
+        reason = 'carrier too protected';
+      } else {
+        play = 'hunt_banner';
+        reason = 'steal the banner';
+      }
+    } else if (dangerous && self.hpRatio < 0.3) {
+      play = 'hold_back';
+      reason = 'banner is unsafe';
+    } else {
+      play = 'claim_banner';
+      reason = 'claim the banner';
+    }
+  } else if (family === 'rage') {
+    if (self.hpRatio < personality.retreatHp + 0.08) {
+      play = 'hold_back';
+      reason = 'rage zone is optional';
+    } else if (dangerous && personality.caution > 0.6) {
+      play = 'hold_back';
+      reason = 'not worth the rage zone';
+    } else {
+      play = 'use_rage';
+      reason = 'fight in the rage zone';
+    }
+  } else if (family === 'hazard') {
+    const hazard = (obj.hazards ?? []).find(
+      (zone) => hypot(self.x, self.y, zone.x, zone.y) < zone.radius + 20,
+    );
+    if (hazard) {
+      play = 'dodge_hazard';
+      reason = 'dodge the meteor';
+    } else {
+      play = 'hold_back';
+      reason = 'watch the meteors';
+    }
   }
 
   const kindLabel =
@@ -372,7 +465,13 @@ export const assessObjective = (
           ? 'executioner'
           : obj.kind === 'healing_shrine'
             ? 'shrine'
-            : 'bounty';
+            : obj.kind === 'war_banner'
+              ? 'banner'
+              : obj.kind === 'rage_zone'
+                ? 'rage'
+                : obj.kind === 'meteor_storm'
+                  ? 'meteor'
+                  : 'bounty';
 
   return {
     family,

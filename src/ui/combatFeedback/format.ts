@@ -59,6 +59,9 @@ const TITLE: Record<ObjectiveKind, string> = {
   bounty_target: 'OBJECTIVE COMPLETE!',
   healing_shrine: 'OBJECTIVE COMPLETE!',
   executioner: 'OBJECTIVE COMPLETE!',
+  war_banner: 'OBJECTIVE COMPLETE!',
+  rage_zone: 'OBJECTIVE COMPLETE!',
+  meteor_storm: 'OBJECTIVE COMPLETE!',
 };
 
 export type ObjectiveRewardContext = {
@@ -67,29 +70,25 @@ export type ObjectiveRewardContext = {
   assassinBonus?: boolean;
 };
 
+const xpShareLine = (fraction: number): string => `+${Math.round(fraction * 100)}% LEVEL XP`;
+
 export const describeObjectiveRewards = (ctx: ObjectiveRewardContext): ObjectiveRewardView => {
   const lines: string[] = [];
   switch (ctx.kind) {
-    case 'capture_zone':
-      lines.push('+1 LEVEL');
+    case 'capture_zone': {
+      lines.push(xpShareLine(OBJECTIVE.capture.xpShare));
+      const spd = formatMulStat(OBJECTIVE.capture.moveMul, 'SPD');
+      if (spd) {
+        lines.push(`${spd}  10s`);
+      }
       break;
+    }
     case 'golden_piggy':
-      lines.push('+1 LEVEL');
+      lines.push(xpShareLine(OBJECTIVE.piggy.xpShare));
       lines.push(`+${OBJECTIVE.scoreReward} SCORE`);
       break;
     case 'bounty_target':
-      lines.push(`+${OBJECTIVE.bounty.levelReward} LEVELS`);
-      if (ctx.assassinBonus) {
-        lines.push('FULL HEAL');
-        const spd = formatMulStat(OBJECTIVE.bounty.moveMul, 'SPD');
-        const atk = formatMulStat(OBJECTIVE.bounty.attackMul, 'ATK SPD');
-        if (spd) {
-          lines.push(spd);
-        }
-        if (atk) {
-          lines.push(atk);
-        }
-      }
+      lines.push(`+${OBJECTIVE.bounty.levelReward} LEVEL`);
       break;
     case 'healing_shrine':
       lines.push(`HEAL ${OBJECTIVE.shrine.healPerSecond}/S WHILE HELD`);
@@ -107,8 +106,16 @@ export const describeObjectiveRewards = (ctx: ObjectiveRewardContext): Objective
       if (stam) {
         lines.push(stam);
       }
+      lines.push(xpShareLine(OBJECTIVE.executioner.xpShare));
       break;
     }
+    case 'war_banner':
+      lines.push(xpShareLine(OBJECTIVE.banner.xpShare));
+      lines.push(`+${OBJECTIVE.scoreReward} SCORE`);
+      break;
+    case 'rage_zone':
+    case 'meteor_storm':
+      break;
   }
   return { title: TITLE[ctx.kind], lines };
 };

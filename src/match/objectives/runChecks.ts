@@ -1,8 +1,18 @@
-import { canStartObjective, nextObjectiveKind, OBJECTIVE, pickObjectiveKind, pickObjectiveStartAt } from '../../config/objective';
+import {
+  canStartObjective,
+  nextObjectiveKind,
+  OBJECTIVE,
+  pickEventGapMs,
+  pickFairObjectiveKind,
+  pickObjectiveKind,
+  pickObjectiveStartAt,
+} from '../../config/objective';
+import { MATCH, xpToNextLevel } from '../../config/match';
 import { COLE_CONVERTED_RANGE } from '../../config/cole';
 import { emptyCapture, tickCapture } from './captureLogic';
 import { shrineControlOf } from './shrineLogic';
 import { pickBountyTargets } from './bountyPick';
+import { xpShareOfCurrentLevel } from './rewards';
 import type { HeroRuntime } from '../HeroRuntime';
 
 export type CheckResult = { name: string; ok: boolean; detail: string };
@@ -17,77 +27,103 @@ const rngOf = (values: number[]): (() => number) => {
 };
 
 const scenarioTimingWindow = (): CheckResult => {
-  const tooEarly = canStartObjective(19_999, 0, false);
-  const firstOk = canStartObjective(20_000, 0, false);
-  const lastOk = canStartObjective(139_999, 0, false);
-  const tooLate = canStartObjective(140_000, 0, false);
+  const tooEarly = canStartObjective(4_999, 0, false);
+  const firstOk = canStartObjective(5_000, 0, false);
+  const lateOk = canStartObjective(239_000, 0, false);
   const overlap = canStartObjective(60_000, 0, true);
-  const cooling = canStartObjective(90_000, 100_000, false);
-  const ok = !tooEarly && firstOk && lastOk && !tooLate && !overlap && !cooling;
+  const cooling = !canStartObjective(90_000, 100_000, false);
+  const ok = !tooEarly && firstOk && lateOk && !overlap && cooling;
   return {
     name: 'objective start window',
     ok,
-    detail: `early=${tooEarly} start=${firstOk} last=${lastOk} late=${tooLate} overlap=${overlap} cool=${cooling}`,
+    detail: `early=${tooEarly} start=${firstOk} late=${lateOk} overlap=${overlap} cool=${cooling}`,
   };
 };
 
 const scenarioRandomStart = (): CheckResult => {
-  const a = pickObjectiveStartAt(0, OBJECTIVE.latestStartMs, rngOf([0]));
-  const b = pickObjectiveStartAt(0, OBJECTIVE.latestStartMs, rngOf([0.999]));
-  const afterCool = pickObjectiveStartAt(120_000, OBJECTIVE.latestStartMs, rngOf([0.4]));
-  const none = pickObjectiveStartAt(140_000, OBJECTIVE.latestStartMs, rngOf([0.2]));
+  const a = pickObjectiveStartAt(OBJECTIVE.earliestStartMs, OBJECTIVE.openingLatestMs, rngOf([0]));
+  const b = pickObjectiveStartAt(OBJECTIVE.earliestStartMs, OBJECTIVE.openingLatestMs, rngOf([0.999]));
+  const late = pickObjectiveStartAt(200_000, MATCH.durationMs, rngOf([0.4]));
+  const none = pickObjectiveStartAt(MATCH.durationMs, MATCH.durationMs, rngOf([0.2]));
   const ok =
     a === OBJECTIVE.earliestStartMs &&
     b !== undefined &&
-    b < OBJECTIVE.latestStartMs &&
-    afterCool !== undefined &&
-    afterCool >= 120_000 &&
+    b < OBJECTIVE.openingLatestMs &&
+    late !== undefined &&
+    late >= 200_000 &&
     none === undefined;
   return {
     name: 'objective random start',
     ok,
-    detail: `a=${a} b=${b?.toFixed(0)} cool=${afterCool?.toFixed(0)} none=${none}`,
+    detail: `a=${a} b=${b?.toFixed(0)} late=${late?.toFixed(0)} none=${none}`,
   };
 };
 
 const scenarioKindReroll = (): CheckResult => {
-  const first = pickObjectiveKind(undefined, rngOf([0.1]));
-  const same = pickObjectiveKind('capture_zone', rngOf([0.9, 0.1]));
-  const other = pickObjectiveKind('capture_zone', rngOf([0.1, 0.1]));
-  const ok = Boolean(first) && same === 'capture_zone' && other === 'golden_piggy';
-  return { name: 'objective kind variety', ok, detail: `first=${first} same=${same} other=${other}` };
+  const first = nextObjectiveKind([], rngOf([0.1]));
+  const same = pickFairObjectiveKind(['capture_zone'], rngOf([0]));
+  const other = pickObjectiveKind('capture_zone', rngOf([0]));
+  const ok = first === 'capture_zone' && same !== 'capture_zone' && other !== 'capture_zone';
+  return { name: 'opening capture then fair anti-repeat', ok, detail: `first=${first} same=${same} other=${other}` };
 };
 
 const scenarioEventPool = (): CheckResult => {
-  const expected = ['capture_zone', 'golden_piggy', 'bounty_target', 'healing_shrine', 'executioner'];
+  const expected = [
+    'capture_zone',
+    'golden_piggy',
+    'bounty_target',
+    'healing_shrine',
+    'executioner',
+    'war_banner',
+    'rage_zone',
+    'meteor_storm',
+  ];
   const ok =
-    OBJECTIVE.kinds.length === 5 &&
+    OBJECTIVE.kinds.length === 8 &&
     expected.every((kind) => (OBJECTIVE.kinds as readonly string[]).includes(kind));
   return { name: 'objective event pool', ok, detail: OBJECTIVE.kinds.join(',') };
 };
 
 const scenarioPiggyReward = (): CheckResult => {
-  const ok = OBJECTIVE.scoreReward === 1;
-  return { name: 'piggy bank team score is +1', ok, detail: `score=${OBJECTIVE.scoreReward}` };
+  const ok = OBJECTIVE.scoreReward === 1 && OBJECTIVE.piggy.xpShare === 0.25;
+  return { name: 'piggy bank team score is +1 with 25% XP', ok, detail: `score=${OBJECTIVE.scoreReward} xp=${OBJECTIVE.piggy.xpShare}` };
 };
 
 const scenarioBuffDurations = (): CheckResult => {
   const ok =
-    OBJECTIVE.bounty.buffMs === 20_000 &&
-    OBJECTIVE.bounty.moveMul === 1.3 &&
-    OBJECTIVE.bounty.attackMul === 1.3 &&
-    OBJECTIVE.bounty.levelReward === 2 &&
+    OBJECTIVE.bounty.levelReward === 1 &&
     OBJECTIVE.shrine.durationMs === 20_000 &&
-    OBJECTIVE.executioner.buffMs === 20_000 &&
-    OBJECTIVE.executioner.moveMul === 1.18 &&
-    OBJECTIVE.executioner.attackMul === 1.18 &&
-    OBJECTIVE.executioner.staminaMul === 1.18 &&
+    OBJECTIVE.shrine.healPerSecond === 7 &&
+    OBJECTIVE.executioner.buffMs === 10_000 &&
+    OBJECTIVE.executioner.moveMul === 1.1 &&
+    OBJECTIVE.executioner.attackMul === 1.1 &&
+    OBJECTIVE.executioner.staminaMul === 1.1 &&
+    OBJECTIVE.executioner.xpShare === 0.5 &&
+    OBJECTIVE.capture.xpShare === 0.75 &&
+    OBJECTIVE.capture.moveMul === 1.1 &&
+    OBJECTIVE.banner.durationMs === 20_000 &&
+    OBJECTIVE.banner.claimMs === 3_000 &&
+    OBJECTIVE.rage.moveMul === 1.4 &&
+    OBJECTIVE.meteor.durationMs === 15_000 &&
     OBJECTIVE.executioner.attackMs >= 1_200 &&
     OBJECTIVE.executioner.moveSpeed < 120;
   return {
     name: 'event reward tunables',
     ok,
-    detail: `bountyLv=${OBJECTIVE.bounty.levelReward} shrine=${OBJECTIVE.shrine.durationMs} execAtk=${OBJECTIVE.executioner.attackMs}`,
+    detail: `bountyLv=${OBJECTIVE.bounty.levelReward} shrine=${OBJECTIVE.shrine.healPerSecond}/s execAtk=${OBJECTIVE.executioner.attackMs}`,
+  };
+};
+
+const scenarioXpShare = (): CheckResult => {
+  const need = xpToNextLevel(4);
+  const share75 = xpShareOfCurrentLevel(4, 0.75);
+  const share25 = xpShareOfCurrentLevel(4, 0.25);
+  const share50 = xpShareOfCurrentLevel(4, 0.5);
+  const ok = need === 154 && share75 === 116 && share25 === 39 && share50 === 77;
+  return {
+    name: 'current-level XP share rounding',
+    ok,
+    detail: `need=${need} 75%=${share75} 25%=${share25} 50%=${share50}`,
   };
 };
 
@@ -126,37 +162,54 @@ const scenarioBountyPick = (): CheckResult => {
   };
 };
 
-const scenarioKindDeck = (): CheckResult => {
-  const queue: Array<(typeof OBJECTIVE.kinds)[number]> = [];
-  const firstCycle = new Set<string>();
-  for (let i = 0; i < OBJECTIVE.kinds.length; i += 1) {
-    firstCycle.add(nextObjectiveKind(queue, rngOf([0.2, 0.8, 0.4, 0.6])));
+const scenarioFairKinds = (): CheckResult => {
+  const counts: Record<string, number> = {};
+  for (const kind of OBJECTIVE.kinds) {
+    counts[kind] = 0;
   }
-  const second = nextObjectiveKind(queue, rngOf([0.3]));
-  const ok = firstCycle.size === OBJECTIVE.kinds.length && OBJECTIVE.kinds.includes(second);
+  let repeats = 0;
+  let prev: (typeof OBJECTIVE.kinds)[number] | undefined;
+  const recent: Array<(typeof OBJECTIVE.kinds)[number]> = ['capture_zone'];
+  for (let i = 0; i < 400; i += 1) {
+    const kind = pickFairObjectiveKind(recent, Math.random);
+    counts[kind] = (counts[kind] ?? 0) + 1;
+    if (kind === prev) {
+      repeats += 1;
+    }
+    prev = kind;
+    recent.push(kind);
+    if (recent.length > 4) {
+      recent.shift();
+    }
+  }
+  const values = Object.values(counts);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const ok = repeats === 0 && min > 20 && max < 90 && values.length === 8;
   return {
-    name: 'objective kind deck covers every registered event',
+    name: 'fair event selector is unpredictable',
     ok,
-    detail: `cycle=${[...firstCycle].join(',')} next=${second} kinds=${OBJECTIVE.kinds.join(',')}`,
+    detail: `repeats=${repeats} min=${min} max=${max} counts=${JSON.stringify(counts)}`,
   };
 };
 
-const scenarioFirstEventFitsSecond = (): CheckResult => {
-  const firstHi = pickObjectiveStartAt(OBJECTIVE.earliestStartMs, OBJECTIVE.firstLatestStartMs, rngOf([0.999]));
-  const afterCaptureCool = (OBJECTIVE.firstLatestStartMs - 1) + OBJECTIVE.capture.captureMs + OBJECTIVE.cooldownMs;
-  const second = pickObjectiveStartAt(afterCaptureCool, Math.min(afterCaptureCool + 8_000, OBJECTIVE.latestStartMs), rngOf([0]));
-  const tooLateFirst = pickObjectiveStartAt(OBJECTIVE.firstLatestStartMs, OBJECTIVE.firstLatestStartMs, rngOf([0.2]));
+const scenarioOpeningAndGap = (): CheckResult => {
+  const opening = OBJECTIVE.openingAtMs;
+  const gapLo = pickEventGapMs(() => 0);
+  const gapHi = pickEventGapMs(() => 0.999);
+  const noCutoff = OBJECTIVE.latestStartMs === MATCH.durationMs;
   const ok =
-    firstHi !== undefined &&
-    firstHi < OBJECTIVE.firstLatestStartMs &&
-    afterCaptureCool < OBJECTIVE.latestStartMs &&
-    second !== undefined &&
-    second >= afterCaptureCool &&
-    tooLateFirst === undefined;
+    opening === 5_000 &&
+    opening < OBJECTIVE.openingLatestMs &&
+    gapLo === OBJECTIVE.gapMinMs &&
+    gapHi > OBJECTIVE.gapMinMs &&
+    gapHi <= OBJECTIVE.gapMaxMs &&
+    noCutoff &&
+    MATCH.durationMs === 240_000;
   return {
-    name: 'first event leaves room for every other kind',
+    name: 'opening capture and short gaps, no late cutoff',
     ok,
-    detail: `firstHi=${firstHi?.toFixed(0)} coolDone=${afterCaptureCool} second=${second?.toFixed(0)} none=${tooLateFirst}`,
+    detail: `open=${opening} gap=${gapLo}-${gapHi.toFixed(0)} latest=${OBJECTIVE.latestStartMs} match=${MATCH.durationMs}`,
   };
 };
 
@@ -170,33 +223,28 @@ const scenarioCaptureRadius = (): CheckResult => {
   };
 };
 
-const scenarioSecondEventWindow = (): CheckResult => {
-  const afterFirst = pickObjectiveStartAt(20_000 + 60_000, OBJECTIVE.latestStartMs, rngOf([0.5]));
-  const tooLateForSecond = pickObjectiveStartAt(140_000, OBJECTIVE.latestStartMs, rngOf([0.2]));
-  const coolBlocks = !canStartObjective(70_000, 80_000, false);
-  const afterCool = canStartObjective(80_000, 80_000, false);
-  const ok = afterFirst !== undefined && afterFirst >= 80_000 && tooLateForSecond === undefined && coolBlocks && afterCool;
+const scenarioNoOldCooldown = (): CheckResult => {
+  const afterFirst = canStartObjective(8_000, 7_500, false);
+  const stillCool = !canStartObjective(7_000, 7_500, false);
+  const ok = afterFirst && stillCool && OBJECTIVE.gapMaxMs < 10_000;
   return {
-    name: 'second event after 60s cooldown',
+    name: 'no 60s global event cooldown',
     ok,
-    detail: `next=${afterFirst?.toFixed(0)} none=${tooLateForSecond} coolBlocks=${coolBlocks} afterCool=${afterCool}`,
+    detail: `afterFirst=${afterFirst} stillCool=${stillCool} gapMax=${OBJECTIVE.gapMaxMs}`,
   };
 };
 
 const scenarioCaptureRules = (): CheckResult => {
   let snap = emptyCapture();
-  // One player captures at the same speed as three — 20s to finish.
   snap = tickCapture(snap, { alpha: 1, bravo: 0 }, 10_000).snap;
   const one = snap.progress;
   snap = emptyCapture();
   snap = tickCapture(snap, { alpha: 3, bravo: 0 }, 10_000).snap;
   const three = snap.progress;
   const finish = tickCapture(emptyCapture(), { alpha: 1, bravo: 0 }, 20_000);
-  // Contested freezes.
   let held = tickCapture(emptyCapture(), { alpha: 1, bravo: 0 }, 8_000).snap;
   held = tickCapture(held, { alpha: 1, bravo: 1 }, 5_000).snap;
   const contested = held.phase === 'contested' && Math.abs(held.progress - 0.4) < 0.001;
-  // Leave: 5s grace keeps progress, then decay.
   let left = tickCapture(emptyCapture(), { alpha: 1, bravo: 0 }, 10_000).snap;
   left = tickCapture(left, { alpha: 0, bravo: 0 }, 16).snap;
   const grace = left.phase === 'grace' && Math.abs(left.progress - 0.5) < 0.001;
@@ -204,7 +252,6 @@ const scenarioCaptureRules = (): CheckResult => {
   const afterGrace = left.phase === 'decaying';
   left = tickCapture(left, { alpha: 0, bravo: 0 }, 5_000).snap;
   const decayed = left.progress < 0.5;
-  // Return during grace preserves and resumes.
   let back = tickCapture(emptyCapture(), { alpha: 1, bravo: 0 }, 10_000).snap;
   back = tickCapture(back, { alpha: 0, bravo: 0 }, 16).snap;
   back = tickCapture(back, { alpha: 1, bravo: 0 }, 2_000).snap;
@@ -231,13 +278,14 @@ export const runObjectiveChecks = (): CheckResult[] => [
   scenarioRandomStart(),
   scenarioKindReroll(),
   scenarioEventPool(),
-  scenarioKindDeck(),
-  scenarioFirstEventFitsSecond(),
+  scenarioFairKinds(),
+  scenarioOpeningAndGap(),
   scenarioCaptureRadius(),
-  scenarioSecondEventWindow(),
+  scenarioNoOldCooldown(),
   scenarioCaptureRules(),
   scenarioPiggyReward(),
   scenarioBuffDurations(),
+  scenarioXpShare(),
   scenarioShrineContest(),
   scenarioBountyPick(),
 ];

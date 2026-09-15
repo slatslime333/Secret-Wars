@@ -4,7 +4,6 @@ import type { TeamId } from '../../config/hero';
 import { COLORS, FONTS, hex } from '../../ui/theme';
 import { audio } from '../../audio';
 import type { HeroRuntime } from '../HeroRuntime';
-import type { XpOrbWorld } from '../XpOrbWorld';
 import { emptyCapture, tickCapture, type CaptureSnap } from './captureLogic';
 import type { MatchObjective, ObjectiveCompleteEvent, ObjectiveContext, ObjectiveHint, ObjectiveUiState } from './types';
 
@@ -17,8 +16,6 @@ export type CaptureZoneDeps = {
   scene: Phaser.Scene;
   x: number;
   y: number;
-  orbs: XpOrbWorld;
-  grantLevel: (hero: HeroRuntime) => void;
 };
 
 export class CaptureZoneObjective implements MatchObjective {
@@ -27,8 +24,6 @@ export class CaptureZoneObjective implements MatchObjective {
   readonly y: number;
   readonly radius = OBJECTIVE.capture.radius;
   private readonly scene: Phaser.Scene;
-  private readonly orbs: XpOrbWorld;
-  private readonly grantLevel: (hero: HeroRuntime) => void;
   private readonly gfx: Phaser.GameObjects.Graphics;
   private readonly fill: Phaser.GameObjects.Arc;
   private readonly ring: Phaser.GameObjects.Arc;
@@ -44,8 +39,6 @@ export class CaptureZoneObjective implements MatchObjective {
     this.scene = deps.scene;
     this.x = deps.x;
     this.y = deps.y;
-    this.orbs = deps.orbs;
-    this.grantLevel = deps.grantLevel;
     this.gfx = deps.scene.add.graphics().setDepth(6);
     this.fill = deps.scene.add.circle(this.x, this.y, this.radius, 0xf6f1de, 0.1).setDepth(5);
     this.ring = deps.scene.add.circle(this.x, this.y, this.radius, 0xf6f1de, 0).setDepth(6);
@@ -97,7 +90,6 @@ export class CaptureZoneObjective implements MatchObjective {
     this.redraw(ctx.now);
     if (result.capturedBy && !this.awarded) {
       this.awarded = true;
-      this.grantTeam(result.capturedBy, ctx.heroes);
       audio.play('objective-complete');
       this.burst(result.capturedBy);
       return { kind: this.kind, winner: result.capturedBy };
@@ -154,6 +146,7 @@ export class CaptureZoneObjective implements MatchObjective {
       alphaProgress: this.snap.owner === 'alpha' ? this.snap.progress : 0,
       bravoProgress: this.snap.owner === 'bravo' ? this.snap.progress : 0,
       barMode: 'single',
+      prompt: 'Control the zone!',
     };
   }
 
@@ -175,21 +168,6 @@ export class CaptureZoneObjective implements MatchObjective {
       }
     }
     return occ;
-  }
-
-  private grantTeam(team: TeamId, heroes: readonly HeroRuntime[]): void {
-    let granted = false;
-    for (const hero of heroes) {
-      if (hero.team !== team || !hero.alive || hero.progression.atCap) {
-        continue;
-      }
-      this.grantLevel(hero);
-      this.orbs.spawn(this.x, this.y, hero.body, 0, team, { visual: true });
-      granted = true;
-    }
-    if (granted) {
-      audio.play('ui-level-up');
-    }
   }
 
   private burst(team: TeamId): void {

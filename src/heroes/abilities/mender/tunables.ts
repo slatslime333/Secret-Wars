@@ -26,7 +26,7 @@ export const MENDER_PULSE = {
 } as const;
 
 export const MENDER_ANGEL = {
-  cooldownMs: 8000,
+  cooldownMs: 9000,
   durationMs: 4000,
   speed: COLE_BALL.speed,
   radius: 18,
@@ -49,11 +49,11 @@ export const MENDER_SOUL = {
   dashDistance: NINJA_KICK.dashDistance,
   dashDurationMs: NINJA_KICK.dashDurationMs,
   pathPadding: 10,
-  buffMs: 8000,
+  buffMs: 7000,
   healMaxHp: 0.15,
-  moveMul: 1.2,
-  attackSpeedMul: 1.2,
-  staminaRegenMul: 1.2,
+  moveMul: 1.15,
+  attackSpeedMul: 1.15,
+  staminaRegenMul: 1.06,
   backflipMs: NINJA_KICK.backflipMs,
   backflipDistance: NINJA_KICK.backflipDistance,
   jumpHeight: NINJA_KICK.jumpHeight,

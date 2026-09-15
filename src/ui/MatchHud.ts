@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { isTouchPrimary } from '../device';
+import { MATCH } from '../config/match';
 import { formatMatchClock } from '../match/MatchManager';
 import type { MatchSnapshot } from '../match/MatchManager';
 import type { TeamScore } from '../match/ScoreManager';
@@ -24,7 +25,7 @@ export class MatchHud {
   constructor(scene: Phaser.Scene) {
     const width = scene.scale.width;
     this.timer = scene.add
-      .text(width / 2, 46, '3:00', {
+      .text(width / 2, 46, formatMatchClock(MATCH.durationMs, 'PLAYING'), {
         fontFamily: FONTS.display,
         fontSize: '22px',
         color: hex(COLORS.paper),

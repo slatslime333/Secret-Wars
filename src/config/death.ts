@@ -12,12 +12,12 @@ import { gameplayFromRatings, type CoreRatings, MELEE_BASE_RANGE } from './ratin
  * that the live character does not have.
  */
 export const DEATH_RATINGS = {
-  health: 72,
-  stamina: 73,
-  staminaRegen: 50,
-  damage: 75,
-  defense: 75,
-  speed: 30,
+  health: 69,
+  stamina: 65,
+  staminaRegen: 49,
+  damage: 70,
+  defense: 70,
+  speed: 28,
   attackSpeed: 77,
   attackRange: 54,
   knockback: 60,
@@ -33,7 +33,6 @@ export const DEATH = {
   attackRange: Math.round(MELEE_BASE_RANGE * 1.15 * 1.1),
   attackArcDegrees: COMBAT.attackArcDegrees,
   bodyRadius: 16,
-  staminaRegenPerSecond: 16,
   /** Heavier swings cost more stamina. */
   attackStaminaMul: 1.1,
   dashMaxCharges: 2,

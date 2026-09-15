@@ -10,7 +10,7 @@ import type { MapQuery } from '../../map/query';
 import type { NinjaBody } from '../../heroes/NinjaBody';
 import type { HeroRuntime } from '../HeroRuntime';
 import { onWorldStrike, type WorldStrikeEvent } from './worldStrike';
-import { applyObjectiveHaste, occupancyNear } from './rewards';
+import { occupancyNear } from './rewards';
 import type { MatchObjective, ObjectiveCompleteEvent, ObjectiveContext, ObjectiveHint, ObjectiveUiState } from './types';
 
 const STEEL = 0x2a2428;
@@ -366,24 +366,11 @@ export class ExecutionerObjective implements MatchObjective {
     return undefined;
   }
 
-  private complete(winner: TeamId, now: number, heroes: readonly HeroRuntime[]): ObjectiveCompleteEvent {
+  private complete(winner: TeamId, _now: number, _heroes: readonly HeroRuntime[]): ObjectiveCompleteEvent {
     this.awarded = true;
     this.offStrike?.();
     this.offStrike = undefined;
     audio.play('objective-complete');
-    for (const hero of heroes) {
-      if (hero.team !== winner || !hero.alive) {
-        continue;
-      }
-      applyObjectiveHaste(
-        hero.body,
-        now,
-        OBJECTIVE.executioner.buffMs,
-        OBJECTIVE.executioner.moveMul,
-        OBJECTIVE.executioner.attackMul,
-        OBJECTIVE.executioner.staminaMul,
-      );
-    }
     const burst = this.scene.add.circle(this.posX, this.posY, this.radius, BLOOD, 0.4).setDepth(21);
     this.scene.tweens.add({
       targets: [burst, this.root],

@@ -148,6 +148,7 @@ export class BattleScene extends Phaser.Scene {
       grantXp: (body, amount) => {
         if (body === this.ninja) {
           const result = this.progression.grantXp(amount);
+          this.feedback.xpGain(amount);
           if (result.leveled) {
             this.feedback.levelUps(result.grants);
           }
@@ -231,6 +232,7 @@ export class BattleScene extends Phaser.Scene {
       onGiveXp: () => {
         const result = this.progression.grantXp(MATCH.xp.debugGrant);
         audio.play('ui-xp');
+        this.feedback.xpGain(MATCH.xp.debugGrant);
         if (result.leveled) {
           audio.play('ui-level-up');
           this.feedback.levelUps(result.grants);

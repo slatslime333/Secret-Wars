@@ -255,19 +255,19 @@ if (MENDER.ratings.damage !== 7 || MENDER.attackDamage !== 9) {
 } else {
   console.log('ok  mender damage  rating 7 / hit 9');
 }
-if (MENDER.ratings.attackSpeed !== 87) {
+if (MENDER.ratings.attackSpeed !== 80) {
   failed += 1;
-  console.log(`FAIL  mender attack speed  ${MENDER.ratings.attackSpeed} !== 87`);
+  console.log(`FAIL  mender attack speed  ${MENDER.ratings.attackSpeed} !== 80`);
 } else {
-  console.log('ok  mender attack speed  87');
+  console.log('ok  mender attack speed  80');
 }
-if (MENDER.ratings.staminaRegen !== 80 || MENDER.ratings.stamina !== 58) {
+if (MENDER.ratings.staminaRegen !== 68 || MENDER.ratings.stamina !== 58) {
   failed += 1;
   console.log(
     `FAIL  mender stamina  regen=${MENDER.ratings.staminaRegen} pool=${MENDER.ratings.stamina}`,
   );
 } else {
-  console.log('ok  mender stamina  recovery 80 / pool 58');
+  console.log('ok  mender stamina  recovery 68 / pool 58');
 }
 if (
   MENDER_PULSE.radius >= 4 ||
@@ -290,6 +290,25 @@ if (MENDER_SOUL.attachOffset < 32) {
   console.log(`FAIL  mender soul attach  offset=${MENDER_SOUL.attachOffset}`);
 } else {
   console.log(`ok  mender soul attach  offset=${MENDER_SOUL.attachOffset}`);
+}
+if (
+  MENDER_SOUL.moveMul !== 1.15 ||
+  MENDER_SOUL.attackSpeedMul !== 1.15 ||
+  MENDER_SOUL.staminaRegenMul !== 1.06 ||
+  MENDER_SOUL.buffMs !== 7000
+) {
+  failed += 1;
+  console.log(
+    `FAIL  mender soul dash buff  move=${MENDER_SOUL.moveMul} atk=${MENDER_SOUL.attackSpeedMul} stam=${MENDER_SOUL.staminaRegenMul} ms=${MENDER_SOUL.buffMs}`,
+  );
+} else {
+  console.log('ok  mender soul dash  +15% move/atk, +6% stam regen, 7s');
+}
+if (MENDER_ANGEL.cooldownMs !== 9000) {
+  failed += 1;
+  console.log(`FAIL  mender angel cooldown  ${MENDER_ANGEL.cooldownMs}`);
+} else {
+  console.log('ok  mender guardian angel  9s cooldown from explode');
 }
 if (MENDER_ANGEL.aimLength < MENDER_ANGEL.maxRange * 1.4) {
   failed += 1;
@@ -348,11 +367,11 @@ if (DEMON_RAGE.fillCostMul !== 1.35) {
 } else {
   console.log('ok  rage fill cost  1.35');
 }
-if (DEMON_RAGE.durationMs !== 11000) {
+if (DEMON_RAGE.durationMs !== 15000) {
   failed += 1;
   console.log(`FAIL  demon rage duration  ${DEMON_RAGE.durationMs}`);
 } else {
-  console.log('ok  demon rage duration  11s');
+  console.log('ok  demon rage duration  15s');
 }
 if (DEMON_RAGE.abilityDamageToRage !== 0.2) {
   failed += 1;
@@ -365,6 +384,12 @@ if (DEMON_RAGE.staminaOnActivate !== 0.2) {
   console.log(`FAIL  demon rage stamina grant  ${DEMON_RAGE.staminaOnActivate}`);
 } else {
   console.log('ok  demon rage  restores 20% max stamina');
+}
+if (DEMON_RAGE.healOnActivate !== 0.08) {
+  failed += 1;
+  console.log(`FAIL  demon rage heal  ${DEMON_RAGE.healOnActivate}`);
+} else {
+  console.log('ok  demon rage  heals 8% max health');
 }
 if (DEMON_BIG.attackRange !== Math.round(SHADOW.attackRange * 0.75)) {
   failed += 1;
@@ -398,11 +423,11 @@ if (Math.abs(SHADOW_CLAW.damage - abilityDamage(64) * 2.7 * 0.9 * 0.77) > 0.001)
 } else {
   console.log('ok  shadow claw damage  -23%');
 }
-if (DEATH.ratings.damage !== 75) {
+if (DEATH.ratings.damage !== 70) {
   failed += 1;
   console.log(`FAIL  death damage rating  ${DEATH.ratings.damage}`);
 } else {
-  console.log('ok  death damage  75');
+  console.log('ok  death damage  70');
 }
 if (WITCH_SKELETON.maxHealth !== 150 || WITCH_SKELETON.attackDamage !== 6) {
   failed += 1;
@@ -464,11 +489,19 @@ if (ROPE_SPRAY.shotsPerPulse !== 3) {
 } else {
   console.log('ok  rope spray  3 random ropes per pulse');
 }
-if (DEATH.ratings.defense !== 75 || DEATH.ratings.stamina !== 73) {
+if (
+  DEATH.ratings.defense !== 70 ||
+  DEATH.ratings.stamina !== 65 ||
+  DEATH.ratings.health !== 69 ||
+  DEATH.ratings.speed !== 28 ||
+  DEATH.ratings.staminaRegen !== 49
+) {
   failed += 1;
-  console.log(`FAIL  death ratings  def=${DEATH.ratings.defense} stam=${DEATH.ratings.stamina}`);
+  console.log(
+    `FAIL  death ratings  def=${DEATH.ratings.defense} stam=${DEATH.ratings.stamina} hp=${DEATH.ratings.health} spd=${DEATH.ratings.speed} regen=${DEATH.ratings.staminaRegen}`,
+  );
 } else {
-  console.log('ok  death ratings  defense 75 / stamina 73');
+  console.log('ok  death ratings  health 69 / stamina 65 / regen 49 / speed 28 / damage 70 / defense 70');
 }
 const coleRangeBefore = Math.round(Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.15) * 1.17);
 if (COLE.attackRange !== Math.round(coleRangeBefore * 1.13)) {

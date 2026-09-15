@@ -96,7 +96,9 @@ export const resolveMelee = (
     const heavy = step === 3;
     const profile = COMBAT.combo[step];
     const blockedDamage = applyDefense(
-      attacker.stats.attackDamage * (options.damageMul ?? profile.damageMultiplier),
+      attacker.stats.attackDamage *
+        (options.damageMul ?? profile.damageMultiplier) *
+        attacker.status.damageMultiplier(now),
       defender.defense,
     );
     emitCombatBlocked({ defender, amount: blockedDamage, at: now });
@@ -142,7 +144,9 @@ export const resolveMelee = (
 
   const profile = COMBAT.combo[step];
   const damage = applyDefense(
-    attacker.stats.attackDamage * (options.damageMul ?? profile.damageMultiplier),
+    attacker.stats.attackDamage *
+      (options.damageMul ?? profile.damageMultiplier) *
+      attacker.status.damageMultiplier(now),
     defender.defense,
   );
   const dirX = options.dirX ?? attacker.aim.x;
@@ -151,7 +155,11 @@ export const resolveMelee = (
     damage,
     dirX,
     dirY,
-    knockback: attacker.stats.knockbackPower * profile.knockbackMultiplier * (options.knockbackMul ?? 1),
+    knockback:
+      attacker.stats.knockbackPower *
+      profile.knockbackMultiplier *
+      (options.knockbackMul ?? 1) *
+      attacker.status.knockbackMultiplier(now),
     staminaDamage: profile.staminaDamage,
     step,
     launchCap: options.launchCap,

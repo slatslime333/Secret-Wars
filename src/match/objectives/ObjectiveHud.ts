@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { TeamId } from '../../config/hero';
-import { OBJECTIVE, type ObjectiveKind } from '../../config/objective';
+import { OBJECTIVE, OBJECTIVE_PROMPT, type ObjectiveKind } from '../../config/objective';
 import { adoptHud } from '../../ui/layout/hudCamera';
 import { COLORS, FONTS, hex } from '../../ui/theme';
 import type { ObjectiveUiState } from './types';
@@ -16,6 +16,9 @@ const TITLE: Record<ObjectiveKind, string> = {
   bounty_target: 'BOUNTY TARGET!',
   healing_shrine: 'HEALING SHRINE!',
   executioner: 'EXECUTIONER!',
+  war_banner: 'WAR BANNER!',
+  rage_zone: 'RAGE ZONE!',
+  meteor_storm: 'METEOR STORM!',
 };
 
 const edgePoint = (sx: number, sy: number, w: number, h: number, m: number): { x: number; y: number } => {
@@ -57,14 +60,15 @@ export class ObjectiveHud {
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.banner = scene.add
-      .text(scene.scale.width / 2, scene.scale.height * 0.2, '', {
+      .text(scene.scale.width / 2, scene.scale.height * 0.18, '', {
         fontFamily: FONTS.display,
-        fontSize: '34px',
+        fontSize: '32px',
         color: hex(COLORS.yellow),
         letterSpacing: 3,
         stroke: hex(COLORS.ink),
         strokeThickness: 8,
         align: 'center',
+        lineSpacing: 6,
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -85,7 +89,11 @@ export class ObjectiveHud {
     this.active = true;
     this.hideBannerAt = now + OBJECTIVE.announcementMs;
     this.hideArrowAt = now + OBJECTIVE.arrowMs;
-    this.banner.setText(TITLE[kind]).setScale(1.16).setAlpha(1).setVisible(true);
+    this.banner
+      .setText(`${TITLE[kind]}\n${OBJECTIVE_PROMPT[kind]}`)
+      .setScale(1.16)
+      .setAlpha(1)
+      .setVisible(true);
     this.scene.tweens.add({
       targets: this.banner,
       scale: 1,
@@ -138,7 +146,7 @@ export class ObjectiveHud {
       this.targetX = ui.x;
       this.targetY = ui.y;
     }
-    this.banner.setPosition(this.scene.scale.width / 2, this.scene.scale.height * 0.2);
+    this.banner.setPosition(this.scene.scale.width / 2, this.scene.scale.height * 0.18);
     if (now >= this.hideBannerAt) {
       this.banner.setVisible(false);
     }
@@ -169,7 +177,7 @@ export class ObjectiveHud {
   }
 
   layout(width: number, height: number): void {
-    this.banner.setPosition(width / 2, height * 0.2);
+    this.banner.setPosition(width / 2, height * 0.18);
   }
 
   destroy(): void {

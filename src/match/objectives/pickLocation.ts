@@ -61,3 +61,51 @@ export const pickObjectiveLocation = (query: MapQuery, clearRadius: number, rng:
   }
   return { x: MID_X, y: ARENA.height / 2 };
 };
+
+export const pickCenterObjectiveLocation = (query: MapQuery, clearRadius: number): Point => {
+  const x = MID_X;
+  const y = ARENA.height / 2;
+  if (query.clearForObjective(x, y, clearRadius)) {
+    return { x, y };
+  }
+  return pickObjectiveLocation(query, clearRadius, () => 0.5);
+};
+
+type ClusterHero = { alive: boolean; team: 'alpha' | 'bravo'; body: { x: number; y: number } };
+
+/** Prefer the live fight, not a random empty patch of map. */
+export const pickFightCluster = (heroes: readonly ClusterHero[], rng: () => number): Point => {
+  const live = heroes.filter((hero) => hero.alive);
+  if (live.length === 0) {
+    return { x: MID_X, y: ARENA.height / 2 };
+  }
+  const engaged = live.filter((hero) =>
+    live.some(
+      (other) => other.team !== hero.team && Math.hypot(other.body.x - hero.body.x, other.body.y - hero.body.y) < 340,
+    ),
+  );
+  const pool = engaged.length > 0 ? engaged : live;
+  const seed = pool[Math.floor(rng() * pool.length)] ?? live[0];
+  if (!seed) {
+    return { x: MID_X, y: ARENA.height / 2 };
+  }
+  let nearest: ClusterHero | undefined;
+  let nearestD = 9999;
+  for (const other of live) {
+    if (other.team === seed.team) {
+      continue;
+    }
+    const d = Math.hypot(other.body.x - seed.body.x, other.body.y - seed.body.y);
+    if (d < nearestD) {
+      nearest = other;
+      nearestD = d;
+    }
+  }
+  if (!nearest) {
+    return { x: seed.body.x, y: seed.body.y };
+  }
+  return {
+    x: (seed.body.x + nearest.body.x) * 0.5 + (rng() - 0.5) * 48,
+    y: (seed.body.y + nearest.body.y) * 0.5 + (rng() - 0.5) * 48,
+  };
+};

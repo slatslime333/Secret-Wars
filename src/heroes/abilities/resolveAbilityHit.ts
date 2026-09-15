@@ -94,13 +94,13 @@ export const resolveAbilityHit = (
     return 'blocked';
   }
 
-  const damage = applyDefense(profile.rawDamage, defender.defense);
+  const damage = applyDefense(profile.rawDamage * attacker.status.damageMultiplier(now), defender.defense);
   const length = Math.hypot(profile.dirX, profile.dirY) || 1;
   defender.takeHit({
     damage,
     dirX: profile.dirX / length,
     dirY: profile.dirY / length,
-    knockback: profile.knockback,
+    knockback: profile.knockback * attacker.status.knockbackMultiplier(now),
     staminaDamage: profile.staminaDamage,
     step,
     hitReactionMs: profile.hitReactionMs,

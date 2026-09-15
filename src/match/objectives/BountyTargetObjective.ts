@@ -1,13 +1,11 @@
 import Phaser from 'phaser';
-import { OBJECTIVE, OBJECTIVE_LABEL } from '../../config/objective';
+import { OBJECTIVE_LABEL } from '../../config/objective';
 import type { TeamId } from '../../config/hero';
 import { COLORS, FONTS, hex } from '../../ui/theme';
 import { audio } from '../../audio';
 import type { NinjaBody } from '../../heroes/NinjaBody';
 import type { HeroRuntime } from '../HeroRuntime';
-import type { XpOrbWorld } from '../XpOrbWorld';
 import { pickBountyTargets } from './bountyPick';
-import { applyObjectiveHaste, grantTeamLevels } from './rewards';
 import type {
   MatchObjective,
   ObjectiveCompleteEvent,
@@ -19,8 +17,6 @@ import type {
 
 export type BountyDeps = {
   scene: Phaser.Scene;
-  orbs: XpOrbWorld;
-  grantLevel: (hero: HeroRuntime) => void;
   rng: () => number;
   heroes: () => readonly HeroRuntime[];
   last?: { alpha?: string; bravo?: string };
@@ -38,8 +34,6 @@ export class BountyTargetObjective implements MatchObjective {
   readonly kind = 'bounty_target' as const;
   readonly radius = 40;
   private readonly scene: Phaser.Scene;
-  private readonly orbs: XpOrbWorld;
-  private readonly grantLevel: (hero: HeroRuntime) => void;
   private readonly rng: () => number;
   private readonly last?: { alpha?: string; bravo?: string };
   private readonly onPicked?: (ids: { alpha?: string; bravo?: string }) => void;
@@ -55,8 +49,6 @@ export class BountyTargetObjective implements MatchObjective {
 
   constructor(deps: BountyDeps) {
     this.scene = deps.scene;
-    this.orbs = deps.orbs;
-    this.grantLevel = deps.grantLevel;
     this.rng = deps.rng;
     this.last = deps.last;
     this.onPicked = deps.onPicked;
@@ -162,6 +154,7 @@ export class BountyTargetObjective implements MatchObjective {
       alphaProgress: this.alpha?.resolved ? 1 : 0,
       bravoProgress: this.bravo?.resolved ? 1 : 0,
       barMode: 'dual',
+      prompt: 'Kill the marked target!',
     };
   }
 
@@ -216,8 +209,8 @@ export class BountyTargetObjective implements MatchObjective {
   private tryResolve(
     mark: Mark,
     winningTeam: TeamId,
-    now: number,
-    heroes: readonly HeroRuntime[],
+    _now: number,
+    _heroes: readonly HeroRuntime[],
     killerBody?: NinjaBody,
   ): void {
     if (mark.resolved) {
@@ -236,13 +229,7 @@ export class BountyTargetObjective implements MatchObjective {
     }
     this.lastWinner = winningTeam;
     this.lastAssassin = killer;
-    grantTeamLevels(winningTeam, heroes, this.grantLevel, this.orbs, mark.hero.body.x, mark.hero.body.y, OBJECTIVE.bounty.levelReward);
     audio.play('objective-complete');
-    const assassinMark = winningTeam === 'alpha' ? this.alpha : this.bravo;
-    if (assassinMark && killer === assassinMark.hero.body && assassinMark.hero.alive && !assassinMark.resolved) {
-      killer.healFull();
-      applyObjectiveHaste(killer, now, OBJECTIVE.bounty.buffMs, OBJECTIVE.bounty.moveMul, OBJECTIVE.bounty.attackMul);
-    }
   }
 
   private refreshAnchor(): void {

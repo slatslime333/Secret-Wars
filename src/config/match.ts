@@ -11,7 +11,7 @@ export type LaneWaveShare = Record<LaneId, Record<MinionKind, number>>;
  * Draft match tunables. Change values here — do not scatter them through scenes.
  */
 export const MATCH = {
-  durationMs: 180_000,
+  durationMs: 240_000,
   overtimeMs: 60_000,
   suddenDeathEnabled: true,
   respawnDelayMs: 8_000,

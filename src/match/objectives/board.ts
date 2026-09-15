@@ -1,5 +1,5 @@
 import type { TeamId } from '../../config/hero';
-import type { ObjectiveHint } from './types';
+import type { ObjectiveHazard, ObjectiveHint } from './types';
 import type { ObjectiveKind } from '../../config/objective';
 
 export type ObjectiveWorld = {
@@ -23,6 +23,8 @@ export type ObjectiveWorld = {
   alphaY?: number;
   bravoX?: number;
   bravoY?: number;
+  remainingMs?: number;
+  hazards?: ObjectiveHazard[];
 };
 
 let world: ObjectiveWorld | undefined;
@@ -59,5 +61,7 @@ export const objectiveHintFor = (team: TeamId): ObjectiveHint | undefined => {
     allyY: team === 'alpha' ? world.alphaY : world.bravoY,
     enemyX: foe === 'alpha' ? world.alphaX : world.bravoX,
     enemyY: foe === 'alpha' ? world.alphaY : world.bravoY,
+    remainingMs: world.remainingMs,
+    hazards: world.hazards,
   };
 };
