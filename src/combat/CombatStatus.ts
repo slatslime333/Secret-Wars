@@ -1,5 +1,11 @@
 import { COMBAT, ComboStep } from '../config/combat';
 import type { AreaModifier } from '../heroes/abilities/AbilityWorld';
+import {
+  formatCooldownStat,
+  formatMulStat,
+  formatSignedStat,
+  type StatusChipInfo,
+} from '../ui/combatFeedback/format';
 
 const OPEN_ZONE: AreaModifier = { moveMul: 1, attackSpeedMul: 1, staminaDrainMul: 1 };
 
@@ -77,6 +83,50 @@ export class CombatStatus {
 
   staminaDrainMultiplier(): number {
     return this.zone.staminaDrainMul;
+  }
+
+  /**
+   * Player-facing temporary mods currently on this fighter.
+   * Reads live status — not HUD bars or guessed stats.
+   */
+  playerFacingMods(now: number): StatusChipInfo[] {
+    const chips: StatusChipInfo[] = [];
+    const add = (key: string, text: string | undefined, buff: boolean): void => {
+      if (!text) {
+        return;
+      }
+      chips.push({ key, text, buff });
+    };
+
+    if (now < this.slowUntil) {
+      add('slow', formatMulStat(this.slowMul, 'SPD'), this.slowMul > 1);
+    }
+    if (now < this.hasteUntil) {
+      add('haste-spd', formatMulStat(this.hasteMoveMul, 'SPD'), this.hasteMoveMul > 1);
+      const rate = 1 / Math.max(0.2, this.hasteAttackMul);
+      add('haste-atk', formatMulStat(rate, 'ATK SPD'), rate > 1);
+    }
+    if (now < this.asDebuffUntil) {
+      add('as-slow', formatCooldownStat(this.asDebuffMul, 'ATK SPD'), this.asDebuffMul < 1);
+    }
+    if (now < this.defenseUntil) {
+      add('def', formatMulStat(this.defenseMul, 'DEF'), this.defenseMul > 1);
+    }
+    if (now < this.staminaRegenUntil) {
+      add('stam', formatMulStat(this.staminaRegenMul, 'STAM'), this.staminaRegenMul > 1);
+    }
+    if (now < this.crippleUntil && this.crippleAmount >= 0.04) {
+      const pct = -Math.round(this.crippleAmount * 100);
+      add('cripple-spd', formatSignedStat(pct, 'SPD'), false);
+      add('cripple-atk', formatSignedStat(pct, 'ATK SPD'), false);
+    }
+    if (this.zone.moveMul !== 1) {
+      add('zone-spd', formatMulStat(this.zone.moveMul, 'SPD'), this.zone.moveMul > 1);
+    }
+    if (this.zone.attackSpeedMul !== 1) {
+      add('zone-atk', formatMulStat(this.zone.attackSpeedMul, 'ATK SPD'), this.zone.attackSpeedMul > 1);
+    }
+    return chips;
   }
 
   applyAttackRecovery(now: number, recoveryMs: number): void {

@@ -104,7 +104,7 @@ export class HealingShrineObjective implements MatchObjective {
     this.redraw(ctx.now);
     if (ctx.now >= this.endsAt) {
       this.finished = true;
-      return { kind: this.kind };
+      return { kind: this.kind, winner: this.owner ?? undefined };
     }
     return undefined;
   }

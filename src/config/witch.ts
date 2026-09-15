@@ -7,11 +7,11 @@ import { gameplayFromRatings, type CoreRatings } from './ratings';
  * Attack Speed 38 is the live barrage cadence. Displayed rating matches conversion.
  */
 export const WITCH_RATINGS = {
-  health: 65,
+  health: 64,
   stamina: 53,
   staminaRegen: 59,
-  damage: 42,
-  defense: 64,
+  damage: 45,
+  defense: 59,
   speed: 39,
   attackSpeed: 38,
   attackRange: 85,

@@ -25,6 +25,9 @@ import { BattleHud } from '../ui/BattleHud';
 import { MatchHud } from '../ui/MatchHud';
 import { spawnKillPopup } from '../ui/KillPopup';
 import { spawnStatusPopup } from '../ui/StatusPopup';
+import { CombatFeedback } from '../ui/combatFeedback/CombatFeedback';
+import type { LevelUpResult } from '../match/Progression';
+import type { ObjectiveCompleteEvent } from '../match/objectives/types';
 import { isPcCombatHud, layoutPcCombatHud } from '../ui/pcCombatHud';
 import { cueAbilityReady } from '../audio/abilityReady';
 import { PostMatchOverlay } from '../ui/PostMatchOverlay';
@@ -96,6 +99,7 @@ export class MatchScene extends Phaser.Scene {
   private abilityWorld!: AbilityWorld;
   private abilityTray?: AbilityTray;
   private hud!: BattleHud;
+  private feedback!: CombatFeedback;
   private wasStunned = false;
   private wasParalyzed = false;
   private matchHud!: MatchHud;
@@ -182,8 +186,9 @@ export class MatchScene extends Phaser.Scene {
       orbs: this.orbs,
       heroes: () => this.heroes,
       grantLevel: (hero) => {
-        hero.progression.giveLevel();
+        this.noteProgression(hero, hero.progression.giveLevel());
       },
+      onComplete: (event) => this.noteObjective(event),
     });
     this.minions.onKilled = (event) => {
       if (!event.killer || !isHeroFighter(event.killer) || !event.killer.isPresent || event.killer.down) {
@@ -216,6 +221,7 @@ export class MatchScene extends Phaser.Scene {
         if (leveled.leveled) {
           audio.play('ui-level-up');
         }
+        this.noteProgression(runtime, leveled);
       },
     });
     this.pilots.clear();
@@ -242,6 +248,8 @@ export class MatchScene extends Phaser.Scene {
       });
     }
     this.hud = new BattleHud(this);
+    this.feedback = new CombatFeedback(this);
+    this.feedback.setAnchor(this.hud.hpAnchor().x, this.hud.hpAnchor().y);
     this.hud.placeCombo(this.scale.width / 2, layoutHudChrome(measureViewport(this.scale.width, this.scale.height)).comboY);
     this.matchHud = new MatchHud(this);
     this.layoutAbilityTray(this.scale.width, this.scale.height);
@@ -298,6 +306,7 @@ export class MatchScene extends Phaser.Scene {
       this.minimap?.destroy();
       this.spectatorOverlay?.destroy();
       this.pauseOverlay?.destroy();
+      this.feedback?.destroy();
       this.battlefield?.destroy();
       for (const unit of this.heroes) {
         unit.destroy();
@@ -498,6 +507,24 @@ export class MatchScene extends Phaser.Scene {
     });
   }
 
+  private noteProgression(hero: HeroRuntime, result: LevelUpResult): void {
+    if (!hero.isPlayer || !result.leveled) {
+      return;
+    }
+    this.feedback.levelUps(result.grants);
+  }
+
+  private noteObjective(event: ObjectiveCompleteEvent): void {
+    if (!this.player || this.player.team !== event.winner) {
+      return;
+    }
+    this.feedback.objective({
+      kind: event.kind,
+      winner: event.winner,
+      assassinBonus: event.assassin === this.player.body,
+    });
+  }
+
   private grantMinionReward(target: NinjaBody, amount: number): void {
     if (!target.isPresent || target.down) {
       return;
@@ -508,6 +535,9 @@ export class MatchScene extends Phaser.Scene {
     audio.play('ui-xp');
     if (leveled?.leveled) {
       audio.play('ui-level-up');
+    }
+    if (runtime && leveled) {
+      this.noteProgression(runtime, leveled);
     }
   }
 
@@ -857,6 +887,8 @@ export class MatchScene extends Phaser.Scene {
       focus.dash,
       spectating,
     );
+    const anchor = this.hud.hpAnchor();
+    this.feedback.setAnchor(anchor.x, anchor.y);
     this.matchHud.sync(this.match.snapshot(), this.score.snapshot(), focus.progression);
     this.titleText?.setText(
       `${this.simulator ? 'SIMULATOR' : 'SECRET WARS'}  //  ${focus.body.stats.displayName.toUpperCase()}`,
@@ -996,6 +1028,10 @@ export class MatchScene extends Phaser.Scene {
     this.titleText?.setPosition(chrome.titleX, chrome.titleY).setVisible(chrome.titleVisible);
     this.menuButton?.setPosition(chrome.menuX, chrome.menuY);
     this.hud?.layout(width, height);
+    if (this.hud && this.feedback) {
+      const anchor = this.hud.hpAnchor();
+      this.feedback.setAnchor(anchor.x, anchor.y);
+    }
     this.hud?.placeCombo(width / 2, chrome.comboY);
     this.matchHud?.layout(width, height);
     this.minimap?.layout(width, height);
@@ -1100,8 +1136,16 @@ export class MatchScene extends Phaser.Scene {
     (window as Window & { secretWarsMatch?: object }).secretWarsMatch = {
       snapshot: () => this.gameState(),
       forceWave: () => this.waves.spawnWave(),
-      giveXp: (amount = MATCH.xp.debugGrant) => this.player.progression.grantXp(amount),
-      giveLevel: () => this.player.progression.giveLevel(),
+      giveXp: (amount = MATCH.xp.debugGrant) => {
+        const result = this.player.progression.grantXp(amount);
+        this.noteProgression(this.player, result);
+        return result;
+      },
+      giveLevel: () => {
+        const result = this.player.progression.giveLevel();
+        this.noteProgression(this.player, result);
+        return result;
+      },
       scores: () => this.score.snapshot(),
       phase: () => this.match.snapshot(),
       spawnObjective: (kind?: ObjectiveKind) => this.objectives?.debugSpawn(kind),
