@@ -36,7 +36,7 @@ export const WITCH_SKELETON = {
   id: 'witch-skeleton',
   displayName: 'Skeleton',
   role: 'minion' as const,
-  maxHealth: 165,
+  maxHealth: 150,
   maxStamina: SWORD_MINION.maxStamina,
   moveSpeed: SWORD_MINION.moveSpeed,
   attackDamage: 6,

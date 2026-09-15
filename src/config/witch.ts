@@ -10,7 +10,7 @@ export const WITCH_RATINGS = {
   health: 65,
   stamina: 53,
   staminaRegen: 59,
-  damage: 49,
+  damage: 42,
   defense: 64,
   speed: 39,
   attackSpeed: 38,

@@ -87,6 +87,10 @@ class DemonRageAbility implements ActiveAbility {
     applyDemonBigStats(caster);
     caster.demonForm = 'big';
     caster.demonTransformUntil = this.activeUntil;
+    caster.stamina = Math.min(
+      caster.stats.maxStamina,
+      caster.stamina + Math.round(caster.stats.maxStamina * DEMON_RAGE.staminaOnActivate),
+    );
     caster.view.setScale(1.28);
     spawnCombatCallout(ctx.scene, caster.x, caster.y, 'DEMON RAGE', 0xffc030);
     playWorld('shadow-rage-active', caster);

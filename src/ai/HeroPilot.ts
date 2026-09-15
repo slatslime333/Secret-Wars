@@ -8,7 +8,7 @@ import type { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { CombatDriver } from './combatDriver';
 import { TacticalField } from './tactical/field';
 import { TacticalMind } from './tactical/mind';
-import { MovementCommit } from './tactical/locomotion';
+import { MovementCommit, resolveCpuWalk } from './tactical/locomotion';
 import { moveGoal } from './tactical/move';
 import { SwingIntent } from './tactical/swingIntent';
 import type { TacticalDebugInfo } from './tactical/types';
@@ -88,6 +88,7 @@ export class HeroPilot {
       scene,
       foes,
       rng: Math.random,
+      stuck: this.loco.stuck,
     });
     if (this.combat.consumeDashLand()) {
       this.mind.think(now, body, field, scene, true);
@@ -114,6 +115,9 @@ export class HeroPilot {
     }
 
     this.walk(now, body, scene);
+    if (this.loco.stuck.consumeCleared()) {
+      this.mind.think(now, body, field, scene, true);
+    }
     this.swing.decide({
       now,
       body,
@@ -185,7 +189,7 @@ export class HeroPilot {
       this.mind.goal,
       this.mind.moveHint(),
     );
-    if (goal.halt) {
+    if (goal.halt && !this.loco.stuck.recovering) {
       this.loco.reset();
       body.stop();
       return;
@@ -197,21 +201,28 @@ export class HeroPilot {
       dx = dx * 0.35 + strafe.x * 80;
       dy = dy * 0.35 + strafe.y * 80;
     }
-    const len = Math.hypot(dx, dy) || 1;
-    if (len < 12) {
-      this.loco.reset();
+    const walk = resolveCpuWalk(
+      now,
+      body.x,
+      body.y,
+      dx,
+      dy,
+      this.loco,
+      this.mind.personality,
+      this.mind.situationView().kit,
+      battlefieldOf(scene)?.query,
+      body.stats.moveSpeed,
+      this.mind.moveHint()?.mates,
+      body.stats.role,
+    );
+    if (this.loco.stuck.label) {
+      this.mind.noteCombat(this.loco.stuck.label);
+    }
+    if (walk.stop) {
       body.stop();
       return;
     }
-    dx /= len;
-    dy /= len;
-    const committed = this.loco.heading(now, dx, dy, this.mind.personality);
-    const steered = battlefieldOf(scene)?.query.steer(body.x, body.y, committed.x, committed.y) ?? committed;
-    if (steered.x === 0 && steered.y === 0) {
-      body.stop();
-      return;
-    }
-    this.move.set(steered.x, steered.y);
+    this.move.set(walk.x, walk.y);
     body.applyMove(this.move);
   }
 }
