@@ -109,6 +109,9 @@ export class RivalBrain {
       foes,
       rng: Math.random,
     });
+    if (this.combat.consumeDashLand()) {
+      this.mind.think(now, cpu, field, scene, true);
+    }
     this.block.tick(delta, now, cpu);
     this.block.sync(now, cpu);
 

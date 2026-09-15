@@ -14,12 +14,15 @@ import { MENDER } from '../../config/mender';
 import { DEMON, DEMON_BIG } from '../../config/demon';
 import { COLE } from '../../config/cole';
 import { WITCH } from '../../config/witch';
+import { DEATH } from '../../config/death';
 import { SHADOW } from '../../config/shadow';
 import { DEMON_HELLFIRE, DEMON_HELL_BAT, DEMON_RAGE } from '../../heroes/abilities/demon/tunables';
 import { SHADOW_CLAW } from '../../heroes/abilities/shadow/tunables';
 import { NINJA_SMOKE } from '../../heroes/abilities/ninja/tunables';
 import { abilityDamage } from '../../config/ratings';
 import { MENDER_PULSE, MENDER_SOUL, MENDER_ANGEL } from '../../heroes/abilities/mender/tunables';
+import { WITCH_SKELETON } from '../../heroes/abilities/witch/tunables';
+import { ComboTracker } from '../../combat/ComboTracker';
 
 const results = runTacticalScenarios();
 let failed = 0;
@@ -329,17 +332,43 @@ if (COLE.ratings.attackSpeed !== 33 || COLE.ratings.speed !== 52) {
 } else {
   console.log('ok  cole ratings  attack 33 / speed 52');
 }
-if (WITCH.ratings.damage !== 52 || WITCH.ratings.stamina !== 53) {
+if (WITCH.ratings.damage !== 49 || WITCH.ratings.attackSpeed !== 38 || WITCH.ratings.stamina !== 53) {
   failed += 1;
-  console.log(`FAIL  witch ratings  dmg=${WITCH.ratings.damage} stam=${WITCH.ratings.stamina}`);
+  console.log(
+    `FAIL  witch ratings  dmg=${WITCH.ratings.damage} atk=${WITCH.ratings.attackSpeed} stam=${WITCH.ratings.stamina}`,
+  );
 } else {
-  console.log('ok  witch ratings  damage 52 / stamina 53');
+  console.log('ok  witch ratings  damage 49 / attack 38 / stamina 53');
 }
 if (Math.abs(SHADOW_CLAW.damage - abilityDamage(64) * 2.7 * 0.9 * 0.77) > 0.001) {
   failed += 1;
   console.log(`FAIL  shadow claw damage  ${SHADOW_CLAW.damage}`);
 } else {
   console.log('ok  shadow claw damage  -23%');
+}
+if (DEATH.ratings.damage !== 75) {
+  failed += 1;
+  console.log(`FAIL  death damage rating  ${DEATH.ratings.damage}`);
+} else {
+  console.log('ok  death damage  75');
+}
+if (WITCH_SKELETON.maxHealth !== 165 || WITCH_SKELETON.attackDamage !== 6) {
+  failed += 1;
+  console.log(`FAIL  witch skeleton  hp=${WITCH_SKELETON.maxHealth} dmg=${WITCH_SKELETON.attackDamage}`);
+} else {
+  console.log('ok  witch skeleton  165 hp / 6 damage');
+}
+{
+  const combo = new ComboTracker();
+  combo.tap(0, 720);
+  combo.tap(120, 720);
+  const third = combo.preview(240, 720);
+  if (third !== 1) {
+    failed += 1;
+    console.log(`FAIL  combo wrap  third=${third}`);
+  } else {
+    console.log('ok  light combo  two-hit wrap, no finisher');
+  }
 }
 
 if (failed > 0) {

@@ -227,6 +227,7 @@ export type TacticalDebugInfo = {
   savedUlt: boolean;
   team?: string;
   objective?: string;
+  combatNote?: string;
 };
 
 export const NEUTRAL_PERSONALITY: Personality = {

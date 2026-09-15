@@ -45,6 +45,9 @@ export class TacticalOverlay {
       if (info.objective) {
         lines.push(info.objective);
       }
+      if (info.combatNote) {
+        lines.push(info.combatNote);
+      }
       const text = this.scene.add
         .text(subject.x, subject.y - 34, lines.join('\n'), {
           fontFamily: 'monospace',

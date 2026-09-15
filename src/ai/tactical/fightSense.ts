@@ -45,6 +45,7 @@ export class FightSense {
   private chainUntil = 0;
   private lastSelfSwingAt = -9999;
   private connects = 0;
+  private dashLandUntil = 0;
   momentum: FightMomentum = 'even';
 
   observe(now: number, self: NinjaBody, target: NinjaBody | undefined): void {
@@ -101,6 +102,14 @@ export class FightSense {
 
   startChain(now: number, durationMs: number): void {
     this.chainUntil = Math.max(this.chainUntil, now + durationMs);
+  }
+
+  noteDashLand(now: number): void {
+    this.dashLandUntil = now + 420;
+  }
+
+  justEngaged(now: number): boolean {
+    return now < this.dashLandUntil;
   }
 
   counterReady(now: number): boolean {
@@ -182,6 +191,7 @@ export class FightSense {
     const foeHp = foe ? foe.health / Math.max(1, foe.stats.maxHealth) : 1;
     const inMelee = foe ? this.inStrikeRange(self, foe, 1.16) : false;
     const finish = foeHp < 0.2 || Boolean(foe?.status.isHitReacting(now) || foe?.status.isBlockStunned(now));
+    const engaged = this.justEngaged(now) && inMelee;
     if (foe && isShadowDry(self.heroId, {
       staminaRatio: stam,
       abilityReady: self.kitAbilityReady,
@@ -189,10 +199,10 @@ export class FightSense {
     })) {
       return finish && inMelee && foeHp < 0.12;
     }
-    if (stam >= 0.42) {
+    if (stam >= 0.42 || engaged) {
       return true;
     }
-    if (inMelee && (this.momentum === 'winning' || this.connects >= 2 || foeHp < 0.38)) {
+    if (inMelee && (this.momentum === 'winning' || this.connects >= 2 || foeHp < 0.38 || engaged)) {
       return stam > 0.06 || finish;
     }
     if (finish && inMelee) {
@@ -238,6 +248,7 @@ export class FightSense {
     const justHit = now < this.tookHitUntil;
     const pressure = kit?.pressureBias ?? 0.55;
     const shadow = self.heroId === 'shadow';
+    const engaged = this.justEngaged(now);
     let chance =
       0.22 +
       pressure * 0.42 +
@@ -249,7 +260,8 @@ export class FightSense {
       (aggressive ? 0.08 : 0) +
       (justBlocked ? 0.1 : 0) +
       (justHit ? -0.12 : 0) +
-      (shadow ? 0.18 : 0);
+      (shadow ? 0.18 : 0) +
+      (engaged ? 0.28 : 0);
     if (kit?.stance === 'ranged' || kit?.stance === 'support') {
       chance *= 0.45;
     }

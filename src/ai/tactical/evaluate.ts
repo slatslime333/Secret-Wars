@@ -7,6 +7,7 @@ import { clusterRiskOf } from './spacing';
 import { assessTeam, biasAction, type TeamIntel } from './teamIntel';
 import { applyDemonBias } from './demonSense';
 import { assessSupport } from './supportSense';
+import { pickHealMinion } from './retreat';
 import type {
   CombatantView,
   GamePlan,
@@ -1010,16 +1011,20 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
   }
 
   const stuckAtEdge = atFarEdge(self.team, self.x);
-  let nearestMinion: CombatantView | undefined;
-  let minionGap = 1e9;
-  for (const enemy of enemies) {
-    if (enemy.kind !== 'minion' || !enemy.visible) {
-      continue;
-    }
-    const d = dist(self, enemy);
-    if (d < minionGap) {
-      nearestMinion = enemy;
-      minionGap = d;
+  const healPick = kind === 'hero' ? pickHealMinion(situation) : undefined;
+  const farmTarget = healPick?.minion;
+  let nearestMinion: CombatantView | undefined = farmTarget;
+  let minionGap = farmTarget ? dist(self, farmTarget) : 1e9;
+  if (!nearestMinion) {
+    for (const enemy of enemies) {
+      if (enemy.kind !== 'minion' || !enemy.visible) {
+        continue;
+      }
+      const d = dist(self, enemy);
+      if (d < minionGap) {
+        nearestMinion = enemy;
+        minionGap = d;
+      }
     }
   }
   if (nearestMinion && (kind === 'hero' || stuckAtEdge)) {
@@ -1027,9 +1032,18 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     const heroThreat = enemies.some(
       (enemy) => enemy.kind === 'hero' && enemy.visible && dist(enemy, pack) < 210,
     );
+    const selfPressed = enemies.some(
+      (enemy) => enemy.kind === 'hero' && enemy.visible && dist(self, enemy) < self.attackRange * 1.45 + 36,
+    );
     let farmScore = 12 + (handledNearby ? 8 : 0) - (minionGap / situation.vision) * 10;
+    if (healPick) {
+      farmScore += Math.min(22, healPick.score * 0.28);
+    }
     if (self.hpRatio > 0.12 && self.hpRatio < 0.72 && !heroThreat) {
       farmScore += 16;
+    }
+    if (self.hpRatio < 0.42 && healPick && !heroThreat && !selfPressed) {
+      farmScore += 12 + (1 - self.hpRatio) * 20;
     }
     if (self.staminaRatio < 0.3 && !heroThreat) {
       farmScore += 10 + personality.caution * 6;
@@ -1037,11 +1051,14 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (heroThreat) {
       farmScore -= 16;
     }
+    if (selfPressed && self.hpRatio < 0.34) {
+      farmScore -= 18;
+    }
     if (self.hpRatio < 0.14 && heroThreat) {
       farmScore -= 10;
     }
     if (stuckAtEdge) {
-      farmScore += 28;
+      farmScore += 18;
     }
     if (objIntel && objIntel.free && objIntel.canArriveInTime && self.hpRatio > 0.26 && !stuckAtEdge) {
       farmScore -= 22 + objIntel.urgency * 10;
@@ -1059,9 +1076,11 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         ? 'objective beats farm'
         : heroThreat
           ? 'minions are hot'
-          : stuckAtEdge
-            ? 'farm instead of the wall'
-            : 'farm and recover',
+          : healPick && self.hpRatio < 0.42
+            ? 'safe minion heal'
+            : stuckAtEdge
+              ? 'farm instead of the wall'
+              : 'farm and recover',
       nearestMinion.id,
     );
   }

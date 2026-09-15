@@ -37,7 +37,7 @@ type PendingImpact = {
 
 /**
  * Hold = repeating light swings. Distinct taps within the combo window
- * step 1 → 2 → finisher. The third hit is the only heavier attack.
+ * step 1 → 2, then the chain resets. There is no tap finisher.
  *
  * Stamina is spent when the swing starts. Physical lunge + hit
  * resolve at impact.
@@ -106,7 +106,7 @@ export class QuickAttack {
     const tapQueued = this.pendingTaps > 0;
     this.combo.expire(now, COMBAT.comboWindowMs, held || tapQueued || pressed);
     if (pressed && attacker.heroId !== 'witch' && attacker.heroId !== 'rope' && attacker.heroId !== 'shadow' && attacker.heroId !== 'mender' && attacker.heroId !== 'demon') {
-      this.pendingTaps = Math.min(3, this.pendingTaps + 1);
+      this.pendingTaps = Math.min(2, this.pendingTaps + 1);
       this.lastPendingAt = now;
     }
     if (this.pendingTaps > 0 && now - this.lastPendingAt > COMBAT.comboWindowMs) {
@@ -130,7 +130,7 @@ export class QuickAttack {
     }
 
     const step = this.nextComboStep(now, attacker);
-    if (attacker.heroId === 'death' && step === 1 && now < this.deathPairLockUntil) {
+    if (attacker.heroId === 'death' && now < this.deathPairLockUntil) {
       return;
     }
     const staminaCost = lightAttackStaminaCost(step, attacker.stats.attackStaminaMul ?? 1);
@@ -147,8 +147,8 @@ export class QuickAttack {
           this.scene,
           attacker.x,
           attacker.y,
-          step === 3 ? 'FINISHER' : `HIT ${step}`,
-          step === 3 ? COLORS.yellow : COLORS.orange,
+          step === 2 ? 'HIT 2' : `HIT ${step}`,
+          COLORS.orange,
         );
       }
     } else {
@@ -182,6 +182,7 @@ export class QuickAttack {
       this.spawnBatSweep(attacker, step);
       if (step === 2) {
         this.deathPairLockUntil = now + DEATH_ATTACK.pairDelayMs;
+        this.combo.reset();
       }
     } else if (attacker.heroId === 'rope') {
       this.fireRopeLight(now, attacker);

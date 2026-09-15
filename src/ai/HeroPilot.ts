@@ -89,6 +89,9 @@ export class HeroPilot {
       foes,
       rng: Math.random,
     });
+    if (this.combat.consumeDashLand()) {
+      this.mind.think(now, body, field, scene, true);
+    }
     unit.block.sync(now, body);
 
     const control = unit.abilities.control;

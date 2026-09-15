@@ -4,18 +4,18 @@ import { NINJA } from './ninja';
 import { gameplayFromRatings, type CoreRatings } from './ratings';
 
 /**
- * Ranged tank / support. Slow walk, high range, rapid skull barrages.
- * Attack Speed 53 converts to 328ms, then a 20% grouping gap and the shared
- * 1.22 swing multiplier yield a ~0.48s barrage cadence.
+ * Rapid skull barrages. Attack Speed 38 converts to a slower grouping cadence
+ * than the previous 53 rating, then the 20% grouping gap and shared 1.22 swing
+ * multiplier.
  */
 export const WITCH_RATINGS = {
   health: 65,
   stamina: 53,
   staminaRegen: 59,
-  damage: 52,
+  damage: 49,
   defense: 64,
   speed: 39,
-  attackSpeed: 53,
+  attackSpeed: 38,
   attackRange: 85,
   knockback: 36,
 } as const satisfies CoreRatings;

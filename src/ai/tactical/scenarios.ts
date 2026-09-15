@@ -5,6 +5,8 @@ import { OBJECTIVE } from '../../config/objective';
 import { ARENA } from '../../config/arena';
 import { assessSupport } from './supportSense';
 import { scoreKitSlot } from './kitTactics';
+import { pickHealMinion, pickRetreatGoal } from './retreat';
+import { evaluateOffensiveDash } from './dashOffense';
 import type { AbilityDef, AbilityTactics } from '../../heroes/abilities/types';
 
 const buffer = ensureScoreBuffer();
@@ -1047,6 +1049,63 @@ const scenarioAZ = (): ScenarioResult => {
   return { name: 'AZ Big Demon presses a wounded target', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
 };
 
+const scenarioBA = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.2, staminaRatio: 0.7 });
+  const safe = unit({ id: 21, team: 'bravo', x: 480, y: 980, kind: 'minion', role: 'minion', hpRatio: 0.4, attackRange: 44 });
+  const hot = unit({ id: 22, team: 'bravo', x: 820, y: 750, kind: 'minion', role: 'minion', hpRatio: 0.9, attackRange: 44 });
+  const hero = unit({ id: 10, team: 'bravo', x: 840, y: 750, hpRatio: 0.9 });
+  const pick = pickHealMinion(situationOf(self, [], [hero, hot, safe]));
+  const rows = rankActions(situationOf(self, [], [hero, hot, safe]));
+  const farmId = rows.find((row) => row.action === 'farm_minions')?.targetId;
+  const ok = pick?.minion.id === 21 && farmId === 21 && scoreOf(rows, 'farm_minions', 21) > scoreOf(rows, 'farm_minions', 22);
+  return {
+    name: 'BA low HP farms isolated minion',
+    ok,
+    detail: `pick=${pick?.minion.id} farm=${farmId} best=${best(rows)}`,
+  };
+};
+
+const scenarioBB = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.18 });
+  const hero = unit({ id: 10, team: 'bravo', x: 455, y: 750, hpRatio: 0.9 });
+  const minion = unit({ id: 21, team: 'bravo', x: 468, y: 748, kind: 'minion', role: 'minion', hpRatio: 0.8, attackRange: 44 });
+  const pick = pickHealMinion(situationOf(self, [], [hero, minion]));
+  const rows = rankActions(situationOf(self, [], [hero, minion]));
+  const ok = !pick && !['attack', 'chase', 'farm_minions'].includes(best(rows));
+  return { name: 'BB hot minion is not a heal target', ok, detail: `pick=${pick?.minion.id ?? 'none'} best=${best(rows)}` };
+};
+
+const scenarioBC = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 90, y: 90, hpRatio: 0.18 });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 280, y: 260, hpRatio: 0.9 })];
+  const goal = pickRetreatGoal(situationOf(self, [], enemies, { homeX: 258, homeY: 752 }));
+  const trapped = goal.x < 130 && goal.y < 130;
+  const ok = !trapped;
+  return { name: 'BC low HP safety avoids the corner', ok, detail: `goal=(${Math.round(goal.x)},${Math.round(goal.y)})` };
+};
+
+const scenarioBD = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 400,
+    y: 750,
+    heroId: 'shadow',
+    role: 'frontliner',
+    attackRange: 145,
+    dashCharges: 2,
+    hpRatio: 0.82,
+    staminaRatio: 0.8,
+  });
+  const enemy = unit({ id: 10, team: 'bravo', x: 600, y: 750, hpRatio: 0.55 });
+  const kit = kitProfileOf('shadow', 'frontliner', 145, { staminaRatio: 0.8, dashCharges: 2 });
+  const sit = situationOf(self, [], [enemy], { currentTargetId: 10, kit });
+  const go = evaluateOffensiveDash(sit, 'attack', 2, () => 0);
+  const keep = evaluateOffensiveDash(sit, 'attack', 1, () => 0.9);
+  const ok = Boolean(go) && !keep;
+  return { name: 'BD shadow dash-in keeps last charge', ok, detail: `go=${go?.kind ?? 'none'} keep=${keep?.kind ?? 'none'}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -1100,4 +1159,8 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioAX(),
   scenarioAY(),
   scenarioAZ(),
+  scenarioBA(),
+  scenarioBB(),
+  scenarioBC(),
+  scenarioBD(),
 ];

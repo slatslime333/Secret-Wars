@@ -142,19 +142,19 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
     description:
       'A fast melee disruptor. Ninja darts in to harass, then uses smoke and kicks to break a fight and open space for his team.',
     light:
-      `A close three-hit sword combo. Hits deal ${ninjaHit(1)}, then ${ninjaHit(2)}, then a ${ninjaHit(3)}-damage finisher with extra reach. Keep tapping to chain the combo.`,
+      `A close two-hit sword combo. Hits deal ${ninjaHit(1)}, then ${ninjaHit(2)}. Keep tapping to chain the pair.`,
   },
   cole: {
     description:
       'A melee frontliner. Cole holds space with long punches, then punishes groups with electricity.',
     light:
-      `Long-reach punches at a slower cadence. Hits deal ${coleHit(1)}, then ${coleHit(2)}, and slow the target ${slower(COLE_ATTACK.targetSlowMul)} for ${seconds(COLE_ATTACK.targetSlowMs)}. The third punch is a shockwave for ${coleHit(3)} damage with stronger knockback up close.`,
+      `Long-reach punches at a slower cadence. Hits deal ${coleHit(1)}, then ${coleHit(2)}, and slow the target ${slower(COLE_ATTACK.targetSlowMul)} for ${seconds(COLE_ATTACK.targetSlowMs)}.`,
   },
   death: {
     description:
       'A heavy melee tank. Death crowds the lane with bat swings, then mixes in SMG fire and crushing slams.',
     light:
-      `Close-range bat swings in fast pairs, then a ${seconds(DEATH_ATTACK.pairDelayMs)} pause. Hits deal ${deathHit(1)}, then ${deathHit(2)}. The third hit reaches ${Math.round((DEATH_ATTACK.hit3RangeMul - 1) * 100)}% farther, deals ${deathHit(3)} damage, and carries stronger knockback.`,
+      `Close-range bat swings in fast pairs, then a ${seconds(DEATH_ATTACK.pairDelayMs)} pause. Hits deal ${deathHit(1)}, then ${deathHit(2)}. Tapping cannot skip the pause.`,
   },
   rope: {
     description:
@@ -172,7 +172,7 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
     description:
       'A committed melee bruiser. Shadow claws into the fight, marks wounds, and rages when she can stay in close.',
     light:
-      `Fast shadow-claw swipes dealing ${shadowHit(1)}, ${shadowHit(2)}, then a ${shadowHit(3)}-damage finisher with light knockback. Each hit leaves a wound that drains ${markPct}% of their max health each second for ${seconds(SHADOW_MARK.durationMs)}.`,
+      `Fast shadow-claw swipes dealing ${shadowHit(1)} damage with light knockback. Each hit leaves a wound that drains ${markPct}% of their max health each second for ${seconds(SHADOW_MARK.durationMs)}.`,
   },
   mender: {
     description:
