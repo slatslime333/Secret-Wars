@@ -64,8 +64,10 @@ export const DEMON_HELL_BAT = {
 } as const;
 
 export const DEMON_RAGE = {
+  /** Transformation pause before Big Demon can act. */
   lockMs: 1000,
-  durationMs: 15000,
+  /** Big Demon window after the transform pause ends. */
+  durationMs: 9000,
   /** Meter needs 35% more damage to fill. */
   fillCostMul: 1.35,
   /** 20% of ability damage converts into rage, relative to the rating-50 ability hit. */
