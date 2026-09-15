@@ -1,5 +1,6 @@
 import { blockShieldMaxFor } from '../../../config/combat';
 import { DEMON, DEMON_BIG, DEMON_BIG_MUL } from '../../../config/demon';
+import { ABILITY_DAMAGE_CURVE } from '../../../config/ratings';
 import type { NinjaBody } from '../../NinjaBody';
 import { DEMON_RAGE } from './tunables';
 
@@ -89,8 +90,6 @@ export const resetDemonForm = (body: NinjaBody): void => {
   body.view.setScale(1);
 };
 
-export const demonRageFromCandle = (): number => DEMON_RAGE.candleRage;
-export const demonRageFromBurn = (): number => DEMON_RAGE.burnRage;
-export const demonRageFromHellfireExplode = (): number => DEMON_RAGE.hellfireExplodeRage;
-export const demonRageFromHellfireTick = (): number => DEMON_RAGE.hellfireTickRage;
-export const demonRageFromHellBat = (): number => DEMON_RAGE.hellBatRage;
+/** 20% of ability damage converts into rage meter fill. */
+export const demonRageFromAbilityDamage = (damage: number): number =>
+  (Math.max(0, damage) * DEMON_RAGE.abilityDamageToRage) / ABILITY_DAMAGE_CURVE.at50;

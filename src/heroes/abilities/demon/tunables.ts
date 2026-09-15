@@ -65,14 +65,11 @@ export const DEMON_HELL_BAT = {
 
 export const DEMON_RAGE = {
   lockMs: 1000,
-  durationMs: 8000,
+  durationMs: 11000,
   /** Meter needs 35% more damage to fill. */
   fillCostMul: 1.35,
-  candleRage: 0.11,
-  burnRage: 0.025,
-  hellfireExplodeRage: 0.16,
-  hellfireTickRage: 0.04,
-  hellBatRage: 0.18,
+  /** 20% of ability damage converts into rage, relative to the rating-50 ability hit. */
+  abilityDamageToRage: 0.20,
 } as const;
 
 export const DEMON_CLAW = {

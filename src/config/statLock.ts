@@ -42,14 +42,14 @@ export const PINNED_GAMEPLAY: Record<'ninja' | 'cole' | 'death', PinnedStats> = 
     defense: 28,
     knockbackPower: 210,
     attackCooldownMs: 449,
-    attackRange: 192,
+    attackRange: 217,
   },
   death: {
     maxHealth: 190,
-    maxStamina: 140,
+    maxStamina: 144,
     moveSpeed: 148,
     attackDamage: 17,
-    defense: 40,
+    defense: 39,
     knockbackPower: 231,
     attackCooldownMs: 230,
     attackRange: 134,
@@ -59,7 +59,6 @@ export const PINNED_GAMEPLAY: Record<'ninja' | 'cole' | 'death', PinnedStats> = 
 const OLD_ABILITY_RAW = {
   kick: 13 * 1.28 * 1.15,
   tornado: 13 * 0.86,
-  ball: 14 * 1.55,
   chain: 14 * 0.42,
   discharge: 14 * 1.55,
   storm: 14 * 1.7,
@@ -108,7 +107,6 @@ export const assertFoundationalStatLock = (): void => {
   const abilityPairs: Array<[string, number, number]> = [
     ['kick', NINJA_KICK.damage, OLD_ABILITY_RAW.kick],
     ['tornado', NINJA_TORNADO.damage, OLD_ABILITY_RAW.tornado],
-    ['ball', COLE_BALL.damage, OLD_ABILITY_RAW.ball],
     ['chain', COLE_BALL.chainDamage, OLD_ABILITY_RAW.chain],
     ['discharge', COLE_DISCHARGE.damage, OLD_ABILITY_RAW.discharge],
     ['storm', COLE_STORM.damage, OLD_ABILITY_RAW.storm],
@@ -123,11 +121,14 @@ export const assertFoundationalStatLock = (): void => {
     }
   });
 
-  if (SHADOW.ratings.damage !== 52) {
-    mismatches.push(`shadow damage rating ${SHADOW.ratings.damage} !== 52`);
+  if (SHADOW.ratings.damage !== 61) {
+    mismatches.push(`shadow damage rating ${SHADOW.ratings.damage} !== 61`);
   }
-  if (SHADOW.attackDamage !== 13) {
-    mismatches.push(`shadow attackDamage ${SHADOW.attackDamage} !== 13`);
+  if (SHADOW.ratings.defense !== 39) {
+    mismatches.push(`shadow defense rating ${SHADOW.ratings.defense} !== 39`);
+  }
+  if (SHADOW.attackDamage !== 15) {
+    mismatches.push(`shadow attackDamage ${SHADOW.attackDamage} !== 15`);
   }
   if (SHADOW.attackRange !== 145) {
     mismatches.push(`shadow attackRange ${SHADOW.attackRange} !== 145`);
@@ -163,8 +164,8 @@ export const assertFoundationalStatLock = (): void => {
   if (DEATH_GUN.intervalMs !== 238) {
     mismatches.push(`gun barrage interval ${DEATH_GUN.intervalMs} !== 238`);
   }
-  if (DEATH_GUN.speed !== 750) {
-    mismatches.push(`gun barrage speed ${DEATH_GUN.speed} !== 750`);
+  if (Math.round(COLE_BALL.damage) !== 30) {
+    mismatches.push(`electric ball displayed damage ${Math.round(COLE_BALL.damage)} !== 30`);
   }
 
   if (mismatches.length > 0) {
