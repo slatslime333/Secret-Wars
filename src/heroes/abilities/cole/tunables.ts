@@ -44,7 +44,7 @@ export const COLE_BALL = {
 
 export const COLE_DISCHARGE = {
   cooldownMs: 8000,
-  radius: Math.round(NINJA_BASE_RANGE * 1.4),
+  radius: Math.round(Math.round(NINJA_BASE_RANGE * 1.4) * 1.2),
   damageRating: 60,
   damage: abilityDamage(60),
   knockbackMul: 3.6,

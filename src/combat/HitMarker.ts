@@ -158,6 +158,30 @@ export class HitMarker {
     g.fillCircle(nx * length, ny * length, 3);
   }
 
+  /** Thin long-range aim line for Little Demon's candle. Same shape as Rope Man. */
+  syncFlameAim(
+    x: number,
+    y: number,
+    aimX: number,
+    aimY: number,
+    length: number,
+    aiming: boolean,
+  ): void {
+    const angle = Math.atan2(aimY, aimX);
+    const g = this.graphics;
+    g.clear();
+    g.setPosition(x, y);
+    const alpha = aiming ? 0.84 : 0.52;
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    g.lineStyle(3.5, 0x5a1808, alpha * 0.24);
+    g.lineBetween(nx * 10, ny * 10, nx * length, ny * length);
+    g.lineStyle(aiming ? 1.8 : 1.4, 0xff8a28, alpha);
+    g.lineBetween(nx * 10, ny * 10, nx * length, ny * length);
+    g.fillStyle(0xffe080, alpha);
+    g.fillCircle(nx * length, ny * length, 3);
+  }
+
   /** Cyan dual-uzi aim line for Mender Pulse. */
   syncPulseAim(
     x: number,

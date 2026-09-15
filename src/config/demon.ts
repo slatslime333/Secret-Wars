@@ -9,19 +9,19 @@ import { gameplayFromRatings, type CoreRatings } from './ratings';
  */
 export const DEMON_RATINGS = {
   health: 34,
-  stamina: 58,
+  stamina: 53,
   staminaRegen: 58,
-  damage: 18,
+  damage: 9,
   defense: 30,
-  speed: 66,
-  attackSpeed: 59,
+  speed: 60,
+  attackSpeed: 50,
   attackRange: 82,
   knockback: 28,
 } as const satisfies CoreRatings;
 
 /**
  * Big Demon: temporary melee frontliner. Strong, not 99-across-the-board.
- * Attack Range is Shadow melee, applied as an override after conversion.
+ * Attack Range is Shadow melee minus 25%, applied as an override after conversion.
  */
 export const DEMON_BIG_RATINGS = {
   health: 76,
@@ -56,7 +56,7 @@ export const DEMON_BIG = {
   role: 'frontliner' as const,
   ratings: DEMON_BIG_RATINGS,
   ...bigGameplay,
-  attackRange: SHADOW.attackRange,
+  attackRange: Math.round(SHADOW.attackRange * 0.75),
   attackArcDegrees: 72,
   bodyRadius: NINJA.bodyRadius,
   attackStaminaMul: 12 / 7,

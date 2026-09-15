@@ -14,6 +14,7 @@ import type { TacticalMind } from './tactical/mind';
 import { dodgeDirFor, scanProjectileThreat } from './tactical/shots';
 import { pickBestSupportAlly, purposesOf } from './tactical/supportSense';
 import { hellBatAim } from './tactical/demonSense';
+import { DEMON_HELL_BAT } from '../heroes/abilities/demon/tunables';
 
 const SLOTS: AbilitySlot[] = SLOT_ORDER;
 
@@ -91,6 +92,20 @@ export class CombatDriver {
     if (abilities && abilityCtx) {
       abilities.update(abilityCtx);
       const busy = abilities.isBusy();
+      if (busy && body.heroId === 'demon' && body.demonForm === 'bat') {
+        const bat = abilities.slotState('ability2', now);
+        if (bat.def.id === 'demon-hell-bat' && bat.ready) {
+          const inBurst = foes.some(
+            (foe) =>
+              !foe.down &&
+              foe.isPresent &&
+              Math.hypot(foe.x - body.x, foe.y - body.y) <= DEMON_HELL_BAT.radius + foe.stats.bodyRadius,
+          );
+          if (inBurst && abilities.tryActivate('ability2', abilityCtx)) {
+            usedAbility = true;
+          }
+        }
+      }
       if (
         !busy &&
         !abilities.control.abilities &&

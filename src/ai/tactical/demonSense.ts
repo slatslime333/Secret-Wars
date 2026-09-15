@@ -81,6 +81,12 @@ export const scoreDemonAbility = (def: AbilityDef, situation: Situation): number
       if (rage > 0.88 && close < 140) {
         delta += 12;
       }
+    } else if (form === 'bat') {
+      if (close < 170) {
+        delta += 22;
+      } else if (hp < 0.4) {
+        delta -= 8;
+      }
     } else if (form === 'big') {
       const left = demonTimeLeft(self);
       if (nearest && nearest.unit.hpRatio < 0.4 && close < 220 && foes <= 2) {

@@ -81,7 +81,7 @@ class DemonRageAbility implements ActiveAbility {
     this.control.attack = false;
     this.control.dash = false;
     this.control.block = false;
-    this.control.abilities = false;
+    this.control.abilities = true;
     this.activeUntil = ctx.now + DEMON_RAGE.durationMs;
     const { caster } = ctx;
     applyDemonBigStats(caster);

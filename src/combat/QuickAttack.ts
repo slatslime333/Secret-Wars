@@ -397,7 +397,7 @@ export class QuickAttack {
       );
       if (kind === 'hit') {
         applyBurn(result.target, now, 'candle', attacker);
-        grantDemonRage(attacker, demonRageFromCandle());
+        grantDemonRage(attacker, demonRageFromCandle(), result.target);
       }
     }
   }

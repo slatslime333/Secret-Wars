@@ -27,7 +27,7 @@ export const DEMON_BURN = {
 export const DEMON_HELLFIRE = {
   cooldownMs: 9000,
   range: NINJA_KICK.dashDistance,
-  radius: NINJA_SMOKE.radius,
+  radius: Math.round(NINJA_SMOKE.radius * 0.65),
   durationMs: 4000,
   throwSpeed: 640,
   candleRadius: 6,
@@ -43,12 +43,11 @@ export const DEMON_HELL_BAT = {
   cooldownMs: 9000,
   launchDistance: 88,
   launchMs: 140,
-  maxDurationMs: 2800,
+  /** Stay a bat until recast or this timeout — no contact explode. */
+  maxDurationMs: 20000,
   moveMul: 1.2,
   defenseMul: 1.35,
   minSpeedFrac: 0.72,
-  /** No collide-burst until takeoff has actually moved him. */
-  contactGraceMs: 280,
   /** Ignore a second E press that lands in the same swing as the start. */
   recastLockMs: 220,
   radius: NINJA_SMOKE.radius,
@@ -61,12 +60,14 @@ export const DEMON_HELL_BAT = {
   attackSlowMul: 1.25,
   slowMs: 1500,
   recoilDistance: 148,
-  pathPadding: 6,
+  deferCooldown: true,
 } as const;
 
 export const DEMON_RAGE = {
   lockMs: 1000,
   durationMs: 8000,
+  /** Meter needs 35% more damage to fill. */
+  fillCostMul: 1.35,
   candleRage: 0.11,
   burnRage: 0.025,
   hellfireExplodeRage: 0.16,
@@ -80,7 +81,7 @@ export const DEMON_CLAW = {
   hitReactionMs: 160,
 } as const;
 
-export const demonMeleeRange = (): number => SHADOW.attackRange;
+export const demonMeleeRange = (): number => Math.round(SHADOW.attackRange * 0.75);
 
 export const demonHellBatRecoil = (distance: number): number =>
   Math.sqrt(Math.max(0, distance) * COMBAT.bodyDrag * 2);

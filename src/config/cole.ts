@@ -12,8 +12,8 @@ export const COLE_RATINGS = {
   staminaRegen: 60,
   damage: 57,
   defense: 50,
-  speed: 48,
-  attackSpeed: 26,
+  speed: 52,
+  attackSpeed: 33,
   attackRange: 74,
   knockback: 52,
 } as const satisfies CoreRatings;
@@ -29,8 +29,8 @@ export const COLE = {
   role: 'frontliner',
   ratings: COLE_RATINGS,
   ...coleGameplay,
-  /** Light-attack / hit-marker reach. Previous live 0.75, then +15%. */
-  attackRange: Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.15),
+  /** Light-attack / hit-marker reach. Previous live 0.75, then +15%, then +17%. */
+  attackRange: Math.round(Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.15) * 1.17),
   /** 20% tighter than the previous 81° Cole wedge. */
   attackArcDegrees: 65,
   bodyRadius: NINJA.bodyRadius,
