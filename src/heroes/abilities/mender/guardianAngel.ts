@@ -156,7 +156,7 @@ const resolveGuardianBurst = (ctx: AbilityContext, target: NinjaBody, absorbed: 
   if (absorbed > 0 && !target.down && target.isPresent) {
     const heal = Math.max(0, Math.round(absorbed * MENDER_ANGEL.healRatio));
     const stamina = Math.min(MENDER_ANGEL.staminaCap, Math.round(absorbed * MENDER_ANGEL.staminaRatio));
-    target.heal(heal);
+    target.heal(heal, ctx.caster);
     target.stamina = Math.min(target.stats.maxStamina, target.stamina + stamina);
   }
 

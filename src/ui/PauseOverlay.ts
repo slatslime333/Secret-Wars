@@ -5,7 +5,7 @@ import { ActionButton } from './ActionButton';
 import { ScrollPanel } from './layout/ScrollPanel';
 import { applyGameplayCamera, measureViewport } from './layout/viewport';
 import { adoptHud, resizeHudCamera } from './layout/hudCamera';
-import { addScoreboardSized } from './ScoreboardView';
+import { ScoreboardPanel, type ScoreboardHeader } from './ScoreboardView';
 import { cameraPrefs } from '../config/cameraPrefs';
 import { SettingSlider } from './SettingSlider';
 import { COLORS, FONTS, hex } from './theme';
@@ -33,7 +33,7 @@ export class PauseOverlay {
     return this.visible;
   }
 
-  show(lines: HeroStatLine[]): void {
+  show(lines: HeroStatLine[], header?: ScoreboardHeader): void {
     this.scroller?.destroy();
     this.scroller = undefined;
     this.root.removeAll(true);
@@ -75,8 +75,16 @@ export class PauseOverlay {
       depth: 231,
       scrollFactor: 0,
     });
-    const board = addScoreboardSized(this.scene, this.scroller.content, lines, 0, width - inset.left - inset.right);
-    this.scroller.setContentSize(board.width, board.height + 8);
+    const board = new ScoreboardPanel(
+      this.scene,
+      this.scroller.content,
+      width - inset.left - inset.right,
+      0,
+      () => Boolean(this.scroller?.wasDragged),
+    );
+    board.onResizeContent((h) => this.scroller?.setContentSize(board.size.width, h + 8));
+    board.render(lines, header);
+    this.scroller.setContentSize(board.size.width, board.size.height + 8);
     this.root.add(this.scroller.root);
 
     const sliderX = width / 2;

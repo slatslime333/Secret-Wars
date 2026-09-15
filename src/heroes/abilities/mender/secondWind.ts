@@ -90,7 +90,7 @@ const startSecondWindField = (ctx: AbilityContext): void => {
           continue;
         }
         if (fighter.team === owner.team) {
-          fighter.heal(MENDER_WIND.healPerSecond * (MENDER_WIND.pulseMs / 1000));
+          fighter.heal(MENDER_WIND.healPerSecond * (MENDER_WIND.pulseMs / 1000), owner);
           fighter.status.applyStaminaRegenBuff(now, MENDER_WIND.pulseMs + 80, MENDER_WIND.staminaRegenMul);
           if (fighter === owner) {
             fighter.status.applyDefenseBuff(now, MENDER_WIND.pulseMs + 80, MENDER_WIND.defenseMul);

@@ -37,7 +37,7 @@ export class MatchHud {
   private barWidth = 224;
   private cluster: ScoreCluster = { x: 0, y: 22, originX: 0.5, originY: 0.5, compact: false, size: 16 };
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, private readonly onOpenScoreboard?: () => void) {
     const width = scene.scale.width;
     this.timer = scene.add
       .text(width / 2, 46, `TIME  ${formatMatchClock(MATCH.durationMs, 'PLAYING')}`, {
@@ -144,6 +144,25 @@ export class MatchHud {
       this.level,
       this.xpText,
     );
+    this.bindScoreboardToggle();
+  }
+
+  private bindScoreboardToggle(): void {
+    if (!this.onOpenScoreboard) {
+      return;
+    }
+    for (const text of [
+      this.timer,
+      this.phase,
+      this.scoreAlphaLabel,
+      this.scoreAlpha,
+      this.scoreSep,
+      this.scoreBravo,
+      this.scoreBravoLabel,
+    ]) {
+      text.setInteractive({ useHandCursor: true });
+      text.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.onOpenScoreboard?.());
+    }
   }
 
   layout(width: number, height = 0): void {

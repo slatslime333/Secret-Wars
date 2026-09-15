@@ -71,6 +71,8 @@ export type ObjectiveCompleteEvent = {
   kind: ObjectiveKind;
   winner?: TeamId;
   assassin?: HeroRuntime['body'];
+  /** Winning-team heroes who were actually on the objective at complete. */
+  contributors?: HeroRuntime['body'][];
 };
 
 export type ObjectiveDeathEvent = {

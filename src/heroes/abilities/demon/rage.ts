@@ -91,7 +91,7 @@ class DemonRageAbility implements ActiveAbility {
       caster.stats.maxStamina,
       caster.stamina + Math.round(caster.stats.maxStamina * DEMON_RAGE.staminaOnActivate),
     );
-    caster.heal(Math.round(caster.stats.maxHealth * DEMON_RAGE.healOnActivate));
+    caster.heal(Math.round(caster.stats.maxHealth * DEMON_RAGE.healOnActivate), caster);
     caster.view.setScale(1.28);
     spawnCombatCallout(ctx.scene, caster.x, caster.y, 'DEMON RAGE', 0xffc030);
     playWorld('shadow-rage-active', caster);

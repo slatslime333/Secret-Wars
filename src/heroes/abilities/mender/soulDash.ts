@@ -167,7 +167,7 @@ class SoulDashAbility implements ActiveAbility {
     this.buffed = true;
     const now = ctx.now;
     const heal = Math.round(this.ally.stats.maxHealth * MENDER_SOUL.healMaxHp);
-    this.ally.heal(heal);
+    this.ally.heal(heal, ctx.caster);
     this.ally.status.applyHasteBuff(now, MENDER_SOUL.buffMs, MENDER_SOUL.moveMul, MENDER_SOUL.attackSpeedMul);
     this.ally.status.applyStaminaRegenBuff(now, MENDER_SOUL.buffMs, MENDER_SOUL.staminaRegenMul);
     this.ally.showMagicVortex(now + MENDER_SOUL.buffMs, MENDER_SOUL.auraTint);

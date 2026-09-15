@@ -18,6 +18,7 @@ import { MENDER_ANGEL, MENDER_PULSE, MENDER_SOUL } from '../heroes/abilities/men
 import { DEMON_HELLFIRE } from '../heroes/abilities/demon/tunables';
 import { NinjaBody, allowsHeroCollide } from '../heroes/NinjaBody';
 import { onCombatDamage, onCombatBlocked, isHeroFighter } from '../combat/damageEvents';
+import { onCombatHeal } from '../combat/healEvents';
 import { BattleInput } from '../input/BattleInput';
 import { ActionButton } from '../ui/ActionButton';
 import { AbilityTray } from '../ui/AbilityTray';
@@ -30,8 +31,9 @@ import type { LevelUpResult } from '../match/Progression';
 import type { ObjectiveCompleteEvent } from '../match/objectives/types';
 import { isPcCombatHud, layoutPcCombatHud } from '../ui/pcCombatHud';
 import { cueAbilityReady } from '../audio/abilityReady';
-import { PostMatchOverlay } from '../ui/PostMatchOverlay';
+import { ScoreboardOverlay } from '../ui/ScoreboardView';
 import { PauseOverlay } from '../ui/PauseOverlay';
+import { PostMatchOverlay } from '../ui/PostMatchOverlay';
 import { SpectatorOverlay } from '../ui/SpectatorOverlay';
 import { Minimap } from '../ui/Minimap';
 import { COLORS, FONTS, hex } from '../ui/theme';
@@ -52,7 +54,7 @@ import { WaveDirector } from '../match/WaveDirector';
 import { XpOrbWorld } from '../match/XpOrbWorld';
 import { ObjectiveManager } from '../match/objectives/ObjectiveManager';
 import type { ObjectiveKind } from '../config/objective';
-import { OBJECTIVE_SCORE } from '../config/score';
+import { OBJECTIVE_SCORE, OBJECTIVE_REASON } from '../config/score';
 import { buildMatchGameState, type MatchGameState } from '../match/MatchQuery';
 import { SpectatorCamera } from '../match/SpectatorCamera';
 import {
@@ -123,6 +125,8 @@ export class MatchScene extends Phaser.Scene {
   private objectives?: ObjectiveManager;
   private offDamage?: () => void;
   private offBlocked?: () => void;
+  private offHeal?: () => void;
+  private liveBoard?: ScoreboardOverlay;
   private heroGroup?: Phaser.Physics.Arcade.Group;
 
   constructor() {
@@ -200,7 +204,15 @@ export class MatchScene extends Phaser.Scene {
       if (!event.killer || !isHeroFighter(event.killer) || !event.killer.isPresent || event.killer.down) {
         return;
       }
-      this.score.awardMinion(event.killer.team, event.kind, this.time.now);
+      const awarded = this.score.awardMinion(event.killer.team, event.kind, this.time.now);
+      this.stats.recordMinionKill(event.killer);
+      if (awarded > 0) {
+        this.stats.recordScoreShare(
+          event.killer,
+          awarded,
+          event.kind === 'ranger' ? 'ranger_minion' : 'sword_minion',
+        );
+      }
       this.orbs.spawn(event.x, event.y, event.killer, xpForMinion(event.kind), event.team);
     };
 
@@ -230,6 +242,7 @@ export class MatchScene extends Phaser.Scene {
         }
         this.noteXp(runtime, amount);
         this.noteProgression(runtime, leveled);
+        this.stats.recordXp(runtime.body, amount, runtime.progression);
       },
     });
     this.pilots.clear();
@@ -260,7 +273,8 @@ export class MatchScene extends Phaser.Scene {
     this.feedback.setAnchor(this.hud.hpAnchor().x, this.hud.hpAnchor().y);
     this.feedback.setXpAnchor(this.hud.chipAnchor().x, this.hud.chipAnchor().y);
     this.hud.placeCombo(this.scale.width / 2, layoutHudChrome(measureViewport(this.scale.width, this.scale.height)).comboY);
-    this.matchHud = new MatchHud(this);
+    this.matchHud = new MatchHud(this, () => this.toggleLiveBoard());
+    this.liveBoard = new ScoreboardOverlay(this);
     this.layoutAbilityTray(this.scale.width, this.scale.height);
     this.minimap = new Minimap(this);
     this.results = new PostMatchOverlay(this, {
@@ -292,6 +306,7 @@ export class MatchScene extends Phaser.Scene {
     this.waves.start(this.time.now);
     this.offDamage = onCombatDamage((event) => this.stats.recordDamage(event));
     this.offBlocked = onCombatBlocked((event) => this.stats.recordBlocked(event.defender, event.amount));
+    this.offHeal = onCombatHeal((event) => this.stats.recordHeal(event));
     audio.unlock();
     audio.play('ui-match-start');
 
@@ -299,13 +314,17 @@ export class MatchScene extends Phaser.Scene {
     this.game.canvas.focus();
     this.input.keyboard?.addCapture(['ESC']);
     this.input.keyboard?.on('keydown-ESC', this.togglePauseMenu, this);
+    this.input.keyboard?.on('keydown-TAB', this.onScoreboardKey, this);
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.bindDebugApi();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
       this.input.keyboard?.off('keydown-ESC', this.togglePauseMenu, this);
+      this.input.keyboard?.off('keydown-TAB', this.onScoreboardKey, this);
       this.offDamage?.();
       this.offBlocked?.();
+      this.offHeal?.();
+      this.liveBoard?.destroy();
       this.abilityWorld.destroy();
       this.minions.destroy();
       this.orbs.destroy();
@@ -340,8 +359,10 @@ export class MatchScene extends Phaser.Scene {
 
     if (this.match.finished) {
       this.score.lock();
+      this.stats.lock();
       this.objectives?.endMatch();
       this.freezeField();
+      this.liveBoard?.hide();
       this.syncHud(now);
       this.spectatorOverlay.hide();
       if (!this.results.isOpen) {
@@ -554,10 +575,12 @@ export class MatchScene extends Phaser.Scene {
     }
     this.noteXp(hero, amount);
     this.noteProgression(hero, result);
+    this.stats.recordXp(hero.body, amount, hero.progression);
     return result;
   }
 
   private noteProgression(hero: HeroRuntime, result: LevelUpResult): void {
+    this.stats.syncLevel(hero.body, hero.progression.level);
     if (!hero.isPlayer || !result.leveled) {
       return;
     }
@@ -565,6 +588,19 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private noteObjective(event: ObjectiveCompleteEvent): void {
+    const bodies = event.contributors ?? [];
+    const amount = OBJECTIVE_SCORE[event.kind] ?? 0;
+    const reason = OBJECTIVE_REASON[event.kind];
+    if (amount > 0 && reason && bodies.length > 0) {
+      this.stats.splitScore(bodies, amount, reason);
+      for (const body of bodies) {
+        this.stats.recordObjectiveWin(body, event.kind);
+      }
+    } else {
+      for (const body of bodies) {
+        this.stats.recordObjectiveParticipation(body, event.kind);
+      }
+    }
     if (event.kind === 'healing_shrine' || event.kind === 'rage_zone' || event.kind === 'meteor_storm') {
       return;
     }
@@ -576,14 +612,8 @@ export class MatchScene extends Phaser.Scene {
       winner: event.winner,
       assassinBonus: event.assassin === this.player.body,
     });
-    const awarded =
-      event.kind === 'capture_zone' ||
-      event.kind === 'golden_piggy' ||
-      event.kind === 'bounty_target' ||
-      event.kind === 'executioner' ||
-      event.kind === 'war_banner';
-    if (awarded) {
-      this.feedback.scoreGain(OBJECTIVE_SCORE[event.kind] ?? 0);
+    if (amount > 0) {
+      this.feedback.scoreGain(amount);
     }
   }
 
@@ -593,7 +623,7 @@ export class MatchScene extends Phaser.Scene {
     }
     const runtime = this.heroes.find((hero) => hero.body === target);
     const leveled = runtime?.progression.grantXp(amount);
-    target.heal(MATCH.healing.minionKill);
+    target.heal(MATCH.healing.minionKill, target);
     audio.play('ui-xp');
     if (leveled?.leveled) {
       audio.play('ui-level-up');
@@ -601,6 +631,7 @@ export class MatchScene extends Phaser.Scene {
     if (runtime && leveled) {
       this.noteXp(runtime, amount);
       this.noteProgression(runtime, leveled);
+      this.stats.recordXp(runtime.body, amount, runtime.progression);
     }
   }
 
@@ -612,6 +643,9 @@ export class MatchScene extends Phaser.Scene {
       const result = this.stats.registerHeroDeath(unit.body, now);
       if (result.killer && result.killer.team !== unit.team) {
         const awarded = this.score.awardHeroKill(result.killer.team, unit.instanceId, now);
+        if (awarded > 0) {
+          this.stats.recordScoreShare(result.killer, awarded, 'hero_kill');
+        }
         if (result.killer.team === this.player.team && awarded > 0) {
           this.feedback.scoreGain(awarded);
         }
@@ -695,6 +729,7 @@ export class MatchScene extends Phaser.Scene {
     const unit = new HeroRuntime(this, options);
     this.heroes.push(unit);
     this.stats.register(unit.body, { instanceId: unit.instanceId, player: options.isPlayer });
+    this.stats.syncLevel(unit.body, unit.progression.level);
     return unit;
   }
 
@@ -964,6 +999,7 @@ export class MatchScene extends Phaser.Scene {
     this.feedback.setAnchor(anchor.x, anchor.y);
     this.feedback.setXpAnchor(chip.x, chip.y);
     this.matchHud.sync(this.match.snapshot(), this.score.snapshot(), focus.progression);
+    this.liveBoard?.refresh(this.stats.allLines(), this.scoreboardHeader(), now);
     this.titleText?.setText(
       `${this.simulator ? 'SIMULATOR' : 'SECRET WARS'}  //  ${focus.body.stats.displayName.toUpperCase()}`,
     );
@@ -1131,7 +1167,10 @@ export class MatchScene extends Phaser.Scene {
     }
     applyGameplayCamera(this.cameras.main, width, height);
     if (this.pauseOverlay?.isOpen) {
-      this.pauseOverlay.show(this.stats.allLines());
+      this.pauseOverlay.show(this.stats.allLines(), this.scoreboardHeader());
+    }
+    if (this.liveBoard?.isOpen) {
+      this.liveBoard.show(this.stats.allLines(), this.scoreboardHeader());
     }
   }
 
@@ -1159,7 +1198,8 @@ export class MatchScene extends Phaser.Scene {
     this.time.paused = true;
     this.freezeField();
     this.setPauseChromeVisible(false);
-    this.pauseOverlay.show(this.stats.allLines());
+    this.liveBoard?.hide();
+    this.pauseOverlay.show(this.stats.allLines(), this.scoreboardHeader());
   }
 
   private closePause(): void {
@@ -1182,6 +1222,29 @@ export class MatchScene extends Phaser.Scene {
     this.hud?.setVisible(visible);
     this.abilityTray?.setVisible(visible);
   }
+
+  private scoreboardHeader(): { score: ReturnType<ScoreManager['snapshot']>; remainingMs: number; finished: boolean } {
+    return {
+      score: this.score.snapshot(),
+      remainingMs: this.match.remainingMs,
+      finished: this.match.finished,
+    };
+  }
+
+  private toggleLiveBoard = (): void => {
+    if (this.returning || this.match.finished || this.results.isOpen || this.match.paused) {
+      return;
+    }
+    this.liveBoard?.toggle(this.stats.allLines(), this.scoreboardHeader());
+  };
+
+  private onScoreboardKey = (event?: KeyboardEvent): void => {
+    if (this.spectator?.enabled) {
+      return;
+    }
+    event?.preventDefault?.();
+    this.toggleLiveBoard();
+  };
 
   private restartMatch(): void {
     if (this.returning) {

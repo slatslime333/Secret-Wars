@@ -307,7 +307,7 @@ export class QuickAttack {
         const pose = shot.pose();
         for (const ally of healTargets) {
           if (Math.hypot(ally.x - pose.x, ally.y - pose.y) <= pose.radius + ally.stats.bodyRadius) {
-            this.grantPulseHeal(shot, ally);
+            this.grantPulseHeal(shot, ally, attacker);
           }
         }
       }
@@ -341,7 +341,7 @@ export class QuickAttack {
     }
   }
 
-  private grantPulseHeal(shot: Projectile, ally: NinjaBody): void {
+  private grantPulseHeal(shot: Projectile, ally: NinjaBody, healer: NinjaBody): void {
     let seen = this.pulseHealed.get(shot);
     if (!seen) {
       seen = new WeakSet();
@@ -351,7 +351,7 @@ export class QuickAttack {
       return;
     }
     seen.add(ally);
-    ally.heal(MENDER_PULSE.healHealth);
+    ally.heal(MENDER_PULSE.healHealth, healer);
     ally.stamina = Math.min(ally.stats.maxStamina, ally.stamina + MENDER_PULSE.healStamina);
   }
 

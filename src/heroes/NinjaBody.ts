@@ -6,6 +6,7 @@ import { COMBAT, ComboStep, blockShieldMaxFor, comboStepOf, lightAttackStaminaCo
 import { CombatStatus } from '../combat/CombatStatus';
 import { TakeHitOptions } from '../combat/Hurtbox';
 import { emitCombatBlocked, emitCombatDamage } from '../combat/damageEvents';
+import { emitCombatHeal } from '../combat/healEvents';
 import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
 import { drawColeElectricity } from './drawCole';
@@ -670,11 +671,21 @@ export class NinjaBody {
     clearGuardian(this);
   }
 
-  heal(amount: number): void {
+  /** Restore HP. Returns the amount actually applied (no overheal). */
+  heal(amount: number, healer?: NinjaBody): number {
     if (amount <= 0 || this.down || !this.present) {
-      return;
+      return 0;
     }
-    this.health = Math.min(this.stats.maxHealth, this.health + amount);
+    const missing = this.stats.maxHealth - this.health;
+    const applied = Math.min(missing, amount);
+    if (applied <= 0) {
+      return 0;
+    }
+    this.health += applied;
+    if (healer) {
+      emitCombatHeal({ healer, target: this, amount: applied, at: this.scene.time.now });
+    }
+    return applied;
   }
 
   get isPresent(): boolean {
