@@ -5,7 +5,7 @@ import { ActionButton } from './ActionButton';
 import { ScrollPanel } from './layout/ScrollPanel';
 import { applyGameplayCamera, measureViewport } from './layout/viewport';
 import { adoptHud, resizeHudCamera } from './layout/hudCamera';
-import { ScoreboardPanel, type ScoreboardHeader } from './ScoreboardView';
+import { ScoreboardPanel, scoreboardPanelWidth, type ScoreboardHeader } from './ScoreboardView';
 import { cameraPrefs } from '../config/cameraPrefs';
 import { SettingSlider } from './SettingSlider';
 import { COLORS, FONTS, hex } from './theme';
@@ -71,14 +71,17 @@ export class PauseOverlay {
 
     const scrollY = inset.top + headerH;
     const scrollH = Math.max(80, height - scrollY - footerH - inset.bottom);
-    this.scroller = new ScrollPanel(this.scene, inset.left, scrollY, width - inset.left - inset.right, scrollH, {
+    const areaW = width - inset.left - inset.right;
+    const boardW = scoreboardPanelWidth(areaW);
+    const boardX = inset.left + Math.round((areaW - boardW) / 2);
+    this.scroller = new ScrollPanel(this.scene, boardX, scrollY, boardW, scrollH, {
       depth: 231,
       scrollFactor: 0,
     });
     const board = new ScoreboardPanel(
       this.scene,
       this.scroller.content,
-      width - inset.left - inset.right,
+      boardW,
       0,
       () => Boolean(this.scroller?.wasDragged),
     );

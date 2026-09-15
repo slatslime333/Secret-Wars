@@ -1289,6 +1289,7 @@ export class MatchScene extends Phaser.Scene {
       },
       scores: () => this.score.snapshot(),
       warScore: () => this.score.telemetry(this.match.elapsedMs),
+      board: () => this.stats.allLines(),
       phase: () => this.match.snapshot(),
       spawnObjective: (kind?: ObjectiveKind) => this.objectives?.debugSpawn(kind),
       toggleAi: () => {

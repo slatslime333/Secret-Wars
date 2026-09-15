@@ -153,18 +153,19 @@ export class CombatStatsTracker {
   }
 
   recordHeal(event: CombatHealEvent): void {
-    if (this.locked || event.amount <= 0) {
+    const amount = event.amount;
+    if (this.locked || amount <= 0) {
       return;
     }
     const line = this.lines.get(event.healer);
     if (!line) {
       return;
     }
-    line.healingDone += event.amount;
+    line.healingDone += amount;
     if (event.healer === event.target) {
-      line.healingSelf += event.amount;
+      line.healingSelf += amount;
     } else {
-      line.healingAlly += event.amount;
+      line.healingAlly += amount;
     }
   }
 

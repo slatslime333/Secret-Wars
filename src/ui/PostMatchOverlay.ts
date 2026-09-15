@@ -8,7 +8,7 @@ import { ActionButton } from './ActionButton';
 import { ScrollPanel } from './layout/ScrollPanel';
 import { measureViewport } from './layout/viewport';
 import { adoptHud } from './layout/hudCamera';
-import { ScoreboardPanel } from './ScoreboardView';
+import { ScoreboardPanel, scoreboardPanelWidth } from './ScoreboardView';
 import { COLORS, FONTS, hex } from './theme';
 
 export type PostMatchHandlers = {
@@ -71,14 +71,17 @@ export class PostMatchOverlay {
     const footerH = 72;
     const scrollY = inset.top + 78;
     const scrollH = Math.max(80, height - scrollY - footerH - inset.bottom);
-    this.scroller = new ScrollPanel(this.scene, inset.left, scrollY, width - inset.left - inset.right, scrollH, {
+    const areaW = width - inset.left - inset.right;
+    const boardW = scoreboardPanelWidth(areaW);
+    const boardX = inset.left + Math.round((areaW - boardW) / 2);
+    this.scroller = new ScrollPanel(this.scene, boardX, scrollY, boardW, scrollH, {
       depth: 241,
       scrollFactor: 0,
     });
     const board = new ScoreboardPanel(
       this.scene,
       this.scroller.content,
-      width - inset.left - inset.right,
+      boardW,
       0,
       () => Boolean(this.scroller?.wasDragged),
     );

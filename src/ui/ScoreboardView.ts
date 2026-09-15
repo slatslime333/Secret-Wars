@@ -25,12 +25,12 @@ export type ScoreboardSize = {
 
 const fmt = (n: number): string => formatWarScore(Math.round(n));
 
+export const scoreboardPanelWidth = (available: number): number => Math.min(640, Math.max(280, available));
+
 const kindLabel = (kind: string): string => {
   const label = OBJECTIVE_LABEL[kind as ObjectiveKind];
   return label ? label.replace(/!$/, '') : kind.replace(/_/g, ' ').toUpperCase();
 };
-
-type PackedBoard = { lines: HeroStatLine[]; header?: ScoreboardHeader };
 
 /**
  * Compact expandable War Score board. One open row at a time.
@@ -41,6 +41,8 @@ export class ScoreboardPanel {
   private expandedId: string | null = null;
   private width: number;
   private height = 0;
+  private lines: HeroStatLine[] = [];
+  private header?: ScoreboardHeader;
   private onHeight?: (height: number) => void;
   private ignoreToggle?: () => boolean;
 
@@ -66,7 +68,8 @@ export class ScoreboardPanel {
   }
 
   render(lines: HeroStatLine[], header?: ScoreboardHeader): void {
-    this.root.setData('pack', { lines, header } satisfies PackedBoard);
+    this.lines = lines;
+    this.header = header;
     this.root.removeAll(true);
     const compact = this.width < 520;
     let y = 0;
@@ -81,6 +84,7 @@ export class ScoreboardPanel {
     y = this.drawTeam(bravo, 'RED', COLORS.redBright, y, compact);
     this.height = y + 8;
     this.onHeight?.(this.height);
+    adoptHud(this.scene, this.root);
   }
 
   destroy(): void {
@@ -206,10 +210,7 @@ export class ScoreboardPanel {
       return;
     }
     this.expandedId = this.expandedId === id ? null : id;
-    const packed = this.root.getData('pack') as PackedBoard | undefined;
-    if (packed) {
-      this.render(packed.lines, packed.header);
-    }
+    this.render(this.lines, this.header);
   }
 
   private drawDetails(line: HeroStatLine, y: number, compact: boolean): number {
@@ -264,7 +265,7 @@ export class ScoreboardPanel {
     y: number,
     title: string,
     rows: [string, string][],
-    compact: boolean,
+    _compact: boolean,
   ): number {
     const heading = this.scene.add
       .text(14, y, title, {
@@ -277,7 +278,7 @@ export class ScoreboardPanel {
       .setOrigin(0, 0);
     this.root.add(heading);
     const cols = 2;
-    const colW = compact ? this.width / 2 - 18 : this.width / 2 - 20;
+    const colW = Math.min(260, (this.width - 40) / 2);
     const rowH = 15;
     rows.forEach((pair, index) => {
       const col = index % cols;
@@ -361,7 +362,10 @@ export class ScoreboardOverlay {
   }
 
   refresh(lines: HeroStatLine[], header: ScoreboardHeader, now: number): void {
-    if (!this.visible || now - this.lastRefresh < 280) {
+    if (!this.visible || now - this.lastRefresh < 500) {
+      return;
+    }
+    if (this.scene.input.activePointer?.primaryDown) {
       return;
     }
     this.lastRefresh = now;
@@ -427,10 +431,11 @@ export class ScoreboardOverlay {
     this.root.add([veil, close, live]);
     const scrollY = inset.top + 28;
     const scrollH = Math.max(80, height - scrollY - inset.bottom - 12);
-    const innerW = width - inset.left - inset.right;
-    this.bounds = { x: inset.left, y: scrollY, w: innerW, h: scrollH };
-    this.scroller = new ScrollPanel(this.scene, inset.left, scrollY, innerW, scrollH, {
-      depth: 226,
+    const innerW = scoreboardPanelWidth(width - inset.left - inset.right);
+    const boardX = Math.round((width - innerW) / 2);
+    this.bounds = { x: boardX, y: scrollY, w: innerW, h: scrollH };
+    this.scroller = new ScrollPanel(this.scene, boardX, scrollY, innerW, scrollH, {
+      depth: 227,
       scrollFactor: 0,
     });
     this.panel = new ScoreboardPanel(this.scene, this.scroller.content, innerW, 0, () =>
@@ -439,8 +444,7 @@ export class ScoreboardOverlay {
     this.panel.onResizeContent((h) => this.scroller?.setContentSize(innerW, h + 8));
     this.panel.render(lines, header);
     this.scroller.setContentSize(innerW, this.panel.size.height + 8);
-    this.root.add(this.scroller.root);
-    adoptHud(this.scene, this.root);
+    adoptHud(this.scene, this.root, this.scroller.root);
     this.lastRefresh = this.scene.time.now;
   }
 
