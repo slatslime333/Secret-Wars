@@ -13,11 +13,18 @@ export const isBigDemon = (body: { heroId: string; demonForm: DemonForm }): bool
 export const canBuildDemonRage = (body: { heroId: string; demonForm: DemonForm }): boolean =>
   isDemon(body) && (body.demonForm === 'little' || body.demonForm === 'bat');
 
-export const grantDemonRage = (body: NinjaBody, amount: number): void => {
+export const grantDemonRage = (
+  body: NinjaBody,
+  amount: number,
+  target?: { stats?: { role?: string } },
+): void => {
   if (!canBuildDemonRage(body) || amount <= 0) {
     return;
   }
-  body.demonRage = Math.min(1, body.demonRage + amount);
+  if (target?.stats?.role === 'minion') {
+    return;
+  }
+  body.demonRage = Math.min(1, body.demonRage + amount / DEMON_RAGE.fillCostMul);
 };
 
 export const applyDemonBigStats = (body: NinjaBody): void => {

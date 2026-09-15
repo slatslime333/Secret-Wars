@@ -11,8 +11,14 @@ import { pickOpeningForTest } from './strategy';
 import { clusterRiskOf, guardHome, nudgeOffMates, protectStand, regroupStand } from './spacing';
 import { cameraPrefs } from '../../config/cameraPrefs';
 import { MENDER } from '../../config/mender';
-import { DEMON } from '../../config/demon';
-import { DEMON_HELL_BAT } from '../../heroes/abilities/demon/tunables';
+import { DEMON, DEMON_BIG } from '../../config/demon';
+import { COLE } from '../../config/cole';
+import { WITCH } from '../../config/witch';
+import { SHADOW } from '../../config/shadow';
+import { DEMON_HELLFIRE, DEMON_HELL_BAT, DEMON_RAGE } from '../../heroes/abilities/demon/tunables';
+import { SHADOW_CLAW } from '../../heroes/abilities/shadow/tunables';
+import { NINJA_SMOKE } from '../../heroes/abilities/ninja/tunables';
+import { abilityDamage } from '../../config/ratings';
 import { MENDER_PULSE } from '../../heroes/abilities/mender/tunables';
 
 const results = runTacticalScenarios();
@@ -221,17 +227,25 @@ for (const result of mapChecks) {
   console.log(`${mark}  ${result.name}  ${result.detail}`);
 }
 
-if (MENDER.attackDamage !== 19) {
+if (MENDER.ratings.damage !== 7 || MENDER.attackDamage !== 9) {
   failed += 1;
-  console.log(`FAIL  mender damage  ${MENDER.attackDamage} !== 19`);
+  console.log(`FAIL  mender damage  rating=${MENDER.ratings.damage} dmg=${MENDER.attackDamage}`);
 } else {
-  console.log('ok  mender damage  19');
+  console.log('ok  mender damage  rating 7 / hit 9');
 }
-if (MENDER.ratings.attackSpeed !== 80) {
+if (MENDER.ratings.attackSpeed !== 87) {
   failed += 1;
-  console.log(`FAIL  mender attack speed  ${MENDER.ratings.attackSpeed} !== 80`);
+  console.log(`FAIL  mender attack speed  ${MENDER.ratings.attackSpeed} !== 87`);
 } else {
-  console.log('ok  mender attack speed  80');
+  console.log('ok  mender attack speed  87');
+}
+if (MENDER.ratings.staminaRegen !== 80 || MENDER.ratings.stamina !== 58) {
+  failed += 1;
+  console.log(
+    `FAIL  mender stamina  regen=${MENDER.ratings.staminaRegen} pool=${MENDER.ratings.stamina}`,
+  );
+} else {
+  console.log('ok  mender stamina  recovery 80 / pool 58');
 }
 if (MENDER_PULSE.radius >= 5.6 || MENDER_PULSE.armOffsetRad >= 0.028 || MENDER_PULSE.spreadRad >= 0.07) {
   failed += 1;
@@ -245,27 +259,69 @@ if (MENDER_PULSE.radius >= 5.6 || MENDER_PULSE.armOffsetRad >= 0.028 || MENDER_P
 }
 
 if (
-  DEMON.ratings.damage !== 18 ||
-  DEMON.ratings.attackSpeed !== 59 ||
-  DEMON.ratings.speed !== 66 ||
-  DEMON.ratings.staminaRegen !== 58
+  DEMON.ratings.damage !== 9 ||
+  DEMON.ratings.attackSpeed !== 50 ||
+  DEMON.ratings.speed !== 60 ||
+  DEMON.ratings.stamina !== 53
 ) {
   failed += 1;
   console.log(
-    `FAIL  demon ratings  dmg=${DEMON.ratings.damage} atk=${DEMON.ratings.attackSpeed} spd=${DEMON.ratings.speed} stamRegen=${DEMON.ratings.staminaRegen}`,
+    `FAIL  demon ratings  dmg=${DEMON.ratings.damage} atk=${DEMON.ratings.attackSpeed} spd=${DEMON.ratings.speed} stam=${DEMON.ratings.stamina}`,
   );
 } else {
-  console.log('ok  demon ratings  damage 18 / attack 59 / speed 66 / stamina recovery 58');
+  console.log('ok  demon ratings  damage 9 / attack 50 / speed 60 / stamina 53');
 }
-if (DEMON_HELL_BAT.contactGraceMs < 200 || DEMON_HELL_BAT.recastLockMs < 160) {
+if (DEMON_HELL_BAT.maxDurationMs !== 20000 || DEMON_HELL_BAT.recastLockMs < 160) {
   failed += 1;
   console.log(
-    `FAIL  hell bat grace  contact=${DEMON_HELL_BAT.contactGraceMs} recast=${DEMON_HELL_BAT.recastLockMs}`,
+    `FAIL  hell bat window  max=${DEMON_HELL_BAT.maxDurationMs} recast=${DEMON_HELL_BAT.recastLockMs}`,
   );
 } else {
   console.log(
-    `ok  hell bat grace  contact=${DEMON_HELL_BAT.contactGraceMs} recast=${DEMON_HELL_BAT.recastLockMs}`,
+    `ok  hell bat window  max=${DEMON_HELL_BAT.maxDurationMs} recast=${DEMON_HELL_BAT.recastLockMs}`,
   );
+}
+if (!DEMON_HELL_BAT.deferCooldown) {
+  failed += 1;
+  console.log('FAIL  hell bat cooldown starts on press');
+} else {
+  console.log('ok  hell bat cooldown deferred until explode');
+}
+if (DEMON_HELLFIRE.radius !== Math.round(NINJA_SMOKE.radius * 0.65)) {
+  failed += 1;
+  console.log(`FAIL  hellfire radius  ${DEMON_HELLFIRE.radius} !== ${Math.round(NINJA_SMOKE.radius * 0.65)}`);
+} else {
+  console.log(`ok  hellfire radius  ${DEMON_HELLFIRE.radius}`);
+}
+if (DEMON_RAGE.fillCostMul !== 1.35) {
+  failed += 1;
+  console.log(`FAIL  rage fill cost  ${DEMON_RAGE.fillCostMul}`);
+} else {
+  console.log('ok  rage fill cost  1.35');
+}
+if (DEMON_BIG.attackRange !== Math.round(SHADOW.attackRange * 0.75)) {
+  failed += 1;
+  console.log(`FAIL  big demon range  ${DEMON_BIG.attackRange}`);
+} else {
+  console.log(`ok  big demon range  ${DEMON_BIG.attackRange}`);
+}
+if (COLE.ratings.attackSpeed !== 33 || COLE.ratings.speed !== 52) {
+  failed += 1;
+  console.log(`FAIL  cole ratings  atk=${COLE.ratings.attackSpeed} spd=${COLE.ratings.speed}`);
+} else {
+  console.log('ok  cole ratings  attack 33 / speed 52');
+}
+if (WITCH.ratings.damage !== 52 || WITCH.ratings.stamina !== 53) {
+  failed += 1;
+  console.log(`FAIL  witch ratings  dmg=${WITCH.ratings.damage} stam=${WITCH.ratings.stamina}`);
+} else {
+  console.log('ok  witch ratings  damage 52 / stamina 53');
+}
+if (Math.abs(SHADOW_CLAW.damage - abilityDamage(64) * 2.7 * 0.9 * 0.77) > 0.001) {
+  failed += 1;
+  console.log(`FAIL  shadow claw damage  ${SHADOW_CLAW.damage}`);
+} else {
+  console.log('ok  shadow claw damage  -23%');
 }
 
 if (failed > 0) {

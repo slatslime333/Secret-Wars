@@ -127,7 +127,7 @@ const beginHellfire = (
           rivalBlock,
         );
         if (kind === 'hit') {
-          grantDemonRage(caster, demonRageFromHellfireTick());
+          grantDemonRage(caster, demonRageFromHellfireTick(), enemy);
         }
       }
       return true;
@@ -174,7 +174,7 @@ const explodeHellfire = (
     );
     if (kind === 'hit') {
       applyBurn(enemy, now, 'hellfire', caster);
-      grantDemonRage(caster, demonRageFromHellfireExplode());
+      grantDemonRage(caster, demonRageFromHellfireExplode(), enemy);
     }
   }
 };

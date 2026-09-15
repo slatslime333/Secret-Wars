@@ -455,9 +455,25 @@ export class BattleScene extends Phaser.Scene {
         frame.attackHeld,
         witchHexAllyRange(),
       );
+    } else if (
+      this.ninja.heroId === 'demon' &&
+      this.ninja.demonForm !== 'big' &&
+      !frame.ability1Aiming &&
+      !frame.ability2Aiming
+    ) {
+      this.marker.syncFlameAim(
+        this.ninja.x,
+        this.ninja.y,
+        this.ninja.aim.x,
+        this.ninja.aim.y,
+        this.ninja.stats.attackRange,
+        frame.attackHeld,
+      );
     } else if (this.ninja.heroId === 'rope') {
       this.marker.clearRange();
     } else if (this.ninja.heroId === 'mender') {
+      this.marker.clearRange();
+    } else if (this.ninja.heroId === 'demon' && this.ninja.demonForm !== 'big') {
       this.marker.clearRange();
     } else {
       const range = this.ninja.heroId === 'cole' ? COLE_ATTACK.range : this.ninja.stats.attackRange;

@@ -26,7 +26,7 @@ export const SHADOW_CLAW = {
   halfArc: 0.95,
   aimHalfWidth: SHADOW.bodyRadius * 2 + 10,
   damageRating: 64,
-  damage: abilityDamage(64) * 2.7 * 0.9,
+  damage: abilityDamage(64) * 2.7 * 0.9 * 0.77,
   knockbackMul: 5.2,
   launchCap: 780,
   staminaDamage: 7,

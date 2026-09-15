@@ -22,6 +22,7 @@ export const hellBatDef: AbilityDef = {
   iconKey: ABILITY_ICON.hellBat,
   accent: 0xff4a10,
   padLabel: 'BAT',
+  deferCooldown: DEMON_HELL_BAT.deferCooldown,
   tactics: {
     roles: ['mobility', 'escape', 'knockback', 'damage', 'cc', 'initiate', 'disruption'],
     range: DEMON_HELL_BAT.radius + 80,
@@ -50,7 +51,6 @@ class HellBatAbility implements ActiveAbility {
   private phase: 'launch' | 'fly' | 'burst' | 'done' = 'launch';
   private readonly launchUntil: number;
   private readonly flyUntil: number;
-  private readonly contactArmedAt: number;
   private readonly recastArmedAt: number;
   private readonly resumeForm: DemonForm;
   private dirX: number;
@@ -67,7 +67,6 @@ class HellBatAbility implements ActiveAbility {
     ctx.caster.setAim(this.dirX, this.dirY);
     this.launchUntil = ctx.now + DEMON_HELL_BAT.launchMs;
     this.flyUntil = ctx.now + DEMON_HELL_BAT.maxDurationMs;
-    this.contactArmedAt = ctx.now + DEMON_HELL_BAT.contactGraceMs;
     this.recastArmedAt = ctx.now + DEMON_HELL_BAT.recastLockMs;
     this.resumeForm = ctx.caster.demonForm === 'big' ? 'big' : 'little';
     this.drive(ctx.caster, this.launchSpeed());
@@ -84,7 +83,7 @@ class HellBatAbility implements ActiveAbility {
   }
 
   update(ctx: AbilityContext): boolean {
-    const { caster, now, enemies } = ctx;
+    const { caster, now } = ctx;
     if (caster.down || !caster.isPresent) {
       this.finish(caster);
       return false;
@@ -101,8 +100,7 @@ class HellBatAbility implements ActiveAbility {
       caster.status.applyDefenseBuff(now, 80, DEMON_HELL_BAT.defenseMul);
       const recast = this.wantBurst && now >= this.recastArmedAt;
       const timedOut = now >= this.flyUntil;
-      const hit = now >= this.contactArmedAt && this.touchesEnemy(caster, enemies);
-      if (recast || timedOut || hit) {
+      if (recast || timedOut) {
         this.explode(ctx);
         this.phase = 'burst';
         this.burstAt = now;
@@ -150,16 +148,6 @@ class HellBatAbility implements ActiveAbility {
     caster.body?.setVelocity(this.dirX * used, this.dirY * used);
   }
 
-  private touchesEnemy(caster: NinjaBody, enemies: NinjaBody[]): boolean {
-    return enemies.some(
-      (enemy) =>
-        !enemy.down &&
-        enemy.isPresent &&
-        distanceBetween(caster.x, caster.y, enemy.x, enemy.y) <=
-          caster.stats.bodyRadius + enemy.stats.bodyRadius + DEMON_HELL_BAT.pathPadding,
-    );
-  }
-
   private explode(ctx: AbilityContext): void {
     const { caster, now, enemies, scene, rivalBlock } = ctx;
     playWorld('ninja-smoke', caster);
@@ -193,7 +181,7 @@ class HellBatAbility implements ActiveAbility {
       if (kind === 'hit') {
         enemy.status.applySlow(now, DEMON_HELL_BAT.slowMs, DEMON_HELL_BAT.slowMul);
         enemy.status.applyAttackSpeedSlow(now, DEMON_HELL_BAT.slowMs, DEMON_HELL_BAT.attackSlowMul);
-        grantDemonRage(caster, demonRageFromHellBat());
+        grantDemonRage(caster, demonRageFromHellBat(), enemy);
       }
     }
     const recoil = demonHellBatRecoil(DEMON_HELL_BAT.recoilDistance);

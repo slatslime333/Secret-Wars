@@ -130,11 +130,11 @@ const ABILITY_TEXT: Record<string, string> = {
   'mender-second-wind':
     `Plant a large yellow field for ${seconds(MENDER_WIND.durationMs)}. Allies inside slowly regenerate health and recover stamina faster. Mender takes reduced damage while she holds the circle. Enemies inside are slowed ${slower(MENDER_WIND.enemySlowMul)}.`,
   'demon-hellfire':
-    `Throw the candle up to Backflip Kick range. It bursts into a pentagram of fire the size of Smoke Bomb for ${seconds(DEMON_HELLFIRE.durationMs)}. The blast deals ${hit(DEMON_HELLFIRE.explodeDamage)} damage, then the field ticks while enemies stay inside and applies Burn (${DEMON_BURN.hellfireDamage} every 0.5s for ${seconds(DEMON_BURN.hellfireDurationMs)}, no stack).`,
+    `Throw the candle up to Backflip Kick range. It bursts into a pentagram of fire 35% smaller than Smoke Bomb for ${seconds(DEMON_HELLFIRE.durationMs)}. The blast deals ${hit(DEMON_HELLFIRE.explodeDamage)} damage, then the field ticks while enemies stay inside and applies Burn (${DEMON_BURN.hellfireDamage} every 0.5s for ${seconds(DEMON_BURN.hellfireDurationMs)}, no stack).`,
   'demon-hell-bat':
-    `Launch forward and become a fire bat with ${faster(DEMON_HELL_BAT.moveMul)} movement and ${more(DEMON_HELL_BAT.defenseMul)} defense. Forced flight — you steer but cannot stop. Hitting an enemy or recasting explodes for ${hit(DEMON_HELL_BAT.damage)} damage in a Smoke Bomb radius, knocks everyone back, and slows move and attack speed 25% for ${seconds(DEMON_HELL_BAT.slowMs)}. The blast throws Demon backward.`,
+    `Launch forward and become a fire bat with ${faster(DEMON_HELL_BAT.moveMul)} movement and ${more(DEMON_HELL_BAT.defenseMul)} defense. Forced flight — you steer but cannot stop. Recast or wait ${seconds(DEMON_HELL_BAT.maxDurationMs)} to explode for ${hit(DEMON_HELL_BAT.damage)} damage in a Smoke Bomb radius, knocks everyone back, and slows move and attack speed 25% for ${seconds(DEMON_HELL_BAT.slowMs)}. The blast throws Demon backward. The cooldown starts when you explode.`,
   'demon-rage':
-    `Demon Rage fills by dealing damage as Little Demon. At 100% he automatically transforms: 1 second locked, then ${seconds(DEMON_RAGE.durationMs)} as Big Demon. Demon Rage does not build while transformed and resets to 0 after.`,
+    `Demon Rage fills by dealing damage to heroes as Little Demon — minions do not count, and it takes 35% more damage to fill. At 100% he automatically transforms: 1 second locked, then ${seconds(DEMON_RAGE.durationMs)} as Big Demon. Other abilities are locked while transformed. Demon Rage does not build while transformed and resets to 0 after.`,
 };
 
 const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {

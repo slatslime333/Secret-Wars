@@ -10,9 +10,9 @@ import { gameplayFromRatings, type CoreRatings } from './ratings';
  */
 export const WITCH_RATINGS = {
   health: 65,
-  stamina: 55,
+  stamina: 53,
   staminaRegen: 59,
-  damage: 61,
+  damage: 52,
   defense: 64,
   speed: 39,
   attackSpeed: 53,
