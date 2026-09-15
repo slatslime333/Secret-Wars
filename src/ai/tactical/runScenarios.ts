@@ -11,6 +11,8 @@ import { pickOpeningForTest } from './strategy';
 import { clusterRiskOf, guardHome, nudgeOffMates, protectStand, regroupStand } from './spacing';
 import { cameraPrefs } from '../../config/cameraPrefs';
 import { MENDER } from '../../config/mender';
+import { DEMON } from '../../config/demon';
+import { DEMON_HELL_BAT } from '../../heroes/abilities/demon/tunables';
 import { MENDER_PULSE } from '../../heroes/abilities/mender/tunables';
 
 const results = runTacticalScenarios();
@@ -239,6 +241,30 @@ if (MENDER_PULSE.radius >= 5.6 || MENDER_PULSE.armOffsetRad >= 0.028 || MENDER_P
 } else {
   console.log(
     `ok  mender pulse shape  r=${MENDER_PULSE.radius} offset=${MENDER_PULSE.armOffsetRad} spread=${MENDER_PULSE.spreadRad}`,
+  );
+}
+
+if (
+  DEMON.ratings.damage !== 18 ||
+  DEMON.ratings.attackSpeed !== 59 ||
+  DEMON.ratings.speed !== 66 ||
+  DEMON.ratings.staminaRegen !== 58
+) {
+  failed += 1;
+  console.log(
+    `FAIL  demon ratings  dmg=${DEMON.ratings.damage} atk=${DEMON.ratings.attackSpeed} spd=${DEMON.ratings.speed} stamRegen=${DEMON.ratings.staminaRegen}`,
+  );
+} else {
+  console.log('ok  demon ratings  damage 18 / attack 59 / speed 66 / stamina recovery 58');
+}
+if (DEMON_HELL_BAT.contactGraceMs < 200 || DEMON_HELL_BAT.recastLockMs < 160) {
+  failed += 1;
+  console.log(
+    `FAIL  hell bat grace  contact=${DEMON_HELL_BAT.contactGraceMs} recast=${DEMON_HELL_BAT.recastLockMs}`,
+  );
+} else {
+  console.log(
+    `ok  hell bat grace  contact=${DEMON_HELL_BAT.contactGraceMs} recast=${DEMON_HELL_BAT.recastLockMs}`,
   );
 }
 

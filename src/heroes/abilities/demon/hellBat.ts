@@ -5,7 +5,7 @@ import { resolveAbilityHit } from '../resolveAbilityHit';
 import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { DEMON_HELL_BAT, demonHellBatRecoil } from './tunables';
-import { grantDemonRage, demonRageFromHellBat } from './form';
+import { grantDemonRage, demonRageFromHellBat, type DemonForm } from './form';
 import { distanceBetween } from '../geometry';
 import type { NinjaBody } from '../../NinjaBody';
 
@@ -44,13 +44,17 @@ export const hellBatDef: AbilityDef = {
 
 class HellBatAbility implements ActiveAbility {
   readonly id = hellBatDef.id;
-  control = { move: false, attack: true, dash: true, block: true, abilities: true };
+  /** Lock walk/dash so forced flight is not overwritten by applyMove/stop. */
+  control = { move: true, attack: true, dash: true, block: true, abilities: true };
   allowRecast = true;
   private phase: 'launch' | 'fly' | 'burst' | 'done' = 'launch';
   private readonly launchUntil: number;
   private readonly flyUntil: number;
-  private readonly dirX: number;
-  private readonly dirY: number;
+  private readonly contactArmedAt: number;
+  private readonly recastArmedAt: number;
+  private readonly resumeForm: DemonForm;
+  private dirX: number;
+  private dirY: number;
   private wantBurst = false;
   private burstAt = 0;
 
@@ -59,17 +63,17 @@ class HellBatAbility implements ActiveAbility {
     const len = Math.hypot(aim.x, aim.y) || 1;
     this.dirX = aim.x / len;
     this.dirY = aim.y / len;
+    ctx.caster.steer.set(0, 0);
     ctx.caster.setAim(this.dirX, this.dirY);
     this.launchUntil = ctx.now + DEMON_HELL_BAT.launchMs;
     this.flyUntil = ctx.now + DEMON_HELL_BAT.maxDurationMs;
-    const speed = DEMON_HELL_BAT.launchDistance / (DEMON_HELL_BAT.launchMs / 1000);
-    ctx.caster.setSpeedCap(speed);
-    ctx.caster.body?.setDrag(0, 0);
-    ctx.caster.body?.setVelocity(this.dirX * speed, this.dirY * speed);
-    ctx.caster.demonForm = 'bat';
-    ctx.caster.view.setScale(0.92);
+    this.contactArmedAt = ctx.now + DEMON_HELL_BAT.contactGraceMs;
+    this.recastArmedAt = ctx.now + DEMON_HELL_BAT.recastLockMs;
+    this.resumeForm = ctx.caster.demonForm === 'big' ? 'big' : 'little';
+    this.drive(ctx.caster, this.launchSpeed());
     ctx.caster.status.applyDefenseBuff(ctx.now, DEMON_HELL_BAT.maxDurationMs + 80, DEMON_HELL_BAT.defenseMul);
     ctx.caster.status.applyControlLock(ctx.now, DEMON_HELL_BAT.launchMs);
+    ctx.caster.setDemonForm('bat');
     spawnCombatCallout(ctx.scene, ctx.caster.x, ctx.caster.y, 'BAT', 0xff4a10);
     playWorld('shadow-dash-whoosh', ctx.caster);
     flying.set(ctx.caster, this);
@@ -86,18 +90,19 @@ class HellBatAbility implements ActiveAbility {
       return false;
     }
     if (this.phase === 'launch') {
-      const speed = DEMON_HELL_BAT.launchDistance / (DEMON_HELL_BAT.launchMs / 1000);
-      caster.body?.setVelocity(this.dirX * speed, this.dirY * speed);
+      this.drive(caster, this.launchSpeed());
       if (now >= this.launchUntil) {
         this.phase = 'fly';
-        caster.setSpeedCap(COMBAT.physicsMaxSpeed);
       }
       return true;
     }
     if (this.phase === 'fly') {
       this.steer(caster);
       caster.status.applyDefenseBuff(now, 80, DEMON_HELL_BAT.defenseMul);
-      if (this.wantBurst || now >= this.flyUntil || this.touchesEnemy(caster, enemies)) {
+      const recast = this.wantBurst && now >= this.recastArmedAt;
+      const timedOut = now >= this.flyUntil;
+      const hit = now >= this.contactArmedAt && this.touchesEnemy(caster, enemies);
+      if (recast || timedOut || hit) {
         this.explode(ctx);
         this.phase = 'burst';
         this.burstAt = now;
@@ -114,31 +119,42 @@ class HellBatAbility implements ActiveAbility {
     /* form restored in finish */
   }
 
+  private launchSpeed(): number {
+    return DEMON_HELL_BAT.launchDistance / (DEMON_HELL_BAT.launchMs / 1000);
+  }
+
+  private flySpeed(caster: NinjaBody): number {
+    return caster.stats.moveSpeed * DEMON_HELL_BAT.moveMul;
+  }
+
   private steer(caster: NinjaBody): void {
-    const speed = caster.stats.moveSpeed * DEMON_HELL_BAT.moveMul;
     const sx = caster.steer.x;
     const sy = caster.steer.y;
     const slen = Math.hypot(sx, sy);
-    let nx: number;
-    let ny: number;
     if (slen > 0.2) {
-      nx = sx / slen;
-      ny = sy / slen;
+      this.dirX = sx / slen;
+      this.dirY = sy / slen;
     } else {
       const aimLen = Math.hypot(caster.aim.x, caster.aim.y) || 1;
-      nx = caster.aim.x / aimLen;
-      ny = caster.aim.y / aimLen;
+      this.dirX = caster.aim.x / aimLen;
+      this.dirY = caster.aim.y / aimLen;
     }
-    caster.setAim(nx, ny);
-    caster.setSpeedCap(speed);
+    caster.setAim(this.dirX, this.dirY);
+    this.drive(caster, this.flySpeed(caster));
+  }
+
+  private drive(caster: NinjaBody, speed: number): void {
+    const used = Math.max(speed * DEMON_HELL_BAT.minSpeedFrac, speed);
+    caster.setSpeedCap(used);
     caster.body?.setDrag(0, 0);
-    caster.body?.setVelocity(nx * speed, ny * speed);
+    caster.body?.setVelocity(this.dirX * used, this.dirY * used);
   }
 
   private touchesEnemy(caster: NinjaBody, enemies: NinjaBody[]): boolean {
     return enemies.some(
       (enemy) =>
         !enemy.down &&
+        enemy.isPresent &&
         distanceBetween(caster.x, caster.y, enemy.x, enemy.y) <=
           caster.stats.bodyRadius + enemy.stats.bodyRadius + DEMON_HELL_BAT.pathPadding,
     );
@@ -146,9 +162,6 @@ class HellBatAbility implements ActiveAbility {
 
   private explode(ctx: AbilityContext): void {
     const { caster, now, enemies, scene, rivalBlock } = ctx;
-    const faceLen = Math.hypot(caster.aim.x, caster.aim.y) || 1;
-    const fx = caster.aim.x / faceLen;
-    const fy = caster.aim.y / faceLen;
     playWorld('ninja-smoke', caster);
     spawnCombatCallout(scene, caster.x, caster.y, 'BURST', 0xffc030);
     for (const enemy of enemies) {
@@ -184,14 +197,13 @@ class HellBatAbility implements ActiveAbility {
       }
     }
     const recoil = demonHellBatRecoil(DEMON_HELL_BAT.recoilDistance);
-    caster.applyRecoil(-fx, -fy, recoil);
+    caster.applyRecoil(-this.dirX, -this.dirY, recoil);
     this.finish(caster);
   }
 
   private finish(caster: NinjaBody): void {
     if (caster.demonForm === 'bat') {
-      caster.demonForm = 'little';
-      caster.view.setScale(1);
+      caster.setDemonForm(this.resumeForm);
     }
     caster.setSpeedCap(COMBAT.physicsMaxSpeed);
     flying.delete(caster);

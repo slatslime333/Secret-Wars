@@ -398,6 +398,7 @@ export class MatchScene extends Phaser.Scene {
       this.player.abilities.tryActivate('ultimate', ctx);
     }
     this.aimPlayer(frame);
+    this.player.body.recordSteer(frame.move);
     this.player.abilities.update(
       this.player.abilityContext(
         now,

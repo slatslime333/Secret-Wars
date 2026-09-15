@@ -10,11 +10,11 @@ import { gameplayFromRatings, type CoreRatings } from './ratings';
 export const DEMON_RATINGS = {
   health: 34,
   stamina: 58,
-  staminaRegen: 63,
-  damage: 38,
+  staminaRegen: 58,
+  damage: 18,
   defense: 30,
-  speed: 78,
-  attackSpeed: 67,
+  speed: 66,
+  attackSpeed: 59,
   attackRange: 82,
   knockback: 28,
 } as const satisfies CoreRatings;

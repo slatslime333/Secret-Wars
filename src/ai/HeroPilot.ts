@@ -95,6 +95,7 @@ export class HeroPilot {
       unit.dash.isActive(now)
     ) {
       if (
+        !unit.abilities.isDrivingMovement() &&
         !body.status.isHitReacting(now) &&
         !body.status.isLunging(now) &&
         !body.status.isHitStopping(now) &&

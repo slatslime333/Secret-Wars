@@ -193,8 +193,12 @@ export class NinjaBody {
     }
   }
 
-  applyMove(move: Phaser.Math.Vector2): void {
+  recordSteer(move: Phaser.Math.Vector2): void {
     this.steer.copy(move);
+  }
+
+  applyMove(move: Phaser.Math.Vector2): void {
+    this.recordSteer(move);
     const body = this.physics();
     if (!body) {
       return;
@@ -757,6 +761,20 @@ export class NinjaBody {
     }
     this.fairyForm = value;
     this.view.setScale(value ? 0.72 : 1);
+    this.redrawIdle();
+  }
+
+  setDemonForm(form: DemonForm): void {
+    this.demonForm = form;
+    if (form === 'bat') {
+      this.view.setScale(0.92);
+    } else if (form === 'big') {
+      this.view.setScale(1.28);
+    } else if (form === 'transforming') {
+      this.view.setScale(1.08);
+    } else {
+      this.view.setScale(1);
+    }
     this.redrawIdle();
   }
 

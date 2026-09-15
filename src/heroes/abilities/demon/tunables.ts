@@ -41,12 +41,16 @@ export const DEMON_HELLFIRE = {
 
 export const DEMON_HELL_BAT = {
   cooldownMs: 9000,
-  launchDistance: 56,
-  launchMs: 90,
-  maxDurationMs: 2400,
+  launchDistance: 88,
+  launchMs: 140,
+  maxDurationMs: 2800,
   moveMul: 1.2,
   defenseMul: 1.35,
   minSpeedFrac: 0.72,
+  /** No collide-burst until takeoff has actually moved him. */
+  contactGraceMs: 280,
+  /** Ignore a second E press that lands in the same swing as the start. */
+  recastLockMs: 220,
   radius: NINJA_SMOKE.radius,
   damageRating: 38,
   damage: abilityDamage(38),
@@ -57,7 +61,7 @@ export const DEMON_HELL_BAT = {
   attackSlowMul: 1.25,
   slowMs: 1500,
   recoilDistance: 148,
-  pathPadding: 10,
+  pathPadding: 6,
 } as const;
 
 export const DEMON_RAGE = {
