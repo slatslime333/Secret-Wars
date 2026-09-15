@@ -115,12 +115,13 @@ export class SwingIntent {
       (target.blocking ? 0.1 : 0) +
       (kit?.stance === 'support' ? 0.04 : 0);
     const meleeMul = inMelee ? 0.22 : 1;
-    if (!prefire && rng() < hesitate * meleeMul) {
+    const engaged = sense.justEngaged(now) && inMelee;
+    if (!prefire && !engaged && rng() < hesitate * meleeMul) {
       this.pauseUntil = now + 50 + rng() * 90;
       return;
     }
 
-    const chain = sense.shouldChainLights(now, body, target, personality, kit, rng);
+    const chain = sense.shouldChainLights(now, body, target, personality, kit, rng) || (engaged && kit?.stance !== 'ranged' && kit?.stance !== 'support');
     if (chain) {
       this.tapQueued = false;
       const burst = 260 + rng() * 220 + (kit?.pressureBias ?? 0.5) * 240 + (body.heroId === 'shadow' ? 120 : 0);

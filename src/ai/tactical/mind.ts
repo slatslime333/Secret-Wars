@@ -108,6 +108,7 @@ export class TacticalMind {
   private kit?: KitProfile;
   private director?: GamePlanController;
   private readonly teamBuf: UnitFact[] = [];
+  private combatNote?: string;
 
   constructor(kind: TacticalKind, seed: string, homeX: number, homeY: number) {
     this.kind = kind;
@@ -218,6 +219,10 @@ export class TacticalMind {
 
   noteUltSaved(saved: boolean): void {
     this.director?.markUltSaved(saved);
+  }
+
+  noteCombat(note: string): void {
+    this.combatNote = note;
   }
 
   think(now: number, self: NinjaBody, field: TacticalField, scene?: object, force = false): void {
@@ -347,6 +352,7 @@ export class TacticalMind {
       savedUlt: Boolean(this.director?.savedUlt),
       team: teamLine,
       objective: obj?.debug,
+      combatNote: this.combatNote,
     };
   }
 

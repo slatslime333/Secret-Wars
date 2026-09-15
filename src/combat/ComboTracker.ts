@@ -1,8 +1,7 @@
 /**
- * Three-tap chain. Count only rises on distinct presses, not hold-repeats.
+ * Two-tap chain. Count only rises on distinct presses, not hold-repeats.
  * Window is from the previous tap, not the start of the string.
  * Holding attack pauses expiry so a long key-down does not kill the chain.
- * `step` stays on screen after a finisher resets the chain.
  */
 export class ComboTracker {
   private count = 0;
@@ -11,7 +10,13 @@ export class ComboTracker {
   private shownUntil = 0;
 
   preview(now: number, windowMs: number): number {
-    return now - this.lastTapAt <= windowMs ? Math.min(3, this.count + 1) : 1;
+    if (now - this.lastTapAt > windowMs) {
+      return 1;
+    }
+    if (this.count >= 2) {
+      return 1;
+    }
+    return this.count + 1;
   }
 
   tap(now: number, windowMs: number): number {

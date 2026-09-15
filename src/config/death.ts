@@ -15,7 +15,7 @@ export const DEATH_RATINGS = {
   health: 72,
   stamina: 73,
   staminaRegen: 50,
-  damage: 72,
+  damage: 75,
   defense: 75,
   speed: 30,
   attackSpeed: 77,

@@ -15,6 +15,7 @@ import { dodgeDirFor, scanProjectileThreat } from './tactical/shots';
 import { pickBestSupportAlly, purposesOf } from './tactical/supportSense';
 import { hellBatAim } from './tactical/demonSense';
 import { DEMON_HELL_BAT } from '../heroes/abilities/demon/tunables';
+import { evaluateOffensiveDash } from './tactical/dashOffense';
 
 const SLOTS: AbilitySlot[] = SLOT_ORDER;
 
@@ -70,6 +71,9 @@ export class CombatDriver {
   readonly reactions = { block: 0, dash: 0, strafe: 0 };
   private pattern = emptyPattern();
   readonly sense = new FightSense();
+  private dashWasActive = false;
+  private dashLanded = false;
+  private nextOffensiveDashAt = 0;
 
   tick(args: {
     now: number;
@@ -88,6 +92,12 @@ export class CombatDriver {
     const p = mind.personality;
     let usedAbility = false;
     this.sense.observe(now, body, mind.target);
+    const dashing = dash.isActive(now);
+    if (this.dashWasActive && !dashing) {
+      this.sense.noteDashLand(now);
+      this.dashLanded = true;
+    }
+    this.dashWasActive = dashing;
 
     if (abilities && abilityCtx) {
       abilities.update(abilityCtx);
@@ -123,13 +133,45 @@ export class CombatDriver {
 
     if (mind.wantsEscape() && now >= this.nextDashAt && dash.chargeCount > 0 && !abilities?.control.dash) {
       const goal = mind.goal;
+      const foe = mind.target;
       this.dashDir.set((goal?.x ?? mind.homeX) - body.x, (goal?.y ?? mind.homeY) - body.y);
+      if (foe && rng() < 0.42 + p.flankTendency * 0.2) {
+        const dx = body.x - foe.x;
+        const dy = body.y - foe.y;
+        const side = rng() < 0.5 ? 1 : -1;
+        this.dashDir.set(dx * 0.55 + -dy * side, dy * 0.55 + dx * side);
+      }
       if (this.dashDir.lengthSq() > 4 && dash.tryStart(now, this.dashDir, body.aim, body)) {
         this.noteDeathDash(now, body, dash, world, scene, foes);
         this.blockUntil = 0;
         this.nextDashAt = now + 480 + p.thinkJitterMs;
+        this.nextOffensiveDashAt = now + 640;
+        mind.noteCombat('dash-out');
         block.setHeld(now, body, false);
         return { blocking: false, usedAbility };
+      }
+    }
+
+    if (
+      !mind.wantsEscape() &&
+      now >= this.nextDashAt &&
+      now >= this.nextOffensiveDashAt &&
+      dash.chargeCount > 0 &&
+      !dash.isActive(now) &&
+      !abilities?.control.dash
+    ) {
+      const plan = evaluateOffensiveDash(mind.situationView(), mind.action, dash.chargeCount, rng);
+      if (plan) {
+        this.dashDir.set(plan.x, plan.y);
+        if (this.dashDir.lengthSq() > 4 && dash.tryStart(now, this.dashDir, body.aim, body)) {
+          this.noteDeathDash(now, body, dash, world, scene, foes);
+          this.blockUntil = 0;
+          this.nextDashAt = now + 720 + rng() * 280 + p.thinkJitterMs;
+          this.nextOffensiveDashAt = now + 880 + rng() * 220;
+          mind.noteCombat(`dash-${plan.kind}`);
+          block.setHeld(now, body, false);
+          return { blocking: false, usedAbility };
+        }
       }
     }
 
@@ -154,6 +196,12 @@ export class CombatDriver {
 
   strafeDir(now: number): Phaser.Math.Vector2 | undefined {
     return now < this.strafeUntil ? this.strafe : undefined;
+  }
+
+  consumeDashLand(): boolean {
+    const landed = this.dashLanded;
+    this.dashLanded = false;
+    return landed;
   }
 
   private tryAbility(
