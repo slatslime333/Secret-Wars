@@ -198,6 +198,7 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
     128,
     [
       { kind: 'building', variant: 'shop', ox: -8, oy: -8, spec: PROP.building, hierarchy: 'landmark' },
+      { kind: 'tree', variant: 'small', ox: 72, oy: -22, spec: PROP.treeSmall, hierarchy: 'cover' },
       { kind: 'crate', variant: 'single', ox: 58, oy: 16, spec: PROP.crate, hierarchy: 'cover', destructible: true },
     ],
     [

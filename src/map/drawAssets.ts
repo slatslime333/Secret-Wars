@@ -228,6 +228,31 @@ const drawBuildingRoof = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' 
 };
 
 const drawBuildingShell = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, h: number): void => {
+  const wall = 10;
+  paintBrickBody(ctx, 6, 22, w - 12, wall + 4);
+  paintBrickBody(ctx, 6, 22, wall, h - 36);
+  paintBrickBody(ctx, w - 16, 22, wall, h - 36);
+  paintBrickBody(ctx, 6, h - 18, Math.floor(w * 0.42), 12);
+  paintBrickBody(ctx, Math.floor(w * 0.62), h - 18, w - Math.floor(w * 0.62) - 8, 12);
+  if (style === 'shop') {
+    fillPx(ctx, ENV.ink, 16, 28, 22, 14);
+    fillPx(ctx, ENV.glass, 18, 30, 18, 10);
+    fillPx(ctx, ENV.ink, 44, 28, 22, 14);
+    fillPx(ctx, ENV.glass, 46, 30, 18, 10);
+    fillPx(ctx, ENV.rust, 14, 24, 56, 5);
+  } else {
+    fillPx(ctx, ENV.ink, 18, 28, 14, 12);
+    fillPx(ctx, ENV.glass, 20, 30, 10, 8);
+  }
+  fillPx(ctx, ENV.ink, Math.floor(w * 0.44), h - 22, 18, 16);
+  fillPx(ctx, ENV.inkSoft, Math.floor(w * 0.44) + 2, h - 20, 14, 12);
+  fillPx(ctx, ENV.woodDark, Math.floor(w * 0.44) + 12, h - 14, 3, 5);
+  fillPx(ctx, ENV.concrete, 8, h - 10, w - 18, 6);
+  fillPx(ctx, ENV.grass, w - 24, h - 16, 14, 5);
+};
+
+const drawBuildingLandmark = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, h: number): void => {
+  drawBuildingRoof(ctx, style, w, h);
   paintBrickBody(ctx, 6, 24, w - 12, h - 30);
   if (style === 'shop') {
     fillPx(ctx, ENV.ink, 16, 36, 28, 22);
@@ -235,24 +260,15 @@ const drawBuildingShell = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub'
     fillPx(ctx, ENV.ink, 52, 36, 28, 22);
     fillPx(ctx, ENV.glass, 54, 38, 24, 18);
     fillPx(ctx, ENV.rust, 14, 32, 70, 6);
-    fillPx(ctx, ENV.rustLite, 16, 33, 66, 3);
   } else {
-    fillPx(ctx, ENV.ink, 16, 36, 16, 18);
-    fillPx(ctx, ENV.glass, 18, 38, 12, 14);
-    fillPx(ctx, ENV.ink, 42, 40, 14, 16);
-    fillPx(ctx, ENV.glass, 44, 42, 10, 12);
+    fillPx(ctx, ENV.ink, 18, 36, 16, 18);
+    fillPx(ctx, ENV.glass, 20, 38, 12, 14);
   }
-  fillPx(ctx, ENV.concrete, 8, h - 14, w - 18, 10);
-  fillPx(ctx, ENV.concreteLite, 10, h - 12, w - 28, 3);
-  fillPx(ctx, ENV.ink, w - 44, h - 46, 18, 32);
-  fillPx(ctx, ENV.inkSoft, w - 42, h - 44, 14, 28);
-  fillPx(ctx, ENV.woodDark, w - 32, h - 30, 3, 6);
+  fillPx(ctx, ENV.ink, 24, h - 48, 18, 32);
+  fillPx(ctx, ENV.inkSoft, 26, h - 46, 14, 28);
+  fillPx(ctx, ENV.woodDark, 36, h - 32, 3, 6);
+  fillPx(ctx, ENV.concrete, 8, h - 12, w - 18, 8);
   fillPx(ctx, ENV.grass, w - 24, h - 18, 16, 6);
-};
-
-const drawBuildingLandmark = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, h: number): void => {
-  drawBuildingRoof(ctx, style, w, h);
-  drawBuildingShell(ctx, style, w, h);
   if (style === 'stub') {
     fillPx(ctx, ENV.dirt, 12, h - 16, 32, 8);
     fillPx(ctx, ENV.inkSoft, w - 30, 8, 26, 36);
