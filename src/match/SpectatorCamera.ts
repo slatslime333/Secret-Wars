@@ -113,7 +113,7 @@ export class SpectatorCamera {
       this.zoomReady = true;
     }
     if (Math.abs(stickY) >= INPUT.rightDeadzone) {
-      this.zoom += -stickY * MATCH.spectator.zoomSpeed * (delta / 1000);
+      this.zoom += stickY * MATCH.spectator.zoomSpeed * (delta / 1000);
     }
     this.zoom = Phaser.Math.Clamp(this.zoom, min, max);
     this.scene.cameras.main.setZoom(this.zoom);
