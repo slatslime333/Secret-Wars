@@ -12,7 +12,7 @@ export const ROPE_RATINGS = {
   health: 38,
   stamina: 62,
   staminaRegen: 70,
-  damage: 37,
+  damage: 39,
   defense: 48,
   speed: 86,
   attackSpeed: 69,

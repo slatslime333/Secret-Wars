@@ -10,7 +10,7 @@ export const MENDER_RATINGS = {
   health: 40,
   stamina: 58,
   staminaRegen: 68,
-  damage: 7,
+  damage: 8,
   defense: 32,
   speed: 62,
   attackSpeed: 80,

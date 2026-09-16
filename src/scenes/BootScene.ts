@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
 import { filterWitchSheet, preloadWitchSheet } from '../heroes/witchSprite';
+import { filterColeSheet, preloadColeSheet } from '../heroes/coleSprite';
+import { filterNinjaSheet, preloadNinjaSheet } from '../heroes/ninjaSprite';
+import { filterRopeSheet, preloadRopeSheet } from '../heroes/ropeSprite';
+import { filterDeathSheet, preloadDeathSheet } from '../heroes/deathSprite';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -9,10 +13,18 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     preloadWitchSheet(this);
+    preloadColeSheet(this);
+    preloadNinjaSheet(this);
+    preloadRopeSheet(this);
+    preloadDeathSheet(this);
   }
 
   create(): void {
     filterWitchSheet(this);
+    filterColeSheet(this);
+    filterNinjaSheet(this);
+    filterRopeSheet(this);
+    filterDeathSheet(this);
     ensureAbilityIcons(this);
     this.scene.start('Title');
   }

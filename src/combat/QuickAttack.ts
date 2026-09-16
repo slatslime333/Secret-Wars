@@ -8,7 +8,7 @@ import { menderArmOrigin } from '../heroes/drawMender';
 import { DEMON_ATTACK, DEMON_CLAW } from '../heroes/abilities/demon/tunables';
 import { demonCandleOrigin } from '../heroes/drawDemon';
 import { applyBurn } from '../heroes/abilities/demon/burnFx';
-import { grantDemonRage, demonRageFromAbilityDamage, isBigDemon } from '../heroes/abilities/demon/form';
+import { grantDemonRage, demonRageFromLightDamage, isBigDemon } from '../heroes/abilities/demon/form';
 import { sweepKnockback, swingSignFor } from '../heroes/abilities/death/sweep';
 import { deathIdleBatAngle } from '../heroes/drawDeath';
 import { facingFromAim } from '../heroes/drawNinja';
@@ -167,9 +167,9 @@ export class QuickAttack {
       const span = COLE_ATTACK.animMs;
       attacker.status.applySlow(now, span, COLE_ATTACK.lightSlowMul);
       attacker.playCustomAttack(now, span, (frac) => ({
-        armLiftLeft: frac < 0.55 ? Math.sin(frac * Math.PI) : 0.15,
-        armLiftRight: frac >= 0.35 ? Math.sin((frac - 0.2) * Math.PI) : 0,
-        swayX: Math.sin(frac * Math.PI * 2) * 5,
+        armLiftLeft: Math.min(1, frac * 1.7),
+        armLiftRight: Math.min(1, frac * 1.7),
+        swayX: Math.sin(frac * Math.PI) * 3,
       }));
       if (step === 3) {
         spawnShockwaveRing(this.scene, attacker.x, attacker.y, COLE_SHOCKWAVE.radius);
@@ -247,6 +247,7 @@ export class QuickAttack {
       armLiftRight: arm === 1 ? Math.sin(frac * Math.PI) : 0.08,
       jumpY: -Math.sin(frac * Math.PI) * 7,
       swayX: attacker.aim.x * 3 * Math.sin(frac * Math.PI),
+      ropeAction: 'shot' as const,
     }));
   }
 
@@ -426,7 +427,7 @@ export class QuickAttack {
       );
       if (kind === 'hit') {
         applyBurn(result.target, now, 'candle', attacker);
-        grantDemonRage(attacker, demonRageFromAbilityDamage(attacker.stats.attackDamage), result.target);
+        grantDemonRage(attacker, demonRageFromLightDamage(attacker.stats.attackDamage), result.target);
       }
     }
   }

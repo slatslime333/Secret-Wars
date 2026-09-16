@@ -27,8 +27,9 @@ import { startDeathDashSweep } from '../heroes/abilities/death/dashSweep';
 import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
 import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT } from '../heroes/abilities/rope/tunables';
 import { witchHexAllyRange } from '../heroes/abilities/witch/tunables';
+import { WITCH_HIT_MARKER_LINE, WITCH_HIT_MARKER_RANGE } from '../config/witch';
 import { SHADOW_CLAW, SHADOW_DASH } from '../heroes/abilities/shadow/tunables';
-import { MENDER_ANGEL, MENDER_PULSE, MENDER_SOUL } from '../heroes/abilities/mender/tunables';
+import { MENDER_ANGEL, MENDER_HIT_MARKER_LINE, MENDER_PULSE, MENDER_SOUL } from '../heroes/abilities/mender/tunables';
 import { DEMON_HELLFIRE } from '../heroes/abilities/demon/tunables';
 import { NinjaBody, allowsHeroCollide } from '../heroes/NinjaBody';
 import { stampKitPressure } from '../heroes/kitPressure';
@@ -459,7 +460,7 @@ export class BattleScene extends Phaser.Scene {
         this.ninja.y,
         this.ninja.aim.x,
         this.ninja.aim.y,
-        this.ninja.stats.attackRange,
+        MENDER_HIT_MARKER_LINE,
         frame.attackHeld,
         this.attacks.nextRopeArm,
         MENDER_PULSE.armOffsetRad,
@@ -470,9 +471,10 @@ export class BattleScene extends Phaser.Scene {
         this.ninja.y,
         this.ninja.aim.x,
         this.ninja.aim.y,
-        this.ninja.stats.attackRange,
+        WITCH_HIT_MARKER_RANGE,
         frame.attackHeld,
         witchHexAllyRange(),
+        WITCH_HIT_MARKER_LINE,
       );
     } else if (
       this.ninja.heroId === 'demon' &&
