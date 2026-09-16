@@ -51,27 +51,27 @@ export const spawnBarrelExplosion = (
   const length = Math.hypot(dirX, dirY) || 1;
   const nx = dirX / length;
   const ny = dirY / length;
-  const bx = x + nx * 5;
-  const by = y + ny * 5;
-  const flash = scene.add.graphics().setDepth(24);
+  const bx = x + nx * 4;
+  const by = y + ny * 4;
+  const flash = scene.add.graphics().setDepth(26);
   const anim = { t: 0 };
   scene.tweens.add({
     targets: anim,
     t: 1,
-    duration: 92,
+    duration: 110,
     ease: 'Cubic.Out',
     onUpdate: () => {
       flash.clear();
       const fade = 1 - anim.t;
-      const grow = 0.45 + anim.t * 0.9;
-      flash.fillStyle(0xff7a18, fade * 0.55);
-      flash.fillCircle(bx, by, 11 * grow);
-      flash.fillStyle(0xffc028, fade * 0.9);
-      flash.fillCircle(bx, by, 7.2 * grow);
+      const grow = 0.55 + anim.t * 1.05;
+      flash.fillStyle(0xff7a18, fade * 0.62);
+      flash.fillCircle(bx, by, 13 * grow);
+      flash.fillStyle(0xffc028, fade * 0.95);
+      flash.fillCircle(bx, by, 8.4 * grow);
       flash.fillStyle(0xfff6c8, fade);
-      flash.fillCircle(bx + nx * 2, by + ny * 2, 3.6 * fade);
-      flash.fillStyle(0x7ae0ff, fade * 0.7);
-      flash.fillCircle(bx + nx * 4, by + ny * 4, 2.1 * fade);
+      flash.fillCircle(bx + nx * 2, by + ny * 2, 4.2 * fade);
+      flash.fillStyle(0x7ae0ff, fade * 0.75);
+      flash.fillCircle(bx + nx * 5, by + ny * 5, 2.4 * fade);
     },
     onComplete: () => flash.destroy(),
   });
