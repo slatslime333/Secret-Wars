@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 
 export const HUD_CAMERA_NAME = 'hud';
 const HUD_FLAG = 'hudLayer';
+const HUD_ADD_HOOK = 'hudAddHook';
 
 /**
  * World camera zoom/follow must not move HUD or touch controls. A second
@@ -67,6 +68,7 @@ export const adoptHud = (scene: Phaser.Scene, ...objects: Phaser.GameObjects.Gam
     scene.cameras.main.ignore(object);
     const nested = object as Phaser.GameObjects.Container;
     if (Array.isArray(nested.list)) {
+      hookHudAdds(scene, nested);
       adoptHud(scene, ...nested.list);
     }
   }
@@ -96,9 +98,27 @@ const flagHud = (go: Phaser.GameObjects.GameObject): void => {
 };
 
 function onAddedToScene(this: Phaser.Scene, go: Phaser.GameObjects.GameObject): void {
-  if (isHud(go)) {
+  const parent = (go as Phaser.GameObjects.Container).parentContainer;
+  if (isHud(go) || (parent && isHud(parent))) {
     adoptHud(this, go);
     return;
   }
   this.cameras.getCamera(HUD_CAMERA_NAME)?.ignore(go);
 }
+
+/** Children added after the first adoptHud still stay on the HUD camera. */
+const hookHudAdds = (scene: Phaser.Scene, container: Phaser.GameObjects.Container): void => {
+  if (container.getData(HUD_ADD_HOOK)) {
+    return;
+  }
+  container.setData(HUD_ADD_HOOK, true);
+  const original = container.addAt.bind(container);
+  container.addAt = ((
+    child: Phaser.GameObjects.GameObject,
+    index?: number,
+  ): Phaser.GameObjects.GameObject => {
+    const result = original(child, index);
+    adoptHud(scene, child);
+    return result;
+  }) as typeof container.addAt;
+};

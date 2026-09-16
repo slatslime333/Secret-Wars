@@ -1,4 +1,5 @@
 export { ScrollPanel, type ScrollAxis } from './ScrollPanel';
+export { TAP_PX, capturePress, isTapRelease, normalizedWheelDelta, syncHitArea } from './tapGesture';
 export {
   layoutHudChrome,
   layoutSpectatorPlate,
