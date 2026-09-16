@@ -137,7 +137,7 @@ export class NinjaBody {
     this.art = scene.add.graphics();
     this.view.add(this.art);
     if (this.stats.id === 'witch') {
-      this.spriteArt = createWitchSprite(scene);
+      this.spriteArt = createWitchSprite(scene, 0, WITCH_FEET_Y, { rival: this.rival, team: this.team });
       if (this.spriteArt) {
         this.view.add(this.spriteArt);
       }
