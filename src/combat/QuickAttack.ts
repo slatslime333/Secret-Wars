@@ -17,7 +17,7 @@ import { ComboTracker } from './ComboTracker';
 import { HitMarker } from './HitMarker';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { COLORS } from '../ui/theme';
-import { spawnMuzzleFlash } from '../effects/muzzleFlash';
+import { spawnBarrelExplosion } from '../effects/muzzleFlash';
 import { spawnCombatCallout } from '../effects/combatCallout';
 import { spawnLightningArc, spawnShockwaveRing } from '../effects/lightning';
 import { resolveMelee } from './resolveMelee';
@@ -310,11 +310,11 @@ export class QuickAttack {
       attacker.team,
     );
     this.menderShots.push(shot);
-    spawnMuzzleFlash(this.scene, origin.x, origin.y, sx, sy);
-    attacker.playCustomAttack(now, 160, (frac) => ({
-      armLiftLeft: 0.75 + Math.sin(frac * Math.PI) * 0.25,
-      armLiftRight: 0.75 + Math.sin(frac * Math.PI) * 0.25,
-      swayX: attacker.aim.x * 4 * Math.sin(frac * Math.PI),
+    spawnBarrelExplosion(this.scene, origin.x, origin.y, sx, sy);
+    attacker.playCustomAttack(now, 230, (frac) => ({
+      armLiftLeft: 0.88 + Math.sin(frac * Math.PI) * 0.12,
+      armLiftRight: 0.88 + Math.sin(frac * Math.PI) * 0.12,
+      swayX: attacker.aim.x * 3 * Math.sin(frac * Math.PI),
     }));
   }
 

@@ -14,7 +14,7 @@ export const MENDER_PULSE = {
   /** Dual uzis stay close to the aim line. */
   spreadRad: 0.038,
   armOffsetRad: 0.014,
-  armReach: 14,
+  armReach: 16,
   knockbackMul: 0.42,
   staminaDamage: 2,
   hitSlowMul: 0.88,
