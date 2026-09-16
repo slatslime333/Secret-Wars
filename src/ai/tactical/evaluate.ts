@@ -19,7 +19,7 @@ import {
   setupPending,
   threatZoneCost,
 } from './fightRead';
-import { clusterRiskOf } from './spacing';
+import { clusterRiskOf, occupancyOf } from './spacing';
 import { assessTeam, biasAction, type TeamIntel } from './teamIntel';
 import { assessWar, isAoeFarmer, minionPackSize, objectiveScoreValue, warBiasAction } from './warSense';
 import { applyDemonBias } from './demonSense';
@@ -216,9 +216,12 @@ const overkillWeight = (enemy: CombatantView, allies: CombatantView[], enemies: 
     return 0.72;
   }
   if (n >= TACTIC.overkillAllies) {
-    return 0.55;
+    return 0.7;
   }
-  return n * 0.16;
+  if (n >= 1 && winning && enemy.hpRatio < 0.72) {
+    return 0.38 + n * 0.12;
+  }
+  return n * 0.22;
 };
 
 const localRisk = (self: CombatantView, allies: CombatantView[], enemies: CombatantView[], personality: Personality): number => {
@@ -419,9 +422,12 @@ const buildClusters = (self: CombatantView, allies: CombatantView[], enemies: Co
       urgency += 24;
     }
     const avgEnemyHp = cEnemies.reduce((sum, enemy) => sum + enemy.hpRatio, 0) / cEnemies.length;
-    const handled = cAllies.length >= 2 && cEnemies.length <= 1 && avgEnemyHp < 0.5 && allyPower > enemyPower;
+    const handled = cAllies.length >= 2 && cEnemies.length <= 1 && avgEnemyHp < 0.55 && allyPower > enemyPower;
     if (handled) {
-      urgency -= 34;
+      urgency -= 42;
+    }
+    if (cAllies.length >= 2 && cEnemies.length <= 1) {
+      urgency -= 16 + Math.max(0, cAllies.length - 1) * 10;
     }
     if (cAllies.length >= 3 && cEnemies.length <= 1) {
       urgency -= 18;
@@ -577,6 +583,16 @@ export const riskOfSituation = (situation: Situation): number => {
 /**
  * Fill `out` with scored actions. Deterministic — callers add noise when picking.
  * Returns the number of valid entries written.
+ *
+ * Convergence used to come from three existing loops, not a missing brain:
+ * 1. Attack starts at 36, so a visible enemy beats farm/objectives unless
+ *    already overkilled. Seeing a foe was effectively "go fight".
+ * 2. Assist/protect scored "go to the ally" while dests were the same radial
+ *    point on the enemy (or the ally's feet). Teammate help = stand on them.
+ * 3. clusterRiskOf was 0 without a wide hitter, so occupancy never cost.
+ * Clustering now has a cost, cold joins must beat current work, and dests
+ * pick unique stands. Large fights still happen when several CPUs independently
+ * score the same conflict high (objective threat, collapsing ally, isolation).
  */
 export const scoreSituation = (situation: Situation, out: ScoredAction[]): number => {
   const { self, allies, enemies, personality, kind } = situation;
@@ -604,6 +620,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
   const kit = situation.kit;
   const plan = situation.plan;
   const clusterRisk = clusterRiskOf(self, allies, enemies);
+  const occupancy = occupancyOf(self, allies);
   const strain = ownStaminaStrain(self);
   const recovering = (situation.staminaTrend ?? 0) > 0.012 && self.staminaRatio < 0.62;
   const reserve = reserveGap(self);
@@ -661,6 +678,23 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     attack -= pileUse * 58;
     attack -= risk * 20;
     attack += (self.hpRatio - 0.32) * 10;
+    const alreadyHot = self.attacking || self.recentlyHit || d <= range * 1.14;
+    const othersOn = press.allies.length + inboundOnEnemy(enemy, allies, press.allies) * 0.55;
+    const coldJoin = !alreadyHot && othersOn >= 1 && !finishable && !(victim && victim.hpRatio < 0.38);
+    if (coldJoin) {
+      attack -= 10 + othersOn * (7 + personality.independence * 8);
+      attack -= occupancy * (8 + personality.independence * 10);
+    }
+    if (!alreadyHot && !finishable && !victim) {
+      if (d > range * 1.7) {
+        attack -= 8 + personality.independence * 6;
+      }
+      if (occupancy > 0.28) {
+        attack -= occupancy * (10 + personality.independence * 8);
+      }
+    } else {
+      attack -= occupancy * (alreadyHot ? 2 : 6);
+    }
     if (pileUse < 0.45) {
       if (victim) {
         attack += 12 + (1 - victim.hpRatio) * 10;
@@ -821,6 +855,9 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       if (objIntel.play === 'defend_objective' && enemyOnObj) {
         attack += 10;
       }
+      if (!alreadyHot && (objIntel.free || objIntel.urgency >= 0.58) && !enemyOnObj) {
+        attack -= 8 + objIntel.urgency * 8 + personality.opportunism * 4;
+      }
     }
     if (enemy.kind === 'hero') {
       if (war.clock === 'last_seconds' || war.clock === 'closing') {
@@ -836,7 +873,27 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         attack += 9;
       }
     }
-    count = write(out, count, 'attack', tune('attack', persist(enemy, attack * vis)), pileUse > 0.7 ? 'already handled' : zoneUse > 0.55 ? 'bad range to trade' : pending > 0.4 ? 'wait the setup' : opening.payoff > 0.35 ? 'take the opening' : enemy.blocking ? 'shield up' : victim ? 'press the threat' : 'take the fight', enemy.id);
+    const attackWhy =
+      pileUse > 0.7
+        ? 'already handled'
+        : coldJoin
+          ? 'fight already staffed'
+          : occupancy > 0.42
+            ? 'clustered'
+            : zoneUse > 0.55
+              ? 'bad range to trade'
+              : pending > 0.4
+                ? 'wait the setup'
+                : opening.payoff > 0.35
+                  ? 'take the opening'
+                  : enemy.blocking
+                    ? 'shield up'
+                    : victim
+                      ? 'press the threat'
+                      : !alreadyHot && d > range * 1.7
+                        ? 'visible, not worth the walk'
+                        : 'take the fight';
+    count = write(out, count, 'attack', tune('attack', persist(enemy, attack * vis)), attackWhy, enemy.id);
 
     if (enemy.hpRatio <= TACTIC.finishHp) {
       let finish = 26 + (TACTIC.finishHp - enemy.hpRatio) * 90 + iso * 18;
@@ -929,6 +986,9 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       }
       if (support) {
         flank += 8;
+      }
+      if (occupancy > 0.28 || pocketMates >= 1) {
+        flank += 6 + occupancy * 8 + personality.flankTendency * 4;
       }
       if (opening.payoff > 0.2 && pileUse > 0.32) {
         flank += opening.payoff * 10 + personality.flankTendency * 4;
@@ -1132,11 +1192,32 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       }
     }
     const d = dist(self, ally);
+    const inboundHelp = allies.filter(
+      (other) =>
+        other !== ally &&
+        other.kind === 'hero' &&
+        movingToward(other, ally.x, ally.y) &&
+        dist(other, ally) < 300 &&
+        dist(other, ally) > 70,
+    ).length;
     const canSwing = helpPower + effectivePower(self) > foePower * 0.72;
     let assist = 14 + (foes.length - allyHelp) * 20 + (1 - ally.hpRatio) * 20;
     assist -= (d / situation.vision) * 28;
     if (allyHelp >= 2 && helpPower > foePower * 1.2) {
       assist -= 26;
+    }
+    if (allyHelp >= 1 && ally.hpRatio > 0.42 && helpPower > foePower * 0.95) {
+      assist -= 12 + personality.independence * 16;
+    }
+    if (inboundHelp >= 1 && ally.hpRatio > 0.36) {
+      assist -= inboundHelp * (8 + personality.independence * 8);
+    }
+    assist -= occupancy * (6 + personality.independence * 6);
+    if (d < 96 && occupancy > 0.28) {
+      assist -= 14 + occupancy * 12;
+    }
+    if (d > situation.vision * 0.52 && ally.hpRatio > 0.4) {
+      assist -= 8 + personality.independence * 8;
     }
     if (foes.length >= 2 && allyHelp === 0) {
       assist += 18;
@@ -1169,20 +1250,28 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       if (self.hpRatio < 0.18) {
         protect -= 12;
       }
-      const piled = allies.filter((other) => other !== ally && dist(other, ally) < 58).length;
+      const piled = allies.filter((other) => other !== ally && dist(other, ally) < 86).length;
       if (piled >= 1) {
-        protect -= 7 * piled;
+        protect -= 10 * piled;
       }
-      protect -= clusterRisk * 5;
+      protect -= occupancy * 8;
+      if (ally.hpRatio > 0.48 && allyHelp >= 1) {
+        protect -= 10 + personality.independence * 8;
+      }
       count = write(out, count, 'protect_ally', tune('protect_ally', protect), 'cover retreat', pursuers[0].id, ally.id);
     }
   }
 
-  if (urgent && urgent.urgency > 28 && urgent.allies.length > 0 && urgent.allies.length <= urgent.enemies.length) {
+  if (urgent && urgent.urgency > 34 && urgent.allies.length > 0 && urgent.allies.length <= urgent.enemies.length) {
     const focus = urgent.enemies[0];
     const already = urgent.allies.some((ally) => ally.id === self.id);
     if (!already && dist(self, { ...self, x: urgent.x, y: urgent.y }) < situation.vision * 1.15) {
-      const extra = 10 + urgent.urgency * 0.35 - (Math.hypot(urgent.x - self.x, urgent.y - self.y) / situation.vision) * 12;
+      let extra = 10 + urgent.urgency * 0.35 - (Math.hypot(urgent.x - self.x, urgent.y - self.y) / situation.vision) * 12;
+      extra -= occupancy * (10 + personality.independence * 12);
+      extra -= personality.independence * 8;
+      if (urgent.allies.length >= 2) {
+        extra -= 10;
+      }
       count = write(out, count, 'assist_ally', tune('assist_ally', extra), 'urgent fight', focus?.id ?? -1, urgent.allies[0]?.id ?? -1);
     }
   }
@@ -1219,10 +1308,17 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
   if (recovering && risk < 0.45 && !self.recentlyHit) {
     disengage -= 6;
   }
-  if (clusterRisk > 0.4 && risk < 0.55) {
-    disengage -= 4;
+  if (!self.recentlyHit && self.hpRatio > personality.retreatHp + 0.14 && risk < 0.48) {
+    disengage -= 8;
   }
-  count = write(out, count, 'retreat', tune('retreat', disengage), risk >= 0.54 ? 'bad fight' : 'reset');
+  if (fight === 'unfavorable' && !bestFinish && self.hpRatio > 0.28) {
+    disengage += 8 + personality.caution * 6;
+  }
+  if (objIntel && objIntel.urgency >= 0.7 && !self.attacking && occupancy > 0.28) {
+    disengage += 6;
+  }
+  const disengageWhy = fight === 'collapse' || risk >= 0.7 ? 'bad fight' : fight === 'unfavorable' ? 'poor trade' : occupancy > 0.45 ? 'reset spacing' : 'reset';
+  count = write(out, count, 'retreat', tune('retreat', disengage), disengageWhy);
   if (risk >= 0.7 || fight === 'collapse' || (self.hpRatio < TACTIC.criticalHp && risk >= 0.45) || (team.outnumbered && team.localEnemies >= 3 && self.hpRatio < 0.85)) {
     count = write(out, count, 'escape', tune('escape', disengage + 8 + (self.recentlyHit ? 6 : 0) + (fight === 'collapse' ? 6 : 0)), 'survive');
   }
@@ -1317,6 +1413,12 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     }
     if (heroThreat) {
       farmScore -= 16;
+    }
+    if (!selfPressed && !self.recentlyHit) {
+      farmScore += 6 + personality.independence * 8;
+      if (heroThreat) {
+        farmScore += 8;
+      }
     }
     if (selfPressed && self.hpRatio < 0.34) {
       farmScore -= 18;
@@ -1439,13 +1541,26 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     count = write(out, count, 'reposition', repo, "don't trade", enemies[0]?.id ?? -1);
   }
 
-  if (kind === 'hero' && clusterRisk > 0.24) {
+  if (kind === 'hero' && (clusterRisk > 0.24 || occupancy > 0.32)) {
     count = write(
       out,
       count,
       'reposition',
-      tune('reposition', 10 + clusterRisk * 20 + personality.caution * 6),
-      'break the stack',
+      tune('reposition', 10 + clusterRisk * 20 + occupancy * 14 + personality.caution * 6 + personality.independence * 6),
+      occupancy > 0.36 ? 'break the stack' : 'break the stack',
+      enemies[0]?.id ?? -1,
+    );
+  }
+  const localHeroes = enemies.filter(
+    (enemy) => enemy.kind === 'hero' && enemy.visible && dist(self, enemy) < 210,
+  ).length;
+  if (kind === 'hero' && localHeroes >= 3 && occupancy > 0.2) {
+    count = write(
+      out,
+      count,
+      'reposition',
+      tune('reposition', 12 + occupancy * 10 + personality.caution * 8),
+      'predicted ult zone',
       enemies[0]?.id ?? -1,
     );
   }

@@ -39,6 +39,15 @@ export class TacticalOverlay {
         `rng ${info.preferredRange}${info.savedUlt ? '  saveUlt' : ''}  ${info.hp}`,
         info.reason,
       ];
+      if (info.clusterRisk) {
+        lines.push(`cluster ${info.clusterRisk}  space ${info.desiredSpacing ?? '-'}  pos ${info.positionValue ?? '-'}`);
+      }
+      if (info.joinValue || info.combatValue || info.objectiveValue) {
+        lines.push(`join ${info.joinValue ?? '-'}  fight ${info.combatValue ?? '-'}  obj ${info.objectiveValue ?? '-'}`);
+      }
+      if (info.ultDecision) {
+        lines.push(`ult ${info.ultDecision}${info.ultReason ? `  ${info.ultReason}` : ''}`);
+      }
       if (info.team) {
         lines.push(info.team);
       }

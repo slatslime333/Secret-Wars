@@ -249,6 +249,14 @@ export type TacticalDebugInfo = {
   team?: string;
   objective?: string;
   combatNote?: string;
+  clusterRisk?: string;
+  joinValue?: string;
+  combatValue?: string;
+  objectiveValue?: string;
+  positionValue?: string;
+  desiredSpacing?: string;
+  ultDecision?: string;
+  ultReason?: string;
 };
 
 export const NEUTRAL_PERSONALITY: Personality = {

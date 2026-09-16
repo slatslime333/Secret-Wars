@@ -7,7 +7,7 @@ import type { AbilityContext, AbilitySlot } from '../heroes/abilities/types';
 import { SLOT_ORDER, canStartAbility } from '../heroes/abilities/types';
 import type { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import type { NinjaBody } from '../heroes/NinjaBody';
-import { scoreKitSlot } from './tactical/kitTactics';
+import { evaluateUltimate, scoreKitSlot } from './tactical/kitTactics';
 import { isShadowDry } from './tactical/kitProfile';
 import { FightSense } from './tactical/fightSense';
 import type { TacticalMind } from './tactical/mind';
@@ -282,15 +282,21 @@ export class CombatDriver {
     let bestSlot: AbilitySlot | undefined;
     let bestScore = 18;
     let skippedUlt = false;
+    let ultRead: ReturnType<typeof evaluateUltimate> | undefined;
     for (const slot of SLOTS) {
       const state = abilities.slotState(slot, now);
       if (!state.ready || state.consumed) {
         continue;
       }
-      const score = scoreKitSlot(state.def, situation, slot) + rng() * 6;
-      if (slot === 'ultimate' && score < 26 + situation.personality.abilityConservation * 18) {
-        skippedUlt = true;
-        continue;
+      const score = scoreKitSlot(state.def, situation, slot) + (slot === 'ultimate' ? rng() * 3 : rng() * 6);
+      if (slot === 'ultimate') {
+        ultRead = evaluateUltimate(state.def, situation);
+        const bar = 22 + situation.personality.abilityConservation * 12;
+        if (ultRead.decision !== 'use' || score < bar) {
+          skippedUlt = true;
+          mind.noteUltDecision(true, ultRead.reason, ultRead.current, ultRead.future);
+          continue;
+        }
       }
       if (score > bestScore) {
         bestScore = score;
@@ -306,6 +312,9 @@ export class CombatDriver {
     }
     if (bestSlot === 'ultimate') {
       mind.noteUltSaved(false);
+      if (ultRead) {
+        mind.noteUltDecision(false, ultRead.reason, ultRead.current, ultRead.future);
+      }
     }
     const def = abilities.slotState(bestSlot, now).def;
     const purposes = purposesOf(def);

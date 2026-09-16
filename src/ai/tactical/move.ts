@@ -1,7 +1,7 @@
 import { ARENA, atFarEdge, nearestLane, roamHuntPoint } from '../../config/arena';
 import type { ObjectiveKind } from '../../config/objective';
 import type { KitStance, TacticalAction } from './types';
-import { clearanceFor, nudgeOffMates, protectStand, regroupStand, type CrowdMate } from './spacing';
+import { clearanceFor, combatStand, nudgeOffMates, protectStand, regroupStand, type CrowdMate } from './spacing';
 
 export type MoveSample = {
   x: number;
@@ -342,8 +342,8 @@ export const moveGoal = (
     const nx = toX / gap;
     const ny = toY / gap;
     const radius = range + 16;
-    const gx = target.x - nx * radius + -ny * 26 * flankSign;
-    const gy = target.y - ny * radius + nx * 26 * flankSign;
+    const gx = target.x - nx * radius + -ny * (42 + (hint?.clusterRisk ?? 0) * 24) * flankSign;
+    const gy = target.y - ny * radius + nx * (42 + (hint?.clusterRisk ?? 0) * 24) * flankSign;
     const aim = aimTo(target.x, target.y);
     const standGap = Math.hypot(gx - body.x, gy - body.y);
     const halt = action === 'hold_position' && standGap < 22;
@@ -357,8 +357,8 @@ export const moveGoal = (
     const flen = Math.hypot(fx, fy) || 1;
     fx /= flen;
     fy /= flen;
-    const gx = target.x - fx * range * 0.55 + -fy * range * 0.9 * flankSign;
-    const gy = target.y - fy * range * 0.55 + fx * range * 0.9 * flankSign;
+    const gx = target.x - fx * range * 0.55 + -fy * range * 1.05 * flankSign;
+    const gy = target.y - fy * range * 0.55 + fx * range * 1.05 * flankSign;
     const aim = aimTo(target.x, target.y);
     return finish({ x: gx, y: gy, halt: false, ...aim });
   }
@@ -368,8 +368,8 @@ export const moveGoal = (
     const nx = toX / gap;
     const ny = toY / gap;
     const back = ranged && gap < range * 0.7 ? range * 1.02 : range;
-    const gx = target.x - nx * back + -ny * 46 * side;
-    const gy = target.y - ny * back + nx * 46 * side;
+    const gx = target.x - nx * back + -ny * (62 + (hint?.clusterRisk ?? 0) * 24) * side;
+    const gy = target.y - ny * back + nx * (62 + (hint?.clusterRisk ?? 0) * 24) * side;
     const aim = aimTo(target.x, target.y);
     return finish({ x: gx, y: gy, halt: false, ...aim });
   }
@@ -403,16 +403,25 @@ export const moveGoal = (
 
   const nx = toX / gap;
   const ny = toY / gap;
-  const stand = range * (ranged ? 0.9 : 0.64);
   const slop = range * 0.2;
-  const spread = 14 + (hint?.clusterRisk ?? 0) * 32;
-  const gx = target.x - nx * stand + -ny * spread * flankSign;
-  const gy = target.y - ny * stand + nx * spread * flankSign;
+  const picked = combatStand(
+    body,
+    target,
+    action,
+    flankSign,
+    slot,
+    hint?.mates,
+    hint?.stance,
+    hint?.clusterRisk ?? 0,
+    range,
+  );
+  const gx = picked.x;
+  const gy = picked.y;
   if (ranged && gap < range - slop && action !== 'chase' && action !== 'finish_target') {
     const side = flankSign >= 0 ? 1 : -1;
     return finish({
-      x: target.x - nx * range + -ny * 32 * side,
-      y: target.y - ny * range + nx * 32 * side,
+      x: target.x - nx * range + -ny * (48 + (hint?.clusterRisk ?? 0) * 28) * side,
+      y: target.y - ny * range + nx * (48 + (hint?.clusterRisk ?? 0) * 28) * side,
       halt: false,
       aimX: nx,
       aimY: ny,
