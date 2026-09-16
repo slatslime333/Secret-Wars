@@ -58,7 +58,7 @@ const KIT_OVERRIDES: Record<string, KitOverride> = {
     wantsFlank: true,
     wantsProtect: true,
     pressureBias: 0.4,
-    setupIds: [],
+    setupIds: ['rope-spray'],
     defensiveIds: ['rope-mega-punch'],
     escapeIds: [],
     ultSaveUntilFoes: 2,

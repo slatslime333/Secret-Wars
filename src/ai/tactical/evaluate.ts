@@ -11,9 +11,12 @@ import {
   futurePositionCost,
   lifeTradeCost,
   matesInPocket,
+  opportunityOf,
+  peelWeight,
   pocketRadius,
   readFightShape,
   reserveGap,
+  setupPending,
   threatZoneCost,
 } from './fightRead';
 import { clusterRiskOf } from './spacing';
@@ -115,15 +118,22 @@ const pushUnique = (list: CombatantView[], unit: CombatantView): void => {
   list.push(unit);
 };
 
-/** Allies already occupying this fight — in range, swinging, or standing in their pocket. */
+/** Allies occupying this fight in a way that another body would be redundant. */
 export const pressOnEnemy = (enemy: CombatantView, allies: CombatantView[]): FightPress => {
   const on: CombatantView[] = [];
   let allyPower = 0;
   const pocket = enemy.attackRange * 0.9 + 10;
   for (const ally of allies) {
     const d = dist(ally, enemy);
-    const inPocket = ally.kind === 'hero' && d <= pocket && (ally.attacking || ally.recentlyHit || d <= enemy.attackRange * 0.72);
-    if (engagedWith(ally, enemy) || (ally.attacking && d < 190) || inPocket) {
+    const poke = canStrikeOutsidePocket(ally, enemy);
+    const inPocket =
+      ally.kind === 'hero' &&
+      d <= pocket &&
+      (ally.attacking || ally.recentlyHit || d <= enemy.attackRange * 0.72);
+    const closeSwing =
+      (ally.attacking || ally.recentlyHit) && d < Math.min(190, Math.max(90, ally.attackRange * 0.9));
+    const meleeEngage = !poke && engagedWith(ally, enemy);
+    if (meleeEngage || closeSwing || inPocket) {
       on.push(ally);
       allyPower += effectivePower(ally) * (inPocket && !engagedWith(ally, enemy) && !ally.attacking ? 0.82 : 1);
     }
@@ -735,8 +745,21 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       victim,
       enemyKind: enemy.kind,
     });
+    const opening = opportunityOf({
+      self,
+      enemy,
+      allies,
+      enemies,
+      kit,
+      isolation: iso,
+      pile: pileUse,
+      zone: zoneUse,
+      distance: d,
+      escapeOpen: situation.escapeOpen,
+    });
+    const pending = setupPending({ self, enemy, allies, kit, distance: d });
     if (!finishable && !victim) {
-      const cheapStrain = inStrike && (enemy.hpRatio < 0.4 || enemy.recentlyHit || enemy.stunned);
+      const cheapStrain = inStrike && (enemy.hpRatio < 0.4 || enemy.recentlyHit || enemy.stunned || (enemy.slowLeftMs ?? 0) > 80);
       const strainMul = cheapStrain ? 3 + personality.caution * 3 : 12 + personality.caution * 8;
       attack -= strain * strainMul;
       attack -= clusterRisk * (meleeStay ? 2 : inStrike && cheapStrain ? 3 : 8);
@@ -748,6 +771,11 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     attack -= future * 18;
     attack -= spent * (10 + personality.abilityConservation * 6);
     attack -= trade * 28;
+    attack += opening.payoff * (16 + personality.opportunism * 10);
+    if (opening.value > 0.3 && opening.risk > 0.52 && !finishable && !victim) {
+      attack -= opening.risk * (6 + personality.caution * 8);
+    }
+    attack -= pending * Math.max(0, 16 + personality.patience * 12 - personality.opportunism * 14);
     if (pocketMates >= 1 && d <= range * 1.35 && !meleeStay) {
       attack -= 6 + pocketMates * 5;
     }
@@ -758,7 +786,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       if (meleeStay) {
         attack += 10;
       }
-      if (enemy.recentlyHit || enemy.stunned) {
+      if (enemy.recentlyHit || enemy.stunned || opening.locked > 0.35) {
         attack += 8;
       }
       if (self.heroId === 'shadow' && !isShadowDry(self.heroId, self) && (strain < 0.72 || enemy.hpRatio < 0.3)) {
@@ -807,7 +835,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         attack += 9;
       }
     }
-    count = write(out, count, 'attack', tune('attack', persist(enemy, attack * vis)), pileUse > 0.7 ? 'already handled' : zoneUse > 0.55 ? 'bad range to trade' : enemy.blocking ? 'shield up' : victim ? 'press the threat' : 'take the fight', enemy.id);
+    count = write(out, count, 'attack', tune('attack', persist(enemy, attack * vis)), pileUse > 0.7 ? 'already handled' : zoneUse > 0.55 ? 'bad range to trade' : pending > 0.4 ? 'wait the setup' : opening.payoff > 0.35 ? 'take the opening' : enemy.blocking ? 'shield up' : victim ? 'press the threat' : 'take the fight', enemy.id);
 
     if (enemy.hpRatio <= TACTIC.finishHp) {
       let finish = 26 + (TACTIC.finishHp - enemy.hpRatio) * 90 + iso * 18;
@@ -833,6 +861,10 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       }
       finish -= strain * 4;
       finish -= future * 8;
+      finish += opening.payoff * 8;
+      if (opening.risk > 0.6 && iso < 0.45) {
+        finish -= 8;
+      }
       finish -= zone * (canStrikeOutsidePocket(self, enemy) ? 10 : 3);
       if (!inStrike) {
         finish -=
@@ -888,13 +920,22 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       if (ranged) {
         flank -= 4;
       }
+      if (ranged && d >= (kit?.comfortMin ?? range * 0.55) && d <= range * 1.15) {
+        flank -= 12;
+      }
       if (kind === 'minion' && ranged) {
         flank -= 8;
       }
       if (support) {
         flank += 8;
       }
-      count = write(out, count, 'flank', persist(enemy, flank * vis), 'better angle', enemy.id);
+      if (opening.payoff > 0.2 && pileUse > 0.32) {
+        flank += opening.payoff * 10 + personality.flankTendency * 4;
+      }
+      if (pending > 0.4) {
+        flank -= pending * 6;
+      }
+      count = write(out, count, 'flank', tune('flank', persist(enemy, flank * vis)), 'better angle', enemy.id);
     }
 
     if (fleeing) {
@@ -941,6 +982,11 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       if (strain > 0.55 && enemy.hpRatio > 0.22) {
         chase -= 10;
       }
+      if (opening.locked > 0.35 && opening.risk < 0.48) {
+        chase += opening.payoff * 8;
+      } else if (opening.life < 0.12 && fleeing) {
+        chase -= 6;
+      }
       if (objIntel && isZoneObjective(objIntel.kind) && objIntel.inside) {
         const enemyOnObj = Math.hypot(enemy.x - objIntel.x, enemy.y - objIntel.y) < objIntel.radius + 80;
         if (!enemyOnObj) {
@@ -970,6 +1016,12 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         intercept += 16;
       }
       intercept += personality.assistTendency * 8;
+      if (opening.locked > 0.28 || fleeing) {
+        intercept += 6 + opening.payoff * 8;
+        if (kit && !kit.wantsFlank && (kit.stance === 'melee' || self.role === 'tank')) {
+          intercept += 8;
+        }
+      }
       if (incomingObj && objIntel) {
         intercept += 10 + objIntel.urgency * 12;
         const toObj = Math.hypot(objIntel.x - enemy.x, objIntel.y - enemy.y) || 1;
@@ -991,6 +1043,53 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         incomingObj ? 'cut off objective run' : incomingAlly ? 'cut off reinforcement' : 'meet the approach',
         enemy.id,
         incomingAlly?.id ?? -1,
+      );
+    }
+
+    if (pending > 0.28 && !inStrike) {
+      let wait = 24 + pending * 22 + personality.patience * 8 - personality.opportunism * 8;
+      if (kit?.wantsInitiate) {
+        wait += 4;
+      }
+      wait -= opening.payoff * 14;
+      count = write(out, count, 'wait_for_opening', tune('wait_for_opening', wait * vis), 'wait for the setup', enemy.id);
+      count = write(out, count, 'hold_position', tune('hold_position', (wait - 4) * vis), 'hold for the setup', enemy.id);
+    }
+
+    const cutoff =
+      Boolean(kit) &&
+      !kit!.wantsFlank &&
+      (kit!.stance === 'melee' || self.role === 'tank' || kit!.wantsProtect) &&
+      (fleeing || opening.locked > 0.28) &&
+      d < self.attackRange * 2.15 &&
+      d > self.attackRange * 0.45 &&
+      pileUse < 0.7;
+    if (cutoff && (opening.payoff > 0.18 || fleeing)) {
+      let hold = 12 + opening.payoff * 10 + personality.patience * 6;
+      const nearestMate = allies.reduce((best, ally) => {
+        if (ally.kind !== 'hero') {
+          return best;
+        }
+        const gap = dist(self, ally);
+        return gap < best ? gap : best;
+      }, 9999);
+      if (nearestMate > 140) {
+        hold += 4;
+      }
+      count = write(out, count, 'hold_position', tune('hold_position', hold * vis), 'hold the cut', enemy.id);
+      if (!incomingAlly && !incomingSelf && !incomingObj) {
+        count = write(out, count, 'intercept', tune('intercept', (hold + 2) * vis), 'cut the retreat', enemy.id);
+      }
+    }
+
+    if (pileUse > 0.52 && !meleeStay && opening.payoff > 0.18 && kit?.wantsFlank) {
+      count = write(
+        out,
+        count,
+        'reposition',
+        tune('reposition', 10 + opening.payoff * 8 + personality.flankTendency * 6),
+        'take another angle',
+        enemy.id,
       );
     }
 
@@ -1049,6 +1148,8 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     }
     assist += (personality.assistTendency - 0.4) * 16;
     assist += (personality.protectionInstinct - 0.5) * 10;
+    const peel = peelWeight(self, ally, foes, kit);
+    assist += peel * 10;
     if (support) {
       assist += 6;
     }
@@ -1059,10 +1160,11 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     count = write(out, count, 'assist_ally', tune('assist_ally', assist), foes.length > allyHelp + 1 ? 'outnumbered ally' : 'help the fight', focus.id, ally.id);
 
     const pursuers = foes.filter((foe) => movingToward(foe, ally.x, ally.y) || engagedWith(foe, ally));
-    if (ally.hpRatio < 0.34 && pursuers.length > 0) {
+    if ((ally.hpRatio < 0.34 && pursuers.length > 0) || (peel > 0.42 && pursuers.length > 0)) {
       let protect = 18 + (1 - ally.hpRatio) * 28 - (d / situation.vision) * 20;
       protect += pursuers.length * 6;
       protect += personality.assistTendency * 8;
+      protect += peel * 12;
       if (self.hpRatio < 0.18) {
         protect -= 12;
       }

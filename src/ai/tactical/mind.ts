@@ -738,6 +738,14 @@ const blankView = (): CombatantView => ({
   blocking: false,
   abilityReady: true,
   dashCharges: 2,
+  slowLeftMs: 0,
+  crippleLeftMs: 0,
+  stunLeftMs: 0,
+  controlLockLeftMs: 0,
+  blockStunLeftMs: 0,
+  hitReactLeftMs: 0,
+  recoveryLeftMs: 0,
+  shieldRatio: 1,
   level: 1,
   xpRatio: 0,
   rageRatio: 0,
@@ -772,6 +780,14 @@ const copyView = (dest: CombatantView, src: CombatantView): void => {
   dest.blocking = src.blocking;
   dest.abilityReady = src.abilityReady;
   dest.dashCharges = src.dashCharges;
+  dest.slowLeftMs = src.slowLeftMs ?? 0;
+  dest.crippleLeftMs = src.crippleLeftMs ?? 0;
+  dest.stunLeftMs = src.stunLeftMs ?? 0;
+  dest.controlLockLeftMs = src.controlLockLeftMs ?? 0;
+  dest.blockStunLeftMs = src.blockStunLeftMs ?? 0;
+  dest.hitReactLeftMs = src.hitReactLeftMs ?? 0;
+  dest.recoveryLeftMs = src.recoveryLeftMs ?? 0;
+  dest.shieldRatio = src.shieldRatio;
   dest.level = src.level;
   dest.xpRatio = src.xpRatio;
   dest.rageRatio = src.rageRatio;

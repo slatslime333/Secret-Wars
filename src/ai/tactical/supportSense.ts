@@ -154,6 +154,9 @@ export const scoreAllyNeed = (
   if (ally.attacking) {
     score += 8;
   }
+  if (ally.attacking && nearbyFoes >= 1 && ally.hpRatio < 0.78) {
+    score += 8;
+  }
   if (ally.stunned) {
     score += 14;
   }

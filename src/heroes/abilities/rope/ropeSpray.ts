@@ -21,7 +21,7 @@ export const ropeSprayDef: AbilityDef = {
   maxCharges: 1,
   iconKey: ABILITY_ICON.ropeSpray,
   accent: COLORS.yellow,
-  tactics: { roles: ['aoe', 'cc', 'space', 'disruption', 'damage'], range: ROPE_SPRAY.range },
+  tactics: { roles: ['aoe', 'cc', 'space', 'disruption', 'damage', 'setup'], range: ROPE_SPRAY.range },
   canActivate: (ctx) => canStartAbility(ctx),
   activate: (ctx) => new RopeSprayAbility(ctx),
 };

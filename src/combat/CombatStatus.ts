@@ -308,6 +308,38 @@ export class CombatStatus {
     this.applyStun(now, durationMs);
   }
 
+  private remainingMs(until: number, now: number): number {
+    return Math.max(0, until - now);
+  }
+
+  remainingSlowMs(now: number): number {
+    return this.remainingMs(this.slowUntil, now);
+  }
+
+  remainingCrippleMs(now: number): number {
+    return this.crippleAmount >= 0.04 ? this.remainingMs(this.crippleUntil, now) : 0;
+  }
+
+  remainingStunMs(now: number): number {
+    return Math.max(this.remainingMs(this.stunUntil, now), this.remainingMs(this.paralyzeUntil, now));
+  }
+
+  remainingControlLockMs(now: number): number {
+    return this.remainingMs(this.controlLockUntil, now);
+  }
+
+  remainingBlockStunMs(now: number): number {
+    return this.remainingMs(this.blockStunUntil, now);
+  }
+
+  remainingHitReactionMs(now: number): number {
+    return this.remainingMs(this.hitReactionUntil, now);
+  }
+
+  remainingRecoveryMs(now: number): number {
+    return this.remainingMs(this.attackRecoveryUntil, now);
+  }
+
   isSlowed(now: number): boolean {
     return now < this.slowUntil;
   }

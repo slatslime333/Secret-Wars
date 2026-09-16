@@ -160,6 +160,16 @@ export type CombatantView = {
   blocking: boolean;
   abilityReady: boolean;
   dashCharges: number;
+  /** Remaining combat timers. Omitted in old tests, treated as 0. */
+  slowLeftMs?: number;
+  crippleLeftMs?: number;
+  stunLeftMs?: number;
+  controlLockLeftMs?: number;
+  blockStunLeftMs?: number;
+  hitReactLeftMs?: number;
+  recoveryLeftMs?: number;
+  /** 0..1 remaining block shield. Omitted when unknown. */
+  shieldRatio?: number;
   /** Match level. Defaults to 1 when omitted so old tests stay even. */
   level?: number;
   /** 0..1 progress toward the next level. */

@@ -222,6 +222,14 @@ export class TacticalField {
       blocking: false,
       abilityReady: true,
       dashCharges: 2,
+      slowLeftMs: 0,
+      crippleLeftMs: 0,
+      stunLeftMs: 0,
+      controlLockLeftMs: 0,
+      blockStunLeftMs: 0,
+      hitReactLeftMs: 0,
+      recoveryLeftMs: 0,
+      shieldRatio: 1,
       level: 1,
       xpRatio: 0,
       rageRatio: 0,
@@ -263,6 +271,14 @@ export class TacticalField {
     fact.blocking = body.blocking;
     fact.abilityReady = body.kitAbilityReady;
     fact.dashCharges = body.kitDashCharges;
+    fact.slowLeftMs = body.status.remainingSlowMs(now);
+    fact.crippleLeftMs = body.status.remainingCrippleMs(now);
+    fact.stunLeftMs = body.status.remainingStunMs(now);
+    fact.controlLockLeftMs = body.status.remainingControlLockMs(now);
+    fact.blockStunLeftMs = body.status.remainingBlockStunMs(now);
+    fact.hitReactLeftMs = body.status.remainingHitReactionMs(now);
+    fact.recoveryLeftMs = body.status.remainingRecoveryMs(now);
+    fact.shieldRatio = body.blockShield / Math.max(1, body.maxBlockShield);
     fact.level = body.kitLevel;
     fact.xpRatio = body.kitXpRatio;
     fact.rageRatio = body.demonRage;

@@ -13,6 +13,29 @@ const clamp = (n: number, lo: number, hi: number): number => Math.max(lo, Math.m
 export const distOf = (a: { x: number; y: number }, b: { x: number; y: number }): number =>
   Math.hypot(a.x - b.x, a.y - b.y);
 
+const leftMs = (ms: number | undefined): number => Math.max(0, ms ?? 0);
+
+/** 0..1 remaining life of a timed window. Short leftover time still counts as now. */
+export const windowLife = (left: number, typicalMs = 2000): number => {
+  if (left <= 0) {
+    return 0;
+  }
+  if (left >= 280) {
+    return clamp(left / typicalMs, 0.42, 1);
+  }
+  return clamp(left / 280, 0, 0.42);
+};
+
+/** Visible mobility / CC lock. Hidden meters do not create this on their own. */
+export const mobilityLockOf = (unit: CombatantView): number => {
+  const slow = windowLife(leftMs(unit.slowLeftMs), 2400);
+  const cripple = windowLife(leftMs(unit.crippleLeftMs), 2800);
+  const stun = windowLife(leftMs(unit.stunLeftMs) || (unit.stunned ? 360 : 0), 1400);
+  const knock = windowLife(leftMs(unit.controlLockLeftMs), 720);
+  const blockStun = windowLife(leftMs(unit.blockStunLeftMs), 800);
+  return clamp(slow * 0.72 + cripple * 0.5 + stun + knock * 0.82 + blockStun * 0.58, 0, 1);
+};
+
 /** Where this fighter wants others to stand. Visible kit, not hidden meters. */
 export const pocketRadius = (unit: CombatantView): number => {
   if (unit.kind === 'minion') {
@@ -99,6 +122,9 @@ export const threatZoneCost = (
   }
   if (enemy.attacking && distance <= pocket) {
     cost += 0.08;
+  }
+  if (mobilityLockOf(enemy) > 0.35) {
+    cost *= 0.72;
   }
   return clamp(cost, 0, 1.35);
 };
@@ -384,4 +410,275 @@ export const biasFightAction = (
     }
   }
   return next;
+};
+
+export type Opportunity = {
+  /** How compromised the target is right now (0..1). */
+  value: number;
+  /** Remaining life of that window (0..1). */
+  life: number;
+  /** Mobility / CC lock strength (0..1). */
+  locked: number;
+  recovering: boolean;
+  /** Risk of converting this opening (0..1). */
+  risk: number;
+  /** Kit-interpreted value after risk (0..1). */
+  payoff: number;
+};
+
+const recoveringOf = (unit: CombatantView): boolean =>
+  leftMs(unit.hitReactLeftMs) > 0 ||
+  leftMs(unit.recoveryLeftMs) > 0 ||
+  unit.recentlyHit ||
+  Boolean(unit.stunned);
+
+/**
+ * Visible compromise on a target. Empty hidden meters alone do not create this.
+ */
+export const readOpening = (enemy: CombatantView): { value: number; life: number; locked: number; recovering: boolean } => {
+  if (enemy.kind === 'minion' || enemy.visible === false) {
+    return { value: 0, life: 0, locked: 0, recovering: false };
+  }
+  const locked = mobilityLockOf(enemy);
+  const hit = windowLife(leftMs(enemy.hitReactLeftMs) || (enemy.recentlyHit ? 260 : 0), 520);
+  const recover = windowLife(leftMs(enemy.recoveryLeftMs), 500);
+  const life = Math.max(
+    locked,
+    hit,
+    recover,
+    windowLife(leftMs(enemy.slowLeftMs), 2400),
+    windowLife(leftMs(enemy.crippleLeftMs), 2800),
+    windowLife(leftMs(enemy.stunLeftMs), 1400),
+    windowLife(leftMs(enemy.controlLockLeftMs), 720),
+  );
+  let value = locked * 0.62;
+  if (enemy.stunned) {
+    value += 0.16;
+  }
+  if (enemy.recentlyHit || hit > 0) {
+    value += 0.08;
+  }
+  if (recover > 0.3) {
+    value += 0.06;
+  }
+  const shield = enemy.shieldRatio;
+  if (enemy.blocking && shield !== undefined && shield < 0.3) {
+    value += 0.12;
+  } else if (enemy.blocking && (shield === undefined || shield > 0.55)) {
+    value -= 0.06;
+  }
+  if (shield !== undefined && shield < 0.08 && !enemy.blocking) {
+    value += 0.1;
+  }
+  if (enemy.hpRatio < 0.28) {
+    value += 0.1;
+  }
+  if (enemy.hpRatio < 0.14) {
+    value += 0.08;
+  }
+  if (value > 0.14) {
+    if ((enemy.dashCharges ?? 2) <= 0) {
+      value += 0.08;
+    }
+    if (enemy.abilityReady === false) {
+      value += 0.05;
+    }
+    if ((enemy.staminaRatio ?? 1) < 0.18) {
+      value += 0.06;
+    }
+  }
+  return { value: clamp(value, 0, 1), life, locked, recovering: recoveringOf(enemy) };
+};
+
+export type OpportunityArgs = {
+  self: CombatantView;
+  enemy: CombatantView;
+  allies: CombatantView[];
+  enemies: CombatantView[];
+  kit?: KitProfile;
+  isolation: number;
+  pile: number;
+  zone: number;
+  distance: number;
+  escapeOpen: boolean;
+};
+
+/**
+ * How much this kit should want to convert a visible opening, and whether it can.
+ * Character identity comes from kit stance / range / initiate — not hero-name rules.
+ */
+export const opportunityOf = (args: OpportunityArgs): Opportunity => {
+  const { self, enemy, allies, kit: givenKit, isolation, pile, zone, distance, escapeOpen } = args;
+  const opening = readOpening(enemy);
+  const kit = givenKit ?? kitProfileOf(self.heroId, String(self.role), self.attackRange, self);
+  const stance = kit.stance;
+  const inStrike = distance <= self.attackRange * 1.14;
+  const inPocket = distance <= pocketRadius(self) * 1.05;
+  const farChase = distance > self.attackRange * 1.7;
+
+  let want = opening.value * (0.42 + kit.pressureBias * 0.34);
+  if (stance === 'melee' || kit.wantsInitiate) {
+    want += opening.locked * 0.26;
+    if (opening.recovering) {
+      want += 0.07;
+    }
+    if (isolation > 0.55) {
+      want += opening.value * 0.14;
+    }
+  }
+  if (stance === 'ranged' || kit.wantsPoke) {
+    want += opening.locked * 0.14;
+    if (distance < kit.comfortMin) {
+      want -= 0.22;
+    }
+  }
+  if (stance === 'support') {
+    want *= 0.42;
+  }
+  if (stance === 'skirmish') {
+    want += opening.locked * 0.16;
+  }
+  if (!kit.wantsFlank && (self.role === 'tank' || kit.pressureBias > 0.72) && farChase) {
+    want *= 0.52;
+  }
+  if (inPocket && opening.value > 0.18) {
+    want += 0.12;
+  }
+  if (!kit.wantsInitiate && stance === 'melee') {
+    want *= 0.72;
+  }
+  if (kit.wantsInitiate && opening.life > 0.4 && inStrike) {
+    want += 0.08;
+  }
+  want *= 1 - pile * 0.58;
+  want += isolation * opening.value * 0.1;
+
+  let risk = zone * 0.38;
+  if (self.hpRatio < 0.42) {
+    risk += (0.42 - self.hpRatio) * 0.85;
+  }
+  risk += self.dashCharges <= 0 ? 0.22 : self.dashCharges <= 1 ? 0.08 : 0;
+  risk += self.staminaRatio < 0.2 ? 0.18 : self.staminaRatio < 0.32 ? 0.08 : 0;
+  if (stance === 'ranged' && distance < kit.comfortMin) {
+    risk += 0.16;
+  }
+  if (isolation < 0.4) {
+    risk += 0.18;
+  }
+  if (!escapeOpen) {
+    risk += 0.12;
+  }
+  const cover = allies.some(
+    (ally) =>
+      ally.kind === 'hero' &&
+      distOf(ally, self) < 240 &&
+      (kitProfileOf(ally.heroId, String(ally.role), ally.attackRange).wantsProtect || ally.role === 'support'),
+  );
+  if (cover) {
+    risk -= 0.1;
+  }
+  risk -= opening.locked * 0.16;
+  risk = clamp(risk, 0, 1);
+
+  const payoff = clamp(want * (1 - risk * 0.7) * (0.55 + opening.life * 0.45), 0, 1);
+  return {
+    value: clamp(want, 0, 1),
+    life: opening.life,
+    locked: opening.locked,
+    recovering: opening.recovering,
+    risk,
+    payoff,
+  };
+};
+
+/**
+ * Ally looks ready to land a setup and it has not landed yet.
+ * Returns 0 when the window already exists or this kit should not wait.
+ */
+export const setupPending = (args: {
+  self: CombatantView;
+  enemy: CombatantView;
+  allies: CombatantView[];
+  kit?: KitProfile;
+  distance: number;
+}): number => {
+  const { self, enemy, allies, kit, distance } = args;
+  if (enemy.kind !== 'hero' || !enemy.visible) {
+    return 0;
+  }
+  if (mobilityLockOf(enemy) > 0.28 || enemy.stunned) {
+    return 0;
+  }
+  if (!(kit?.stance === 'melee' || kit?.wantsInitiate)) {
+    return 0;
+  }
+  let pending = 0;
+  for (const ally of allies) {
+    if (ally.kind !== 'hero' || !ally.visible) {
+      continue;
+    }
+    const allyKit = kitProfileOf(ally.heroId, String(ally.role), ally.attackRange, ally);
+    const ad = distOf(ally, enemy);
+    const setter = (allyKit.wantsPoke || allyKit.setupIds.length > 0) && ally.abilityReady !== false;
+    if (!setter || ad > 430 || ad < 64) {
+      continue;
+    }
+    pending += 0.4 + (ally.attacking ? 0.18 : 0);
+  }
+  if (distance <= self.attackRange * 1.02) {
+    pending *= 0.22;
+  }
+  return clamp(pending, 0, 1);
+};
+
+/** How strongly this kit should peel a pressured ally instead of chasing its own target. */
+export const peelWeight = (
+  self: CombatantView,
+  ally: CombatantView,
+  foes: CombatantView[],
+  kit?: KitProfile,
+): number => {
+  if (ally.kind !== 'hero' || foes.length === 0) {
+    return 0;
+  }
+  const profile = kit ?? kitProfileOf(self.heroId, String(self.role), self.attackRange, self);
+  let pressure = 0;
+  for (const foe of foes) {
+    pressure += 0.28;
+    if (foe.attacking || foe.lastAttackerId === ally.id) {
+      pressure += 0.16;
+    }
+  }
+  if (ally.recentlyHit) {
+    pressure += 0.14;
+  }
+  if (ally.hpRatio < 0.34) {
+    pressure += 0.22;
+  } else if (ally.hpRatio < 0.52) {
+    pressure += 0.1;
+  }
+  if (ally.attacking && ally.hpRatio < 0.72) {
+    pressure += 0.08;
+  }
+  let want = pressure * (0.35 + profile.pressureBias * 0.15);
+  if (profile.wantsProtect || profile.stance === 'support') {
+    want += 0.28;
+  }
+  if (profile.wantsInitiate && profile.stance === 'melee') {
+    want += 0.12;
+  }
+  if (profile.wantsPoke) {
+    want += 0.1;
+  }
+  if (!profile.wantsFlank && (self.role === 'tank' || profile.stance === 'melee')) {
+    want += 0.1;
+  }
+  const d = distOf(self, ally);
+  if (d > 280) {
+    want *= 0.7;
+  }
+  if (self.hpRatio < 0.2) {
+    want *= 0.45;
+  }
+  return clamp(want, 0, 1);
 };
