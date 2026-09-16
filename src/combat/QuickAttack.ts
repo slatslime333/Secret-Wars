@@ -28,7 +28,7 @@ import { BlockController } from './BlockController';
 import { Projectile } from './projectile';
 import { WitchSkullBarrage } from './WitchSkullBarrage';
 import { SHADOW_ATTACK } from '../heroes/abilities/shadow/tunables';
-import { spawnShadowSlash } from '../heroes/abilities/shadow/clawFx';
+import { spawnShadowSlash, spawnShadowHitBurst } from '../heroes/abilities/shadow/clawFx';
 import { emitWorldStrike } from '../match/objectives/worldStrike';
 
 type PendingImpact = {
@@ -539,11 +539,15 @@ export class QuickAttack {
     const len = Math.hypot(attacker.aim.x, attacker.aim.y) || 1;
     const nx = attacker.aim.x / len;
     const ny = attacker.aim.y / len;
-    attacker.playCustomAttack(now, SHADOW_ATTACK.animMs, (frac) => ({
-      armLiftRight: frac < 0.42 ? 0.35 + frac * 2.1 : Math.max(0.2, 1.25 - (frac - 0.42) * 1.7),
-      armLiftLeft: 0.08,
-      swayX: nx * (frac < 0.38 ? -4 : 10) * Math.min(1, frac * 1.7),
-    }));
+    attacker.playCustomAttack(now, SHADOW_ATTACK.animMs, (frac) => {
+      const wind = frac < 0.18;
+      const slash = frac >= 0.36;
+      return {
+        armLiftRight: wind ? 0.2 : slash ? 0.95 : 0.55,
+        armLiftLeft: 0.04,
+        swayX: nx * (wind ? -5 : 12) * Math.min(1, frac * 1.8),
+      };
+    });
     spawnShadowSlash(this.scene, attacker.x, attacker.y, nx, ny, attacker.stats.attackRange);
   }
 
@@ -566,6 +570,7 @@ export class QuickAttack {
       if (result === 'hit') {
         connected = true;
         defender.applyClawMark(now);
+        spawnShadowHitBurst(this.scene, defender.x, defender.y - 8);
       }
       if (result === 'blocked' || result === 'perfect-block' || result === 'clash') {
         this.combo.reset();
