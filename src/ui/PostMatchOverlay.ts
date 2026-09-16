@@ -9,6 +9,7 @@ import { ScrollPanel } from './layout/ScrollPanel';
 import { measureViewport } from './layout/viewport';
 import { adoptHud } from './layout/hudCamera';
 import { ScoreboardPanel, scoreboardPanelWidth } from './ScoreboardView';
+import { teamLevelOf } from '../match/scoreboard/teamLevel';
 import { COLORS, FONTS, hex } from './theme';
 
 export type PostMatchHandlers = {
@@ -86,7 +87,19 @@ export class PostMatchOverlay {
       () => Boolean(this.scroller?.wasDragged),
     );
     board.onResizeContent((h) => this.scroller?.setContentSize(board.size.width, h + 8));
-    board.render(lines, score ? { score, remainingMs: 0, finished: true } : undefined);
+    board.render(
+      lines,
+      score
+        ? {
+            score,
+            remainingMs: 0,
+            finished: true,
+            playerTeam,
+            teamLevel: teamLevelOf(lines, playerTeam),
+            enemyLevel: teamLevelOf(lines, playerTeam === 'alpha' ? 'bravo' : 'alpha'),
+          }
+        : undefined,
+    );
     this.scroller.setContentSize(board.size.width, board.size.height + 8);
     this.root.add(this.scroller.root);
 

@@ -417,7 +417,7 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   private openSimulator(): void {
-    this.leaveTo('SimulatorSetup');
+    this.leaveTo('MatchFormat', { mode: 'simulator' });
   }
 
   private openPlayTest(): void {
@@ -428,12 +428,12 @@ export class MainMenuScene extends Phaser.Scene {
     this.leaveTo('Settings');
   }
 
-  private leaveTo(sceneName: string): void {
+  private leaveTo(sceneName: string, data?: object): void {
     if (this.leaving) {
       return;
     }
     this.leaving = true;
-    fadeToScene(this, sceneName, 220);
+    fadeToScene(this, sceneName, 220, data);
   }
 
   private exitGame(): void {

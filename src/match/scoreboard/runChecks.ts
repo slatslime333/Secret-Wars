@@ -3,6 +3,7 @@ import type { NinjaBody } from '../../heroes/NinjaBody';
 import { CombatStatsTracker } from '../CombatStatsTracker';
 import { ScoreManager } from '../ScoreManager';
 import { sortScoreboardLines } from './sortLines';
+import { teamLevelOf } from './teamLevel';
 
 export type ScoreboardCheck = { name: string; ok: boolean; detail: string };
 
@@ -192,6 +193,24 @@ const scenarioUniqueRows = (): ScoreboardCheck => {
   return check('scoreboard rebuild keeps one row per hero', ok, `rows=${ids.join(',')}`);
 };
 
+const scenarioTeamLevels = (): ScoreboardCheck => {
+  const stats = new CombatStatsTracker();
+  const ninja = fighter('ninja', 'alpha', 'Ninja');
+  const cole = fighter('cole', 'alpha', 'Cole');
+  const death = fighter('death', 'bravo', 'Death');
+  register(stats, ninja, 'alpha-ninja', true);
+  register(stats, cole, 'alpha-cole');
+  register(stats, death, 'bravo-death');
+  stats.syncLevel(ninja, 4);
+  stats.syncLevel(cole, 6);
+  stats.syncLevel(death, 3);
+  const lines = stats.allLines();
+  const team = teamLevelOf(lines, 'alpha');
+  const enemy = teamLevelOf(lines, 'bravo');
+  const ok = team === 5 && enemy === 3;
+  return check('team level vs enemy level averages current levels', ok, `team=${team} enemy=${enemy}`);
+};
+
 export const runScoreboardChecks = (): ScoreboardCheck[] => [
   scenarioHeroKill(),
   scenarioMinions(),
@@ -201,4 +220,5 @@ export const runScoreboardChecks = (): ScoreboardCheck[] => [
   scenarioDeathPersists(),
   scenarioLock(),
   scenarioUniqueRows(),
+  scenarioTeamLevels(),
 ];

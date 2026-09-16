@@ -32,7 +32,8 @@ import type { LevelUpResult } from '../match/Progression';
 import type { ObjectiveCompleteEvent } from '../match/objectives/types';
 import { isPcCombatHud, layoutPcCombatHud } from '../ui/pcCombatHud';
 import { cueAbilityReady } from '../audio/abilityReady';
-import { ScoreboardOverlay } from '../ui/ScoreboardView';
+import { ScoreboardOverlay, type ScoreboardHeader } from '../ui/ScoreboardView';
+import { teamLevelOf } from '../match/scoreboard/teamLevel';
 import { PauseOverlay } from '../ui/PauseOverlay';
 import { PostMatchOverlay } from '../ui/PostMatchOverlay';
 import { SpectatorOverlay } from '../ui/SpectatorOverlay';
@@ -61,6 +62,8 @@ import { SpectatorCamera } from '../match/SpectatorCamera';
 import {
   DEFAULT_SIMULATOR_ROSTER,
   cloneRoster,
+  defaultSimulatorRoster,
+  rosterFitsFormat,
   type MatchRoster,
 } from '../match/rosterSetup';
 import {
@@ -88,6 +91,7 @@ export class MatchScene extends Phaser.Scene {
   private returning = false;
   private startHeroId: HeroId = 'ninja';
   private simulator = false;
+  private matchFormat: MatchFormat = '3v3';
   private roster: MatchRoster = cloneRoster(DEFAULT_SIMULATOR_ROSTER);
   private playDraft?: PlayDraft;
   private playerTeam: TeamId = 'alpha';
@@ -137,11 +141,15 @@ export class MatchScene extends Phaser.Scene {
 
   init(data: MatchSceneData = {}): void {
     this.simulator = Boolean(data.simulator);
-    applyMatchFormat(data.simulator ? '3v3' : data.format ?? data.draft?.format ?? '3v3');
+    this.matchFormat = data.format ?? data.draft?.format ?? '3v3';
+    applyMatchFormat(this.matchFormat);
     this.startHeroId = data.heroId ?? getSelectedHeroId();
     this.playDraft = data.draft;
     if (this.simulator) {
-      this.roster = cloneRoster(data.roster ?? DEFAULT_SIMULATOR_ROSTER);
+      const fallback = defaultSimulatorRoster(this.matchFormat);
+      this.roster = cloneRoster(
+        data.roster && rosterFitsFormat(data.roster, this.matchFormat) ? data.roster : fallback,
+      );
       return;
     }
     const draft = data.draft ?? randomizeDraft(this.startHeroId);
@@ -715,19 +723,23 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private spawnSimulator(): void {
+    const slots = matchFormatOf() === '6v6' ? [0, 1] : [0];
     for (const team of ['alpha', 'bravo'] as const) {
-      LANES.forEach((lane, index) => {
-        const unit = this.spawnHero({
-          instanceId: `${team}-${lane}`,
-          heroId: this.roster[team][index],
-          team,
-          lane,
-          isPlayer: false,
-        });
-        if (team === 'alpha' && lane === 'mid') {
-          this.player = unit;
+      for (const slot of slots) {
+        for (const lane of LANES) {
+          const unit = this.spawnHero({
+            instanceId: `${team}-${lane}-${slot}`,
+            heroId: this.roster[team][slot === 0 ? LANES.indexOf(lane) : 3 + LANES.indexOf(lane)],
+            team,
+            lane,
+            slot,
+            isPlayer: false,
+          });
+          if (team === 'alpha' && lane === 'mid' && slot === 0) {
+            this.player = unit;
+          }
         }
-      });
+      }
     }
   }
 
@@ -1237,11 +1249,17 @@ export class MatchScene extends Phaser.Scene {
     this.abilityTray?.setVisible(visible);
   }
 
-  private scoreboardHeader(): { score: ReturnType<ScoreManager['snapshot']>; remainingMs: number; finished: boolean } {
+  private scoreboardHeader(): ScoreboardHeader {
+    const lines = this.stats.allLines();
+    const playerTeam = this.simulator ? 'alpha' : this.playerTeam;
+    const enemyTeam = playerTeam === 'alpha' ? 'bravo' : 'alpha';
     return {
       score: this.score.snapshot(),
       remainingMs: this.match.remainingMs,
       finished: this.match.finished,
+      playerTeam,
+      teamLevel: teamLevelOf(lines, playerTeam),
+      enemyLevel: teamLevelOf(lines, enemyTeam),
     };
   }
 
@@ -1272,6 +1290,7 @@ export class MatchScene extends Phaser.Scene {
       simulator: this.simulator,
       roster: this.simulator ? this.roster : undefined,
       draft: this.playDraft,
+      format: this.matchFormat,
     });
   }
 

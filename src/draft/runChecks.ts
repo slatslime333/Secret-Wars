@@ -1,17 +1,26 @@
 import { ARENA, LANES, applyMatchFormat } from '../config/arena';
 import { DRAFT_HERO_IDS, HERO_DRAFT_CLASS, otherHeroOfClass } from './classes';
 import {
+  applyHeroPick,
   cycleEnemyPick,
   defaultEnemyPicks,
   draftFromEnemyPicks,
+  draftFromSides,
   draftIsValid,
   pickPlayerSpawn,
   placeDraft,
   randomizeDraft,
+  sidesFromDraft,
+  swapWarTeams,
   teamHasUniqueClasses,
   type PlayerSpawn,
 } from './rosterBuild';
-import { randomizeSimulatorRoster, rosterHasClassBalance } from '../match/rosterSetup';
+import {
+  applySimulatorPick,
+  randomizeSimulatorRoster,
+  rosterHasClassBalance,
+  swapSimulatorTeams,
+} from '../match/rosterSetup';
 
 export type CheckResult = { name: string; ok: boolean; detail: string };
 
@@ -143,15 +152,62 @@ const scenarioSixVSixDraft = (): CheckResult => {
 const scenarioSimulatorRandomize = (): CheckResult => {
   const roster = randomizeSimulatorRoster(rngOf([0.2, 0.8, 0.15, 0.6, 0.9, 0.35, 0.05, 0.7]));
   const other = randomizeSimulatorRoster(rngOf([0.9, 0.1, 0.4, 0.75, 0.2, 0.55, 0.85, 0.3]));
+  const six = randomizeSimulatorRoster(rngOf([0.2, 0.8, 0.15, 0.6, 0.9, 0.35, 0.05, 0.7, 0.4, 0.55]), '6v6');
   const ok =
     rosterHasClassBalance(roster.alpha) &&
     rosterHasClassBalance(roster.bravo) &&
     rosterHasClassBalance(other.alpha) &&
+    roster.alpha.length === 3 &&
+    six.alpha.length === 6 &&
+    six.bravo.length === 6 &&
+    rosterHasClassBalance(six.alpha) &&
+    rosterHasClassBalance(six.bravo) &&
     `${roster.alpha.join(',')}` !== `${other.alpha.join(',')}`;
   return {
     name: 'simulator randomize class lanes',
     ok,
-    detail: `alpha=${roster.alpha.join(',')} other=${other.alpha.join(',')}`,
+    detail: `alpha=${roster.alpha.join(',')} six=${six.alpha.join(',')} other=${other.alpha.join(',')}`,
+  };
+};
+
+const scenarioSimulatorPickSwap = (): CheckResult => {
+  const swapped = applySimulatorPick({ alpha: ['ninja', 'cole', 'death'], bravo: ['rope', 'shadow', 'witch'] }, 'alpha', 0, 'cole');
+  const classSwap = applySimulatorPick({ alpha: ['ninja', 'cole', 'death'], bravo: ['rope', 'shadow', 'witch'] }, 'alpha', 0, 'death');
+  const teams = swapSimulatorTeams({ alpha: ['ninja', 'cole', 'death'], bravo: ['rope', 'shadow', 'witch'] });
+  const ok =
+    swapped.alpha[0] === 'cole' &&
+    swapped.alpha[1] === 'ninja' &&
+    classSwap.alpha[0] === 'death' &&
+    classSwap.alpha[2] === 'ninja' &&
+    teams.alpha[0] === 'rope' &&
+    teams.bravo[0] === 'ninja';
+  return {
+    name: 'simulator pick swaps seats',
+    ok,
+    detail: `same=${swapped.alpha.join(',')} class=${classSwap.alpha.join(',')} swap=${teams.alpha.join(',')}`,
+  };
+};
+
+const scenarioHeroPickAdjustsOther = (): CheckResult => {
+  const sides = sidesFromDraft(draftFromEnemyPicks('ninja', defaultEnemyPicks('ninja', () => 0)));
+  const allyFront = sides.yours.find((id) => HERO_DRAFT_CLASS[id] === 'frontliner');
+  const enemyFrontIdx = sides.theirs.findIndex((id) => HERO_DRAFT_CLASS[id] === 'frontliner');
+  const enemyFront = enemyFrontIdx >= 0 ? sides.theirs[enemyFrontIdx] : undefined;
+  if (!allyFront || enemyFrontIdx < 0 || !enemyFront) {
+    return { name: 'play pick adjusts the other team', ok: false, detail: 'missing frontliner seats' };
+  }
+  const swapped = applyHeroPick(sides, 'theirs', enemyFrontIdx, allyFront, false);
+  const draft = draftFromSides(swapped);
+  const teams = swapWarTeams(sides);
+  const ok =
+    draftIsValid(draft) &&
+    swapped.theirs.includes(allyFront) &&
+    swapped.yours.includes(enemyFront) &&
+    draftIsValid(draftFromSides(teams));
+  return {
+    name: 'play pick adjusts the other team',
+    ok,
+    detail: `yours=${swapped.yours.join(',')} theirs=${swapped.theirs.join(',')} swappedPlayer=${teams.playerId}`,
   };
 };
 
@@ -165,4 +221,6 @@ export const runDraftChecks = (): CheckResult[] => [
   scenarioDemonDraft(),
   scenarioSixVSixDraft(),
   scenarioSimulatorRandomize(),
+  scenarioSimulatorPickSwap(),
+  scenarioHeroPickAdjustsOther(),
 ];
