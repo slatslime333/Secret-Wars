@@ -78,7 +78,9 @@ export const runMapChecks = (): CheckResult[] => {
         const walls = result.layout.obstacles.filter(
           (obs) => obs.kind === 'wall' && obs.id.startsWith(`${home.id}-`),
         );
-        return walls.length < 6;
+        const doors = home.doors ?? [];
+        const sides = new Set(doors.map((door) => door.side));
+        return walls.length < 6 || doors.length < 2 || !sides.has('front') || !sides.has('back');
       })
     ) {
       dualDoors = false;
@@ -167,7 +169,7 @@ export const runMapChecks = (): CheckResult[] => {
   results.push({
     name: 'enterable homes have two doors',
     ok: dualDoors,
-    detail: dualDoors ? 'front and back wall gaps' : 'missing door walls',
+    detail: dualDoors ? 'front and back nav doors' : 'missing door nav points',
   });
   results.push({
     name: 'light posts throughout',

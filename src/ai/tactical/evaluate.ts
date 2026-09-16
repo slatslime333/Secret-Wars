@@ -1344,6 +1344,19 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     } else if (packSize <= 1 && minionGap > 240) {
       farmScore -= 16;
     }
+    if (self.recentlyHit && (heroThreat || selfPressed)) {
+      farmScore -= 12;
+    }
+    const underleveled = (self.level ?? 1) < 3 || ((self.level ?? 1) <= 4 && (self.xpRatio ?? 0) > 0.7);
+    if (underleveled && !heroThreat && !selfPressed) {
+      farmScore += 6;
+    }
+    if ((self.level ?? 1) >= 5 && packSize <= 2 && minionGap > 160) {
+      farmScore -= 8;
+    }
+    if (nearestMinion.power > self.power * 1.2) {
+      farmScore -= 8;
+    }
     if (minionGap > situation.vision * 0.68) {
       farmScore -= 12;
     }

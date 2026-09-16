@@ -13,6 +13,7 @@ import { moveGoal } from './tactical/move';
 import { SwingIntent } from './tactical/swingIntent';
 import type { TacticalDebugInfo } from './tactical/types';
 import { menderPulseHealTarget } from './tactical/supportSense';
+import { envFarmTarget } from './tactical/envSense';
 
 /**
  * Match CPU. Movement and swings still use the hero kit; decisions come from
@@ -65,11 +66,14 @@ export class HeroPilot {
     const heal = body.heroId === 'mender' ? menderPulseHealTarget(this.mind.situationView(), this.mind.intent.ally) : undefined;
     const focus = heal ?? target;
     const objective = this.mind.situationView().objective;
+    const farmSpot = envFarmTarget(this.mind.situationView(), this.mind.action, this.mind.intent.reason);
     if (focus) {
       const lead = this.combat.sense.aimLead(focus, Math.random);
       body.setAim(lead.x - body.x, lead.y - body.y);
     } else if (this.mind.action === 'contest_objective' && objective) {
       body.setAim(objective.x - body.x, objective.y - body.y);
+    } else if (farmSpot) {
+      body.setAim(farmSpot.x - body.x, farmSpot.y - body.y);
     } else {
       body.setAim(body.team === 'alpha' ? 1 : -1, 0);
     }
@@ -132,7 +136,11 @@ export class HeroPilot {
       rng: Math.random,
     });
 
-    const smashRange = objectiveInHitRange(body, objective, this.mind.action);
+    const smashRange =
+      objectiveInHitRange(body, objective, this.mind.action) ||
+      Boolean(
+        farmSpot && Math.hypot(body.x - farmSpot.x, body.y - farmSpot.y) <= body.stats.attackRange + 16,
+      );
     const rangeMul = heal ? 2.15 : 1.32;
     const inRange = focus
       ? distance(body, focus) <= body.stats.attackRange * rangeMul

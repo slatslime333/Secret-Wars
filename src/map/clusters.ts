@@ -523,7 +523,7 @@ export const plantLampsAlong = (
     if (patch.kind !== 'sidewalk') {
       continue;
     }
-    const step = 260;
+    const step = 220;
     if (patch.heading === 'h') {
       for (let x = patch.x + 48; x < patch.x + patch.w - 36; x += step) {
         if (existing.filter((obs) => obs.kind === 'lamp').length + extras.length >= ENV_WORLD.maxLamps) {
@@ -583,7 +583,7 @@ export const plantTreesBeside = (
       break;
     }
     const already = [...existing, ...extras].filter(
-      (obs) => obs.kind === 'tree' && Math.hypot(obs.x - host.x, obs.y - host.y) < 70,
+      (obs) => obs.kind === 'tree' && Math.hypot(obs.x - host.x, obs.y - host.y) < 64,
     ).length;
     if (already >= 2) {
       continue;
@@ -625,7 +625,7 @@ export const plantFencesBeside = (
       break;
     }
     const already = [...existing, ...extras].filter(
-      (obs) => obs.kind === 'fence' && Math.hypot(obs.x - host.x, obs.y - host.y) < 90,
+      (obs) => obs.kind === 'fence' && Math.hypot(obs.x - host.x, obs.y - host.y) < 80,
     ).length;
     if (already >= 1) {
       continue;

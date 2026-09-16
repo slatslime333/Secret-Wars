@@ -51,6 +51,8 @@ export type MoveHint = {
     remainingMs?: number;
     hazards?: { x: number; y: number; radius: number; impactAt: number }[];
   };
+  /** Walk point for crates, house doors, and interiors. Local slide still steers. */
+  poi?: { x: number; y: number; halt?: boolean };
 };
 
 const isRangedMove = (body: MoveBody, hint?: MoveHint): boolean => {
@@ -198,6 +200,13 @@ export const moveGoal = (
     const dodged = dodgeHazards(next.x, next.y, hint);
     return { ...sample, x: dodged.x, y: dodged.y };
   };
+
+  if (hint?.poi) {
+    const dest = dodgeHazards(hint.poi.x, hint.poi.y, hint);
+    const gap = Math.hypot(dest.x - body.x, dest.y - body.y);
+    const aim = target ? aimTo(target.x, target.y) : aimTo(dest.x, dest.y);
+    return { x: dest.x, y: dest.y, halt: Boolean(hint.poi.halt) || gap < 16, ...aim };
+  }
 
   if (action === 'retreat' || action === 'escape' || action === 'recover') {
     const destX = retreatGoal?.x ?? homeX;

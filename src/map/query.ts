@@ -41,6 +41,16 @@ export class MapQuery {
     return this.layout.spawnZones.some((zone) => Math.hypot(x - zone.x, y - zone.y) < zone.radius + extra);
   }
 
+  houseContaining(x: number, y: number): MapObstacle | undefined {
+    return this.layout.obstacles.find(
+      (obs) => Boolean(obs.enterable && obs.interior && pointInRect(x, y, obs.interior)),
+    );
+  }
+
+  enterableHomes(): MapObstacle[] {
+    return this.layout.obstacles.filter((obs) => Boolean(obs.enterable && obs.doors && obs.doors.length >= 2));
+  }
+
   obstacleAt(x: number, y: number, radius = 0): MapObstacle | undefined {
     return this.layout.obstacles.find(
       (obs) => obs.blocksMovement && circleHitsRect(x, y, radius, obs.collision),

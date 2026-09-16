@@ -3,6 +3,7 @@ import type { HeroRole } from '../../heroes/HeroDefinition';
 import type { NinjaBody } from '../../heroes/NinjaBody';
 import type { ObjectiveHint } from '../../match/objectives/types';
 import type { EnvSnapshot } from '../../map/EnvironmentWorld';
+import type { HouseDoorSide } from '../../map/types';
 
 /** High-level choices. Combat execution stays on the existing kits. */
 export type TacticalAction =
@@ -224,6 +225,8 @@ export type Situation = {
   supportFocusId?: number;
   supportNeed?: number;
   environment?: EnvSnapshot;
+  /** Which door this CPU used to enter the current house, if any. */
+  houseStay?: { id: string; door: HouseDoorSide; enteredAt: number };
 };
 
 export type TacticalDebugInfo = {

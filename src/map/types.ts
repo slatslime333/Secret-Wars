@@ -59,6 +59,15 @@ export type Point = {
   y: number;
 };
 
+export type HouseDoorSide = 'front' | 'back';
+
+/** South street door is front; north alley door is back. */
+export type HouseDoor = {
+  side: HouseDoorSide;
+  x: number;
+  y: number;
+};
+
 export type MapObstacle = {
   id: string;
   kind: ObstacleKind;
@@ -80,6 +89,7 @@ export type MapObstacle = {
   explosive?: boolean;
   enterable?: boolean;
   interior?: Rect;
+  doors?: HouseDoor[];
 };
 
 export type DecorationKind =

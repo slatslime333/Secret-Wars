@@ -36,6 +36,7 @@ import type {
   UnitFact,
 } from './types';
 import type { MoveHint } from './move';
+import { poiForIntent, syncHouseStay } from './houseSense';
 
 export type TacticalIntent = {
   action: TacticalAction;
@@ -194,7 +195,16 @@ export class TacticalMind {
       fromIntent ??
       this.enemies.find((enemy) => enemy.id === this.situation.currentTargetId && enemy.visible) ??
       this.enemies.find((enemy) => enemy.kind === 'hero' && enemy.visible);
-    if (!kit && !director && mates.length === 0) {
+    const poi = poiForIntent(
+      {
+        action: this.intent.action,
+        reason: this.intent.reason,
+        targetId: this.intent.target ? this.situation.currentTargetId : undefined,
+      },
+      this.situation,
+      self.id,
+    );
+    if (!kit && !director && mates.length === 0 && !poi) {
       return undefined;
     }
     return {
@@ -219,6 +229,7 @@ export class TacticalMind {
             hazards: this.situation.objective.hazards,
           }
         : undefined,
+      poi,
     };
   }
 
@@ -502,6 +513,7 @@ export class TacticalMind {
     this.situation.environment = scene
       ? battlefieldOf(scene as Phaser.Scene)?.environment.snapshot(selfFact.x, selfFact.y, this.situation.vision)
       : undefined;
+    this.situation.houseStay = syncHouseStay(this.situation.houseStay, this.situation, now);
   }
 
   private remember(now: number, fact: UnitFact): void {
@@ -605,6 +617,18 @@ export class TacticalMind {
     }
     if (this.situation.projectile?.willHit && intent.action !== 'reposition' && intent.action !== 'escape') {
       return true;
+    }
+    const inside = this.situation.environment?.inside;
+    const stay = this.situation.houseStay;
+    if (inside && stay && stay.id === inside.id && now - stay.enteredAt > 1600) {
+      const houseJob =
+        intent.reason.includes('house') ||
+        intent.reason.includes('building') ||
+        intent.action === 'recover' ||
+        intent.action === 'hold_position';
+      if (houseJob) {
+        return true;
+      }
     }
     if (this.situation.objective && this.situation.objective.urgency >= 0.75 && (intent.action === 'farm_minions' || intent.action === 'advance' || intent.action === 'search_for_target')) {
       return true;

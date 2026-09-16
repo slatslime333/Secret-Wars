@@ -1,6 +1,7 @@
 import { ENV_WORLD } from '../../config/environment';
 import type { EnvSnapshot } from '../../map/EnvironmentWorld';
 import type { KitProfile, ScoredAction, Situation, TacticalAction } from './types';
+import { applyHouseBias } from './houseSense';
 
 const dist = (ax: number, ay: number, bx: number, by: number): number => Math.hypot(ax - bx, ay - by);
 
@@ -41,7 +42,24 @@ export const applyEnvBias = (
   count = treeBias(out, count, situation, env, kit, jitter, write);
   count = buildingBias(out, count, situation, env, kit, inFight, jitter, write);
   count = coverBias(out, count, situation, env, kit, inFight, jitter, write);
+  count = applyHouseBias(out, count, situation, write);
   return count;
+};
+
+/** Crate smash uses the same light-attack path as minion farm; no fake combatant. */
+export const envFarmTarget = (
+  situation: Situation,
+  action: TacticalAction,
+  reason: string,
+): { x: number; y: number } | undefined => {
+  if (action !== 'farm_minions' || !reason.includes('crate')) {
+    return undefined;
+  }
+  const crate = situation.environment?.crate;
+  if (!crate) {
+    return undefined;
+  }
+  return { x: crate.x, y: crate.y };
 };
 
 const crateBias = (
@@ -68,14 +86,19 @@ const crateBias = (
       out[i].score -= 14;
     }
   }
-  if (inFight) {
+  if (inFight || situation.self.recentlyHit) {
+    return count;
+  }
+  if ((situation.objective?.urgency ?? 0) >= 0.7) {
     return count;
   }
   const xpNeed = 1 - (situation.self.xpRatio ?? 0.5);
   const lowLevel = (situation.self.level ?? 1) < 4;
-  let value = 6 + xpNeed * 10 + (lowLevel ? 4 : 0) - gap / 40;
-  if (!safe) {
-    value -= 10;
+  let value = 24 + xpNeed * 10 + (lowLevel ? 6 : 0) - gap / 12;
+  if (safe) {
+    value += 14;
+  } else {
+    value -= 16;
   }
   if (kit?.stance === 'support' || kit?.heroId === 'cole') {
     value -= kit?.heroId === 'cole' ? 3 : 4;
@@ -83,11 +106,21 @@ const crateBias = (
   if (kit?.heroId === 'ninja' && safe) {
     value += 2;
   }
+  if ((situation.self.level ?? 1) >= 5 && xpNeed < 0.35) {
+    value -= 10;
+  }
   value *= jitter;
   if (value < 8 || situation.personality.opportunism < 0.28) {
     return count;
   }
-  return write(out, count, 'reposition', value, 'safe crate', -1);
+  if (safe && gap < 140) {
+    for (let i = 0; i < count; i += 1) {
+      if (out[i].action === 'search_for_target' || out[i].action === 'advance') {
+        out[i].score -= 8 + (lowLevel ? 4 : 0);
+      }
+    }
+  }
+  return write(out, count, 'farm_minions', value, 'safe crate', -1);
 };
 
 const barrelBias = (

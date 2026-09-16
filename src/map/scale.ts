@@ -53,7 +53,7 @@ export const PROP = {
   sign: spec(10, 12, 18, 40, 14),
   lamp: spec(8, 10, 22, 96, 40),
   lampShort: spec(8, 8, 18, 68, 26),
-  barrel: spec(22, 28, 26, 34, 3),
+  barrel: spec(26, 32, 34, 44, 4),
 } as const;
 
 export const ROAD = {

@@ -15,6 +15,8 @@ import { assessSupport } from './supportSense';
 import { scoreKitSlot } from './kitTactics';
 import { pickHealMinion, pickRetreatGoal } from './retreat';
 import { evaluateOffensiveDash } from './dashOffense';
+import { poiForIntent } from './houseSense';
+import { moveGoal } from './move';
 import type { AbilityDef, AbilityTactics } from '../../heroes/abilities/types';
 
 const buffer = ensureScoreBuffer();
@@ -2018,6 +2020,146 @@ const scenarioCU = (): ScenarioResult => {
   return { name: 'CU cole keeps fighting instead of farming a crate', ok, detail: `best=${best(rows)}` };
 };
 
+const houseFact = (x = 400, y = 600) => ({
+  id: 'home-0',
+  x,
+  y,
+  interior: { x: x - 120, y: y - 80, w: 240, h: 160 },
+  doors: [
+    { side: 'front' as const, x, y: y + 80 },
+    { side: 'back' as const, x, y: y - 80 },
+  ],
+});
+
+const houseEnv = (selfInside: boolean, extra: { crate?: ReturnType<typeof crateFact> } = {}) => {
+  const house = houseFact();
+  return {
+    nearby: [],
+    houses: [house],
+    inside: selfInside ? house : undefined,
+    crate: extra.crate,
+  };
+};
+
+const scenarioCV = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 720, hpRatio: 0.32, recentlyHit: true, heroId: 'mender', role: 'support' });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 980, y: 750, hpRatio: 0.8 })];
+  const kit = kitProfileOf('mender', 'support', 180, { staminaRatio: 0.8, dashCharges: 2 });
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      kit,
+      personality: { ...NEUTRAL_PERSONALITY, caution: 0.7 },
+      environment: houseEnv(false),
+    }),
+  );
+  const enter = rows.find((row) => row.reason === 'enter house');
+  const ok = Boolean(enter) && enter!.score > 8 && !['attack', 'chase', 'finish_target'].includes(best(rows));
+  return { name: 'CV hurt CPU considers a nearby house for cover', ok, detail: `best=${best(rows)} enter=${enter?.score.toFixed(1) ?? 'none'}` };
+};
+
+const scenarioCW = (): ScenarioResult => {
+  const house = houseFact();
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 600, hpRatio: 0.72, heroId: 'mender', role: 'support' });
+  const rows = rankActions(
+    situationOf(self, [], [], {
+      now: 4000,
+      houseStay: { id: house.id, door: 'front', enteredAt: 0 },
+      environment: { nearby: [], houses: [house], inside: house },
+    }),
+  );
+  const leave = rows.find((row) => row.reason === 'leave house');
+  const cover = rows.find((row) => row.reason === 'house cover');
+  const ok = Boolean(leave) && leave!.score > (cover?.score ?? 0);
+  return { name: 'CW CPU leaves a house instead of camping', ok, detail: `best=${best(rows)} leave=${leave?.score.toFixed(1) ?? 'none'}` };
+};
+
+const scenarioCX = (): ScenarioResult => {
+  const house = houseFact();
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 720, hpRatio: 0.8, heroId: 'ninja', role: 'frontliner', attackRange: NINJA.attackRange });
+  const foe = unit({ id: 10, team: 'bravo', x: 400, y: 600, hpRatio: 0.55, recentlyHit: true });
+  const kit = kitProfileOf('ninja', 'frontliner', NINJA.attackRange, { staminaRatio: 0.8, dashCharges: 2 });
+  const rows = rankActions(
+    situationOf(self, [], [foe], {
+      kit,
+      personality: { ...NEUTRAL_PERSONALITY, flankTendency: 0.7 },
+      environment: { nearby: [], houses: [house] },
+    }),
+  );
+  const flank = rows.find((row) => row.reason === 'flank house');
+  const poi = poiForIntent({ action: 'flank', reason: 'flank house', targetId: 10 }, situationOf(self, [], [foe], { environment: { nearby: [], houses: [house] } }), self.id);
+  const back = house.doors.find((door) => door.side === 'back')!;
+  const ok = Boolean(flank) && Boolean(poi) && Math.abs((poi?.x ?? 0) - back.x) < 4 && Math.abs((poi?.y ?? 0) - back.y) < 4;
+  return { name: 'CX CPU flanks a house through the opposite door', ok, detail: `best=${best(rows)} flank=${flank?.score.toFixed(1) ?? 'none'} poi=${poi ? `${Math.round(poi.x)},${Math.round(poi.y)}` : 'none'}` };
+};
+
+const scenarioCY = (): ScenarioResult => {
+  const house = houseFact();
+  const self = unit({ id: 2, team: 'alpha', x: 400, y: 750, hpRatio: 0.8, heroId: 'cole' });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 430, y: 750, hpRatio: 0.2, recentlyHit: true })];
+  const kit = kitProfileOf('cole', 'frontliner', COLE.attackRange, { staminaRatio: 0.7, dashCharges: 2 });
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      kit,
+      environment: { nearby: [], houses: [house] },
+    }),
+  );
+  const enter = rows.find((row) => row.reason === 'enter house');
+  const ok = ['attack', 'finish_target', 'advance'].includes(best(rows)) && !enter;
+  return { name: 'CY finishing a sliver beats ducking into a house', ok, detail: `best=${best(rows)} enter=${enter?.score.toFixed(1) ?? 'none'}` };
+};
+
+const scenarioCZ = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.88, xpRatio: 0.85, level: 2 });
+  const rows = rankActions(
+    situationOf(self, [], [], {
+      personality: { ...NEUTRAL_PERSONALITY, opportunism: 0.8 },
+      environment: { nearby: [crateFact(430, 750)], crate: crateFact(430, 750) },
+    }),
+  );
+  const farm = scoreOf(rows, 'farm_minions');
+  const ok = among(rows, ['farm_minions'], 2) && farm > scoreOf(rows, 'advance') && farm > scoreOf(rows, 'search_for_target');
+  return { name: 'CZ travelling CPU farms a safe nearby crate', ok, detail: `best=${best(rows)} farm=${farm.toFixed(1)}` };
+};
+
+const scenarioDA = (): ScenarioResult => {
+  const house = houseFact();
+  const self = unit({ id: 2, team: 'alpha', x: 400, y: 720, hpRatio: 0.8, heroId: 'cole' });
+  const foe = unit({ id: 10, team: 'bravo', x: 400, y: 600, hpRatio: 0.4 });
+  const kit = kitProfileOf('cole', 'frontliner', COLE.attackRange, { staminaRatio: 0.8, dashCharges: 2 });
+  const sit = situationOf(self, [], [foe], { kit, environment: { nearby: [], houses: [house] } });
+  const rows = rankActions(sit);
+  const cut = rows.find((row) => row.reason === 'cut house exit');
+  const poi = poiForIntent({ action: 'reposition', reason: 'cut house exit', targetId: 10 }, sit, self.id);
+  const front = house.doors.find((door) => door.side === 'front')!;
+  const ok = Boolean(cut) && Boolean(poi) && Math.abs((poi?.x ?? 0) - front.x) < 4;
+  return { name: 'DA second CPU holds the seen door instead of stacking the flank', ok, detail: `best=${best(rows)} cut=${cut?.score.toFixed(1) ?? 'none'}` };
+};
+
+const scenarioDB = (): ScenarioResult => {
+  const house = houseFact();
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 720, hpRatio: 0.34, recentlyHit: true, heroId: 'mender', role: 'support' });
+  const sit = situationOf(self, [], [], {
+    environment: { nearby: [], houses: [house] },
+  });
+  const poi = poiForIntent({ action: 'reposition', reason: 'enter house' }, sit, self.id);
+  const front = house.doors.find((door) => door.side === 'front')!;
+  const sample = moveGoal(
+    'reposition',
+    { x: self.x, y: self.y, team: 'alpha', attackRange: 70, role: 'support', kind: 'hero', id: 1 },
+    0,
+    220,
+    750,
+    undefined,
+    undefined,
+    1,
+    0,
+    undefined,
+    { poi },
+  );
+  const ok = Boolean(poi) && Math.abs(sample.x - front.x) < 4 && Math.abs(sample.y - front.y) < 4;
+  return { name: 'DB house entry walks to a door POI, not the idle lane', ok, detail: `poi=${poi ? `${Math.round(poi.x)},${Math.round(poi.y)}` : 'none'} dest=${Math.round(sample.x)},${Math.round(sample.y)}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -2118,4 +2260,11 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioCS(),
   scenarioCT(),
   scenarioCU(),
+  scenarioCV(),
+  scenarioCW(),
+  scenarioCX(),
+  scenarioCY(),
+  scenarioCZ(),
+  scenarioDA(),
+  scenarioDB(),
 ];

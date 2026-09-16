@@ -213,7 +213,7 @@ const drawBuildingInterior = (ctx: CanvasRenderingContext2D, style: 'shop' | 'st
     fillPx(ctx, ENV.wood, 110, 118, 40, 20);
     fillPx(ctx, ENV.crate, 114, 122, 14, 10);
   }
-  const doorW = 40;
+  const doorW = 48;
   const doorX = Math.floor(w / 2) - Math.floor(doorW / 2);
   fillPx(ctx, ENV.concrete, 12, h - 28, w - 24, 12);
   fillPx(ctx, ENV.inkSoft, doorX, h - 32, doorW, 20);
@@ -241,7 +241,7 @@ const drawStoop = (ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 
 const drawBuildingShell = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, h: number): void => {
   const wall = 14;
-  const doorW = 40;
+  const doorW = 48;
   const doorX = Math.floor(w / 2) - Math.floor(doorW / 2);
   const northY = 28;
   const southY = h - 28;
@@ -478,9 +478,9 @@ export const ASSET_SIZE: Record<string, { w: number; h: number }> = {
   'rubble:chunk': { w: 32, h: 24 },
   'fence:wood': { w: 92, h: 34 },
   'fence:wire': { w: 92, h: 34 },
-  'barrel:drum': { w: 26, h: 34 },
-  'barrel:fuel': { w: 26, h: 34 },
-  'barrel:skull': { w: 26, h: 34 },
+  'barrel:drum': { w: 34, h: 44 },
+  'barrel:fuel': { w: 34, h: 44 },
+  'barrel:skull': { w: 34, h: 44 },
   'lamp:street': { w: 22, h: 96 },
   'lamp:short': { w: 18, h: 68 },
   'fire:small': { w: 14, h: 18 },

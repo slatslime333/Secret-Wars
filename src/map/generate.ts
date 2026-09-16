@@ -295,6 +295,10 @@ const openHome = (obs: MapObstacle, obstacles: MapObstacle[]): void => {
     houseWall(`${obs.id}-w`, westX, obs.y + 8, wall, wallH),
     houseWall(`${obs.id}-e`, eastX, obs.y + 8, wall, wallH),
   );
+  obs.doors = [
+    { side: 'front', x: midX, y: southY + 20 },
+    { side: 'back', x: midX, y: northY - 20 },
+  ];
   const room = obs.interior;
   for (const other of obstacles) {
     if (other.id === obs.id || other.id.startsWith(`${obs.id}-`)) {

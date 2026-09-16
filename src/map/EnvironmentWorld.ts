@@ -12,7 +12,7 @@ import { ENV } from './palette';
 import { FONTS, hex } from '../ui/theme';
 import { textureKeyFor } from './obstacles';
 import { damageStateOf, decorateObstacle } from './envProps';
-import type { DamageState, MapObstacle, PhysicsClass } from './types';
+import type { DamageState, HouseDoor, MapObstacle, PhysicsClass, Rect } from './types';
 import type { MapView } from './render';
 import type { MapWorld } from './world';
 
@@ -34,6 +34,14 @@ export type EnvFact = {
   enterable: boolean;
 };
 
+export type HouseFact = {
+  id: string;
+  x: number;
+  y: number;
+  interior: Rect;
+  doors: HouseDoor[];
+};
+
 export type EnvSnapshot = {
   nearby: EnvFact[];
   crate?: EnvFact;
@@ -42,6 +50,8 @@ export type EnvSnapshot = {
   tree?: EnvFact;
   building?: EnvFact;
   cover?: EnvFact;
+  houses?: HouseFact[];
+  inside?: HouseFact;
 };
 
 type LiveProp = {
@@ -65,14 +75,6 @@ type LiveProp = {
   arming: boolean;
 };
 
-type Scar = {
-  x: number;
-  y: number;
-  kind: 'crack' | 'rubble' | 'burn' | 'hole';
-  w: number;
-  h: number;
-};
-
 type Pickup = {
   view: Phaser.GameObjects.Container;
   kind: 'health' | 'shield';
@@ -88,6 +90,7 @@ const copyObstacle = (obs: MapObstacle): MapObstacle => ({
   visual: { ...obs.visual },
   keepout: { ...obs.keepout },
   interior: obs.interior ? { ...obs.interior } : undefined,
+  doors: obs.doors?.map((door) => ({ ...door })),
 });
 
 const impulseFor = (event: WorldStrikeEvent): number => {
@@ -108,8 +111,6 @@ export class EnvironmentWorld {
   private readonly props: LiveProp[] = [];
   private readonly pickups: Pickup[] = [];
   private readonly fx: Fx[] = [];
-  private readonly scars: Scar[] = [];
-  private readonly scarGfx: Phaser.GameObjects.Graphics;
   private readonly swingHits = new WeakMap<NinjaBody, Map<string, number>>();
   private readonly shotHits = new Set<string>();
   private offStrike?: () => void;
@@ -120,7 +121,6 @@ export class EnvironmentWorld {
     private readonly world: MapWorld,
     private readonly view: MapView,
   ) {
-    this.scarGfx = scene.add.graphics().setDepth(2);
     for (const obs of world.layout.obstacles) {
       this.props.push(this.liveFrom(obs));
     }
@@ -139,6 +139,8 @@ export class EnvironmentWorld {
     let tree: EnvFact | undefined;
     let building: EnvFact | undefined;
     let cover: EnvFact | undefined;
+    const houses: HouseFact[] = [];
+    let inside: HouseFact | undefined;
     for (const prop of this.props) {
       if (prop.gone || prop.hp <= 0 && prop.state === 'destroyed' && prop.obs.kind === 'crate') {
         continue;
@@ -174,6 +176,19 @@ export class EnvironmentWorld {
       if (fact.enterable && (!building || dist < Math.hypot(building.x - x, building.y - y))) {
         building = fact;
       }
+      if (prop.obs.enterable && prop.obs.interior && prop.obs.doors && prop.obs.doors.length >= 2) {
+        const house: HouseFact = {
+          id: prop.obs.id,
+          x: prop.obs.x,
+          y: prop.obs.y,
+          interior: { ...prop.obs.interior },
+          doors: prop.obs.doors.map((door) => ({ ...door })),
+        };
+        houses.push(house);
+        if (pointInRect(x, y, house.interior)) {
+          inside = house;
+        }
+      }
       if (
         (fact.kind === 'barricade' || fact.kind === 'sandbag' || fact.kind === 'wall') &&
         fact.state !== 'destroyed' &&
@@ -183,7 +198,7 @@ export class EnvironmentWorld {
         cover = fact;
       }
     }
-    return { nearby, crate, barrel, wall, tree, building, cover };
+    return { nearby, crate, barrel, wall, tree, building, cover, houses, inside };
   }
 
   update(now: number, delta: number): void {
@@ -207,8 +222,6 @@ export class EnvironmentWorld {
       item.view.destroy();
     }
     this.fx.length = 0;
-    this.scars.length = 0;
-    this.scarGfx.destroy();
     this.props.length = 0;
   }
 
@@ -238,12 +251,6 @@ export class EnvironmentWorld {
   private onStrike(event: WorldStrikeEvent): void {
     const hits = this.swingHits.get(event.attacker) ?? new Map<string, number>();
     this.swingHits.set(event.attacker, hits);
-    if (event.kind === 'ability' || event.kind === 'explosion') {
-      const dx = event.dirX ?? event.attacker.aim.x;
-      const dy = event.dirY ?? event.attacker.aim.y;
-      const len = Math.hypot(dx, dy) || 1;
-      this.scarAt(event.attacker.x + (dx / len) * event.reach * 0.55, event.attacker.y + (dy / len) * event.reach * 0.55, event.kind);
-    }
     for (const prop of this.props) {
       if (prop.gone || hits.get(prop.obs.id) === event.now) {
         continue;
@@ -438,7 +445,6 @@ export class EnvironmentWorld {
     }
     audio.play('crate-break', { x: prop.obs.x, y: prop.obs.y });
     this.puff(prop.obs.x, prop.obs.y, prop.obs.kind === 'crate' ? ENV.crateLite : ENV.concreteLite, 0.9);
-    this.stain(prop.obs.x, prop.obs.y);
     if (prop.obs.kind === 'crate') {
       this.breakCrate(prop, attacker);
     }
@@ -452,7 +458,6 @@ export class EnvironmentWorld {
     const knock = car ? ENV_WORLD.carKnockback : ENV_WORLD.barrelKnockback;
     this.destroyProp(prop, attacker);
     this.burst(x, y, radius);
-    this.scarBlast(x, y, radius);
     for (const other of this.props) {
       if (other.gone || other === prop || other.arming) {
         continue;
@@ -729,26 +734,8 @@ export class EnvironmentWorld {
     this.fx.push({ view: puff, until: this.scene.time.now + ENV_WORLD.fxLifeMs });
   }
 
-  private stain(x: number, y: number): void {
-    const stain = this.scene.add.graphics().setDepth(2);
-    stain.fillStyle(ENV.woodDark, 0.55);
-    stain.fillRect(x - 16, y + 2, 32, 8);
-    this.fx.push({ view: stain, until: this.scene.time.now + ENV_WORLD.stainLifeMs });
-  }
-
   private burst(x: number, y: number, radius: number): void {
     const now = this.scene.time.now;
-    const scorch = this.scene.add.graphics().setDepth(3).setPosition(x, y);
-    scorch.fillStyle(0x1a1008, 0.72);
-    scorch.fillEllipse(0, 6, radius * 1.15, radius * 0.62);
-    scorch.fillStyle(ENV.burn, 0.55);
-    scorch.fillEllipse(-8, 4, radius * 0.7, radius * 0.4);
-    this.scene.tweens.add({
-      targets: scorch,
-      alpha: 0.35,
-      duration: 900,
-    });
-    this.fx.push({ view: scorch, until: now + ENV_WORLD.stainLifeMs });
     const ball = this.scene.add.graphics().setDepth(22).setPosition(x, y);
     ball.fillStyle(ENV.fire, 0.96);
     ball.fillCircle(0, 0, Math.max(22, radius * 0.42));
@@ -806,103 +793,6 @@ export class EnvironmentWorld {
       onComplete: () => smoke.destroy(),
     });
     this.fx.push({ view: smoke, until: now + 640 });
-  }
-
-  private onPavement(x: number, y: number): boolean {
-    return this.world.layout.roads.patches.some(
-      (patch) =>
-        patch.kind !== 'sidewalk' &&
-        x >= patch.x &&
-        x <= patch.x + patch.w &&
-        y >= patch.y &&
-        y <= patch.y + patch.h,
-    );
-  }
-
-  private scarAt(x: number, y: number, cause: WorldStrikeEvent['kind']): void {
-    const road = this.onPavement(x, y);
-    if (cause === 'explosion') {
-      this.pushScar({ x, y, kind: road ? 'rubble' : 'burn', w: road ? 64 : 72, h: road ? 36 : 48 });
-      return;
-    }
-    this.pushScar({
-      x,
-      y,
-      kind: road ? 'crack' : 'burn',
-      w: road ? 48 : 36,
-      h: road ? 10 : 28,
-    });
-  }
-
-  private scarBlast(x: number, y: number, radius: number): void {
-    const road = this.onPavement(x, y);
-    this.pushScar({ x, y, kind: road ? 'rubble' : 'burn', w: Math.max(56, radius * 0.7), h: Math.max(32, radius * 0.38) });
-    this.pushScar({ x: x - 18, y: y + 10, kind: 'crack', w: Math.max(54, radius * 0.65), h: 12 });
-    this.pushScar({ x: x + 16, y: y - 8, kind: 'crack', w: Math.max(40, radius * 0.45), h: 8 });
-    this.pushScar({
-      x: x + radius * 0.32,
-      y: y - 12,
-      kind: this.onPavement(x + 18, y - 8) ? 'rubble' : 'burn',
-      w: 44,
-      h: 28,
-    });
-    this.pushScar({ x: x - radius * 0.24, y: y + 14, kind: 'hole', w: 30, h: 22 });
-    this.pushScar({ x: x + 8, y: y + radius * 0.2, kind: this.onPavement(x, y + 16) ? 'rubble' : 'hole', w: 26, h: 18 });
-  }
-
-  private pushScar(scar: Scar): void {
-    if (this.scars.length >= ENV_WORLD.maxScars) {
-      this.scars.shift();
-    }
-    this.scars.push(scar);
-    this.redrawScars();
-  }
-
-  private redrawScars(): void {
-    const g = this.scarGfx;
-    g.clear();
-    for (const scar of this.scars) {
-      const left = scar.x - scar.w / 2;
-      const top = scar.y - scar.h / 2;
-      if (scar.kind === 'crack') {
-        g.fillStyle(ENV.ink, 0.92);
-        g.fillRect(left, top, scar.w, scar.h);
-        g.fillRect(left + scar.w * 0.18, top + scar.h - 2, scar.w * 0.42, 4);
-        g.fillRect(left + scar.w * 0.55, top - 3, scar.w * 0.28, 5);
-        g.fillStyle(ENV.asphaltDark, 0.85);
-        g.fillRect(left + 2, top + 2, scar.w - 6, Math.max(2, scar.h - 4));
-        continue;
-      }
-      if (scar.kind === 'rubble') {
-        g.fillStyle(ENV.ink, 0.9);
-        g.fillRect(left - 2, top - 2, scar.w + 4, scar.h + 4);
-        g.fillStyle(ENV.asphaltDark, 0.98);
-        g.fillRect(left, top, scar.w, scar.h);
-        g.fillStyle(ENV.concreteDark, 0.95);
-        g.fillRect(left + 8, top + 4, 16, 10);
-        g.fillRect(left + scar.w * 0.45, top + scar.h * 0.4, 14, 8);
-        g.fillStyle(ENV.dirt, 0.85);
-        g.fillRect(left + 4, top + scar.h - 10, 18, 7);
-        g.fillStyle(ENV.concreteLite, 0.7);
-        g.fillRect(left + scar.w - 16, top + 6, 10, 6);
-        continue;
-      }
-      if (scar.kind === 'hole') {
-        g.fillStyle(ENV.ink, 0.95);
-        g.fillEllipse(scar.x, scar.y, scar.w + 6, scar.h + 4);
-        g.fillStyle(0x0c0a08, 0.96);
-        g.fillEllipse(scar.x, scar.y + 1, scar.w - 4, scar.h - 4);
-        g.fillStyle(ENV.dirtDark, 0.9);
-        g.fillEllipse(scar.x - 2, scar.y + 2, scar.w * 0.45, scar.h * 0.4);
-        continue;
-      }
-      g.fillStyle(0x120c08, 0.88);
-      g.fillEllipse(scar.x, scar.y, scar.w, scar.h);
-      g.fillStyle(0x1c120c, 0.8);
-      g.fillEllipse(scar.x - 6, scar.y - 4, scar.w * 0.62, scar.h * 0.55);
-      g.fillStyle(ENV.burn, 0.7);
-      g.fillRect(left + 8, top + 6, scar.w * 0.4, scar.h * 0.35);
-    }
   }
 
   private dropRewards(x: number, y: number, attacker?: NinjaBody): void {

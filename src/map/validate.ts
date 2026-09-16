@@ -141,7 +141,7 @@ export const scoreLayout = (layout: MapLayout, issues: ValidationIssue[]): MapQu
   const openSpace = clampScore(70 + (open - 0.7) * 80);
   const cover = clampScore(40 + layout.obstacles.filter((obs) => obs.blocksMovement).length * 1.5);
   const regionalConnectivity = clampScore((northOk ? 34 : 0) + 32 + (southOk ? 34 : 0));
-  const readability = clampScore(92 - chokes * 8 - Math.max(0, layout.obstacles.length - 96) * 1.1);
+  const readability = clampScore(92 - chokes * 8 - Math.max(0, layout.obstacles.length - 110) * 1.1);
   const total = clampScore(
     connectivity * 0.18 +
       spawnSafety * 0.14 +

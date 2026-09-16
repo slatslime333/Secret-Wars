@@ -17,6 +17,7 @@ import { SwingIntent } from './tactical/swingIntent';
 import type { TacticalDebugInfo } from './tactical/types';
 import { stampKitPressure } from '../heroes/kitPressure';
 import { menderPulseHealTarget } from './tactical/supportSense';
+import { envFarmTarget } from './tactical/envSense';
 
 /**
  * Play Test rival. Same attack / shield / dash kit as the player, with
@@ -67,11 +68,14 @@ export class RivalBrain {
     const target = this.mind.action === 'contest_objective' ? this.mind.target : (this.mind.target ?? foes[0]);
     const heal = cpu.heroId === 'mender' ? menderPulseHealTarget(this.mind.situationView(), this.mind.intent.ally) : undefined;
     const focus = heal ?? target;
+    const farmSpot = envFarmTarget(this.mind.situationView(), this.mind.action, this.mind.intent.reason);
     if (focus) {
       const lead = this.combat.sense.aimLead(focus, Math.random);
       cpu.setAim(lead.x - cpu.x, lead.y - cpu.y);
     } else if (this.mind.action === 'contest_objective' && objective) {
       cpu.setAim(objective.x - cpu.x, objective.y - cpu.y);
+    } else if (farmSpot) {
+      cpu.setAim(farmSpot.x - cpu.x, farmSpot.y - cpu.y);
     }
 
     this.dash.apply(now, cpu);
@@ -157,10 +161,13 @@ export class RivalBrain {
       rng: Math.random,
     });
     const smashRange =
-      this.mind.action === 'contest_objective' &&
-      objective &&
-      (objective.kind === 'golden_piggy' || objective.kind === 'executioner') &&
-      Math.hypot(cpu.x - objective.x, cpu.y - objective.y) <= cpu.stats.attackRange + objective.radius + 10;
+      (this.mind.action === 'contest_objective' &&
+        objective &&
+        (objective.kind === 'golden_piggy' || objective.kind === 'executioner') &&
+        Math.hypot(cpu.x - objective.x, cpu.y - objective.y) <= cpu.stats.attackRange + objective.radius + 10) ||
+      Boolean(
+        farmSpot && Math.hypot(cpu.x - farmSpot.x, cpu.y - farmSpot.y) <= cpu.stats.attackRange + 16,
+      );
     const rangeMul = heal ? 2.15 : 1.32;
     const inRange = focus
       ? Math.hypot(focus.x - cpu.x, focus.y - cpu.y) <= cpu.stats.attackRange * rangeMul
