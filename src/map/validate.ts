@@ -114,9 +114,15 @@ const authoredChokes = (layout: MapLayout): number =>
   layout.chunks.filter((chunk) => chunk.kind === 'CHOKE_POINT').length;
 
 const wallsColinear = (a: Rect, b: Rect): boolean => {
-  const sameRow = Math.abs(a.y + a.h / 2 - (b.y + b.h / 2)) <= Math.max(a.h, b.h) * 0.8;
-  const sameCol = Math.abs(a.x + a.w / 2 - (b.x + b.w / 2)) <= Math.max(a.w, b.w) * 0.8;
-  return sameRow || sameCol;
+  const aHoriz = a.w >= a.h;
+  const bHoriz = b.w >= b.h;
+  if (aHoriz !== bHoriz) {
+    return false;
+  }
+  if (aHoriz) {
+    return Math.abs(a.y + a.h / 2 - (b.y + b.h / 2)) <= Math.max(a.h, b.h) * 0.8;
+  }
+  return Math.abs(a.x + a.w / 2 - (b.x + b.w / 2)) <= Math.max(a.w, b.w) * 0.8;
 };
 
 export const scoreLayout = (layout: MapLayout, issues: ValidationIssue[]): MapQuality => {
