@@ -167,9 +167,9 @@ export class QuickAttack {
       const span = COLE_ATTACK.animMs;
       attacker.status.applySlow(now, span, COLE_ATTACK.lightSlowMul);
       attacker.playCustomAttack(now, span, (frac) => ({
-        armLiftLeft: frac < 0.55 ? Math.sin(frac * Math.PI) : 0.15,
-        armLiftRight: frac >= 0.35 ? Math.sin((frac - 0.2) * Math.PI) : 0,
-        swayX: Math.sin(frac * Math.PI * 2) * 5,
+        armLiftLeft: Math.min(1, frac * 1.7),
+        armLiftRight: Math.min(1, frac * 1.7),
+        swayX: Math.sin(frac * Math.PI) * 3,
       }));
       if (step === 3) {
         spawnShockwaveRing(this.scene, attacker.x, attacker.y, COLE_SHOCKWAVE.radius);

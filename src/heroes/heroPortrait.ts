@@ -3,6 +3,7 @@ import type { TeamId } from '../config/hero';
 import { PLAYABLE_HEROES, type HeroId } from './roster';
 import type { CardinalFacing } from './drawNinja';
 import { applyWitchSprite, witchFrameIndex, witchSheetKey, WITCH_SHEET } from './witchSprite';
+import { applyColeSprite, coleFrameIndex, coleSheetKey, COLE_SHEET } from './coleSprite';
 
 export type HeroPortraitOptions = {
   facing?: CardinalFacing;
@@ -11,7 +12,7 @@ export type HeroPortraitOptions = {
   scale?: number;
 };
 
-/** Graphics for procedural heroes; the packed witch sheet when it is loaded. */
+/** Graphics for procedural heroes; packed sheets for Witch and Cole. */
 export const presentHero = (
   scene: Phaser.Scene,
   x: number,
@@ -29,6 +30,15 @@ export const presentHero = (
     sprite.setOrigin(0.5, 1);
     sprite.setScale(scale * 0.72);
     applyWitchSprite(sprite, { facing });
+    return sprite;
+  }
+  const coleKey = coleSheetKey(options.team, rival);
+  const coleSheet = scene.textures.exists(coleKey) ? coleKey : COLE_SHEET;
+  if (heroId === 'cole' && scene.textures.exists(coleSheet)) {
+    const sprite = scene.add.sprite(x, y + 18, coleSheet, coleFrameIndex({ facing }));
+    sprite.setOrigin(0.5, 1);
+    sprite.setScale(scale * 0.72);
+    applyColeSprite(sprite, { facing });
     return sprite;
   }
   const art = scene.add.graphics();
