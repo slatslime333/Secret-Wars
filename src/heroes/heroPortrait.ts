@@ -5,6 +5,7 @@ import type { CardinalFacing } from './drawNinja';
 import { applyWitchSprite, witchFrameIndex, witchSheetKey, WITCH_SHEET } from './witchSprite';
 import { applyColeSprite, coleFrameIndex, coleSheetKey, COLE_SHEET } from './coleSprite';
 import { applyNinjaSprite, ninjaFrameIndex, ninjaSheetKey, NINJA_SHEET } from './ninjaSprite';
+import { applyRopeSprite, ropeFrameIndex, ropeSheetKey, ROPE_SHEET } from './ropeSprite';
 
 export type HeroPortraitOptions = {
   facing?: CardinalFacing;
@@ -13,7 +14,7 @@ export type HeroPortraitOptions = {
   scale?: number;
 };
 
-/** Graphics for procedural heroes; packed sheets for Witch, Cole, and Ninja. */
+/** Graphics for procedural heroes; packed sheets for Witch, Cole, Ninja, and Rope Man. */
 export const presentHero = (
   scene: Phaser.Scene,
   x: number,
@@ -49,6 +50,15 @@ export const presentHero = (
     sprite.setOrigin(0.5, 1);
     sprite.setScale(scale * 0.72);
     applyNinjaSprite(sprite, { facing });
+    return sprite;
+  }
+  const ropeKey = ropeSheetKey(options.team, rival);
+  const ropeSheet = scene.textures.exists(ropeKey) ? ropeKey : ROPE_SHEET;
+  if (heroId === 'rope' && scene.textures.exists(ropeSheet)) {
+    const sprite = scene.add.sprite(x, y + 18, ropeSheet, ropeFrameIndex({ facing }));
+    sprite.setOrigin(0.5, 1);
+    sprite.setScale(scale * 0.72);
+    applyRopeSprite(sprite, { facing });
     return sprite;
   }
   const art = scene.add.graphics();

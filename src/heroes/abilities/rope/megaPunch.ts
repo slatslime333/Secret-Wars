@@ -62,6 +62,7 @@ class MegaPunchAbility implements ActiveAbility {
           armLiftLeft: 0.15 + rise * 0.4,
           jumpY: -ROPE_PUNCH.jumpHeight * Math.sin(Math.min(1, frac * 1.05) * Math.PI),
           swayX: this.dirX * punch * 8,
+          ropeAction: 'punch' as const,
         };
       },
       'Sine.Out',

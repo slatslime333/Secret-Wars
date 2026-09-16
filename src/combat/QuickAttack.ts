@@ -247,6 +247,7 @@ export class QuickAttack {
       armLiftRight: arm === 1 ? Math.sin(frac * Math.PI) : 0.08,
       jumpY: -Math.sin(frac * Math.PI) * 7,
       swayX: attacker.aim.x * 3 * Math.sin(frac * Math.PI),
+      ropeAction: 'shot' as const,
     }));
   }
 
