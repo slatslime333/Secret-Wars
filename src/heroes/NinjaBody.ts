@@ -10,7 +10,8 @@ import { emitCombatHeal } from '../combat/healEvents';
 import { BODY_TEXTURE, ensureBodyTexture } from './bodyTexture';
 import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
 import { drawColeElectricity } from './drawCole';
-import type { HeroDrawFn } from './heroDraw';
+import type { HeroDrawFn, HeroDrawOptions } from './heroDraw';
+import { applyWitchSprite, createWitchSprite, WITCH_FEET_Y, WITCH_WORLD_SCALE } from './witchSprite';
 import { playDeath, playWorld } from '../audio';
 import { drawRopeWrap } from './abilities/rope/ropeVisual';
 import { drawMagicVortex } from './abilities/witch/vortex';
@@ -63,6 +64,8 @@ export class NinjaBody {
   readonly aim = new Phaser.Math.Vector2(1, 0);
   private facing: CardinalFacing = 'east';
   private readonly art: Phaser.GameObjects.Graphics;
+  private readonly spriteArt?: Phaser.GameObjects.Sprite;
+  private lastStaffRaise = 0;
   private readonly sparks?: Phaser.GameObjects.Graphics;
   private readonly drawHero: HeroDrawFn;
   private readonly scene: Phaser.Scene;
@@ -130,6 +133,12 @@ export class NinjaBody {
     this.view = scene.add.container(x, y).setDepth(this.rival ? 9 : 10);
     this.art = scene.add.graphics();
     this.view.add(this.art);
+    if (this.stats.id === 'witch') {
+      this.spriteArt = createWitchSprite(scene);
+      if (this.spriteArt) {
+        this.view.add(this.spriteArt);
+      }
+    }
     if (options.handSparks) {
       this.sparks = scene.add.graphics();
       this.view.add(this.sparks);
@@ -191,6 +200,7 @@ export class NinjaBody {
       const hop = Math.abs(Math.sin(now / 130)) * 3.4;
       this.art.setY(-hop);
     }
+    this.syncWitchSprite(now);
     const flashing = this.status.isFlashingHit(now);
     if (flashing !== this.lastDrawnFlash && this.now() >= this.attackingUntil) {
       this.lastDrawnFlash = flashing;
@@ -453,7 +463,7 @@ export class NinjaBody {
         if (!this.present) {
           return;
         }
-        this.drawHero(this.art, {
+        this.paintHero({
           facing: this.facing,
           attacking: true,
           swordAngleOffset: swordAnimState.angleOffset,
@@ -514,7 +524,7 @@ export class NinjaBody {
         const pose = frame(anim.frac);
         this.armLiftLeft = pose.armLiftLeft ?? 0;
         this.armLiftRight = pose.armLiftRight ?? 0;
-        this.drawHero(this.art, {
+        this.paintHero({
           facing: this.facing,
           attacking: true,
           swordAngleOffset: pose.swordAngleOffset ?? 0,
@@ -1158,8 +1168,58 @@ export class NinjaBody {
     this.view.destroy();
   }
 
+  private paintHero(options: HeroDrawOptions): void {
+    this.lastStaffRaise = options.staffRaise ?? 0;
+    if (this.spriteArt) {
+      this.art.clear();
+      applyWitchSprite(this.spriteArt, {
+        facing: options.facing,
+        attacking: options.attacking,
+        staffRaise: options.staffRaise,
+        hitFlash: options.hitFlash,
+        rival: this.rival,
+      });
+      return;
+    }
+    this.drawHero(this.art, options);
+  }
+
+  private syncWitchSprite(now: number): void {
+    const figure = this.spriteArt;
+    if (!figure) {
+      return;
+    }
+    const bob =
+      now >= this.attackingUntil && this.present && !this.down
+        ? Math.sin(now / 240) * 1.1
+        : 0;
+    figure.setPosition(this.art.x, this.art.y + WITCH_FEET_Y + bob);
+    figure.setRotation(this.art.rotation);
+    figure.setScale(this.art.scaleX * WITCH_WORLD_SCALE, this.art.scaleY * WITCH_WORLD_SCALE);
+    if (now < this.attackingUntil) {
+      applyWitchSprite(figure, {
+        facing: this.facing,
+        attacking: true,
+        staffRaise: this.lastStaffRaise,
+        hitFlash: this.status.isFlashingHit(now),
+        rival: this.rival,
+        now,
+      });
+      return;
+    }
+    const speed = this.body?.speed ?? 0;
+    const moving = this.present && !this.down && (speed > 22 || this.steer.length() > 0.22);
+    applyWitchSprite(figure, {
+      facing: this.facing,
+      moving,
+      hitFlash: this.status.isFlashingHit(now),
+      rival: this.rival,
+      now,
+    });
+  }
+
   private redrawIdle(): void {
-    this.drawHero(this.art, {
+    this.paintHero({
       facing: this.facing,
       attacking: false,
       swordAngleOffset: 0,

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { HERO_IDS, PLAYABLE_HEROES, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { HERO_IDS, setSelectedHeroId, type HeroId } from '../heroes/roster';
+import { presentHero } from '../heroes/heroPortrait';
 import { heroSelectCopy } from '../heroes/selectCopy';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
@@ -165,10 +166,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       const selected = this.selected === id;
       const panel = this.add.rectangle(cx, 0, cardW, cardH, COLORS.panel, 0.96).setOrigin(0.5, 0);
       panel.setStrokeStyle(3, selected ? COLORS.yellow : COLORS.cyan);
-      const art = this.add.graphics();
-      art.setPosition(cx, artY);
-      art.setScale(artScale);
-      PLAYABLE_HEROES[id].draw(art, { facing: 'south', team: 'alpha' });
+      const art = presentHero(this, cx, artY, id, { facing: 'south', team: 'alpha', scale: artScale });
       const name = this.add
         .text(cx, nameY, copy.name.toUpperCase(), {
           fontFamily: FONTS.display,
