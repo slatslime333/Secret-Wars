@@ -39,6 +39,9 @@ export type MoveHint = {
   clusterRisk?: number;
   /** Enemy comfort reach. Stand outside it when we can still hit. */
   threatReach?: number;
+  /** Last ult SAVE/WAIT/REPOSITION so dests can seek cover or heal radius. */
+  ultDecision?: 'use' | 'save' | 'wait' | 'reposition';
+  ultKind?: 'transform' | 'heal' | 'attack' | 'defense' | 'utility';
   objective?: {
     kind: ObjectiveKind;
     x: number;
@@ -311,6 +314,12 @@ export const moveGoal = (
   }
 
   if (!target) {
+    if (ally && (action === 'hold_position' || action === 'protect_ally' || hint?.ultKind === 'heal')) {
+      const stand = protectStand(body, ally, ally, flankSign, true, slot);
+      const dest = applyCrowd(stand, body, action, slot, hint);
+      const gap = Math.hypot(dest.x - body.x, dest.y - body.y);
+      return { x: dest.x, y: dest.y, halt: gap < 28, ...aimTo(ally.x, ally.y) };
+    }
     const dest = applyCrowd(idleAnchor(body, now, slot, hint), body, action, slot, hint);
     const gap = Math.hypot(dest.x - body.x, dest.y - body.y);
     const aim = aimTo(dest.x, dest.y);
@@ -339,6 +348,12 @@ export const moveGoal = (
   }
 
   if (action === 'wait_for_opening' || action === 'hold_position') {
+    if (hint?.ultKind === 'heal' && ally) {
+      const stand = protectStand(body, ally, target ?? ally, flankSign, true, slot);
+      const aim = target ? aimTo(target.x, target.y) : aimTo(ally.x, ally.y);
+      const standGap = Math.hypot(stand.x - body.x, stand.y - body.y);
+      return finish({ x: stand.x, y: stand.y, halt: standGap < 22, ...aim });
+    }
     const nx = toX / gap;
     const ny = toY / gap;
     const radius = range + 16;
@@ -367,9 +382,16 @@ export const moveGoal = (
     const side = flankSign >= 0 ? 1 : -1;
     const nx = toX / gap;
     const ny = toY / gap;
-    const back = ranged && gap < range * 0.7 ? range * 1.02 : range;
-    const gx = target.x - nx * back + -ny * (62 + (hint?.clusterRisk ?? 0) * 24) * side;
-    const gy = target.y - ny * back + nx * (62 + (hint?.clusterRisk ?? 0) * 24) * side;
+    const transformSpace = hint?.ultKind === 'transform' && hint.ultDecision !== 'use';
+    const back =
+      transformSpace && gap < range * 1.35
+        ? range * 1.28
+        : ranged && gap < range * 0.7
+          ? range * 1.02
+          : range;
+    const lat = 62 + (hint?.clusterRisk ?? 0) * 24 + (transformSpace ? 28 : 0);
+    const gx = target.x - nx * back + -ny * lat * side;
+    const gy = target.y - ny * back + nx * lat * side;
     const aim = aimTo(target.x, target.y);
     return finish({ x: gx, y: gy, halt: false, ...aim });
   }

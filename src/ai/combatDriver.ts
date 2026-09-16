@@ -275,14 +275,20 @@ export class CombatDriver {
       return false;
     }
     const p = situation.personality;
-    if (rng() < p.abilityConservation * 0.1) {
+    const ultState = abilities.slotState('ultimate', now);
+    const ultReady = ultState.ready && !ultState.consumed;
+    const pendingUlt = ultReady ? evaluateUltimate(ultState.def, situation) : undefined;
+    if (rng() < p.abilityConservation * 0.1 && pendingUlt?.decision !== 'use') {
       this.nextAbilityAt = now + 240 + rng() * 180;
+      if (pendingUlt) {
+        mind.noteUltDecision(pendingUlt.decision, pendingUlt.reason, pendingUlt.current, pendingUlt.future);
+      }
       return false;
     }
     let bestSlot: AbilitySlot | undefined;
     let bestScore = 18;
     let skippedUlt = false;
-    let ultRead: ReturnType<typeof evaluateUltimate> | undefined;
+    let ultRead = pendingUlt;
     for (const slot of SLOTS) {
       const state = abilities.slotState(slot, now);
       if (!state.ready || state.consumed) {
@@ -294,7 +300,7 @@ export class CombatDriver {
         const bar = 22 + situation.personality.abilityConservation * 12;
         if (ultRead.decision !== 'use' || score < bar) {
           skippedUlt = true;
-          mind.noteUltDecision(true, ultRead.reason, ultRead.current, ultRead.future);
+          mind.noteUltDecision(ultRead.decision, ultRead.reason, ultRead.current, ultRead.future);
           continue;
         }
       }
@@ -313,7 +319,7 @@ export class CombatDriver {
     if (bestSlot === 'ultimate') {
       mind.noteUltSaved(false);
       if (ultRead) {
-        mind.noteUltDecision(false, ultRead.reason, ultRead.current, ultRead.future);
+        mind.noteUltDecision('use', ultRead.reason, ultRead.current, ultRead.future);
       }
     }
     const def = abilities.slotState(bestSlot, now).def;

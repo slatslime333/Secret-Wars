@@ -20,6 +20,7 @@ import {
   threatZoneCost,
 } from './fightRead';
 import { clusterRiskOf, occupancyOf } from './spacing';
+import { guessEnemyUlt } from './kitTactics';
 import { assessTeam, biasAction, type TeamIntel } from './teamIntel';
 import { assessWar, isAoeFarmer, minionPackSize, objectiveScoreValue, warBiasAction } from './warSense';
 import { applyDemonBias } from './demonSense';
@@ -1551,18 +1552,45 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       enemies[0]?.id ?? -1,
     );
   }
-  const localHeroes = enemies.filter(
-    (enemy) => enemy.kind === 'hero' && enemy.visible && dist(self, enemy) < 210,
-  ).length;
-  if (kind === 'hero' && localHeroes >= 3 && occupancy > 0.2) {
-    count = write(
-      out,
-      count,
-      'reposition',
-      tune('reposition', 12 + occupancy * 10 + personality.caution * 8),
-      'predicted ult zone',
-      enemies[0]?.id ?? -1,
+  const ultGuess = kind === 'hero' ? guessEnemyUlt(situation) : undefined;
+  if (ultGuess && (ultGuess.likely || ultGuess.casting)) {
+    const inZone = Math.hypot(self.x - ultGuess.x, self.y - ultGuess.y) < ultGuess.radius + 18;
+    if (inZone) {
+      count = write(
+        out,
+        count,
+        'reposition',
+        tune('reposition', 12 + ultGuess.pressure * 16 + occupancy * 12 + personality.caution * 8),
+        ultGuess.casting ? 'enemy ult windup' : 'predicted ult zone',
+        enemies[0]?.id ?? -1,
+      );
+    }
+  }
+  const transformKit =
+    self.heroId === 'shadow' || (self.heroId === 'demon' && self.demonForm !== 'big' && self.demonForm !== 'bat');
+  if (kind === 'hero' && transformKit) {
+    const nearestHero = enemies.find((enemy) => enemy.kind === 'hero' && enemy.visible);
+    const nearestD = nearestHero ? dist(self, nearestHero) : 999;
+    const cover = Boolean(situation.environment?.cover || situation.environment?.wall || situation.environment?.building);
+    if (nearestD < 170 && nearestHero) {
+      let repo = 12 + personality.caution * 8 + (cover ? 8 : 0);
+      if (nearestHero.aimX * (self.x - nearestHero.x) + nearestHero.aimY * (self.y - nearestHero.y) > 0) {
+        repo += 6;
+      }
+      count = write(out, count, 'reposition', tune('reposition', repo), cover ? 'cover to transform' : 'space to transform', nearestHero.id);
+    }
+  }
+  if (kind === 'hero' && (self.heroId === 'mender' || kit?.stance === 'support')) {
+    const injured = allies.filter(
+      (ally) => ally.kind === 'hero' && ally.hpRatio < 0.7 && dist(self, ally) < 230,
     );
+    if (injured.length >= 2) {
+      const focus = injured.reduce((best, ally) => (ally.hpRatio < best.hpRatio ? ally : best), injured[0]);
+      let hold = 12 + injured.length * 4 + personality.protectionInstinct * 6;
+      hold -= occupancy * 10;
+      count = write(out, count, 'hold_position', tune('hold_position', hold), 'heal radius', -1, focus.id);
+      count = write(out, count, 'protect_ally', tune('protect_ally', hold - 2), 'heal radius', enemies[0]?.id ?? -1, focus.id);
+    }
   }
 
   if (kind === 'hero') {

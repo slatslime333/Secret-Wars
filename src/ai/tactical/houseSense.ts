@@ -185,6 +185,14 @@ export const poiForIntent = (
     return { x: env.crate.x, y: env.crate.y, halt: gap < 26 };
   }
 
+  if (
+    (reason.includes('cover to transform') || reason.includes('use cover') || reason.includes('space to transform')) &&
+    env.cover
+  ) {
+    const gap = dist(self.x, self.y, env.cover.x, env.cover.y);
+    return { x: env.cover.x, y: env.cover.y, halt: gap < 28 };
+  }
+
   const houses = env.houses ?? [];
   const houseRelated =
     reason.includes('house') || reason.includes('building') || Boolean(env.inside);

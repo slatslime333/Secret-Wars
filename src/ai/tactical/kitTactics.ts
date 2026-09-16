@@ -2,6 +2,7 @@ import { defHasAllySupport, type AbilityDef, type AbilityRole, type AbilitySlot,
 import { scoreSupportAbility } from './supportSense';
 import { scoreDemonAbility } from './demonSense';
 import { mobilityLockOf } from './fightRead';
+import { looksLikeWideHitter } from './spacing';
 import type { CombatantView, Situation } from './types';
 
 const dist = (a: CombatantView, b: CombatantView): number => Math.hypot(a.x - b.x, a.y - b.y);
@@ -98,6 +99,91 @@ const allyCastingNear = (self: CombatantView, allies: CombatantView[]): boolean 
       ((ally.controlLockLeftMs ?? 0) > 90 || ally.demonForm === 'transforming'),
   );
 
+export type UltGuess = {
+  pressure: number;
+  likely: boolean;
+  unlikely: boolean;
+  casting: boolean;
+  reason: string;
+  x: number;
+  y: number;
+  radius: number;
+};
+
+/**
+ * Visible-only guess that an enemy may spend an ultimate near us.
+ * Does not read hidden cooldowns or abilityReady — surrounded, windup,
+ * and grouping are the tells. Isolated dying enemies look unlikely.
+ */
+export const guessEnemyUlt = (situation: Situation): UltGuess => {
+  const { self, allies, enemies, personality } = situation;
+  const heroes = enemies.filter((unit) => unit.kind === 'hero' && unit.visible);
+  let best = 0;
+  let reason = 'no tell';
+  let x = self.x;
+  let y = self.y;
+  let radius = 160;
+  let casting = false;
+  for (const enemy of heroes) {
+    const ourPress =
+      allies.filter((ally) => ally.kind === 'hero' && dist(ally, enemy) < 150).length +
+      (dist(self, enemy) < 150 ? 1 : 0);
+    const theirFriends = heroes.filter((other) => other !== enemy && dist(other, enemy) < 150).length;
+    const d = dist(self, enemy);
+    const windup = (enemy.controlLockLeftMs ?? 0) > 90 || enemy.demonForm === 'transforming';
+    if (windup) {
+      casting = true;
+      const p = d < 210 ? 0.84 : 0.42;
+      if (p > best) {
+        best = p;
+        reason = 'enemy windup';
+        x = enemy.x;
+        y = enemy.y;
+        radius = Math.max(150, enemy.attackRange * 1.25);
+      }
+    }
+    const isolatedDying = ourPress <= 1 && theirFriends === 0 && enemy.hpRatio < 0.28;
+    if (isolatedDying) {
+      continue;
+    }
+    const surrounded = ourPress >= 2 && enemy.hpRatio > 0.38;
+    const groupedFight = theirFriends >= 1 && ourPress >= 1 && d < 200;
+    const wide = looksLikeWideHitter(enemy);
+    let chance = 0;
+    if (surrounded) {
+      chance += 0.4 + (wide ? 0.18 : 0.08);
+    }
+    if (groupedFight && ourPress >= 2) {
+      chance += 0.18;
+    }
+    if (enemy.hpRatio < 0.22) {
+      chance *= 0.4;
+    }
+    if (d > 280) {
+      chance *= 0.45;
+    }
+    chance += (0.5 - personality.reactionQuality) * 0.1;
+    chance += personality.caution * 0.04;
+    if (chance > best) {
+      best = chance;
+      reason = surrounded ? 'they look ready to ult' : groupedFight ? 'grouped fight' : 'possible ult';
+      x = enemy.x;
+      y = enemy.y;
+      radius = wide ? enemy.attackRange * 1.28 + 36 : 150;
+    }
+  }
+  return {
+    pressure: clamp(best, 0, 1),
+    likely: best >= 0.48,
+    unlikely: best < 0.22 && !casting,
+    casting,
+    reason,
+    x,
+    y,
+    radius,
+  };
+};
+
 const watchingEnemies = (self: CombatantView, enemies: CombatantView[], radius: number): number => {
   let n = 0;
   for (const enemy of enemies) {
@@ -143,6 +229,7 @@ export const evaluateUltimate = (def: AbilityDef, situation: Situation): UltRead
   const hp = self.hpRatio;
   const conservation = personality.abilityConservation;
   const chaining = allyCastingNear(self, allies);
+  const guess = guessEnemyUlt(situation);
   const objUrgent = (situation.objective?.urgency ?? 0) >= 0.62;
   const late = (situation.remainingMs ?? 999_000) <= 40_000;
   let future = 20 + conservation * 16 + (kit?.ultSaveUntilFoes ?? 2) * 2;
@@ -277,6 +364,37 @@ export const evaluateUltimate = (def: AbilityDef, situation: Situation): UltRead
     } else {
       reason = 'save utility';
       decision = 'save';
+    }
+  }
+
+  const inGuessZone = Math.hypot(self.x - guess.x, self.y - guess.y) < guess.radius + 12;
+  if (guess.casting && inGuessZone && kind !== 'heal') {
+    current -= 10 + personality.caution * 6;
+    if (decision === 'use' && personality.caution >= personality.opportunism) {
+      decision = 'reposition';
+      reason = 'inside enemy ult windup';
+    }
+  } else if (guess.casting && !inGuessZone && kind === 'attack' && stay > 0.42) {
+    current += 8 + personality.opportunism * 4;
+    if (decision !== 'use' && current > future - 2) {
+      decision = 'use';
+      reason = 'they spent, window is safer';
+    }
+  } else if (guess.likely && inGuessZone && kind === 'transform') {
+    current -= 8;
+    if (decision === 'use') {
+      decision = 'reposition';
+      reason = 'wait out their ult chance';
+    }
+  } else if (guess.likely && inGuessZone && kind === 'attack') {
+    if (personality.opportunism > 0.64 && stay > 0.52 && current > 26) {
+      current += 6;
+      reason = 'deny their window';
+      decision = 'use';
+    } else if (decision === 'use' && personality.caution > 0.52) {
+      decision = 'wait';
+      reason = 'bait their ult first';
+      current -= 6;
     }
   }
 

@@ -113,7 +113,7 @@ export class TacticalMind {
   private director?: GamePlanController;
   private readonly teamBuf: UnitFact[] = [];
   private combatNote?: string;
-  private ultNote?: { saved: boolean; reason: string; current: number; future: number };
+  private ultNote?: { decision: 'use' | 'save' | 'wait' | 'reposition'; reason: string; current: number; future: number };
 
   constructor(kind: TacticalKind, seed: string, homeX: number, homeY: number) {
     this.kind = kind;
@@ -216,6 +216,15 @@ export class TacticalMind {
       mates,
       clusterRisk,
       threatReach: focus && focus.kind === 'hero' ? pocketRadius(focus) : undefined,
+      ultDecision: this.ultNote?.decision,
+      ultKind:
+        self.heroId === 'shadow' || (self.heroId === 'demon' && self.demonForm !== 'big' && self.demonForm !== 'bat')
+          ? 'transform'
+          : self.heroId === 'mender' || kit?.stance === 'support'
+            ? 'heal'
+            : kit?.stance === 'ranged'
+              ? 'attack'
+              : undefined,
       objective: this.situation.objective
         ? {
             kind: this.situation.objective.kind,
@@ -246,9 +255,9 @@ export class TacticalMind {
     this.director?.markUltSaved(saved);
   }
 
-  noteUltDecision(saved: boolean, reason: string, current = 0, future = 0): void {
-    this.ultNote = { saved, reason, current, future };
-    this.director?.markUltSaved(saved);
+  noteUltDecision(decision: 'use' | 'save' | 'wait' | 'reposition', reason: string, current = 0, future = 0): void {
+    this.ultNote = { decision, reason, current, future };
+    this.director?.markUltSaved(decision !== 'use');
   }
 
   noteCombat(note: string): void {
@@ -409,7 +418,7 @@ export class TacticalMind {
       objectiveValue: obj ? levelOf(obj.urgency) : 'Low',
       positionValue: occupancy > 0.4 ? 'Low' : occupancy > 0.22 ? 'Medium' : 'High',
       desiredSpacing: `${Math.round((this.kit?.stance === 'ranged' || this.kit?.stance === 'support' ? 70 : 48) + occupancy * 40)}`,
-      ultDecision: this.ultNote ? (this.ultNote.saved ? 'SAVE' : 'USE') : this.director?.savedUlt ? 'SAVE' : undefined,
+      ultDecision: this.ultNote ? this.ultNote.decision.toUpperCase() : this.director?.savedUlt ? 'SAVE' : undefined,
       ultReason: this.ultNote
         ? `${this.ultNote.reason}  now ${Math.round(this.ultNote.current)}  later ${Math.round(this.ultNote.future)}`
         : undefined,

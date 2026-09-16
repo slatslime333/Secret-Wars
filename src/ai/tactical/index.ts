@@ -1,4 +1,5 @@
 export { TACTIC } from './constants';
+export { scoreKitSlot, evaluateUltimate, guessEnemyUlt, classifyUlt } from './kitTactics';
 export { TacticalField } from './field';
 export { TacticalMind } from './mind';
 export { TacticalOverlay } from './overlay';

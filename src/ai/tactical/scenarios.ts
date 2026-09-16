@@ -12,7 +12,7 @@ import { ROPE } from '../../config/rope';
 import { COLE } from '../../config/cole';
 import { MENDER } from '../../config/mender';
 import { assessSupport } from './supportSense';
-import { scoreKitSlot, evaluateUltimate } from './kitTactics';
+import { scoreKitSlot, evaluateUltimate, guessEnemyUlt } from './kitTactics';
 import { pickHealMinion, pickRetreatGoal } from './retreat';
 import { evaluateOffensiveDash } from './dashOffense';
 import { poiForIntent } from './houseSense';
@@ -2288,6 +2288,78 @@ const scenarioDJ = (): ScenarioResult => {
   return { name: 'DJ packed team vs grouped foes prefers spacing', ok, detail: `best=${best(rows)} top=${rows.slice(0, 4).map((row) => row.action).join(',')}` };
 };
 
+const scenarioDK = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 500, y: 750, hpRatio: 0.8 });
+  const allies = [
+    unit({ id: 2, team: 'alpha', x: 508, y: 742, hpRatio: 0.78, attacking: true }),
+    unit({ id: 3, team: 'alpha', x: 512, y: 760, hpRatio: 0.76, attacking: true }),
+  ];
+  const enemies = [
+    unit({
+      id: 10,
+      team: 'bravo',
+      x: 540,
+      y: 750,
+      hpRatio: 0.82,
+      heroId: 'witch',
+      role: 'ranged-tank',
+      attackRange: 220,
+      attacking: true,
+    }),
+  ];
+  const sit = situationOf(self, allies, enemies);
+  const guess = guessEnemyUlt(sit);
+  const rows = rankActions(sit);
+  const ok = guess.likely && among(rows, ['reposition', 'hold_position', 'wait_for_opening', 'flank'], 3);
+  return { name: 'DK surrounded enemy predicts ult and spacing', ok, detail: `guess=${guess.reason}/${guess.pressure.toFixed(2)} best=${best(rows)}` };
+};
+
+const scenarioDL = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.85 });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 460, y: 750, hpRatio: 0.12, recentlyHit: true })];
+  const guess = guessEnemyUlt(situationOf(self, [], enemies));
+  const ok = guess.unlikely && !guess.likely && !guess.casting;
+  return { name: 'DL isolated sliver is not assumed to ultimate', ok, detail: `likely=${guess.likely} pressure=${guess.pressure.toFixed(2)} ${guess.reason}` };
+};
+
+const scenarioDM = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, heroId: 'mender', role: 'support', attackRange: 240, hpRatio: 0.9 });
+  const allies = [
+    unit({ id: 2, team: 'alpha', x: 470, y: 740, hpRatio: 0.28, recentlyHit: true }),
+    unit({ id: 3, team: 'alpha', x: 480, y: 760, hpRatio: 0.34, recentlyHit: true }),
+    unit({ id: 4, team: 'alpha', x: 455, y: 770, hpRatio: 0.4, recentlyHit: true }),
+  ];
+  const kit = kitProfileOf('mender', 'support', 240);
+  const rows = rankActions(situationOf(self, allies, [unit({ id: 10, team: 'bravo', x: 560, y: 750, attacking: true })], { kit, hasAllySupport: true }));
+  const cover = Math.max(scoreOf(rows, 'protect_ally'), scoreOf(rows, 'hold_position'), scoreOf(rows, 'assist_ally'));
+  const ok = cover > scoreOf(rows, 'farm_minions') && among(rows, ['protect_ally', 'hold_position', 'assist_ally'], 3);
+  return { name: 'DM Mender holds heal radius near injured allies', ok, detail: `best=${best(rows)} cover=${cover.toFixed(1)}` };
+};
+
+const scenarioDN = (): ScenarioResult => {
+  const storm = mockAbility('cole-thunderstorm', 'ultimate', { roles: ['aoe', 'burst', 'damage', 'space', 'cc'], range: 180 });
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, heroId: 'cole', hpRatio: 0.8 });
+  const windup = unit({
+    id: 10,
+    team: 'bravo',
+    x: 430,
+    y: 750,
+    hpRatio: 0.7,
+    heroId: 'witch',
+    role: 'ranged-tank',
+    attackRange: 220,
+    controlLockLeftMs: 500,
+    attacking: true,
+  });
+  const inside = evaluateUltimate(storm, situationOf(self, [], [windup]));
+  const outside = evaluateUltimate(
+    storm,
+    situationOf(unit({ id: 1, team: 'alpha', x: 220, y: 750, heroId: 'cole', hpRatio: 0.8 }), [], [windup]),
+  );
+  const ok = inside.decision !== 'use' || outside.current >= inside.current;
+  return { name: 'DN attack ult respects enemy windup vs safer range', ok, detail: `inside=${inside.decision}/${inside.reason} outside=${outside.decision}/${outside.reason}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -2403,4 +2475,8 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioDH(),
   scenarioDI(),
   scenarioDJ(),
+  scenarioDK(),
+  scenarioDL(),
+  scenarioDM(),
+  scenarioDN(),
 ];
