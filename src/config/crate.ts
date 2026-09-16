@@ -19,6 +19,8 @@ export const CRATE = {
   shieldMs: 6_000,
   hitFlashMs: 70,
   shardCount: 8,
+  /** Stay gone long enough that crate looping cannot beat fighting. */
+  respawnMs: 28_000,
 } as const;
 
 export const crateXpAmount = (): number => Math.min(CRATE.xp, MATCH.xp.sword);

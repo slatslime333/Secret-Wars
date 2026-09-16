@@ -11,6 +11,7 @@ import {
   drawTree,
   drawVehicle,
   drawWall,
+  drawBarrel,
 } from './drawAssets';
 import type { MapObstacle } from './types';
 
@@ -26,6 +27,7 @@ const KEYS: Record<string, string> = {
   'crate:pair': 'sw-crate-pair-v4',
   'building:house': 'sw-building-house-v4',
   'building:stub': 'sw-building-stub-v4',
+  'building:shop': 'sw-building-house-v4',
   'vehicle:truck': 'sw-vehicle-truck-v4',
   'vehicle:car': 'sw-vehicle-car-v4',
   'barricade:wood': 'sw-barricade-wood-v4',
@@ -36,6 +38,8 @@ const KEYS: Record<string, string> = {
   'rubble:chunk': 'sw-rubble-chunk-v4',
   'fence:wood': 'sw-fence-wood-v4',
   'fence:wire': 'sw-fence-wire-v4',
+  'barrel:drum': 'sw-barrel-drum-v1',
+  'barrel:fuel': 'sw-barrel-fuel-v1',
   'fire:small': 'sw-fire-small-v4',
 };
 
@@ -71,6 +75,7 @@ const drawers: Record<string, (ctx: CanvasRenderingContext2D, variant: string, w
   sandbag: drawSandbag,
   rubble: drawRubble,
   fence: drawFence,
+  barrel: drawBarrel,
   fire: drawFire,
 };
 

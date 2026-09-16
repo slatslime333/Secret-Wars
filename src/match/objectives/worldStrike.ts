@@ -5,7 +5,10 @@ export type WorldStrikeEvent = {
   now: number;
   damage: number;
   reach: number;
-  kind: 'melee' | 'ability';
+  kind: 'melee' | 'ability' | 'dash' | 'explosion';
+  dirX?: number;
+  dirY?: number;
+  impulse?: number;
 };
 
 type Listener = (event: WorldStrikeEvent) => void;

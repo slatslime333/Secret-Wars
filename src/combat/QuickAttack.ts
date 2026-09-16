@@ -657,6 +657,9 @@ export class QuickAttack {
       reach:
         (attacker.heroId === 'cole' ? COLE_ATTACK.range : attacker.stats.attackRange) + COMBAT.hitForgiveness,
       kind: 'melee',
+      dirX: attacker.aim.x,
+      dirY: attacker.aim.y,
+      impulse: pending.step >= 2 ? 1.35 : 1,
     });
 
     if (attacker.heroId === 'cole') {

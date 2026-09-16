@@ -12,13 +12,20 @@ export type ObstacleKind =
   | 'barricade'
   | 'sandbag'
   | 'rubble'
-  | 'fence';
+  | 'fence'
+  | 'barrel';
+
+/** How the live city treats this prop during combat. */
+export type PhysicsClass = 'static' | 'breakable' | 'lightweight' | 'explosive' | 'temporary';
+
+export type DamageState = 'intact' | 'damaged' | 'cracked' | 'destroyed' | 'knocked';
 
 export type WallVariant = 'stone' | 'ruin' | 'wood';
 export type TreeVariant = 'small' | 'medium' | 'broad';
 export type CrateVariant = 'single' | 'stack' | 'pair';
 export type VehicleVariant = 'truck' | 'car';
-export type BuildingVariant = 'house' | 'stub';
+export type BuildingVariant = 'house' | 'stub' | 'shop';
+export type BarrelVariant = 'drum' | 'fuel';
 export type BarricadeVariant = 'wood' | 'metal';
 export type SandbagVariant = 'line' | 'corner';
 export type RubbleVariant = 'pile' | 'chunk';
@@ -65,6 +72,12 @@ export type MapObstacle = {
   destructible: boolean;
   hierarchy: EnvHierarchy;
   hp?: number;
+  maxHp?: number;
+  physicsClass?: PhysicsClass;
+  damageState?: DamageState;
+  explosive?: boolean;
+  enterable?: boolean;
+  interior?: Rect;
 };
 
 export type DecorationKind =

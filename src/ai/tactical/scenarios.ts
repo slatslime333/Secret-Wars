@@ -1875,6 +1875,43 @@ const scenarioCN = (): ScenarioResult => {
   return { name: 'CN shadow spends a dash to convert a slowed window', ok, detail: `dash=${go?.kind ?? 'none'}` };
 };
 
+const crateFact = (x: number, y: number) => ({
+  id: 'crate-1',
+  kind: 'crate' as const,
+  physics: 'breakable' as const,
+  state: 'intact' as const,
+  x,
+  y,
+  hpRatio: 1,
+  explosive: false,
+  enterable: false,
+});
+
+const scenarioCO = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.7 });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 430, y: 750, hpRatio: 0.2, recentlyHit: true })];
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      environment: { nearby: [crateFact(440, 750)], crate: crateFact(440, 750) },
+    }),
+  );
+  const ok = ['attack', 'finish_target', 'advance'].includes(best(rows));
+  return { name: 'CO fight beats a crate at 20% HP', ok, detail: `best=${best(rows)}` };
+};
+
+const scenarioCP = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.88, xpRatio: 0.85, level: 2 });
+  const rows = rankActions(
+    situationOf(self, [], [], {
+      personality: { ...NEUTRAL_PERSONALITY, opportunism: 0.8 },
+      environment: { nearby: [crateFact(430, 750)], crate: crateFact(430, 750) },
+    }),
+  );
+  const crateScore = Math.max(scoreOf(rows, 'reposition'), scoreOf(rows, 'farm_minions'));
+  const ok = crateScore > 6;
+  return { name: 'CP safe crate is worth considering', ok, detail: `crate=${crateScore.toFixed(1)} best=${best(rows)}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -1968,4 +2005,6 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioCL(),
   scenarioCM(),
   scenarioCN(),
+  scenarioCO(),
+  scenarioCP(),
 ];

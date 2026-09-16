@@ -1,4 +1,6 @@
+import Phaser from 'phaser';
 import type { NinjaBody } from '../../heroes/NinjaBody';
+import { battlefieldOf } from '../../map';
 import { TACTIC } from './constants';
 import {
   byId,
@@ -497,7 +499,9 @@ export class TacticalMind {
     this.situation.teamMomentum = score.momentum;
     this.situation.remainingMs = score.remainingMs;
     this.situation.elapsedMs = score.elapsedMs;
-    this.lastAllyCount = allyHeroes.length;
+    this.situation.environment = scene
+      ? battlefieldOf(scene as Phaser.Scene)?.environment.snapshot(selfFact.x, selfFact.y, this.situation.vision)
+      : undefined;
   }
 
   private remember(now: number, fact: UnitFact): void {

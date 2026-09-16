@@ -218,6 +218,17 @@ export const drawFire = (ctx: CanvasRenderingContext2D, _variant: string, w: num
   fillPx(ctx, ENV.paper, 8, 6, 3, 4);
 };
 
+export const drawBarrel = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
+  const fuel = variant === 'fuel';
+  fillPx(ctx, ENV.ink, 2, 2, w - 4, h - 4);
+  fillPx(ctx, fuel ? ENV.rust : ENV.metal, 3, 4, w - 6, h - 8);
+  fillPx(ctx, fuel ? ENV.rustLite : ENV.metalLite, 5, 6, w - 10, 5);
+  fillPx(ctx, ENV.inkSoft, 4, 12, w - 8, 3);
+  fillPx(ctx, ENV.inkSoft, 4, h - 14, w - 8, 3);
+  fillPx(ctx, fuel ? ENV.fire : ENV.oliveDark, 6, Math.floor(h / 2) - 3, w - 12, 7);
+  fillPx(ctx, ENV.paper, 8, 8, 4, 3);
+};
+
 export const ASSET_SIZE: Record<string, { w: number; h: number }> = {
   'wall:stone': { w: 124, h: 28 },
   'wall:ruin': { w: 90, h: 30 },
@@ -230,6 +241,7 @@ export const ASSET_SIZE: Record<string, { w: number; h: number }> = {
   'crate:pair': { w: 78, h: 36 },
   'building:house': { w: 120, h: 108 },
   'building:stub': { w: 120, h: 108 },
+  'building:shop': { w: 120, h: 108 },
   'vehicle:truck': { w: 156, h: 74 },
   'vehicle:car': { w: 118, h: 62 },
   'barricade:wood': { w: 82, h: 30 },
@@ -240,5 +252,7 @@ export const ASSET_SIZE: Record<string, { w: number; h: number }> = {
   'rubble:chunk': { w: 32, h: 24 },
   'fence:wood': { w: 92, h: 34 },
   'fence:wire': { w: 92, h: 34 },
+  'barrel:drum': { w: 26, h: 34 },
+  'barrel:fuel': { w: 26, h: 34 },
   'fire:small': { w: 14, h: 18 },
 };

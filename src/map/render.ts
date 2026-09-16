@@ -6,6 +6,7 @@ import type { MapLayout } from './types';
 
 export type MapView = {
   crateSprites: Map<string, Phaser.GameObjects.Image>;
+  sprites: Map<string, Phaser.GameObjects.Image>;
   destroy: () => void;
 };
 
@@ -13,7 +14,7 @@ const depthFor = (kind: string, hierarchy: string): number => {
   if (kind === 'building') {
     return 6;
   }
-  if (kind === 'vehicle' || kind === 'tree') {
+  if (kind === 'vehicle' || kind === 'tree' || kind === 'barrel') {
     return 5;
   }
   if (hierarchy === 'cover' || kind === 'crate' || kind === 'barricade' || kind === 'sandbag') {
@@ -45,6 +46,7 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
   const pads = drawSpawnPads(scene, layout);
   const sprites: Phaser.GameObjects.GameObject[] = [];
   const crateSprites = new Map<string, Phaser.GameObjects.Image>();
+  const byId = new Map<string, Phaser.GameObjects.Image>();
   const fires: Phaser.GameObjects.Image[] = [];
 
   for (const obs of layout.obstacles) {
@@ -62,6 +64,7 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
       image.setRotation(Math.PI / 2);
       image.setDisplaySize(Math.max(22, obs.collision.h), Math.max(18, obs.collision.w));
     }
+    byId.set(obs.id, image);
     if (obs.kind === 'crate') {
       crateSprites.set(obs.id, image);
     }
@@ -90,6 +93,7 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
 
   return {
     crateSprites,
+    sprites: byId,
     destroy: () => {
       ground.destroy();
       pads.destroy();
@@ -97,6 +101,7 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
         sprite.destroy();
       }
       crateSprites.clear();
+      byId.clear();
     },
   };
 };

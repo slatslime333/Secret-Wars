@@ -4,6 +4,7 @@ export { generateBattlefield, generateFromSeed } from './generate';
 export { MapQuery } from './query';
 export { SeededRNG } from './seed';
 export { MapWorld } from './world';
+export { EnvironmentWorld } from './EnvironmentWorld';
 export {
   freshMatchSeed,
   nextPlayTestSeed,

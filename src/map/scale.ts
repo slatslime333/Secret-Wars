@@ -49,6 +49,7 @@ export const PROP = {
   buildingWall: spec(108, 22, 112, 28, 3),
   buildingStub: spec(22, 64, 28, 72, 4),
   sign: spec(10, 12, 18, 40, 14),
+  barrel: spec(22, 28, 26, 34, 3),
 } as const;
 
 export const ROAD = {

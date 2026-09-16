@@ -35,6 +35,11 @@ export const runMapChecks = (): CheckResult[] => {
   let fallbacks = 0;
   let crateMin = 99;
   let crateMax = 0;
+  let barrelMax = 0;
+  let enterableMin = 99;
+  let enterableMax = 0;
+  let wallsLive = false;
+  let treesLive = false;
   let roadsOk = true;
   let objectivesOk = true;
   let compact = true;
@@ -48,6 +53,13 @@ export const runMapChecks = (): CheckResult[] => {
     const crates = result.layout.obstacles.filter((obs) => obs.kind === 'crate');
     crateMin = Math.min(crateMin, crates.length);
     crateMax = Math.max(crateMax, crates.length);
+    const barrels = result.layout.obstacles.filter((obs) => obs.kind === 'barrel');
+    barrelMax = Math.max(barrelMax, barrels.length);
+    const enterable = result.layout.obstacles.filter((obs) => obs.enterable).length;
+    enterableMin = Math.min(enterableMin, enterable);
+    enterableMax = Math.max(enterableMax, enterable);
+    wallsLive = wallsLive || result.layout.obstacles.some((obs) => obs.kind === 'wall' && obs.destructible);
+    treesLive = treesLive || result.layout.obstacles.some((obs) => obs.kind === 'tree' && obs.physicsClass === 'lightweight');
     if (result.layout.roads.patches.length < 8) {
       roadsOk = false;
     }
@@ -100,6 +112,21 @@ export const runMapChecks = (): CheckResult[] => {
     name: 'crates placed with structures',
     ok: crateMin >= 2 && crateMax <= 24,
     detail: `crates ${crateMin}-${crateMax}`,
+  });
+  results.push({
+    name: 'sparse explosive barrels',
+    ok: barrelMax >= 1 && barrelMax <= 8,
+    detail: `barrels<=${barrelMax}`,
+  });
+  results.push({
+    name: 'few enterable edge buildings',
+    ok: enterableMax >= 1 && enterableMax <= 3 && enterableMin >= 0,
+    detail: `enterable ${enterableMin}-${enterableMax}`,
+  });
+  results.push({
+    name: 'walls and trees can break',
+    ok: wallsLive && treesLive,
+    detail: `walls=${wallsLive} trees=${treesLive}`,
   });
   results.push({
     name: 'objectives stay clear',

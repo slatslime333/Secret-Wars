@@ -4,6 +4,7 @@ import { templateOf } from './chunks';
 import { generateRoads } from './roads';
 import { buildReservedZones, reservedBlocks, spawnZonesOf } from './reserved';
 import { visualForProp } from './scale';
+import { decorateObstacle } from './envProps';
 import { scatterFieldDetails } from './scatter';
 import { SeededRNG } from './seed';
 import type { ChunkKind, MapChunkInstance, MapDecoration, MapLayout, MapObstacle, MapRegionId, Rect } from './types';
@@ -62,21 +63,23 @@ export const buildFallbackLayout = (seed: number, attempt: number): MapLayout =>
           continue;
         }
         const visual = visualForProp(local.spec, cx, cy);
-        obstacles.push({
-          id: `fb-${col}-${row}-${n}`,
-          kind: local.kind,
-          variant: local.variant,
-          x: cx,
-          y: cy,
-          collision,
-          visual,
-          keepout: visual,
-          blocksMovement: true,
-          blocksProjectiles: local.kind !== 'fence',
-          blocksLos: local.kind === 'wall' || local.kind === 'vehicle' || local.kind === 'building',
-          destructible: local.kind === 'crate',
-          hierarchy: local.kind === 'vehicle' || local.kind === 'building' ? 'landmark' : 'cover',
-        });
+        obstacles.push(
+          decorateObstacle({
+            id: `fb-${col}-${row}-${n}`,
+            kind: local.kind,
+            variant: local.variant,
+            x: cx,
+            y: cy,
+            collision,
+            visual,
+            keepout: visual,
+            blocksMovement: true,
+            blocksProjectiles: local.kind !== 'fence',
+            blocksLos: local.kind === 'wall' || local.kind === 'vehicle' || local.kind === 'building',
+            destructible: local.kind === 'crate',
+            hierarchy: local.kind === 'vehicle' || local.kind === 'building' ? 'landmark' : 'cover',
+          }),
+        );
         n += 1;
       }
       for (const local of template.decorations) {
