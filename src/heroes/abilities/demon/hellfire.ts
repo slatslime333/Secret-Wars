@@ -8,7 +8,6 @@ import { AbilityContext, AbilityDef, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { DEMON_HELLFIRE } from './tunables';
 import { applyBurn } from './burnFx';
-import { grantDemonRage, demonRageFromAbilityDamage } from './form';
 import { distanceBetween } from '../geometry';
 import type { NinjaBody } from '../../NinjaBody';
 
@@ -107,7 +106,7 @@ const beginHellfire = (
           continue;
         }
         hitAt.set(enemy, tickNow);
-        const kind = resolveAbilityHit(
+        resolveAbilityHit(
           scene,
           tickNow,
           caster,
@@ -126,9 +125,6 @@ const beginHellfire = (
           },
           rivalBlock,
         );
-        if (kind === 'hit') {
-          grantDemonRage(caster, demonRageFromAbilityDamage(DEMON_HELLFIRE.tickDamage), enemy);
-        }
       }
       return true;
     },
@@ -174,7 +170,6 @@ const explodeHellfire = (
     );
     if (kind === 'hit') {
       applyBurn(enemy, now, 'hellfire', caster);
-      grantDemonRage(caster, demonRageFromAbilityDamage(DEMON_HELLFIRE.explodeDamage), enemy);
     }
   }
 };

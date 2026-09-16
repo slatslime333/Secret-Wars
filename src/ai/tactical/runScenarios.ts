@@ -15,13 +15,13 @@ import { DEMON, DEMON_BIG } from '../../config/demon';
 import { COLE, COLE_CONVERTED_RANGE } from '../../config/cole';
 import { DEATH } from '../../config/death';
 import { ROPE } from '../../config/rope';
-import { WITCH } from '../../config/witch';
+import { WITCH, WITCH_HIT_MARKER_LINE, WITCH_HIT_MARKER_RANGE, WITCH_LIGHT_RANGE_BASE } from '../../config/witch';
 import { SHADOW } from '../../config/shadow';
 import { DEMON_HELLFIRE, DEMON_HELL_BAT, DEMON_RAGE } from '../../heroes/abilities/demon/tunables';
 import { SHADOW_CLAW } from '../../heroes/abilities/shadow/tunables';
 import { NINJA_SMOKE } from '../../heroes/abilities/ninja/tunables';
 import { abilityDamage } from '../../config/ratings';
-import { MENDER_PULSE, MENDER_SOUL, MENDER_ANGEL, MENDER_WIND } from '../../heroes/abilities/mender/tunables';
+import { MENDER_HIT_MARKER_LINE, MENDER_PULSE, MENDER_SOUL, MENDER_ANGEL, MENDER_WIND } from '../../heroes/abilities/mender/tunables';
 import { NINJA_BASE_RANGE } from '../../config/ninja';
 import { runCombatFeedbackChecks } from '../../ui/combatFeedback/runChecks';
 import { runWarScoreChecks } from '../../match/score/runChecks';
@@ -293,11 +293,11 @@ for (const result of mapChecks) {
   console.log(`${mark}  ${result.name}  ${result.detail}`);
 }
 
-if (MENDER.ratings.damage !== 7 || MENDER.attackDamage !== 9) {
+if (MENDER.ratings.damage !== 8 || MENDER.attackDamage !== 9) {
   failed += 1;
   console.log(`FAIL  mender damage  rating=${MENDER.ratings.damage} dmg=${MENDER.attackDamage}`);
 } else {
-  console.log('ok  mender damage  rating 7 / hit 9');
+  console.log('ok  mender damage  rating 8 / hit 9');
 }
 if (MENDER.ratings.attackSpeed !== 80) {
   failed += 1;
@@ -372,7 +372,7 @@ if (MENDER_ANGEL.aimLength < MENDER_ANGEL.maxRange * 1.4) {
 
 if (
   DEMON.ratings.damage !== 9 ||
-  DEMON.ratings.attackSpeed !== 50 ||
+  DEMON.ratings.attackSpeed !== 48 ||
   DEMON.ratings.speed !== 60 ||
   DEMON.ratings.stamina !== 53
 ) {
@@ -381,7 +381,7 @@ if (
     `FAIL  demon ratings  dmg=${DEMON.ratings.damage} atk=${DEMON.ratings.attackSpeed} spd=${DEMON.ratings.speed} stam=${DEMON.ratings.stamina}`,
   );
 } else {
-  console.log('ok  demon ratings  damage 9 / attack 50 / speed 60 / stamina 53');
+  console.log('ok  demon ratings  damage 9 / attack 48 / speed 60 / stamina 53');
 }
 if (DEMON_HELL_BAT.maxDurationMs !== 20000 || DEMON_HELL_BAT.recastLockMs < 160) {
   failed += 1;
@@ -398,6 +398,18 @@ if (!DEMON_HELL_BAT.deferCooldown) {
   console.log('FAIL  hell bat cooldown starts on press');
 } else {
   console.log('ok  hell bat cooldown deferred until explode');
+}
+if (!DEMON_HELL_BAT.explodeOnContact) {
+  failed += 1;
+  console.log('FAIL  hell bat does not explode on contact');
+} else {
+  console.log('ok  hell bat  explodes on hero/minion contact or recast');
+}
+if (DEMON_HELLFIRE.explodeDamage !== 6) {
+  failed += 1;
+  console.log(`FAIL  hellfire blast  ${DEMON_HELLFIRE.explodeDamage}`);
+} else {
+  console.log('ok  hellfire blast  6 damage');
 }
 if (DEMON_HELLFIRE.radius !== Math.round(NINJA_SMOKE.radius * 0.65)) {
   failed += 1;
@@ -417,11 +429,11 @@ if (DEMON_RAGE.lockMs !== 1000 || DEMON_RAGE.durationMs !== 9000) {
 } else {
   console.log('ok  demon rage duration  1s lock then 9s');
 }
-if (DEMON_RAGE.abilityDamageToRage !== 0.2) {
+if (DEMON_RAGE.abilityDamageToRage !== 0) {
   failed += 1;
   console.log(`FAIL  demon rage convert  ${DEMON_RAGE.abilityDamageToRage}`);
 } else {
-  console.log('ok  demon ability damage  20% to rage');
+  console.log('ok  demon abilities  do not fill rage');
 }
 if (DEMON_RAGE.staminaOnActivate !== 0.2) {
   failed += 1;
@@ -449,9 +461,9 @@ if (COLE.ratings.attackSpeed !== 33 || COLE.ratings.speed !== 52) {
 }
 if (
   WITCH.ratings.health !== 64 ||
-  WITCH.ratings.damage !== 45 ||
+  WITCH.ratings.damage !== 65 ||
   WITCH.ratings.defense !== 59 ||
-  WITCH.ratings.attackSpeed !== 38 ||
+  WITCH.ratings.attackSpeed !== 42 ||
   WITCH.ratings.stamina !== 53
 ) {
   failed += 1;
@@ -459,7 +471,31 @@ if (
     `FAIL  witch ratings  hp=${WITCH.ratings.health} dmg=${WITCH.ratings.damage} def=${WITCH.ratings.defense} atk=${WITCH.ratings.attackSpeed} stam=${WITCH.ratings.stamina}`,
   );
 } else {
-  console.log('ok  witch ratings  health 64 / damage 45 / defense 59');
+  console.log('ok  witch ratings  health 64 / damage 65 / attack 42 / defense 59');
+}
+if (WITCH.attackRange !== Math.round(WITCH_LIGHT_RANGE_BASE * 1.15)) {
+  failed += 1;
+  console.log(`FAIL  witch light range  ${WITCH.attackRange}`);
+} else {
+  console.log('ok  witch light range  +15%');
+}
+if (WITCH_HIT_MARKER_RANGE !== Math.round(WITCH_LIGHT_RANGE_BASE * 1.6)) {
+  failed += 1;
+  console.log(`FAIL  witch hit marker  ${WITCH_HIT_MARKER_RANGE} vs cole-independent`);
+} else {
+  console.log('ok  witch hit marker  +60% separate from attack range');
+}
+if (WITCH_HIT_MARKER_LINE <= WITCH_HIT_MARKER_RANGE) {
+  failed += 1;
+  console.log(`FAIL  witch hit marker line  ${WITCH_HIT_MARKER_LINE} <= ring ${WITCH_HIT_MARKER_RANGE}`);
+} else {
+  console.log('ok  witch hit marker line  longer than the ring');
+}
+if (MENDER_HIT_MARKER_LINE <= MENDER.attackRange) {
+  failed += 1;
+  console.log(`FAIL  mender hit marker line  ${MENDER_HIT_MARKER_LINE}`);
+} else {
+  console.log('ok  mender hit marker line  longer than pulse range');
 }
 if (Math.abs(SHADOW_CLAW.damage - abilityDamage(64) * 2.7 * 0.9 * 0.77) > 0.001) {
   failed += 1;
@@ -498,7 +534,7 @@ if (SHADOW.ratings.damage !== 61 || SHADOW.ratings.defense !== 39) {
   console.log('ok  shadow ratings  damage 61 / defense 39');
 }
 if (
-  ROPE.ratings.damage !== 37 ||
+  ROPE.ratings.damage !== 39 ||
   ROPE.ratings.staminaRegen !== 70 ||
   ROPE.ratings.attackSpeed !== 69
 ) {
@@ -507,7 +543,7 @@ if (
     `FAIL  rope ratings  dmg=${ROPE.ratings.damage} regen=${ROPE.ratings.staminaRegen} atk=${ROPE.ratings.attackSpeed}`,
   );
 } else {
-  console.log('ok  rope ratings  damage 37 / stam regen 70 / attack 69');
+  console.log('ok  rope ratings  damage 39 / stam regen 70 / attack 69');
 }
 if (ROPE_SHOT.crippleMs !== 5000) {
   failed += 1;
@@ -515,17 +551,17 @@ if (ROPE_SHOT.crippleMs !== 5000) {
 } else {
   console.log('ok  rope light slow  5s');
 }
-if (Math.round(ROPE_GRAB.damage) !== 31) {
+if (Math.round(ROPE_GRAB.damage) !== 34) {
   failed += 1;
   console.log(`FAIL  rope grab damage  ${ROPE_GRAB.damage}`);
 } else {
-  console.log('ok  rope grab damage  31');
+  console.log('ok  rope grab damage  34');
 }
-if (Math.round(ROPE_PUNCH.damage) !== 26) {
+if (Math.round(ROPE_PUNCH.damage) !== 29) {
   failed += 1;
   console.log(`FAIL  mega punch damage  ${ROPE_PUNCH.damage}`);
 } else {
-  console.log('ok  mega punch damage  26');
+  console.log('ok  mega punch damage  29');
 }
 if (ROPE_SPRAY.shotsPerPulse !== 3) {
   failed += 1;

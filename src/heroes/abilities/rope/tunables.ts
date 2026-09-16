@@ -45,8 +45,8 @@ export const ROPE_GRAB = {
   slingMs: 160,
   hitSlowMul: 0.5,
   hitSlowMs: 2500,
-  damageRating: 76,
-  damage: abilityDamage(76),
+  damageRating: 82,
+  damage: abilityDamage(82),
 } as const;
 
 export const ROPE_PUNCH = {
@@ -55,8 +55,8 @@ export const ROPE_PUNCH = {
   impactAt: 280,
   /** Previous live punch, then 25% larger, and a full 360 burst. */
   radius: Math.round(DEATH_SMASH.radius * 0.86 * 1.25),
-  damageRating: 68,
-  damage: abilityDamage(68),
+  damageRating: 73,
+  damage: abilityDamage(73),
   knockback: 760,
   launchCap: 860,
   staminaDamage: 7,

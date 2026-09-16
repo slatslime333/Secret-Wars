@@ -90,6 +90,6 @@ export const resetDemonForm = (body: NinjaBody): void => {
   body.view.setScale(1);
 };
 
-/** 20% of ability damage converts into rage meter fill. */
+/** Lights convert into rage. Abilities do not. */
 export const demonRageFromAbilityDamage = (damage: number): number =>
   (Math.max(0, damage) * DEMON_RAGE.abilityDamageToRage) / ABILITY_DAMAGE_CURVE.at50;

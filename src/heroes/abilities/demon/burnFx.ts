@@ -70,7 +70,7 @@ export const tickBurn = (target: NinjaBody, now: number): void => {
   while (state.tickAt + state.tickMs <= now && state.tickAt + state.tickMs <= state.until) {
     state.tickAt += state.tickMs;
     target.takeDotDamage(state.damage, now, state.attacker);
-    if (state.attacker && !target.down) {
+    if (state.attacker && !target.down && state.kind === 'candle') {
       grantDemonRage(state.attacker, demonRageFromAbilityDamage(state.damage), target);
     }
     if (target.down) {

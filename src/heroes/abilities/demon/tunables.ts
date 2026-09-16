@@ -31,8 +31,8 @@ export const DEMON_HELLFIRE = {
   durationMs: 4000,
   throwSpeed: 640,
   candleRadius: 6,
-  explodeDamageRating: 46,
-  explodeDamage: abilityDamage(46),
+  explodeDamageRating: 6,
+  explodeDamage: 6,
   tickDamage: 3.2,
   tickMs: 500,
   knockbackMul: 1.15,
@@ -43,13 +43,14 @@ export const DEMON_HELL_BAT = {
   cooldownMs: 9000,
   launchDistance: 88,
   launchMs: 140,
-  /** Stay a bat until recast or this timeout — no contact explode. */
+  /** Stay a bat until recast, contact, or this timeout. */
   maxDurationMs: 20000,
   moveMul: 1.2,
   defenseMul: 1.35,
   minSpeedFrac: 0.72,
   /** Ignore a second E press that lands in the same swing as the start. */
   recastLockMs: 220,
+  explodeOnContact: true,
   radius: NINJA_SMOKE.radius,
   damageRating: 38,
   damage: abilityDamage(38),
@@ -70,8 +71,8 @@ export const DEMON_RAGE = {
   durationMs: 9000,
   /** Meter needs 35% more damage to fill. */
   fillCostMul: 1.35,
-  /** 20% of ability damage converts into rage, relative to the rating-50 ability hit. */
-  abilityDamageToRage: 0.20,
+  /** Abilities no longer fill rage. Lights still convert through grantDemonRage. */
+  abilityDamageToRage: 0,
   /** Restored when Big Demon form actually starts. */
   staminaOnActivate: 0.2,
   /** Applied when the 1s transform pause ends and Big form begins. */

@@ -14,7 +14,7 @@ export const DEMON_RATINGS = {
   damage: 9,
   defense: 30,
   speed: 60,
-  attackSpeed: 50,
+  attackSpeed: 48,
   attackRange: 82,
   knockback: 28,
 } as const satisfies CoreRatings;
