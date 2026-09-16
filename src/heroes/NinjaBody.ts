@@ -13,6 +13,7 @@ import { drawColeElectricity } from './drawCole';
 import type { HeroDrawFn, HeroDrawOptions } from './heroDraw';
 import { applyWitchSprite, createWitchSprite, WITCH_FEET_Y, WITCH_WORLD_SCALE } from './witchSprite';
 import { applyColeSprite, createColeSprite, COLE_FEET_Y, COLE_WORLD_SCALE } from './coleSprite';
+import { applyNinjaSprite, createNinjaSprite, NINJA_FEET_Y, NINJA_WORLD_SCALE } from './ninjaSprite';
 import { playDeath, playWorld } from '../audio';
 import { drawRopeWrap } from './abilities/rope/ropeVisual';
 import { drawMagicVortex } from './abilities/witch/vortex';
@@ -66,10 +67,11 @@ export class NinjaBody {
   private facing: CardinalFacing = 'east';
   private readonly art: Phaser.GameObjects.Graphics;
   private readonly spriteArt?: Phaser.GameObjects.Sprite;
-  private spriteKind?: 'witch' | 'cole';
+  private spriteKind?: 'witch' | 'cole' | 'ninja';
   private spriteScale = 1;
   private spriteFeetY = 16;
   private lastStaffRaise = 0;
+  private lastSwordAngle = 0;
   private witchMoving = false;
   private witchWalkPx = 0;
   private witchWalkAt = 0;
@@ -153,6 +155,14 @@ export class NinjaBody {
       this.spriteScale = COLE_WORLD_SCALE;
       this.spriteFeetY = COLE_FEET_Y;
       this.spriteArt = createColeSprite(scene, 0, COLE_FEET_Y, { rival: this.rival, team: this.team });
+      if (this.spriteArt) {
+        this.view.add(this.spriteArt);
+      }
+    } else if (this.stats.id === 'ninja') {
+      this.spriteKind = 'ninja';
+      this.spriteScale = NINJA_WORLD_SCALE;
+      this.spriteFeetY = NINJA_FEET_Y;
+      this.spriteArt = createNinjaSprite(scene, 0, NINJA_FEET_Y, { rival: this.rival, team: this.team });
       if (this.spriteArt) {
         this.view.add(this.spriteArt);
       }
@@ -1188,6 +1198,7 @@ export class NinjaBody {
 
   private paintHero(options: HeroDrawOptions): void {
     this.lastStaffRaise = options.staffRaise ?? 0;
+    this.lastSwordAngle = options.swordAngleOffset ?? 0;
     if (this.spriteArt && this.spriteKind) {
       this.art.clear();
       if (options.attacking) {
@@ -1195,6 +1206,7 @@ export class NinjaBody {
           facing: options.facing,
           attacking: true,
           staffRaise: options.staffRaise,
+          swordAngleOffset: options.swordAngleOffset,
           charge: Math.max(options.armLiftLeft ?? 0, options.armLiftRight ?? 0, options.staffRaise ?? 0),
           hitFlash: options.hitFlash,
         });
@@ -1208,6 +1220,7 @@ export class NinjaBody {
     facing: CardinalFacing;
     attacking?: boolean;
     staffRaise?: number;
+    swordAngleOffset?: number;
     charge?: number;
     hitFlash?: boolean;
     moving?: boolean;
@@ -1222,6 +1235,19 @@ export class NinjaBody {
         facing: pose.facing,
         attacking: pose.attacking,
         charge: pose.charge ?? pose.staffRaise,
+        hitFlash: pose.hitFlash,
+        moving: pose.moving,
+        walkFrame: pose.walkFrame,
+        now: pose.now,
+      });
+      return;
+    }
+    if (this.spriteKind === 'ninja') {
+      applyNinjaSprite(this.spriteArt, {
+        facing: pose.facing,
+        attacking: pose.attacking,
+        swordAngleOffset: pose.swordAngleOffset ?? this.lastSwordAngle,
+        charge: pose.charge,
         hitFlash: pose.hitFlash,
         moving: pose.moving,
         walkFrame: pose.walkFrame,
@@ -1274,6 +1300,7 @@ export class NinjaBody {
         facing: this.facing,
         attacking: true,
         staffRaise: this.lastStaffRaise,
+        swordAngleOffset: this.lastSwordAngle,
         charge: Math.max(this.armLiftLeft, this.armLiftRight, this.lastStaffRaise),
         hitFlash: this.status.isFlashingHit(now),
         now,

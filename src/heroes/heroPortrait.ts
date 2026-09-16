@@ -4,6 +4,7 @@ import { PLAYABLE_HEROES, type HeroId } from './roster';
 import type { CardinalFacing } from './drawNinja';
 import { applyWitchSprite, witchFrameIndex, witchSheetKey, WITCH_SHEET } from './witchSprite';
 import { applyColeSprite, coleFrameIndex, coleSheetKey, COLE_SHEET } from './coleSprite';
+import { applyNinjaSprite, ninjaFrameIndex, ninjaSheetKey, NINJA_SHEET } from './ninjaSprite';
 
 export type HeroPortraitOptions = {
   facing?: CardinalFacing;
@@ -12,7 +13,7 @@ export type HeroPortraitOptions = {
   scale?: number;
 };
 
-/** Graphics for procedural heroes; packed sheets for Witch and Cole. */
+/** Graphics for procedural heroes; packed sheets for Witch, Cole, and Ninja. */
 export const presentHero = (
   scene: Phaser.Scene,
   x: number,
@@ -39,6 +40,15 @@ export const presentHero = (
     sprite.setOrigin(0.5, 1);
     sprite.setScale(scale * 0.72);
     applyColeSprite(sprite, { facing });
+    return sprite;
+  }
+  const ninjaKey = ninjaSheetKey(options.team, rival);
+  const ninjaSheet = scene.textures.exists(ninjaKey) ? ninjaKey : NINJA_SHEET;
+  if (heroId === 'ninja' && scene.textures.exists(ninjaSheet)) {
+    const sprite = scene.add.sprite(x, y + 18, ninjaSheet, ninjaFrameIndex({ facing }));
+    sprite.setOrigin(0.5, 1);
+    sprite.setScale(scale * 0.72);
+    applyNinjaSprite(sprite, { facing });
     return sprite;
   }
   const art = scene.add.graphics();
