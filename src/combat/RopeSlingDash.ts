@@ -62,6 +62,7 @@ export class RopeSlingDash {
       armLiftRight: 0.85,
       swayX: nx * 4,
       jumpY: frac > 0.65 ? -6 : 0,
+      ropeAction: 'grab' as const,
     }));
     playWorld('rope-dash-fire', this.ninja);
   }
@@ -85,6 +86,7 @@ export class RopeSlingDash {
           armLiftLeft: 1,
           armLiftRight: 1,
           jumpY: -8,
+          ropeAction: 'grab' as const,
         }));
       }
       return;
