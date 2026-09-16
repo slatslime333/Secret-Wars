@@ -115,7 +115,7 @@ export class RosterDraftScene extends Phaser.Scene {
       width: 180,
       height: 44,
       compact: true,
-      onPress: () => this.startMatch(true),
+      onPress: () => (this.format === '6v6' ? this.reshuffle() : this.startMatch(true)),
     });
     new ActionButton(this, width - inset.right - 100, height - inset.bottom - 28, {
       label: 'FIGHT',
@@ -128,7 +128,7 @@ export class RosterDraftScene extends Phaser.Scene {
 
     this.input.keyboard?.on('keydown-ESC', () => this.leaveTo('MatchFormat', { heroId: this.playerId }));
     this.input.keyboard?.on('keydown-ENTER', () => this.startMatch(false));
-    this.input.keyboard?.on('keydown-R', () => this.startMatch(true));
+    this.input.keyboard?.on('keydown-R', () => (this.format === '6v6' ? this.reshuffle() : this.startMatch(true)));
 
     const onResize = () => {
       if (!this.leaving) {
@@ -188,7 +188,7 @@ export class RosterDraftScene extends Phaser.Scene {
         y + 28,
         six
           ? theirs
-            ? 'TWO OF EACH CLASS'
+            ? 'RANDOMIZE TO RESHUFFLE'
             : 'YOU  +  FIVE ALLIES'
           : theirs
             ? 'TAP A CLASS TO SWAP'
@@ -274,11 +274,23 @@ export class RosterDraftScene extends Phaser.Scene {
     this.scene.restart({ heroId: this.playerId, picks: this.picks, format: this.format, sixDraft: this.sixDraft });
   }
 
-  private startMatch(randomize: boolean): void {
-    if (this.format === '6v6' && randomize) {
-      this.sixDraft = randomizeDraft(this.playerId, Math.random, '6v6');
+  private reshuffle(): void {
+    if (this.leaving) {
+      return;
     }
-    const draft = this.format === '6v6' ? this.draft() : randomize ? randomizeDraft(this.playerId) : this.draft();
+    this.sixDraft = randomizeDraft(this.playerId, Math.random, '6v6');
+    audio.unlock();
+    playHeroSelect(this.playerId);
+    this.scene.restart({ heroId: this.playerId, picks: this.picks, format: this.format, sixDraft: this.sixDraft });
+  }
+
+  private startMatch(randomize: boolean): void {
+    const draft =
+      this.format === '6v6'
+        ? this.draft()
+        : randomize
+          ? randomizeDraft(this.playerId)
+          : this.draft();
     const spawn = pickPlayerSpawn();
     rememberPlayerSpawn(spawn);
     const placed = placeDraft(draft, spawn);
