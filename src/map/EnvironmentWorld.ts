@@ -40,6 +40,8 @@ export type EnvSnapshot = {
   barrel?: EnvFact;
   wall?: EnvFact;
   tree?: EnvFact;
+  building?: EnvFact;
+  cover?: EnvFact;
 };
 
 type LiveProp = {
@@ -49,11 +51,14 @@ type LiveProp = {
   state: DamageState;
   physics: PhysicsClass;
   sprite?: Phaser.GameObjects.Image;
+  roof?: Phaser.GameObjects.Image;
+  floor?: Phaser.GameObjects.Image;
   vx: number;
   vy: number;
   ang: number;
   angVel: number;
   knockedAt: number;
+  lastSmokeAt: number;
   spawn: MapObstacle;
   gone: boolean;
   respawnAt: number;
@@ -120,6 +125,8 @@ export class EnvironmentWorld {
     let barrel: EnvFact | undefined;
     let wall: EnvFact | undefined;
     let tree: EnvFact | undefined;
+    let building: EnvFact | undefined;
+    let cover: EnvFact | undefined;
     for (const prop of this.props) {
       if (prop.gone || prop.hp <= 0 && prop.state === 'destroyed' && prop.obs.kind === 'crate') {
         continue;
@@ -152,14 +159,26 @@ export class EnvironmentWorld {
       if (fact.kind === 'tree' && (!tree || dist < Math.hypot(tree.x - x, tree.y - y))) {
         tree = fact;
       }
+      if (fact.enterable && (!building || dist < Math.hypot(building.x - x, building.y - y))) {
+        building = fact;
+      }
+      if (
+        (fact.kind === 'barricade' || fact.kind === 'sandbag' || fact.kind === 'wall') &&
+        fact.state !== 'destroyed' &&
+        fact.state !== 'knocked' &&
+        (!cover || dist < Math.hypot(cover.x - x, cover.y - y))
+      ) {
+        cover = fact;
+      }
     }
-    return { nearby, crate, barrel, wall, tree };
+    return { nearby, crate, barrel, wall, tree, building, cover };
   }
 
   update(now: number, delta: number): void {
     this.collectProjectiles();
     this.tickPhysics(now, delta);
     this.tickRoofs();
+    this.tickSmoke(now);
     this.tickPickups(now, delta);
     this.tickFx(now);
     this.tickRespawns(now);
@@ -187,11 +206,14 @@ export class EnvironmentWorld {
       state: obs.damageState ?? 'intact',
       physics: obs.physicsClass ?? 'static',
       sprite: this.view.sprites.get(obs.id) ?? this.view.crateSprites.get(obs.id),
+      roof: this.view.roofs.get(obs.id),
+      floor: this.view.floors.get(obs.id),
       vx: 0,
       vy: 0,
       ang: 0,
       angVel: 0,
       knockedAt: 0,
+      lastSmokeAt: 0,
       spawn: copyObstacle(obs),
       gone: false,
       respawnAt: 0,
@@ -219,8 +241,8 @@ export class EnvironmentWorld {
     return isInAttackArc(
       event.attacker.x,
       event.attacker.y,
-      event.attacker.aim.x,
-      event.attacker.aim.y,
+      event.dirX ?? event.attacker.aim.x,
+      event.dirY ?? event.attacker.aim.y,
       prop.obs.x,
       prop.obs.y,
       event.reach,
@@ -270,7 +292,9 @@ export class EnvironmentWorld {
     if (amount <= 0 || prop.gone) {
       return;
     }
-    if (prop.physics === 'static' && !prop.obs.destructible && !prop.obs.enterable) {
+    if (prop.physics === 'static' && !prop.obs.destructible) {
+      prop.hp = Math.max(1, prop.hp - amount * 0.2);
+      this.syncState(prop);
       this.flash(prop, 0xc8a070);
       return;
     }
@@ -288,6 +312,10 @@ export class EnvironmentWorld {
     }
     if (prop.physics === 'lightweight') {
       this.knockDown(prop, event);
+      return;
+    }
+    if (prop.obs.kind === 'vehicle') {
+      this.wreckVehicle(prop, event);
       return;
     }
     this.destroyProp(prop, attacker);
@@ -310,6 +338,7 @@ export class EnvironmentWorld {
   }
 
   private syncState(prop: LiveProp): void {
+    const prev = prop.state;
     prop.state = damageStateOf(prop.hp, prop.maxHp, prop.state === 'knocked');
     prop.obs.damageState = prop.state;
     prop.obs.hp = prop.hp;
@@ -317,8 +346,21 @@ export class EnvironmentWorld {
     if (!sprite) {
       return;
     }
+    if (prop.obs.kind === 'wall' || prop.obs.kind === 'vehicle') {
+      sprite.setTexture(textureKeyFor(prop.obs));
+      sprite.setDisplaySize(prop.obs.visual.w, prop.obs.visual.h);
+    }
     if (prop.state === 'damaged') {
       sprite.setTint(0xd8c4a0);
+      if (prev === 'intact' && prop.obs.kind === 'tree') {
+        this.scene.tweens.add({
+          targets: sprite,
+          angle: sprite.angle + 7,
+          duration: 90,
+          yoyo: true,
+          repeat: 1,
+        });
+      }
     } else if (prop.state === 'cracked') {
       sprite.setTint(0xb09070);
     }
@@ -361,6 +403,17 @@ export class EnvironmentWorld {
       this.scene.tweens.killTweensOf(prop.sprite);
       prop.sprite.destroy();
       prop.sprite = undefined;
+    }
+    if (prop.roof) {
+      this.scene.tweens.killTweensOf(prop.roof);
+      prop.roof.destroy();
+      prop.roof = undefined;
+      this.view.roofs.delete(prop.obs.id);
+    }
+    if (prop.floor) {
+      prop.floor.destroy();
+      prop.floor = undefined;
+      this.view.floors.delete(prop.obs.id);
     }
     audio.play('crate-break', { x: prop.obs.x, y: prop.obs.y });
     this.puff(prop.obs.x, prop.obs.y, prop.obs.kind === 'crate' ? ENV.crateLite : ENV.concreteLite, 0.9);
@@ -489,10 +542,14 @@ export class EnvironmentWorld {
       prop.sprite.angle += prop.angVel * dt * 12;
     }
     const lived = now - prop.knockedAt;
-    if (lived > ENV_WORLD.knockedLifetimeMs - ENV_WORLD.knockFadeMs && prop.sprite) {
-      prop.sprite.setAlpha(Math.max(0, 1 - (lived - (ENV_WORLD.knockedLifetimeMs - ENV_WORLD.knockFadeMs)) / ENV_WORLD.knockFadeMs));
+    const life = prop.obs.kind === 'vehicle' ? ENV_WORLD.wreckLifeMs : ENV_WORLD.knockedLifetimeMs;
+    if (prop.obs.kind === 'vehicle' && lived > 1600 && prop.obs.blocksMovement) {
+      this.world.setBlocking(prop.obs.id, false);
     }
-    if (lived >= ENV_WORLD.knockedLifetimeMs) {
+    if (lived > life - ENV_WORLD.knockFadeMs && prop.sprite) {
+      prop.sprite.setAlpha(Math.max(0, 1 - (lived - (life - ENV_WORLD.knockFadeMs)) / ENV_WORLD.knockFadeMs));
+    }
+    if (lived >= life) {
       this.destroyProp(prop);
     }
   }
@@ -530,17 +587,69 @@ export class EnvironmentWorld {
     }
   }
 
+  private wreckVehicle(prop: LiveProp, event: WorldStrikeEvent): void {
+    if (prop.state === 'knocked' || prop.gone) {
+      return;
+    }
+    prop.state = 'knocked';
+    prop.obs.damageState = 'knocked';
+    prop.physics = 'temporary';
+    prop.knockedAt = this.scene.time.now;
+    prop.obs.collision.w = Math.max(28, prop.obs.collision.w * 0.55);
+    prop.obs.collision.h = Math.max(16, prop.obs.collision.h * 0.45);
+    prop.obs.collision.x = prop.obs.x - prop.obs.collision.w / 2;
+    prop.obs.collision.y = prop.obs.y - prop.obs.collision.h / 2;
+    this.world.refreshCollision(prop.obs.id);
+    if (prop.sprite) {
+      prop.sprite.setTexture(textureKeyFor(prop.obs));
+      prop.sprite.setDisplaySize(prop.obs.visual.w * 0.92, prop.obs.visual.h * 0.7);
+      prop.sprite.setTint(0x6a5040);
+    }
+    this.push(prop, event);
+    this.puff(prop.obs.x, prop.obs.y, ENV.burn, 0.7);
+    this.stain(prop.obs.x, prop.obs.y);
+  }
+
   private tickRoofs(): void {
     const heroes = this.hooks.heroes();
     for (const prop of this.props) {
-      if (prop.gone || !prop.obs.enterable || !prop.sprite) {
+      if (prop.gone || prop.obs.kind !== 'building') {
         continue;
       }
       const room = prop.obs.interior ?? prop.obs.visual;
       const inside = heroes.some((hero) => hero.isPresent && pointInRect(hero.x, hero.y - 10, room));
       const target = inside ? ENV_WORLD.roofInsideAlpha : ENV_WORLD.roofOutsideAlpha;
-      const sprite = prop.sprite;
-      sprite.setAlpha(sprite.alpha + (target - sprite.alpha) * 0.2);
+      const roof = prop.roof ?? (prop.obs.enterable ? undefined : prop.sprite);
+      if (!roof) {
+        continue;
+      }
+      roof.setAlpha(roof.alpha + (target - roof.alpha) * 0.22);
+    }
+  }
+
+  private tickSmoke(now: number): void {
+    for (const prop of this.props) {
+      if (prop.gone || prop.obs.kind !== 'vehicle') {
+        continue;
+      }
+      if (prop.state !== 'damaged' && prop.state !== 'cracked' && prop.state !== 'knocked') {
+        continue;
+      }
+      if (now - prop.lastSmokeAt < ENV_WORLD.smokeGapMs || this.fx.length >= ENV_WORLD.maxFx) {
+        continue;
+      }
+      prop.lastSmokeAt = now;
+      const puff = this.scene.add.graphics().setDepth(8);
+      puff.fillStyle(ENV.inkSoft, prop.state === 'knocked' ? 0.45 : 0.28);
+      puff.fillCircle(prop.obs.x + 8, prop.obs.y - 16, 7);
+      this.scene.tweens.add({
+        targets: puff,
+        alpha: 0,
+        y: puff.y - 18,
+        duration: 420,
+        onComplete: () => puff.destroy(),
+      });
+      this.fx.push({ view: puff, until: now + 420 });
     }
   }
 

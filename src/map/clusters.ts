@@ -13,7 +13,8 @@ export type ClusterId =
   | 'wrecked-car'
   | 'overgrown-ruin'
   | 'defensive-nest'
-  | 'rubble-slide';
+  | 'rubble-slide'
+  | 'corner-shop';
 
 type LocalSolid = {
   kind: ObstacleKind;
@@ -190,6 +191,20 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
       { kind: 'grassCrack', ox: 40, oy: 40, variant: 1 },
     ],
   ),
+  t(
+    'corner-shop',
+    'A small shop on a side street.',
+    150,
+    128,
+    [
+      { kind: 'building', variant: 'shop', ox: -8, oy: -8, spec: PROP.building, hierarchy: 'landmark' },
+      { kind: 'crate', variant: 'single', ox: 58, oy: 16, spec: PROP.crate, hierarchy: 'cover', destructible: true },
+    ],
+    [
+      { kind: 'sign', ox: 62, oy: -30, variant: 1 },
+      { kind: 'curbBit', ox: 36, oy: 34, variant: 0 },
+    ],
+  ),
 ];
 
 export const EDGE_CLUSTERS: readonly ClusterId[] = [
@@ -198,6 +213,7 @@ export const EDGE_CLUSTERS: readonly ClusterId[] = [
   'overgrown-ruin',
   'wrecked-car',
   'rubble-slide',
+  'corner-shop',
 ];
 
 export const COVER_CLUSTERS: readonly ClusterId[] = [

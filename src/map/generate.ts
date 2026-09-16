@@ -330,6 +330,7 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
     { id: 'rubble-slide', x: 820, y: 628, mirror: false },
     { id: 'defensive-nest', x: 1764, y: 876, mirror: true },
     { id: 'overgrown-ruin', x: 1880, y: 1034, mirror: true },
+    { id: 'corner-shop', x: 470, y: 1110, mirror: false },
   ];
   for (const [index, site] of nearMid.entries()) {
     const stamp = stampCluster(templateById(site.id), site.x, site.y, site.mirror, reserved, obstacles, `mid-${index}`);

@@ -1,18 +1,21 @@
 import Phaser from 'phaser';
+import { ENV_WORLD } from '../config/environment';
 import { COLORS } from '../ui/theme';
 import { createCalmGround, type GroundView } from './ground';
-import { ensureObstacleTextures, fireTextureKey, textureKeyFor } from './obstacles';
+import { buildingLayerKey, ensureObstacleTextures, fireTextureKey, textureKeyFor } from './obstacles';
 import type { MapLayout } from './types';
 
 export type MapView = {
   crateSprites: Map<string, Phaser.GameObjects.Image>;
   sprites: Map<string, Phaser.GameObjects.Image>;
+  roofs: Map<string, Phaser.GameObjects.Image>;
+  floors: Map<string, Phaser.GameObjects.Image>;
   destroy: () => void;
 };
 
-const depthFor = (kind: string, hierarchy: string): number => {
+const depthFor = (kind: string, hierarchy: string, enterable = false): number => {
   if (kind === 'building') {
-    return 6;
+    return enterable ? 5 : 6;
   }
   if (kind === 'vehicle' || kind === 'tree' || kind === 'barrel') {
     return 5;
@@ -47,11 +50,20 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
   const sprites: Phaser.GameObjects.GameObject[] = [];
   const crateSprites = new Map<string, Phaser.GameObjects.Image>();
   const byId = new Map<string, Phaser.GameObjects.Image>();
+  const roofs = new Map<string, Phaser.GameObjects.Image>();
+  const floors = new Map<string, Phaser.GameObjects.Image>();
   const fires: Phaser.GameObjects.Image[] = [];
 
   for (const obs of layout.obstacles) {
-    const key = textureKeyFor(obs);
-    const image = scene.add.image(obs.x, obs.y, key).setDepth(depthFor(obs.kind, obs.hierarchy));
+    if (obs.kind === 'building' && obs.enterable) {
+      const floor = scene.add.image(obs.x, obs.y, buildingLayerKey(obs, 'floor')).setDepth(2);
+      floor.setOrigin(0.5, 0.78);
+      floor.setDisplaySize(obs.visual.w, obs.visual.h);
+      floors.set(obs.id, floor);
+      sprites.push(floor);
+    }
+    const key = obs.kind === 'building' && obs.enterable ? buildingLayerKey(obs, 'shell') : textureKeyFor(obs);
+    const image = scene.add.image(obs.x, obs.y, key).setDepth(depthFor(obs.kind, obs.hierarchy, Boolean(obs.enterable)));
     image.setDisplaySize(obs.visual.w, obs.visual.h);
     if (obs.kind === 'tree') {
       image.setOrigin(0.5, 0.86);
@@ -69,6 +81,13 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
       crateSprites.set(obs.id, image);
     }
     sprites.push(image);
+    if (obs.kind === 'building') {
+      const roof = scene.add.image(obs.x, obs.y, buildingLayerKey(obs, 'roof')).setDepth(ENV_WORLD.roofDepth);
+      roof.setOrigin(0.5, 0.78);
+      roof.setDisplaySize(obs.visual.w, obs.visual.h);
+      roofs.set(obs.id, roof);
+      sprites.push(roof);
+    }
   }
 
   const fireKey = fireTextureKey();
@@ -94,6 +113,8 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
   return {
     crateSprites,
     sprites: byId,
+    roofs,
+    floors,
     destroy: () => {
       ground.destroy();
       pads.destroy();
@@ -102,6 +123,8 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
       }
       crateSprites.clear();
       byId.clear();
+      roofs.clear();
+      floors.clear();
     },
   };
 };

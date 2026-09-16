@@ -16,15 +16,42 @@ const box = (
   fillPx(ctx, dark, x + 2, y + h - 5, w - 4, 3);
 };
 
+const wallWearOf = (variant: string): 'intact' | 'damaged' | 'cracked' => {
+  if (variant.includes('cracked')) {
+    return 'cracked';
+  }
+  if (variant.includes('damaged')) {
+    return 'damaged';
+  }
+  return 'intact';
+};
+
+const paintWallCracks = (ctx: CanvasRenderingContext2D, w: number, h: number, wear: 'intact' | 'damaged' | 'cracked'): void => {
+  if (wear === 'intact') {
+    return;
+  }
+  fillPx(ctx, ENV.inkSoft, 18, 6, 2, h - 10);
+  fillPx(ctx, ENV.ink, 42, 4, 2, Math.floor(h * 0.55));
+  fillPx(ctx, ENV.inkSoft, 68, 8, w > 80 ? 22 : 12, 2);
+  if (wear === 'cracked') {
+    fillPx(ctx, ENV.ink, 28, 3, 3, h - 6);
+    fillPx(ctx, ENV.dirt, 52, h - 10, 16, 6);
+    fillPx(ctx, ENV.concreteDark, 8, 2, 10, h - 6);
+    fillPx(ctx, ENV.inkSoft, w - 24, 4, 8, h - 8);
+  }
+};
+
 export const drawWall = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
+  const wear = wallWearOf(variant);
   fillPx(ctx, ENV.ink, 0, 0, w, h);
-  if (variant === 'wood') {
+  if (variant.startsWith('wood')) {
     fillPx(ctx, ENV.wood, 1, 1, w - 2, h - 2);
     fillPx(ctx, ENV.woodLite, 2, 2, w - 4, 4);
     fillPx(ctx, ENV.woodDark, 2, h - 6, w - 4, 4);
     for (let x = 18; x < w - 8; x += 22) {
       fillPx(ctx, ENV.inkSoft, x, 1, 2, h - 2);
     }
+    paintWallCracks(ctx, w, h, wear);
     return;
   }
   fillPx(ctx, ENV.concrete, 1, 1, w - 2, h - 2);
@@ -33,11 +60,12 @@ export const drawWall = (ctx: CanvasRenderingContext2D, variant: string, w: numb
   for (let x = 16; x < w - 6; x += 18) {
     fillPx(ctx, ENV.inkSoft, x, 1, 2, h - 2);
   }
-  if (variant === 'ruin') {
+  if (variant.startsWith('ruin')) {
     fillPx(ctx, ENV.grass, w - 22, 1, 18, 8);
     fillPx(ctx, ENV.dirt, w - 28, h - 8, 14, 5);
     fillPx(ctx, ENV.inkSoft, w - 16, 8, 12, h - 10);
   }
+  paintWallCracks(ctx, w, h, wear);
 };
 
 export const drawTree = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
@@ -83,22 +111,32 @@ const paintWheel = (ctx: CanvasRenderingContext2D, x: number, y: number): void =
 };
 
 export const drawVehicle = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
-  const truck = variant === 'truck';
+  const wreck = variant.includes('wreck');
+  const damaged = variant.includes('damaged') || wreck;
+  const truck = variant.startsWith('truck');
   fillPx(ctx, ENV.inkSoft, 8, h - 14, w - 16, 8);
-  fillPx(ctx, ENV.ink, 3, 8, w - 6, h - 16);
-  fillPx(ctx, truck ? ENV.rust : ENV.metal, 5, 10, w - 10, h - 20);
-  fillPx(ctx, truck ? ENV.rustLite : ENV.metalLite, 7, 12, w - 14, h - 26);
+  fillPx(ctx, ENV.ink, 3, wreck ? 14 : 8, w - 6, h - (wreck ? 20 : 16));
+  fillPx(ctx, truck ? ENV.rust : wreck ? ENV.burn : ENV.metal, 5, wreck ? 16 : 10, w - 10, h - (wreck ? 24 : 20));
+  fillPx(ctx, truck ? ENV.rustLite : ENV.metalLite, 7, wreck ? 18 : 12, w - 14, h - (wreck ? 30 : 26));
   const cab = truck ? Math.floor(w * 0.3) : Math.floor(w * 0.4);
-  fillPx(ctx, ENV.ink, 7, 6, cab, h - 20);
-  fillPx(ctx, truck ? ENV.oliveDark : ENV.metalLite, 9, 8, cab - 4, h - 26);
-  fillPx(ctx, ENV.glass, 13, 14, cab - 14, 14);
-  fillPx(ctx, ENV.paper, 15, 16, 6, 4);
-  fillPx(ctx, ENV.ink, 17, 20, cab - 26, 6);
-  fillPx(ctx, ENV.burn, cab + 6, 18, 22, 10);
-  fillPx(ctx, ENV.rust, w - 32, h - 28, 18, 10);
+  if (!wreck) {
+    fillPx(ctx, ENV.ink, 7, 6, cab, h - 20);
+    fillPx(ctx, truck ? ENV.oliveDark : ENV.metalLite, 9, 8, cab - 4, h - 26);
+    fillPx(ctx, ENV.glass, 13, 14, cab - 14, 14);
+    fillPx(ctx, ENV.paper, 15, 16, 6, 4);
+    fillPx(ctx, ENV.ink, 17, 20, cab - 26, 6);
+    fillPx(ctx, ENV.burn, cab + 6, 18, 22, 10);
+    fillPx(ctx, ENV.rust, w - 32, h - 28, 18, 10);
+  } else {
+    fillPx(ctx, ENV.burn, 10, 20, cab - 4, h - 36);
+    fillPx(ctx, ENV.rust, cab + 8, 22, 28, 10);
+    fillPx(ctx, ENV.dirt, 18, h - 22, 36, 8);
+  }
   const wheelY = h - 16;
   paintWheel(ctx, 12, wheelY);
-  paintWheel(ctx, w - 32, wheelY);
+  if (!wreck) {
+    paintWheel(ctx, w - 32, wheelY);
+  }
   if (truck) {
     paintWheel(ctx, Math.floor(w * 0.42), wheelY);
     fillPx(ctx, ENV.oliveDark, cab + 4, 12, w - cab - 16, 8);
@@ -106,37 +144,136 @@ export const drawVehicle = (ctx: CanvasRenderingContext2D, variant: string, w: n
     fillPx(ctx, ENV.crate, cab + 14, 26, 18, 12);
     fillPx(ctx, ENV.inkSoft, cab + 36, 26, 10, 14);
     fillPx(ctx, ENV.metalLite, cab + 8, h - 26, w - cab - 22, 4);
-  } else {
+  } else if (!wreck) {
     fillPx(ctx, ENV.rustLite, cab + 8, 26, 18, 4);
     fillPx(ctx, ENV.glass, cab + 12, 14, 18, 8);
   }
+  if (damaged) {
+    fillPx(ctx, ENV.burn, cab + 4, 16, 16, 8);
+    fillPx(ctx, ENV.inkSoft, 22, 12, 8, 6);
+    fillPx(ctx, ENV.dirt, w - 40, h - 22, 18, 6);
+  }
 };
 
-export const drawBuilding = (ctx: CanvasRenderingContext2D, _variant: string, w: number, h: number): void => {
-  fillPx(ctx, ENV.ink, 8, 6, w - 22, 20);
-  fillPx(ctx, ENV.brickDark, 10, 8, w - 28, 16);
-  fillPx(ctx, ENV.brickLite, 14, 10, 36, 6);
-  fillPx(ctx, ENV.ink, 6, 20, w - 12, h - 26);
-  fillPx(ctx, ENV.brick, 8, 22, w - 16, h - 32);
-  for (let y = 28; y < h - 22; y += 9) {
-    fillPx(ctx, ENV.brickDark, 8, y, w - 16, 1);
-    for (let x = 14 + ((y / 9) % 2) * 7; x < w - 20; x += 15) {
-      fillPx(ctx, ENV.inkSoft, x, y + 1, 1, 7);
+const buildingStyleOf = (variant: string): 'shop' | 'stub' | 'house' => {
+  if (variant.startsWith('shop')) {
+    return 'shop';
+  }
+  if (variant.startsWith('stub')) {
+    return 'stub';
+  }
+  return 'house';
+};
+
+const paintBrickBody = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void => {
+  fillPx(ctx, ENV.ink, x, y, w, h);
+  fillPx(ctx, ENV.brick, x + 2, y + 2, w - 4, h - 4);
+  for (let row = y + 8; row < y + h - 8; row += 9) {
+    fillPx(ctx, ENV.brickDark, x + 2, row, w - 4, 1);
+    for (let col = x + 6 + ((row / 9) % 2) * 7; col < x + w - 8; col += 15) {
+      fillPx(ctx, ENV.inkSoft, col, row + 1, 1, 7);
     }
   }
-  fillPx(ctx, ENV.ink, 18, 36, 16, 18);
-  fillPx(ctx, ENV.glass, 20, 38, 12, 14);
-  fillPx(ctx, ENV.ink, w - 42, 42, 14, 16);
-  fillPx(ctx, ENV.burn, w - 40, 44, 10, 12);
-  fillPx(ctx, ENV.inkSoft, w - 30, 8, 26, 36);
-  fillPx(ctx, ENV.concreteDark, w - 26, 28, 20, 22);
-  fillPx(ctx, ENV.dirt, 12, h - 16, 32, 8);
-  fillPx(ctx, ENV.concrete, 8, h - 12, w - 18, 8);
-  fillPx(ctx, ENV.concreteLite, 10, h - 10, w - 28, 3);
+};
+
+const drawBuildingInterior = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, h: number): void => {
+  fillPx(ctx, ENV.ink, 8, 18, w - 16, h - 28);
+  if (style === 'shop') {
+    fillPx(ctx, ENV.concrete, 10, 20, w - 20, h - 32);
+    fillPx(ctx, ENV.sidewalkLite, 12, 22, w - 24, 4);
+    for (let x = 16; x < w - 28; x += 18) {
+      fillPx(ctx, ENV.inkSoft, x, 26, 14, 2);
+    }
+    fillPx(ctx, ENV.woodDark, 16, 34, 18, 36);
+    fillPx(ctx, ENV.wood, 18, 36, 14, 32);
+    fillPx(ctx, ENV.crate, 20, 40, 10, 6);
+    fillPx(ctx, ENV.crate, 20, 50, 10, 6);
+    fillPx(ctx, ENV.woodDark, w - 48, 52, 28, 12);
+    fillPx(ctx, ENV.woodLite, w - 46, 54, 24, 4);
+    fillPx(ctx, ENV.metal, w - 36, 50, 8, 4);
+  } else {
+    fillPx(ctx, ENV.wood, 10, 20, w - 20, h - 32);
+    fillPx(ctx, ENV.woodLite, 12, 22, w - 24, 4);
+    for (let y = 30; y < h - 22; y += 8) {
+      fillPx(ctx, ENV.woodDark, 12, y, w - 24, 1);
+    }
+    fillPx(ctx, ENV.woodDark, 22, 44, 28, 16);
+    fillPx(ctx, ENV.woodLite, 24, 46, 24, 4);
+    fillPx(ctx, ENV.inkSoft, 34, 50, 6, 6);
+    fillPx(ctx, ENV.oliveDark, w - 54, 40, 26, 14);
+    fillPx(ctx, ENV.oliveLite, w - 52, 42, 22, 4);
+  }
+  fillPx(ctx, ENV.concrete, 10, h - 18, w - 20, 8);
+  fillPx(ctx, ENV.inkSoft, w - 42, h - 22, 16, 14);
+  fillPx(ctx, ENV.woodDark, w - 40, h - 20, 12, 10);
+};
+
+const drawBuildingRoof = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, _h: number): void => {
+  fillPx(ctx, ENV.ink, 8, 4, w - 22, 28);
+  fillPx(ctx, style === 'shop' ? ENV.rust : ENV.brickDark, 10, 6, w - 28, 22);
+  fillPx(ctx, style === 'shop' ? ENV.rustLite : ENV.brickLite, 14, 8, 40, 6);
+  if (style === 'shop') {
+    fillPx(ctx, ENV.ink, 18, 14, 48, 12);
+    fillPx(ctx, ENV.paper, 20, 16, 44, 8);
+    fillPx(ctx, ENV.inkSoft, 26, 18, 8, 4);
+    fillPx(ctx, ENV.inkSoft, 38, 18, 8, 4);
+    fillPx(ctx, ENV.inkSoft, 50, 18, 8, 4);
+  }
+  fillPx(ctx, ENV.inkSoft, w - 30, 6, 22, 32);
+  fillPx(ctx, ENV.concreteDark, w - 26, 24, 16, 18);
+  if (style === 'stub') {
+    fillPx(ctx, ENV.dirt, 16, 18, 28, 10);
+    fillPx(ctx, ENV.grass, w - 48, 12, 14, 8);
+  }
+};
+
+const drawBuildingShell = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, h: number): void => {
+  paintBrickBody(ctx, 6, 24, w - 12, h - 30);
+  if (style === 'shop') {
+    fillPx(ctx, ENV.ink, 16, 36, 28, 22);
+    fillPx(ctx, ENV.glass, 18, 38, 24, 18);
+    fillPx(ctx, ENV.ink, 52, 36, 28, 22);
+    fillPx(ctx, ENV.glass, 54, 38, 24, 18);
+    fillPx(ctx, ENV.rust, 14, 32, 70, 6);
+    fillPx(ctx, ENV.rustLite, 16, 33, 66, 3);
+  } else {
+    fillPx(ctx, ENV.ink, 16, 36, 16, 18);
+    fillPx(ctx, ENV.glass, 18, 38, 12, 14);
+    fillPx(ctx, ENV.ink, 42, 40, 14, 16);
+    fillPx(ctx, ENV.glass, 44, 42, 10, 12);
+  }
+  fillPx(ctx, ENV.concrete, 8, h - 14, w - 18, 10);
+  fillPx(ctx, ENV.concreteLite, 10, h - 12, w - 28, 3);
+  fillPx(ctx, ENV.ink, w - 44, h - 46, 18, 32);
+  fillPx(ctx, ENV.inkSoft, w - 42, h - 44, 14, 28);
+  fillPx(ctx, ENV.woodDark, w - 32, h - 30, 3, 6);
   fillPx(ctx, ENV.grass, w - 24, h - 18, 16, 6);
-  fillPx(ctx, ENV.ink, 24, h - 48, 18, 32);
-  fillPx(ctx, ENV.inkSoft, 26, h - 46, 14, 28);
-  fillPx(ctx, ENV.woodDark, 36, h - 32, 3, 6);
+};
+
+const drawBuildingLandmark = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, h: number): void => {
+  drawBuildingRoof(ctx, style, w, h);
+  drawBuildingShell(ctx, style, w, h);
+  if (style === 'stub') {
+    fillPx(ctx, ENV.dirt, 12, h - 16, 32, 8);
+    fillPx(ctx, ENV.inkSoft, w - 30, 8, 26, 36);
+  }
+};
+
+export const drawBuilding = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
+  const style = buildingStyleOf(variant);
+  if (variant.endsWith('-floor')) {
+    drawBuildingInterior(ctx, style, w, h);
+    return;
+  }
+  if (variant.endsWith('-roof')) {
+    drawBuildingRoof(ctx, style, w, h);
+    return;
+  }
+  if (variant.endsWith('-shell')) {
+    drawBuildingShell(ctx, style, w, h);
+    return;
+  }
+  drawBuildingLandmark(ctx, style, w, h);
 };
 
 export const drawCrate = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
@@ -231,8 +368,14 @@ export const drawBarrel = (ctx: CanvasRenderingContext2D, variant: string, w: nu
 
 export const ASSET_SIZE: Record<string, { w: number; h: number }> = {
   'wall:stone': { w: 124, h: 28 },
+  'wall:stone-damaged': { w: 124, h: 28 },
+  'wall:stone-cracked': { w: 124, h: 28 },
   'wall:ruin': { w: 90, h: 30 },
+  'wall:ruin-damaged': { w: 90, h: 30 },
+  'wall:ruin-cracked': { w: 90, h: 30 },
   'wall:wood': { w: 100, h: 26 },
+  'wall:wood-damaged': { w: 100, h: 26 },
+  'wall:wood-cracked': { w: 100, h: 26 },
   'tree:small': { w: 48, h: 56 },
   'tree:medium': { w: 56, h: 66 },
   'tree:broad': { w: 64, h: 60 },
@@ -240,10 +383,22 @@ export const ASSET_SIZE: Record<string, { w: number; h: number }> = {
   'crate:stack': { w: 42, h: 52 },
   'crate:pair': { w: 78, h: 36 },
   'building:house': { w: 120, h: 108 },
+  'building:house-floor': { w: 120, h: 108 },
+  'building:house-roof': { w: 120, h: 108 },
+  'building:house-shell': { w: 120, h: 108 },
   'building:stub': { w: 120, h: 108 },
+  'building:stub-floor': { w: 120, h: 108 },
+  'building:stub-roof': { w: 120, h: 108 },
+  'building:stub-shell': { w: 120, h: 108 },
   'building:shop': { w: 120, h: 108 },
+  'building:shop-floor': { w: 120, h: 108 },
+  'building:shop-roof': { w: 120, h: 108 },
+  'building:shop-shell': { w: 120, h: 108 },
   'vehicle:truck': { w: 156, h: 74 },
+  'vehicle:truck-damaged': { w: 156, h: 74 },
   'vehicle:car': { w: 118, h: 62 },
+  'vehicle:car-damaged': { w: 118, h: 62 },
+  'vehicle:car-wreck': { w: 118, h: 62 },
   'barricade:wood': { w: 82, h: 30 },
   'barricade:metal': { w: 82, h: 30 },
   'sandbag:line': { w: 68, h: 26 },

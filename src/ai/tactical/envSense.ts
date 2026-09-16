@@ -4,6 +4,16 @@ import type { KitProfile, ScoredAction, Situation, TacticalAction } from './type
 
 const dist = (ax: number, ay: number, bx: number, by: number): number => Math.hypot(ax - bx, ay - by);
 
+type Write = (
+  rows: ScoredAction[],
+  used: number,
+  action: TacticalAction,
+  score: number,
+  reason: string,
+  targetId?: number,
+  allyId?: number,
+) => number;
+
 /**
  * Environment modifies existing utility. Not a second AI brain.
  */
@@ -11,15 +21,7 @@ export const applyEnvBias = (
   out: ScoredAction[],
   count: number,
   situation: Situation,
-  write: (
-    rows: ScoredAction[],
-    used: number,
-    action: TacticalAction,
-    score: number,
-    reason: string,
-    targetId?: number,
-    allyId?: number,
-  ) => number,
+  write: Write,
 ): number => {
   const env = situation.environment;
   if (!env) {
@@ -36,6 +38,9 @@ export const applyEnvBias = (
   count = crateBias(out, count, situation, env, kit, inFight, safe, jitter, write);
   count = barrelBias(out, count, situation, env, kit, nearestHero, jitter, write);
   count = wallBias(out, count, situation, env, kit, nearestHero, inFight, jitter, write);
+  count = treeBias(out, count, situation, env, kit, jitter, write);
+  count = buildingBias(out, count, situation, env, kit, inFight, jitter, write);
+  count = coverBias(out, count, situation, env, kit, inFight, jitter, write);
   return count;
 };
 
@@ -48,15 +53,7 @@ const crateBias = (
   inFight: boolean,
   safe: boolean,
   jitter: number,
-  write: (
-    rows: ScoredAction[],
-    used: number,
-    action: TacticalAction,
-    score: number,
-    reason: string,
-    targetId?: number,
-    allyId?: number,
-  ) => number,
+  write: Write,
 ): number => {
   const crate = env.crate;
   if (!crate) {
@@ -80,8 +77,11 @@ const crateBias = (
   if (!safe) {
     value -= 10;
   }
-  if (kit?.stance === 'support') {
-    value -= 4;
+  if (kit?.stance === 'support' || kit?.heroId === 'cole') {
+    value -= kit?.heroId === 'cole' ? 3 : 4;
+  }
+  if (kit?.heroId === 'ninja' && safe) {
+    value += 2;
   }
   value *= jitter;
   if (value < 8 || situation.personality.opportunism < 0.28) {
@@ -98,32 +98,34 @@ const barrelBias = (
   kit: KitProfile | undefined,
   nearestHero: Situation['enemies'][number] | undefined,
   jitter: number,
-  write: (
-    rows: ScoredAction[],
-    used: number,
-    action: TacticalAction,
-    score: number,
-    reason: string,
-    targetId?: number,
-    allyId?: number,
-  ) => number,
+  write: Write,
 ): number => {
   const barrel = env.barrel;
-  if (!barrel || !nearestHero) {
+  if (!barrel) {
     return count;
   }
   const selfGap = dist(situation.self.x, situation.self.y, barrel.x, barrel.y);
-  const foeGap = dist(nearestHero.x, nearestHero.y, barrel.x, barrel.y);
-  if (selfGap < ENV_WORLD.barrelRadius * 0.85) {
+  const cautious =
+    kit?.heroId === 'mender' ||
+    kit?.stance === 'support' ||
+    (kit?.heroId === 'demon' && situation.self.demonForm !== 'big');
+  if (selfGap < ENV_WORLD.barrelRadius * (cautious ? 1.15 : 0.85)) {
     for (let i = 0; i < count; i += 1) {
       if (out[i].action === 'attack' || out[i].action === 'advance') {
-        out[i].score -= 10 * jitter;
+        out[i].score -= (cautious ? 28 : 14) * jitter;
       }
     }
-    return write(out, count, 'reposition', 18 * jitter, 'leave barrel');
+    return write(out, count, 'reposition', (cautious ? 24 : 18) * jitter, 'leave barrel');
+  }
+  if (!nearestHero) {
+    return count;
+  }
+  const foeGap = dist(nearestHero.x, nearestHero.y, barrel.x, barrel.y);
+  if (cautious) {
+    return count;
   }
   if (foeGap < ENV_WORLD.barrelRadius && selfGap > ENV_WORLD.barrelRadius + 18 && situation.personality.opportunism > 0.38) {
-    if (kit?.stance === 'ranged' || kit?.wantsPoke) {
+    if (kit?.stance === 'ranged' || kit?.wantsPoke || kit?.heroId === 'witch') {
       return write(out, count, 'attack', 12 * jitter, 'barrel near foe', nearestHero.id);
     }
   }
@@ -139,15 +141,7 @@ const wallBias = (
   nearestHero: Situation['enemies'][number] | undefined,
   inFight: boolean,
   jitter: number,
-  write: (
-    rows: ScoredAction[],
-    used: number,
-    action: TacticalAction,
-    score: number,
-    reason: string,
-    targetId?: number,
-    allyId?: number,
-  ) => number,
+  write: Write,
 ): number => {
   const wall = env.wall;
   if (!wall || !nearestHero || inFight) {
@@ -159,9 +153,9 @@ const wallBias = (
   if (wallGap > 120 || through > around * 0.85) {
     return count;
   }
-  const flanker = Boolean(kit?.wantsFlank) || kit?.heroId === 'ninja' || kit?.heroId === 'shadow';
-  const deathLikesChoke = kit?.heroId === 'death';
-  if (deathLikesChoke) {
+  const heroId = kit?.heroId;
+  const littleDemon = heroId === 'demon' && situation.self.demonForm !== 'big';
+  if (heroId === 'death') {
     for (let i = 0; i < count; i += 1) {
       if (out[i].action === 'flank') {
         out[i].score -= 6;
@@ -169,8 +163,88 @@ const wallBias = (
     }
     return count;
   }
+  if (littleDemon || heroId === 'mender') {
+    return count;
+  }
+  if (heroId === 'witch') {
+    return write(out, count, 'reposition', 10 * jitter, 'open sightline');
+  }
+  const flanker = Boolean(kit?.wantsFlank) || heroId === 'ninja' || heroId === 'shadow' || situation.self.demonForm === 'big';
+  if (heroId === 'rope' && around > situation.self.attackRange * 0.7) {
+    return write(out, count, 'reposition', 9 * jitter, 'open rope lane');
+  }
   if (!flanker || situation.personality.opportunism < 0.34) {
     return count;
   }
   return write(out, count, 'reposition', 11 * jitter, 'break wall flank');
+};
+
+const treeBias = (
+  out: ScoredAction[],
+  count: number,
+  situation: Situation,
+  env: EnvSnapshot,
+  kit: KitProfile | undefined,
+  jitter: number,
+  write: Write,
+): number => {
+  const tree = env.tree;
+  if (!tree) {
+    return count;
+  }
+  const gap = dist(situation.self.x, situation.self.y, tree.x, tree.y);
+  if (gap > 90) {
+    return count;
+  }
+  if (tree.state === 'knocked' && (kit?.heroId === 'rope' || kit?.heroId === 'ninja')) {
+    return write(out, count, 'reposition', 9 * jitter, 'leave fallen tree');
+  }
+  return count;
+};
+
+const buildingBias = (
+  out: ScoredAction[],
+  count: number,
+  situation: Situation,
+  env: EnvSnapshot,
+  kit: KitProfile | undefined,
+  inFight: boolean,
+  jitter: number,
+  write: Write,
+): number => {
+  const building = env.building;
+  if (!building || inFight) {
+    return count;
+  }
+  const gap = dist(situation.self.x, situation.self.y, building.x, building.y);
+  if (gap > 180) {
+    return count;
+  }
+  const low = situation.self.hpRatio < 0.38;
+  const wantsShelter = kit?.heroId === 'mender' || kit?.heroId === 'ninja' || kit?.heroId === 'witch';
+  if (!low || !wantsShelter || situation.personality.caution < 0.28) {
+    return count;
+  }
+  return write(out, count, 'reposition', 10 * jitter, 'use building');
+};
+
+const coverBias = (
+  out: ScoredAction[],
+  count: number,
+  situation: Situation,
+  env: EnvSnapshot,
+  kit: KitProfile | undefined,
+  inFight: boolean,
+  jitter: number,
+  write: Write,
+): number => {
+  const cover = env.cover;
+  if (!cover || inFight || kit?.heroId !== 'cole') {
+    return count;
+  }
+  const gap = dist(situation.self.x, situation.self.y, cover.x, cover.y);
+  if (gap > 110 || gap < 28) {
+    return count;
+  }
+  return write(out, count, 'reposition', 8 * jitter, 'use cover');
 };

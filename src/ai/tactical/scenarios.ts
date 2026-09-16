@@ -1912,6 +1912,112 @@ const scenarioCP = (): ScenarioResult => {
   return { name: 'CP safe crate is worth considering', ok, detail: `crate=${crateScore.toFixed(1)} best=${best(rows)}` };
 };
 
+const barrelFact = (x: number, y: number) => ({
+  id: 'barrel-1',
+  kind: 'barrel' as const,
+  physics: 'explosive' as const,
+  state: 'intact' as const,
+  x,
+  y,
+  hpRatio: 1,
+  explosive: true,
+  enterable: false,
+});
+
+const wallFact = (x: number, y: number) => ({
+  id: 'wall-1',
+  kind: 'wall' as const,
+  physics: 'breakable' as const,
+  state: 'intact' as const,
+  x,
+  y,
+  hpRatio: 1,
+  explosive: false,
+  enterable: false,
+});
+
+const scenarioCQ = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.7, heroId: 'mender', role: 'support', attackRange: 180 });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 880, y: 750, hpRatio: 0.6 })];
+  const kit = kitProfileOf('mender', 'support', 180, { staminaRatio: 0.8, dashCharges: 2 });
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      kit,
+      environment: { nearby: [barrelFact(410, 750)], barrel: barrelFact(410, 750) },
+    }),
+  );
+  const ok = scoreOf(rows, 'reposition') > 12 && !['attack', 'advance', 'finish_target'].includes(best(rows));
+  return { name: 'CQ mender leaves a nearby barrel', ok, detail: `best=${best(rows)} leave=${scoreOf(rows, 'reposition').toFixed(1)}` };
+};
+
+const scenarioCR = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.8, heroId: 'death', role: 'frontliner' });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 560, y: 750, hpRatio: 0.7 })];
+  const kit = kitProfileOf('death', 'frontliner', DEATH.attackRange, { staminaRatio: 0.8, dashCharges: 2 });
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      kit,
+      environment: { nearby: [wallFact(470, 750)], wall: wallFact(470, 750) },
+    }),
+  );
+  const ok = best(rows) !== 'flank';
+  return { name: 'CR death keeps a choke instead of breaking it', ok, detail: `best=${best(rows)}` };
+};
+
+const scenarioCS = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.85, heroId: 'witch', role: 'ranged', attackRange: 220 });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 560, y: 750, hpRatio: 0.7 })];
+  const kit = kitProfileOf('witch', 'ranged', 220, { staminaRatio: 0.8, dashCharges: 2 });
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      kit,
+      personality: { ...NEUTRAL_PERSONALITY, opportunism: 0.7 },
+      environment: { nearby: [barrelFact(545, 750)], barrel: barrelFact(545, 750) },
+    }),
+  );
+  const attack = scoreOf(rows, 'attack', 10);
+  const ok = attack > 6;
+  return { name: 'CS witch can poke a barrel near a foe', ok, detail: `attack=${attack.toFixed(1)} best=${best(rows)}` };
+};
+
+const scenarioCT = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 400,
+    y: 750,
+    hpRatio: 0.8,
+    heroId: 'demon',
+    role: 'ranged',
+    attackRange: 220,
+    demonForm: 'little',
+  });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 920, y: 750, hpRatio: 0.65 })];
+  const kit = kitProfileOf('demon', 'ranged', 220, { staminaRatio: 0.8, dashCharges: 2, rageRatio: 0.2, demonForm: 'little' });
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      kit,
+      environment: { nearby: [barrelFact(415, 750)], barrel: barrelFact(415, 750) },
+    }),
+  );
+  const ok = best(rows) === 'reposition' || scoreOf(rows, 'reposition') >= scoreOf(rows, 'attack');
+  return { name: 'CT little demon does not suicide into a barrel', ok, detail: `best=${best(rows)}` };
+};
+
+const scenarioCU = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.75, heroId: 'cole', role: 'frontliner' });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 430, y: 750, hpRatio: 0.35, recentlyHit: true })];
+  const kit = kitProfileOf('cole', 'frontliner', COLE.attackRange, { staminaRatio: 0.7, dashCharges: 2 });
+  const rows = rankActions(
+    situationOf(self, [], enemies, {
+      kit,
+      environment: { nearby: [crateFact(440, 750)], crate: crateFact(440, 750) },
+    }),
+  );
+  const ok = ['attack', 'finish_target', 'advance'].includes(best(rows));
+  return { name: 'CU cole keeps fighting instead of farming a crate', ok, detail: `best=${best(rows)}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -2007,4 +2113,9 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioCN(),
   scenarioCO(),
   scenarioCP(),
+  scenarioCQ(),
+  scenarioCR(),
+  scenarioCS(),
+  scenarioCT(),
+  scenarioCU(),
 ];

@@ -20,6 +20,7 @@ export const ENV_WORLD = {
   heavyPush: 210,
   abilityPush: 260,
   dashPush: 240,
+  dashHit: 9,
   explosionPush: 520,
   treeMass: 1.15,
   treeDrag: 3.4,
@@ -27,6 +28,8 @@ export const ENV_WORLD = {
   treeWalkSlow: 0.62,
   knockedLifetimeMs: 20_000,
   knockFadeMs: 900,
+  wreckLifeMs: 16_000,
+  smokeGapMs: 380,
 
   barrelRadius: 72,
   barrelDamage: 22,
@@ -44,8 +47,9 @@ export const ENV_WORLD = {
   stainLifeMs: 18_000,
 
   roofFadeMs: 180,
-  roofInsideAlpha: 0.18,
+  roofInsideAlpha: 0.16,
   roofOutsideAlpha: 1,
+  roofDepth: 11,
 
   snapshotRadius: 340,
   debug: false,

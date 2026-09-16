@@ -45,6 +45,7 @@ export const runMapChecks = (): CheckResult[] => {
   let compact = true;
   let blocked = false;
   let landmarksNearMid = 0;
+  let interiorsOk = true;
   for (const seed of seeds) {
     const result = generateBattlefield({ seed, log: false });
     if (result.usedFallback) {
@@ -55,9 +56,12 @@ export const runMapChecks = (): CheckResult[] => {
     crateMax = Math.max(crateMax, crates.length);
     const barrels = result.layout.obstacles.filter((obs) => obs.kind === 'barrel');
     barrelMax = Math.max(barrelMax, barrels.length);
-    const enterable = result.layout.obstacles.filter((obs) => obs.enterable).length;
-    enterableMin = Math.min(enterableMin, enterable);
-    enterableMax = Math.max(enterableMax, enterable);
+    const enterable = result.layout.obstacles.filter((obs) => obs.enterable);
+    enterableMin = Math.min(enterableMin, enterable.length);
+    enterableMax = Math.max(enterableMax, enterable.length);
+    if (enterable.some((obs) => !obs.interior)) {
+      interiorsOk = false;
+    }
     wallsLive = wallsLive || result.layout.obstacles.some((obs) => obs.kind === 'wall' && obs.destructible);
     treesLive = treesLive || result.layout.obstacles.some((obs) => obs.kind === 'tree' && obs.physicsClass === 'lightweight');
     if (result.layout.roads.patches.length < 8) {
@@ -122,6 +126,11 @@ export const runMapChecks = (): CheckResult[] => {
     name: 'few enterable edge buildings',
     ok: enterableMax >= 1 && enterableMax <= 3 && enterableMin >= 0,
     detail: `enterable ${enterableMin}-${enterableMax}`,
+  });
+  results.push({
+    name: 'enterable buildings have interiors',
+    ok: interiorsOk,
+    detail: interiorsOk ? 'door + interior rect' : 'missing interior',
   });
   results.push({
     name: 'walls and trees can break',

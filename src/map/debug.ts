@@ -78,6 +78,10 @@ export class MapDebugOverlay {
         const ratio = obs.hp / obs.maxHp;
         this.graphics.fillStyle(ratio > 0.5 ? 0x7dff9a : 0xffc928, 0.45);
         this.graphics.fillRect(obs.collision.x, obs.collision.y - 4, obs.collision.w * ratio, 3);
+        if (obs.damageState && obs.damageState !== 'intact') {
+          this.graphics.lineStyle(1, 0xff6a18, 0.8);
+          this.graphics.strokeCircle(obs.x, obs.y, 10);
+        }
       }
     }
 
