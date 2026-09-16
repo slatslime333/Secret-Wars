@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { MapDebugOverlay } from './debug';
-import { CrateWorld, type CrateHooks } from './CrateWorld';
+import { EnvironmentWorld, type CrateHooks } from './EnvironmentWorld';
 import { generateBattlefield } from './generate';
 import { MapQuery } from './query';
 import { renderMapLayout, type MapView } from './render';
@@ -18,7 +18,8 @@ export class Battlefield {
   layout: MapLayout;
   query: MapQuery;
   world: MapWorld;
-  crates: CrateWorld;
+  crates: EnvironmentWorld;
+  environment: EnvironmentWorld;
   result: GenerateResult;
   private view: MapView;
   readonly debug: MapDebugOverlay;
@@ -33,7 +34,8 @@ export class Battlefield {
     this.query = new MapQuery(result.layout);
     this.world = new MapWorld(scene, result.layout);
     this.view = renderMapLayout(scene, result.layout);
-    this.crates = new CrateWorld(scene, this.world, this.view);
+    this.crates = new EnvironmentWorld(scene, this.world, this.view);
+    this.environment = this.crates;
     this.debug = new MapDebugOverlay(scene, result.layout);
     (scene as BattlefieldHost).battlefield = this;
   }
@@ -71,7 +73,8 @@ export class Battlefield {
     this.query = new MapQuery(this.layout);
     this.world = new MapWorld(this.scene, this.layout);
     this.view = renderMapLayout(this.scene, this.layout);
-    this.crates = new CrateWorld(this.scene, this.world, this.view);
+    this.crates = new EnvironmentWorld(this.scene, this.world, this.view);
+    this.environment = this.crates;
     this.crates.configure(this.hooks);
     this.debug.setLayout(this.layout);
     this.debug.setVisible(debugOn);

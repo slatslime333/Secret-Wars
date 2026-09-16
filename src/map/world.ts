@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { ARENA } from '../config/arena';
 import { MapQuery } from './query';
-import type { MapLayout } from './types';
+import type { MapLayout, MapObstacle } from './types';
 
 /**
  * Static collision bodies that match gameplay obstacle AABBs.
@@ -40,6 +40,61 @@ export class MapWorld {
 
   attachGroup(group: Phaser.Physics.Arcade.Group): void {
     this.colliders.push(this.scene.physics.add.collider(group, this.staticGroup));
+  }
+
+  setBlocking(id: string, blocks: boolean): void {
+    const obs = this.layout.obstacles.find((item) => item.id === id);
+    if (obs) {
+      obs.blocksMovement = blocks;
+      if (!blocks) {
+        obs.blocksProjectiles = false;
+        obs.blocksLos = false;
+      }
+    }
+    const index = this.blockers.findIndex((block) => block.getData('obstacleId') === id);
+    if (!blocks && index >= 0) {
+      const block = this.blockers[index];
+      this.staticGroup.remove(block, true, true);
+      block.destroy();
+      this.blockers.splice(index, 1);
+      return;
+    }
+    if (blocks && index < 0 && obs) {
+      this.addBlocker(obs);
+    }
+  }
+
+  refreshCollision(id: string): void {
+    const obs = this.layout.obstacles.find((item) => item.id === id);
+    if (!obs) {
+      return;
+    }
+    const index = this.blockers.findIndex((block) => block.getData('obstacleId') === id);
+    if (index >= 0) {
+      const block = this.blockers[index];
+      this.staticGroup.remove(block, true, true);
+      block.destroy();
+      this.blockers.splice(index, 1);
+    }
+    if (obs.blocksMovement) {
+      this.addBlocker(obs);
+    }
+  }
+
+  restoreObstacle(obs: MapObstacle): void {
+    if (!this.layout.obstacles.some((item) => item.id === obs.id)) {
+      this.layout.obstacles.push(obs);
+    }
+    this.refreshCollision(obs.id);
+  }
+
+  private addBlocker(obs: MapObstacle): void {
+    const { x, y, w, h } = obs.collision;
+    const block = this.scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0x000000, 0);
+    block.setData('obstacleId', obs.id);
+    this.scene.physics.add.existing(block, true);
+    this.staticGroup.add(block);
+    this.blockers.push(block);
   }
 
   removeObstacle(id: string): void {

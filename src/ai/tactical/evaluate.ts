@@ -23,6 +23,7 @@ import { clusterRiskOf } from './spacing';
 import { assessTeam, biasAction, type TeamIntel } from './teamIntel';
 import { assessWar, isAoeFarmer, minionPackSize, objectiveScoreValue, warBiasAction } from './warSense';
 import { applyDemonBias } from './demonSense';
+import { applyEnvBias } from './envSense';
 import { assessSupport } from './supportSense';
 import { pickHealMinion } from './retreat';
 import type {
@@ -1572,6 +1573,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
   if (kind === 'hero') {
     count = applySupportBias(out, count, situation, tune);
     count = applyDemonBias(out, count, situation, write);
+    count = applyEnvBias(out, count, situation, write);
   }
 
   if (plan && kind === 'hero') {

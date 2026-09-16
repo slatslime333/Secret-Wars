@@ -5,15 +5,18 @@ import {
   COVER_CLUSTERS,
   EDGE_CLUSTERS,
   plantCratesBeside,
+  plantBarrelsBeside,
   stampCluster,
   templateById,
   type ClusterId,
 } from './clusters';
 import { MAP, chunkSize, mapPlayable } from './config';
+import { ENV_WORLD } from '../config/environment';
 import { buildFallbackLayout } from './fallback';
 import { inflate, rectsOverlap } from './geometry';
 import { generateRoads } from './roads';
 import { buildReservedZones, reservedBlocks, spawnZonesOf } from './reserved';
+import { decorateObstacle } from './envProps';
 import { visualForProp } from './scale';
 import { scatterFieldDetails } from './scatter';
 import { SeededRNG } from './seed';
@@ -102,22 +105,24 @@ const instantiate = (
       continue;
     }
     const visual = visualForProp(local.spec, cx, cy);
-    obstacles.push({
-      id: `${idBase}-${n}`,
-      kind: local.kind,
-      variant: local.variant,
-      x: cx,
-      y: cy,
-      collision,
-      visual,
-      keepout: keepoutOf(local.kind, collision, visual),
-      blocksMovement: true,
-      blocksProjectiles: local.kind !== 'fence',
-      blocksLos: local.kind === 'building' || local.kind === 'vehicle' || local.kind === 'wall',
-      destructible: local.kind === 'crate',
-      hierarchy: hierarchyOf(local.kind),
-      hp: local.kind === 'crate' ? CRATE.maxHealth : undefined,
-    });
+    obstacles.push(
+      decorateObstacle({
+        id: `${idBase}-${n}`,
+        kind: local.kind,
+        variant: local.variant,
+        x: cx,
+        y: cy,
+        collision,
+        visual,
+        keepout: keepoutOf(local.kind, collision, visual),
+        blocksMovement: true,
+        blocksProjectiles: local.kind !== 'fence',
+        blocksLos: local.kind === 'building' || local.kind === 'vehicle' || local.kind === 'wall',
+        destructible: local.kind === 'crate',
+        hierarchy: hierarchyOf(local.kind),
+        hp: local.kind === 'crate' ? CRATE.maxHealth : undefined,
+      }),
+    );
     n += 1;
   }
   for (const local of template.decorations) {
@@ -229,6 +234,41 @@ const placeApproachCluster = (
   return { obstacles: [], decorations: [] };
 };
 
+const markEnterableBuildings = (obstacles: MapObstacle[], playable: Rect): void => {
+  const left = playable.x + playable.w * 0.26;
+  const right = playable.x + playable.w * 0.74;
+  const midY = playable.y + playable.h * 0.5;
+  const candidates = obstacles.filter((obs) => {
+    if (obs.kind !== 'building' || obs.enterable) {
+      return false;
+    }
+    if (obs.x > left && obs.x < right) {
+      return false;
+    }
+    return Math.abs(obs.y - midY) > 70;
+  });
+  let opened = 0;
+  for (const obs of candidates) {
+    if (opened >= ENV_WORLD.maxEnterable) {
+      break;
+    }
+    obs.enterable = true;
+    if (obs.variant !== 'stub') {
+      obs.variant = 'shop';
+    }
+    const door = 28;
+    obs.collision.w = Math.max(26, obs.collision.w - door);
+    obs.collision.x = obs.x - obs.collision.w / 2 - door * 0.42;
+    obs.interior = {
+      x: obs.visual.x + 12,
+      y: obs.visual.y + 10,
+      w: obs.visual.w - 24,
+      h: Math.max(40, obs.visual.h - obs.collision.h - 16),
+    };
+    opened += 1;
+  }
+};
+
 export const assemble = (seed: number, attempt: number): MapLayout => {
   const rng = new SeededRNG(seed);
   const playable = mapPlayable();
@@ -290,6 +330,7 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
     { id: 'rubble-slide', x: 820, y: 628, mirror: false },
     { id: 'defensive-nest', x: 1764, y: 876, mirror: true },
     { id: 'overgrown-ruin', x: 1880, y: 1034, mirror: true },
+    { id: 'corner-shop', x: 470, y: 1110, mirror: false },
   ];
   for (const [index, site] of nearMid.entries()) {
     const stamp = stampCluster(templateById(site.id), site.x, site.y, site.mirror, reserved, obstacles, `mid-${index}`);
@@ -300,6 +341,8 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
   }
 
   obstacles.push(...plantCratesBeside(obstacles, reserved, obstacles));
+  obstacles.push(...plantBarrelsBeside(obstacles, reserved, obstacles));
+  markEnterableBuildings(obstacles, playable);
   decorations.push(...scatterFieldDetails(new SeededRNG(seed ^ 0x7e2a), obstacles));
 
   const layout: MapLayout = {

@@ -11,23 +11,43 @@ import {
   drawTree,
   drawVehicle,
   drawWall,
+  drawBarrel,
 } from './drawAssets';
 import type { MapObstacle } from './types';
 
 const KEYS: Record<string, string> = {
-  'wall:stone': 'sw-wall-stone-v4',
-  'wall:ruin': 'sw-wall-ruin-v4',
-  'wall:wood': 'sw-wall-wood-v4',
+  'wall:stone': 'sw-wall-stone-v5',
+  'wall:stone-damaged': 'sw-wall-stone-damaged-v1',
+  'wall:stone-cracked': 'sw-wall-stone-cracked-v1',
+  'wall:ruin': 'sw-wall-ruin-v5',
+  'wall:ruin-damaged': 'sw-wall-ruin-damaged-v1',
+  'wall:ruin-cracked': 'sw-wall-ruin-cracked-v1',
+  'wall:wood': 'sw-wall-wood-v5',
+  'wall:wood-damaged': 'sw-wall-wood-damaged-v1',
+  'wall:wood-cracked': 'sw-wall-wood-cracked-v1',
   'tree:small': 'sw-tree-small-v4',
   'tree:medium': 'sw-tree-medium-v4',
   'tree:broad': 'sw-tree-broad-v4',
   'crate:single': 'sw-crate-single-v4',
   'crate:stack': 'sw-crate-stack-v4',
   'crate:pair': 'sw-crate-pair-v4',
-  'building:house': 'sw-building-house-v4',
-  'building:stub': 'sw-building-stub-v4',
-  'vehicle:truck': 'sw-vehicle-truck-v4',
-  'vehicle:car': 'sw-vehicle-car-v4',
+  'building:house': 'sw-building-house-v5',
+  'building:house-floor': 'sw-building-house-floor-v1',
+  'building:house-roof': 'sw-building-house-roof-v1',
+  'building:house-shell': 'sw-building-house-shell-v1',
+  'building:stub': 'sw-building-stub-v5',
+  'building:stub-floor': 'sw-building-stub-floor-v1',
+  'building:stub-roof': 'sw-building-stub-roof-v1',
+  'building:stub-shell': 'sw-building-stub-shell-v1',
+  'building:shop': 'sw-building-shop-v1',
+  'building:shop-floor': 'sw-building-shop-floor-v1',
+  'building:shop-roof': 'sw-building-shop-roof-v1',
+  'building:shop-shell': 'sw-building-shop-shell-v1',
+  'vehicle:truck': 'sw-vehicle-truck-v5',
+  'vehicle:truck-damaged': 'sw-vehicle-truck-damaged-v1',
+  'vehicle:car': 'sw-vehicle-car-v5',
+  'vehicle:car-damaged': 'sw-vehicle-car-damaged-v1',
+  'vehicle:car-wreck': 'sw-vehicle-car-wreck-v1',
   'barricade:wood': 'sw-barricade-wood-v4',
   'barricade:metal': 'sw-barricade-metal-v4',
   'sandbag:line': 'sw-sandbag-line-v4',
@@ -36,6 +56,8 @@ const KEYS: Record<string, string> = {
   'rubble:chunk': 'sw-rubble-chunk-v4',
   'fence:wood': 'sw-fence-wood-v4',
   'fence:wire': 'sw-fence-wire-v4',
+  'barrel:drum': 'sw-barrel-drum-v1',
+  'barrel:fuel': 'sw-barrel-fuel-v1',
   'fire:small': 'sw-fire-small-v4',
 };
 
@@ -71,6 +93,7 @@ const drawers: Record<string, (ctx: CanvasRenderingContext2D, variant: string, w
   sandbag: drawSandbag,
   rubble: drawRubble,
   fence: drawFence,
+  barrel: drawBarrel,
   fire: drawFire,
 };
 
@@ -87,8 +110,21 @@ export const ensureObstacleTextures = (scene: Phaser.Scene): void => {
 };
 
 export const textureKeyFor = (obs: MapObstacle): string => {
-  const id = `${obs.kind}:${obs.variant}`;
-  return KEYS[id] ?? KEYS['crate:single'] ?? 'sw-crate-single-v4';
+  const wear =
+    obs.kind === 'wall' && (obs.damageState === 'damaged' || obs.damageState === 'cracked')
+      ? `-${obs.damageState}`
+      : obs.kind === 'vehicle' && obs.variant === 'car' && (obs.damageState === 'destroyed' || obs.damageState === 'knocked')
+        ? '-wreck'
+        : obs.kind === 'vehicle' && (obs.damageState === 'damaged' || obs.damageState === 'cracked')
+          ? '-damaged'
+          : '';
+  const id = `${obs.kind}:${obs.variant}${wear}`;
+  return KEYS[id] ?? KEYS[`${obs.kind}:${obs.variant}`] ?? KEYS['crate:single'] ?? 'sw-crate-single-v4';
+};
+
+export const buildingLayerKey = (obs: MapObstacle, layer: 'floor' | 'roof' | 'shell'): string => {
+  const id = `${obs.kind}:${obs.variant}-${layer}`;
+  return KEYS[id] ?? textureKeyFor(obs);
 };
 
 export const fireTextureKey = (): string => KEYS['fire:small'] ?? 'sw-fire-small-v4';

@@ -2,6 +2,7 @@ import type { TeamId } from '../../config/hero';
 import type { HeroRole } from '../../heroes/HeroDefinition';
 import type { NinjaBody } from '../../heroes/NinjaBody';
 import type { ObjectiveHint } from '../../match/objectives/types';
+import type { EnvSnapshot } from '../../map/EnvironmentWorld';
 
 /** High-level choices. Combat execution stays on the existing kits. */
 export type TacticalAction =
@@ -222,6 +223,7 @@ export type Situation = {
   supportMode?: SupportMode;
   supportFocusId?: number;
   supportNeed?: number;
+  environment?: EnvSnapshot;
 };
 
 export type TacticalDebugInfo = {

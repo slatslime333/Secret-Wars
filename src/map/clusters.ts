@@ -1,4 +1,5 @@
 import { CRATE } from '../config/crate';
+import { decorateObstacle } from './envProps';
 import { PROP, visualForProp, type PropSpec } from './scale';
 import { inflate, rectsOverlap } from './geometry';
 import { reservedBlocks } from './reserved';
@@ -12,7 +13,8 @@ export type ClusterId =
   | 'wrecked-car'
   | 'overgrown-ruin'
   | 'defensive-nest'
-  | 'rubble-slide';
+  | 'rubble-slide'
+  | 'corner-shop';
 
 type LocalSolid = {
   kind: ObstacleKind;
@@ -77,7 +79,7 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
     [
       { kind: 'vehicle', variant: 'truck', ox: -10, oy: 0, spec: PROP.truck, hierarchy: 'landmark' },
       { kind: 'rubble', variant: 'chunk', ox: 70, oy: 18, spec: PROP.rubbleSmall, hierarchy: 'cover' },
-      { kind: 'crate', variant: 'single', ox: 62, oy: -16, spec: PROP.crate, hierarchy: 'cover', destructible: true },
+      { kind: 'barrel', variant: 'drum', ox: 62, oy: -16, spec: PROP.barrel, hierarchy: 'cover', destructible: true },
       { kind: 'crate', variant: 'single', ox: 88, oy: 10, spec: PROP.crate, hierarchy: 'cover', destructible: true },
     ],
     [
@@ -129,7 +131,7 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
     [
       { kind: 'vehicle', variant: 'car', ox: -8, oy: 0, spec: PROP.car, hierarchy: 'landmark' },
       { kind: 'barricade', variant: 'metal', ox: 52, oy: 16, spec: PROP.barricade, hierarchy: 'cover' },
-      { kind: 'crate', variant: 'single', ox: 48, oy: -18, spec: PROP.crate, hierarchy: 'cover', destructible: true },
+      { kind: 'barrel', variant: 'fuel', ox: 48, oy: -18, spec: PROP.barrel, hierarchy: 'cover', destructible: true },
     ],
     [
       { kind: 'burn', ox: -16, oy: 18, variant: 0 },
@@ -189,6 +191,21 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
       { kind: 'grassCrack', ox: 40, oy: 40, variant: 1 },
     ],
   ),
+  t(
+    'corner-shop',
+    'A small shop on a side street.',
+    150,
+    128,
+    [
+      { kind: 'building', variant: 'shop', ox: -8, oy: -8, spec: PROP.building, hierarchy: 'landmark' },
+      { kind: 'tree', variant: 'small', ox: 72, oy: -22, spec: PROP.treeSmall, hierarchy: 'cover' },
+      { kind: 'crate', variant: 'single', ox: 58, oy: 16, spec: PROP.crate, hierarchy: 'cover', destructible: true },
+    ],
+    [
+      { kind: 'sign', ox: 62, oy: -30, variant: 1 },
+      { kind: 'curbBit', ox: 36, oy: 34, variant: 0 },
+    ],
+  ),
 ];
 
 export const EDGE_CLUSTERS: readonly ClusterId[] = [
@@ -197,6 +214,7 @@ export const EDGE_CLUSTERS: readonly ClusterId[] = [
   'overgrown-ruin',
   'wrecked-car',
   'rubble-slide',
+  'corner-shop',
 ];
 
 export const COVER_CLUSTERS: readonly ClusterId[] = [
@@ -218,7 +236,7 @@ const keepoutFor = (kind: ObstacleKind, collision: Rect): Rect => {
   if (kind === 'building' || kind === 'vehicle') {
     return inflate(collision, 16);
   }
-  if (kind === 'crate') {
+  if (kind === 'crate' || kind === 'barrel') {
     return inflate(collision, 6);
   }
   return inflate(collision, 8);
@@ -260,25 +278,27 @@ export const stampCluster = (
     if (obstacles.some((obs) => rectsOverlap(inflate(obs.collision, 4), collision) && obs.kind !== 'crate')) {
       continue;
     }
-    obstacles.push({
-      id: `${idBase}-${n}`,
-      kind: local.kind,
-      variant: local.variant,
-      x,
-      y,
-      collision,
-      visual: visualForProp(local.spec, x, y),
-      keepout:
-        local.hierarchy === 'landmark'
-          ? inflate(visualForProp(local.spec, x, y), 8)
-          : keepoutFor(local.kind, collision),
-      blocksMovement: true,
-      blocksProjectiles: local.kind !== 'fence',
-      blocksLos: local.kind === 'building' || local.kind === 'vehicle' || local.kind === 'wall',
-      destructible: Boolean(local.destructible),
-      hierarchy: local.hierarchy,
-      hp: local.kind === 'crate' ? CRATE.maxHealth : undefined,
-    });
+    obstacles.push(
+      decorateObstacle({
+        id: `${idBase}-${n}`,
+        kind: local.kind,
+        variant: local.variant,
+        x,
+        y,
+        collision,
+        visual: visualForProp(local.spec, x, y),
+        keepout:
+          local.hierarchy === 'landmark'
+            ? inflate(visualForProp(local.spec, x, y), 8)
+            : keepoutFor(local.kind, collision),
+        blocksMovement: true,
+        blocksProjectiles: local.kind !== 'fence',
+        blocksLos: local.kind === 'building' || local.kind === 'vehicle' || local.kind === 'wall',
+        destructible: Boolean(local.destructible),
+        hierarchy: local.hierarchy,
+        hp: local.kind === 'crate' ? CRATE.maxHealth : undefined,
+      }),
+    );
     n += 1;
   }
   if (obstacles.length < 1) {
@@ -299,7 +319,7 @@ export const stampCluster = (
 const crateObstacle = (id: string, x: number, y: number, spec: PropSpec, variant: string): MapObstacle => {
   const collision = { x: x - spec.w / 2, y: y - spec.h / 2, w: spec.w, h: spec.h };
   const visual = visualForProp(spec, x, y);
-  return {
+  return decorateObstacle({
     id,
     kind: 'crate',
     variant,
@@ -314,7 +334,7 @@ const crateObstacle = (id: string, x: number, y: number, spec: PropSpec, variant
     destructible: true,
     hierarchy: 'cover',
     hp: CRATE.maxHealth,
-  };
+  });
 };
 
 /** Tuck supply crates beside landmarks so they never sit alone in open grass. */
@@ -358,6 +378,76 @@ export const plantCratesBeside = (
       extras.push(crate);
       n += 1;
       placed += 1;
+    }
+  }
+  return extras;
+};
+
+const barrelObstacle = (id: string, x: number, y: number, variant: 'drum' | 'fuel'): MapObstacle => {
+  const spec = PROP.barrel;
+  const collision = { x: x - spec.w / 2, y: y - spec.h / 2, w: spec.w, h: spec.h };
+  const visual = visualForProp(spec, x, y);
+  return decorateObstacle({
+    id,
+    kind: 'barrel',
+    variant,
+    x,
+    y,
+    collision,
+    visual,
+    keepout: inflate(collision, 6),
+    blocksMovement: true,
+    blocksProjectiles: true,
+    blocksLos: false,
+    destructible: true,
+    hierarchy: 'cover',
+    explosive: true,
+  });
+};
+
+/** A few drums in alleys beside cars and shops, never mid-lane. */
+export const plantBarrelsBeside = (
+  hosts: readonly MapObstacle[],
+  reserved: readonly ReservedZone[],
+  existing: MapObstacle[],
+): MapObstacle[] => {
+  const extras: MapObstacle[] = [];
+  const anchors = hosts.filter(
+    (obs) => obs.kind === 'vehicle' || obs.kind === 'building' || obs.kind === 'barricade',
+  );
+  let n = 0;
+  for (const host of anchors) {
+    if (existing.filter((obs) => obs.kind === 'barrel').length + extras.length >= 6) {
+      break;
+    }
+    if (Math.abs(host.y - 752) < 70) {
+      continue;
+    }
+    const already = [...existing, ...extras].filter(
+      (obs) => obs.kind === 'barrel' && Math.hypot(obs.x - host.x, obs.y - host.y) < 100,
+    ).length;
+    if (already >= 1) {
+      continue;
+    }
+    const slots = [
+      { x: host.collision.x + host.collision.w + PROP.barrel.w / 2 + 10, y: host.y + 16 },
+      { x: host.collision.x - PROP.barrel.w / 2 - 10, y: host.y - 12 },
+    ];
+    for (const slot of slots) {
+      const barrel = barrelObstacle(`drum-${host.id}-${n}`, slot.x, slot.y, n % 2 === 0 ? 'drum' : 'fuel');
+      if (reservedBlocks(barrel.collision, reserved, 2)) {
+        continue;
+      }
+      if (
+        [...existing, ...extras].some(
+          (obs) => obs.blocksMovement && rectsOverlap(inflate(obs.collision, 4), barrel.collision),
+        )
+      ) {
+        continue;
+      }
+      extras.push(barrel);
+      n += 1;
+      break;
     }
   }
   return extras;

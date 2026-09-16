@@ -134,6 +134,9 @@ export const resolveAbilityHit = (
     damage: profile.rawDamage,
     reach: attacker.stats.attackRange + COMBAT.hitForgiveness,
     kind: 'ability',
+    dirX: profile.dirX,
+    dirY: profile.dirY,
+    impulse: profile.heavy ? 1.8 : 1.45,
   });
   return 'hit';
 };

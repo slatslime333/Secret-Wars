@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { COMBAT } from '../config/combat';
+import { ENV_WORLD } from '../config/environment';
 import { spawnCombatCallout } from '../effects/combatCallout';
 import { NinjaBody } from '../heroes/NinjaBody';
+import { emitWorldStrike } from '../match/objectives/worldStrike';
 import { COLORS } from '../ui/theme';
 import { RopeSlingDash } from './RopeSlingDash';
 
@@ -57,6 +59,7 @@ export class DashController {
       this.activeUntil = now + this.sling.durationMs;
       ninja.grantInvulnerable(now + this.sling.durationMs);
       spawnCombatCallout(this.scene, ninja.x, ninja.y, 'DASH', COLORS.orange);
+      this.strikeWorld(now, ninja);
       return true;
     }
     this.activeUntil = now + COMBAT.dashDurationMs;
@@ -64,7 +67,21 @@ export class DashController {
     ninja.grantInvulnerable(now + COMBAT.dashDurationMs);
     this.spawnStreaks(ninja);
     spawnCombatCallout(this.scene, ninja.x, ninja.y, 'DASH', COLORS.orange);
+    this.strikeWorld(now, ninja);
     return true;
+  }
+
+  private strikeWorld(now: number, ninja: NinjaBody): void {
+    emitWorldStrike({
+      attacker: ninja,
+      now,
+      damage: ENV_WORLD.dashHit,
+      reach: COMBAT.dashDistance * 0.62,
+      kind: 'dash',
+      dirX: this.dir.x,
+      dirY: this.dir.y,
+      impulse: 1,
+    });
   }
 
   isActive(now: number): boolean {
