@@ -230,7 +230,11 @@ export class ScrollPanel {
     } else {
       this.content.x = -this.scroll;
     }
-    this.syncChildInput();
+    if (this.dragging && this.wasDragged) {
+      this.setContentInput(false);
+    } else {
+      this.syncChildInput();
+    }
     this.onScroll?.();
   }
 
