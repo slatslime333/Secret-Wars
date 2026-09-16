@@ -137,8 +137,12 @@ export class PostMatchOverlay {
       }
       rematch.setVisible(true);
       menu.setVisible(true);
-      rematch.setInteractive({ useHandCursor: true });
-      menu.setInteractive({ useHandCursor: true });
+      if (rematch.input) {
+        rematch.input.enabled = true;
+      }
+      if (menu.input) {
+        menu.input.enabled = true;
+      }
     });
   }
 

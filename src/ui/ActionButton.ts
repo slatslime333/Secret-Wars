@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { audio } from '../audio';
 import type { SoundId } from '../audio';
 import { COLORS, FONTS, hex } from './theme';
+import { capturePress, isTapRelease, type PointerPress } from './layout/tapGesture';
 
 type ActionButtonOptions = {
   label: string;
@@ -24,6 +25,7 @@ export class ActionButton extends Phaser.GameObjects.Container {
   private readonly buttonWidth: number;
   private readonly buttonHeight: number;
   private focused = false;
+  private press?: PointerPress;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: ActionButtonOptions) {
     super(scene, x, y);
@@ -55,13 +57,19 @@ export class ActionButton extends Phaser.GameObjects.Container {
       audio.play('ui-hover');
     });
     this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => this.setFocused(false));
-    this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => {
+    this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
+      this.press = capturePress(pointer);
       this.setScale(0.97);
       this.labelText.setY(2);
     });
-    this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => {
+    this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, (pointer: Phaser.Input.Pointer) => {
       this.setScale(1);
       this.labelText.setY(-2);
+      if (!isTapRelease(this.press, pointer)) {
+        this.press = undefined;
+        return;
+      }
+      this.press = undefined;
       audio.unlock();
       audio.play(clickSoundFor(options.label));
       options.onPress();

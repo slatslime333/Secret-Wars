@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { COLORS, FONTS, hex } from './theme';
-import { adoptHud, hudPointer } from './layout/hudCamera';
+import { adoptHud } from './layout/hudCamera';
+import { ScrollPanel } from './layout/ScrollPanel';
+import { capturePress, isTapRelease, syncHitArea, type PointerPress } from './layout/tapGesture';
 import { isTouchPrimary } from '../device';
 import { measureViewport } from './layout/viewport';
 import { layoutHudChrome } from './layout/hudChrome';
@@ -61,18 +63,14 @@ export class DevMenu {
   private readonly rows: Row[] = [];
   private readonly scrollTrack: Phaser.GameObjects.Rectangle;
   private readonly scrollThumb: Phaser.GameObjects.Rectangle;
+  private readonly scroller: ScrollPanel;
   private open = false;
-  private scroll = 0;
   private panelX = 0;
   private panelY = 0;
   private panelW = 280;
   private panelH = 420;
   private rowH = 22;
   private headH = 22;
-  private dragging = false;
-  private dragStartY = 0;
-  private dragStartScroll = 0;
-  private dragged = false;
 
   constructor(scene: Phaser.Scene, options: DevMenuHandlers) {
     this.scene = scene;
@@ -140,6 +138,10 @@ export class DevMenu {
       .setScrollFactor(0)
       .setDepth(225)
       .setVisible(false);
+
+    this.scroller = new ScrollPanel(scene, 0, 140, 240, 360, { depth: 223, scrollFactor: 0 });
+    this.scroller.root.setVisible(false);
+    this.scroller.onScrollChange(() => this.syncScrollThumb());
 
     const addHead = (title: string) => {
       this.rows.push({ kind: 'head', label: () => title });
@@ -257,12 +259,15 @@ export class DevMenu {
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(223)
-        .setVisible(false);
+        .setVisible(true);
       if (!head && row.onPress) {
         text.setInteractive({ useHandCursor: true });
-        text.on(Phaser.Input.Events.POINTER_DOWN, this.beginDrag, this);
-        text.on(Phaser.Input.Events.POINTER_UP, () => {
-          if (this.dragged) {
+        let press: PointerPress | undefined;
+        text.on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
+          press = capturePress(pointer);
+        });
+        text.on(Phaser.Input.Events.POINTER_UP, (pointer: Phaser.Input.Pointer) => {
+          if (this.scroller.wasDragged || !isTapRelease(press, pointer)) {
             return;
           }
           row.onPress?.();
@@ -270,31 +275,12 @@ export class DevMenu {
         });
       }
       row.text = text;
+      this.scroller.add(text);
     }
 
     this.toggle.on(Phaser.Input.Events.POINTER_UP, () => {
       this.open = !this.open;
       this.setOpen(this.open);
-    });
-    this.panel.on(Phaser.Input.Events.POINTER_DOWN, this.beginDrag, this);
-    scene.input.on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
-      if (!this.open) {
-        return;
-      }
-      const point = hudPointer(this.scene, pointer);
-      if (this.contains(point.x, point.y)) {
-        this.beginDrag(pointer);
-      }
-    });
-    scene.input.on(Phaser.Input.Events.POINTER_MOVE, this.onDrag, this);
-    scene.input.on(Phaser.Input.Events.POINTER_UP, this.endDrag, this);
-    scene.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.endDrag, this);
-    scene.input.on('wheel', (_pointer: Phaser.Input.Pointer, _g: unknown, _dx: number, dy: number) => {
-      if (!this.open) {
-        return;
-      }
-      this.scroll = Phaser.Math.Clamp(this.scroll + dy * 0.45, 0, this.maxScroll());
-      this.layout(scene.scale.width, scene.scale.height);
     });
     this.layout(width, scene.scale.height);
     adoptHud(
@@ -305,7 +291,7 @@ export class DevMenu {
       this.hint,
       this.scrollTrack,
       this.scrollThumb,
-      ...this.rows.flatMap((row) => (row.text ? [row.text] : [])),
+      this.scroller.root,
     );
   }
 
@@ -330,28 +316,24 @@ export class DevMenu {
     this.hint.setPosition(innerX, this.panelY + 24);
     const listTop = this.panelY + 42;
     const listH = this.panelH - 50;
-    this.scroll = Phaser.Math.Clamp(this.scroll, 0, this.maxScroll());
-    let y = listTop - this.scroll;
+    this.scroller.resize(innerX, listTop, innerW, listH);
+    let y = 0;
     for (const row of this.rows) {
       const h = row.kind === 'head' ? this.headH : this.rowH;
       const gap = row.kind === 'head' ? 2 : 4;
-      const inView = this.open && y + h > listTop && y < listTop + listH;
-      row.text?.setPosition(innerX, y);
+      row.text?.setPosition(0, y);
       if (row.kind === 'item') {
         row.text?.setFixedSize(innerW, h - 2);
+        if (row.text) {
+          syncHitArea(row.text, innerW, h - 2);
+        }
       }
-      row.text?.setVisible(inView);
+      row.text?.setVisible(this.open);
       y += h + gap;
     }
-    const trackX = this.panelX - 8;
-    this.scrollTrack.setPosition(trackX, listTop).setSize(3, listH);
-    const range = this.maxScroll();
-    const thumbH = range <= 0 ? listH : Math.max(28, listH * (listH / (listH + range)));
-    const thumbY = range <= 0 ? listTop : listTop + (this.scroll / range) * (listH - thumbH);
-    this.scrollThumb.setPosition(trackX, thumbY).setSize(3, thumbH);
-    const showBar = this.open && range > 0;
-    this.scrollTrack.setVisible(showBar);
-    this.scrollThumb.setVisible(showBar);
+    this.scroller.setContentSize(innerW, y);
+    this.scroller.root.setVisible(this.open);
+    this.syncScrollThumb();
   }
 
   sync(): void {
@@ -365,50 +347,18 @@ export class DevMenu {
     this.setOpen(false);
   }
 
-  private beginDrag(pointer: Phaser.Input.Pointer): void {
-    if (!this.open) {
-      return;
-    }
-    const point = hudPointer(this.scene, pointer);
-    if (!this.contains(point.x, point.y)) {
-      return;
-    }
-    this.dragging = true;
-    this.dragged = false;
-    this.dragStartY = point.y;
-    this.dragStartScroll = this.scroll;
-  }
-
-  private onDrag(pointer: Phaser.Input.Pointer): void {
-    if (!this.dragging) {
-      return;
-    }
-    const point = hudPointer(this.scene, pointer);
-    const dy = this.dragStartY - point.y;
-    if (Math.abs(dy) > 8) {
-      this.dragged = true;
-    }
-    this.scroll = Phaser.Math.Clamp(this.dragStartScroll + dy, 0, this.maxScroll());
-    this.layout(this.scene.scale.width, this.scene.scale.height);
-  }
-
-  private endDrag(): void {
-    this.dragging = false;
-    this.scene.time.delayedCall(40, () => {
-      this.dragged = false;
-    });
-  }
-
-  private contains(x: number, y: number): boolean {
-    return x <= this.panelX && x >= this.panelX - this.panelW && y >= this.panelY && y <= this.panelY + this.panelH;
-  }
-
-  private maxScroll(): number {
-    const content = this.rows.reduce(
-      (sum, row) => sum + (row.kind === 'head' ? this.headH + 2 : this.rowH + 4),
-      0,
-    );
-    return Math.max(0, content - (this.panelH - 56));
+  private syncScrollThumb(): void {
+    const listTop = this.panelY + 42;
+    const listH = this.panelH - 50;
+    const trackX = this.panelX - 8;
+    this.scrollTrack.setPosition(trackX, listTop).setSize(3, listH);
+    const range = this.scroller.getMaxScroll();
+    const thumbH = range <= 0 ? listH : Math.max(28, listH * (listH / (listH + range)));
+    const thumbY = range <= 0 ? listTop : listTop + (this.scroller.getScroll() / range) * (listH - thumbH);
+    this.scrollThumb.setPosition(trackX, thumbY).setSize(3, thumbH);
+    const showBar = this.open && range > 0;
+    this.scrollTrack.setVisible(showBar);
+    this.scrollThumb.setVisible(showBar);
   }
 
   private setOpen(open: boolean): void {

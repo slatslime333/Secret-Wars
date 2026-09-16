@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { adoptHud } from './hudCamera';
+import { adoptHud, hudPointer } from './hudCamera';
+import { TAP_PX, normalizedWheelDelta } from './tapGesture';
 
 export type ScrollAxis = 'y' | 'x';
 
@@ -12,7 +13,8 @@ type ScrollPanelOptions = {
 /**
  * Clipped scroll region for menus and modals. Gameplay never uses this —
  * only content that can exceed the viewport. Drag and wheel move the content;
- * a tap that barely moved still reaches children.
+ * a tap that barely moved still reaches children. Geometry masks do not clip
+ * Phaser input, so children outside the view have input disabled.
  */
 export class ScrollPanel {
   readonly root: Phaser.GameObjects.Container;
@@ -33,10 +35,15 @@ export class ScrollPanel {
   private dragging = false;
   private dragStart = 0;
   private scrollStart = 0;
+  private velocity = 0;
+  private lastPoint = 0;
+  private lastMoveAt = 0;
+  private onScroll?: () => void;
   private readonly onWheel: (pointer: Phaser.Input.Pointer, _over: unknown, dx: number, dy: number) => void;
   private readonly onDown: (pointer: Phaser.Input.Pointer) => void;
   private readonly onMove: (pointer: Phaser.Input.Pointer) => void;
   private readonly onUp: (pointer: Phaser.Input.Pointer) => void;
+  private readonly onTick: (_time: number, delta: number) => void;
 
   constructor(
     scene: Phaser.Scene,
@@ -75,33 +82,63 @@ export class ScrollPanel {
     }
 
     this.onDown = (pointer) => {
-      if (!this.contains(pointer.x, pointer.y) || !this.root.visible) {
+      if (!this.pointerInView(pointer) || !this.root.visible) {
         return;
       }
+      const point = this.axisValue(pointer);
       this.dragging = true;
       this.wasDragged = false;
-      this.dragStart = this.axis === 'y' ? pointer.y : pointer.x;
+      this.velocity = 0;
+      this.dragStart = point;
       this.scrollStart = this.scroll;
+      this.lastPoint = point;
+      this.lastMoveAt = pointer.time;
+      this.syncChildInput();
     };
     this.onMove = (pointer) => {
       if (!this.dragging) {
         return;
       }
-      const now = this.axis === 'y' ? pointer.y : pointer.x;
-      const delta = now - this.dragStart;
-      if (Math.abs(delta) > 8) {
-        this.wasDragged = true;
+      const point = this.axisValue(pointer);
+      const delta = point - this.dragStart;
+      const now = pointer.time;
+      const step = point - this.lastPoint;
+      const dt = Math.max(8, now - this.lastMoveAt);
+      this.lastPoint = point;
+      this.lastMoveAt = now;
+      if (Math.abs(delta) <= TAP_PX) {
+        return;
       }
+      if (!this.wasDragged) {
+        this.wasDragged = true;
+        this.setContentInput(false);
+      }
+      this.velocity = (-step / dt) * 16.67;
       this.setScroll(this.scrollStart - delta);
     };
     this.onUp = () => {
       this.dragging = false;
+      this.syncChildInput();
     };
     this.onWheel = (pointer, _over, dx, dy) => {
-      if (!this.contains(pointer.x, pointer.y) || !this.root.visible) {
+      if (!this.pointerInView(pointer) || !this.root.visible) {
         return;
       }
-      this.setScroll(this.scroll + (this.axis === 'y' ? dy : dx + dy));
+      const event = pointer.event as WheelEvent | undefined;
+      event?.preventDefault?.();
+      this.velocity = 0;
+      this.setScroll(this.scroll + normalizedWheelDelta(pointer, dx, dy, this.axis));
+    };
+    this.onTick = (_time, delta) => {
+      if (this.dragging || !this.root.visible || Math.abs(this.velocity) < 0.35) {
+        if (!this.dragging && Math.abs(this.velocity) < 0.35) {
+          this.velocity = 0;
+        }
+        return;
+      }
+      const frames = delta / 16.67;
+      this.setScroll(this.scroll + this.velocity * frames);
+      this.velocity *= Math.pow(0.9, frames);
     };
 
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onDown);
@@ -109,10 +146,12 @@ export class ScrollPanel {
     scene.input.on(Phaser.Input.Events.POINTER_UP, this.onUp);
     scene.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onUp);
     scene.input.on('wheel', this.onWheel);
+    scene.events.on(Phaser.Scenes.Events.UPDATE, this.onTick);
   }
 
   add(child: Phaser.GameObjects.GameObject): this {
     this.content.add(child);
+    this.syncChildInput();
     return this;
   }
 
@@ -138,6 +177,18 @@ export class ScrollPanel {
     return this.maxScroll() > 1;
   }
 
+  getScroll(): number {
+    return this.scroll;
+  }
+
+  getMaxScroll(): number {
+    return this.maxScroll();
+  }
+
+  onScrollChange(handler: () => void): void {
+    this.onScroll = handler;
+  }
+
   /** Keep a content-space x range inside the clip. Optionally leave `peek` of the next item visible. */
   revealX(contentX: number, itemW: number, peek = 0): void {
     if (this.axis !== 'x') {
@@ -160,6 +211,7 @@ export class ScrollPanel {
     this.scene.input.off(Phaser.Input.Events.POINTER_UP, this.onUp);
     this.scene.input.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onUp);
     this.scene.input.off('wheel', this.onWheel);
+    this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.onTick);
     this.root.clearMask(true);
     this.maskGfx.destroy();
     this.root.destroy(true);
@@ -178,10 +230,53 @@ export class ScrollPanel {
     } else {
       this.content.x = -this.scroll;
     }
+    this.syncChildInput();
+    this.onScroll?.();
   }
 
-  private contains(x: number, y: number): boolean {
-    return x >= this.originX && x <= this.originX + this.viewW && y >= this.originY && y <= this.originY + this.viewH;
+  private axisValue(pointer: Phaser.Input.Pointer): number {
+    const point = hudPointer(this.scene, pointer);
+    return this.axis === 'y' ? point.y : point.x;
+  }
+
+  private pointerInView(pointer: Phaser.Input.Pointer): boolean {
+    const point = hudPointer(this.scene, pointer);
+    return (
+      point.x >= this.originX &&
+      point.x <= this.originX + this.viewW &&
+      point.y >= this.originY &&
+      point.y <= this.originY + this.viewH
+    );
+  }
+
+  private setContentInput(enabled: boolean): void {
+    this.walkInput(this.content, enabled);
+  }
+
+  private syncChildInput(): void {
+    const view = new Phaser.Geom.Rectangle(this.originX, this.originY, this.viewW, this.viewH);
+    this.clipInput(this.content, view);
+  }
+
+  private walkInput(object: Phaser.GameObjects.GameObject, enabled: boolean): void {
+    if (object.input) {
+      object.input.enabled = enabled;
+    }
+    const nested = object as Phaser.GameObjects.Container;
+    if (Array.isArray(nested.list)) {
+      nested.list.forEach((child) => this.walkInput(child, enabled));
+    }
+  }
+
+  private clipInput(object: Phaser.GameObjects.GameObject, view: Phaser.Geom.Rectangle): void {
+    if (object.input && 'getBounds' in object && typeof object.getBounds === 'function') {
+      const bounds = (object as Phaser.GameObjects.Container).getBounds();
+      object.input.enabled = Phaser.Geom.Intersects.RectangleToRectangle(view, bounds);
+    }
+    const nested = object as Phaser.GameObjects.Container;
+    if (Array.isArray(nested.list)) {
+      nested.list.forEach((child) => this.clipInput(child, view));
+    }
   }
 
   private redrawMask(): void {

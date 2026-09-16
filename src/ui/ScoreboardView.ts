@@ -9,7 +9,8 @@ import { sortScoreboardLines } from '../match/scoreboard/sortLines';
 import { teamLevelOf } from '../match/scoreboard/teamLevel';
 import { ScrollPanel } from './layout/ScrollPanel';
 import { measureViewport } from './layout/viewport';
-import { adoptHud } from './layout/hudCamera';
+import { adoptHud, hudPointer } from './layout/hudCamera';
+import { capturePress, isTapRelease, syncHitArea, type PointerPress } from './layout/tapGesture';
 import { COLORS, FONTS, hex } from './theme';
 
 export type ScoreboardHeader = {
@@ -186,7 +187,16 @@ export class ScoreboardPanel {
     const hit = this.scene.add.rectangle(this.width / 2, y + rowH / 2, this.width, rowH, COLORS.panel, open ? 0.94 : 0.74);
     hit.setStrokeStyle(1.4, accent, open ? 0.95 : 0.45);
     hit.setInteractive({ useHandCursor: true });
-    hit.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.toggle(line.instanceId));
+    let press: PointerPress | undefined;
+    hit.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
+      press = capturePress(pointer);
+    });
+    hit.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, (pointer: Phaser.Input.Pointer) => {
+      if (!isTapRelease(press, pointer)) {
+        return;
+      }
+      this.toggle(line.instanceId);
+    });
     const caret = this.scene.add
       .text(10, y + rowH / 2, open ? '▾' : '▸', {
         fontFamily: FONTS.body,
@@ -222,6 +232,7 @@ export class ScoreboardPanel {
       const detailH = this.drawDetails(line, y + rowH, compact);
       hit.setSize(this.width, rowH + detailH);
       hit.setPosition(this.width / 2, y + (rowH + detailH) / 2);
+      syncHitArea(hit, this.width, rowH + detailH);
       used += detailH;
     }
     return y + used + 5;
@@ -420,8 +431,16 @@ export class ScoreboardOverlay {
     const inset = frame.contentInset;
     const veil = this.scene.add.rectangle(width / 2, height / 2, width, height, COLORS.ink, 0.55);
     veil.setInteractive();
+    let veilPress: PointerPress | undefined;
+    veil.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
+      veilPress = capturePress(pointer);
+    });
     veil.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, (pointer: Phaser.Input.Pointer) => {
-      if (this.insideBoard(pointer.x, pointer.y)) {
+      if (!isTapRelease(veilPress, pointer) || this.scroller?.wasDragged) {
+        return;
+      }
+      const point = hudPointer(this.scene, pointer);
+      if (this.insideBoard(point.x, point.y)) {
         return;
       }
       this.hide();

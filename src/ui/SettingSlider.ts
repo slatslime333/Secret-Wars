@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, FONTS, hex } from './theme';
+import { hudPointer } from './layout/hudCamera';
 
 type SettingSliderOptions = {
   label: string;
@@ -111,7 +112,7 @@ export class SettingSlider extends Phaser.GameObjects.Container {
   }
 
   private applyPointer(pointer: Phaser.Input.Pointer): void {
-    const px = this.screenSpace ? pointer.x : pointer.worldX;
+    const px = this.screenSpace ? hudPointer(this.scene, pointer).x : pointer.worldX;
     const localX = px - this.x;
     const ratio = (localX + this.trackWidth / 2) / this.trackWidth;
     const next = Phaser.Math.Clamp(ratio, 0, 1);
