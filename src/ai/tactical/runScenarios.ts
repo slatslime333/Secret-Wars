@@ -10,14 +10,14 @@ import { kitProfileOf } from './kitProfile';
 import { personalityFromSeed } from './personality';
 import { pickOpeningForTest } from './strategy';
 import { clusterRiskOf, guardHome, nudgeOffMates, protectStand, regroupStand } from './spacing';
-import { cameraPrefs } from '../../config/cameraPrefs';
+import { cameraPrefs, spectatorZoomLimits } from '../../config/cameraPrefs';
 import { MENDER } from '../../config/mender';
 import { DEMON, DEMON_BIG } from '../../config/demon';
 import { COLE, COLE_CONVERTED_RANGE } from '../../config/cole';
 import { DEATH } from '../../config/death';
 import { ROPE } from '../../config/rope';
 import { WITCH, WITCH_HIT_MARKER_LINE, WITCH_HIT_MARKER_RANGE, WITCH_LIGHT_RANGE_BASE } from '../../config/witch';
-import { SHADOW } from '../../config/shadow';
+import { SHADOW, SHADOW_HIT_MARKER_RANGE } from '../../config/shadow';
 import { DEMON_HELLFIRE, DEMON_HELL_BAT, DEMON_RAGE } from '../../heroes/abilities/demon/tunables';
 import { demonRageFromLightDamage, demonRageFromAbilityDamage } from '../../heroes/abilities/demon/form';
 import { SHADOW_CLAW, SHADOW_DASH } from '../../heroes/abilities/shadow/tunables';
@@ -241,6 +241,21 @@ if (!gameplayZoomOk) {
   console.log(`ok  fov gameplay zoom  in=${zoomIn.toFixed(2)} out=${zoomOut.toFixed(2)}`);
 }
 
+{
+  const savedSpecFov = cameraPrefs.getFov();
+  cameraPrefs.setFov(0.5);
+  const limits = spectatorZoomLimits(1280, 720, 1);
+  cameraPrefs.setFov(savedSpecFov);
+  const fit = Math.min(1280 / ARENA.width, 720 / ARENA.height);
+  const specOk = limits.min < limits.max && limits.min > fit && limits.max <= 1.05 && limits.max >= 0.9;
+  if (!specOk) {
+    failed += 1;
+    console.log(`FAIL  spectate zoom  min=${limits.min.toFixed(3)} max=${limits.max.toFixed(3)} fit=${fit.toFixed(3)}`);
+  } else {
+    console.log(`ok  spectate zoom  min=${limits.min.toFixed(2)} max=${limits.max.toFixed(2)} (not full map)`);
+  }
+}
+
 const objectiveChecks = runObjectiveChecks();
 for (const result of objectiveChecks) {
   const mark = result.ok ? 'ok' : 'FAIL';
@@ -307,17 +322,17 @@ if (MENDER.ratings.attackSpeed !== 80) {
 } else {
   console.log('ok  mender attack speed  80');
 }
-if (MENDER.ratings.staminaRegen !== 68 || MENDER.ratings.stamina !== 58) {
+if (MENDER.ratings.staminaRegen !== 71 || MENDER.ratings.stamina !== 58) {
   failed += 1;
   console.log(
     `FAIL  mender stamina  regen=${MENDER.ratings.staminaRegen} pool=${MENDER.ratings.stamina}`,
   );
 } else {
-  console.log('ok  mender stamina  recovery 68 / pool 58');
+  console.log('ok  mender stamina  recovery 71 / pool 58');
 }
 if (
   MENDER_PULSE.radius >= 4 ||
-  MENDER_PULSE.healHealth !== 0.75 ||
+  MENDER_PULSE.healHealth !== 1 ||
   MENDER_PULSE.healStamina !== 0.5 ||
   MENDER_PULSE.armOffsetRad >= 0.028 ||
   MENDER_PULSE.spreadRad >= 0.07
@@ -547,11 +562,17 @@ if (WITCH_SKELETON.maxHealth !== 150 || WITCH_SKELETON.attackDamage !== 6) {
     console.log('ok  light combo  two-hit wrap, no finisher');
   }
 }
-if (SHADOW.ratings.damage !== 64 || SHADOW.ratings.defense !== 39) {
+if (SHADOW.ratings.damage !== 68 || SHADOW.ratings.defense !== 39) {
   failed += 1;
   console.log(`FAIL  shadow ratings  dmg=${SHADOW.ratings.damage} def=${SHADOW.ratings.defense}`);
 } else {
-  console.log('ok  shadow ratings  damage 64 / defense 39');
+  console.log('ok  shadow ratings  damage 68 / defense 39');
+}
+if (SHADOW_HIT_MARKER_RANGE !== Math.round(SHADOW.attackRange * 2.15) || SHADOW_HIT_MARKER_RANGE <= SHADOW.attackRange * 2) {
+  failed += 1;
+  console.log(`FAIL  shadow hit marker  ${SHADOW_HIT_MARKER_RANGE} vs attack ${SHADOW.attackRange}`);
+} else {
+  console.log(`ok  shadow hit marker  ${SHADOW_HIT_MARKER_RANGE} independent of cole`);
 }
 if (
   ROPE.ratings.damage !== 39 ||

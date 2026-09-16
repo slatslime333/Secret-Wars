@@ -28,6 +28,7 @@ import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
 import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT } from '../heroes/abilities/rope/tunables';
 import { witchHexAllyRange } from '../heroes/abilities/witch/tunables';
 import { WITCH_HIT_MARKER_LINE, WITCH_HIT_MARKER_RANGE } from '../config/witch';
+import { SHADOW_HIT_MARKER_RANGE } from '../config/shadow';
 import { SHADOW_CLAW, SHADOW_DASH } from '../heroes/abilities/shadow/tunables';
 import { MENDER_ANGEL, MENDER_HIT_MARKER_LINE, MENDER_PULSE, MENDER_SOUL } from '../heroes/abilities/mender/tunables';
 import { menderArmOrigin } from '../heroes/drawMender';
@@ -506,7 +507,12 @@ export class BattleScene extends Phaser.Scene {
     } else if (this.ninja.heroId === 'demon' && this.ninja.demonForm !== 'big') {
       this.marker.clearRange();
     } else {
-      const range = this.ninja.heroId === 'cole' ? COLE_ATTACK.range : this.ninja.stats.attackRange;
+      const range =
+        this.ninja.heroId === 'shadow'
+          ? SHADOW_HIT_MARKER_RANGE
+          : this.ninja.heroId === 'cole'
+            ? COLE_ATTACK.range
+            : this.ninja.stats.attackRange;
       this.marker.sync(
         this.ninja.x,
         this.ninja.y,

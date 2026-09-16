@@ -1,7 +1,11 @@
+import { ARENA } from './arena';
+import { MATCH } from './match';
+
 const STORAGE_KEY = 'secret-wars-camera';
 const DEFAULT_FOV = 0.5;
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
 /** Hard camera zoom floor / ceiling after FOV is applied. */
 export const CAMERA_ZOOM_MIN = 0.22;
@@ -61,3 +65,22 @@ class CameraPrefsController {
 }
 
 export const cameraPrefs = new CameraPrefsController();
+
+/** Gameplay zoom after the FOV slider — spectate cannot zoom in closer than this. */
+export const gameplayCameraZoomAt = (layoutZoom: number): number =>
+  clamp(layoutZoom * cameraPrefs.zoomMultiplier(), CAMERA_ZOOM_MIN, CAMERA_ZOOM_MAX);
+
+/**
+ * Spectate zoom range: cannot zoom in past the FOV slider, and cannot zoom
+ * out far enough for the whole map to fill the view.
+ */
+export const spectatorZoomLimits = (
+  width: number,
+  height: number,
+  layoutZoom: number,
+): { min: number; max: number } => {
+  const fovZoom = gameplayCameraZoomAt(layoutZoom);
+  const fit = Math.min(width / ARENA.width, height / ARENA.height);
+  const zoomOut = Math.max(fit * MATCH.spectator.zoomOutFitMul, CAMERA_ZOOM_MIN);
+  return { min: Math.min(zoomOut, fovZoom), max: fovZoom };
+};

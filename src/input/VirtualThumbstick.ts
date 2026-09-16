@@ -174,6 +174,10 @@ export class VirtualThumbstick {
     this.zone.destroy();
   }
 
+  setLabel(text: string): void {
+    this.label.setText(text);
+  }
+
   setVisible(visible: boolean): void {
     this.base.setVisible(visible);
     this.knob.setVisible(visible);
