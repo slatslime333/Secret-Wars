@@ -82,5 +82,5 @@ export const witchAuraRadius = (): number => Math.round(WITCH_KIT_RANGE * WITCH_
 
 export const witchHexAllyRange = (): number => Math.round(WITCH_KIT_RANGE * WITCH_HEX.allyRangeMul);
 
-/** Live Witch light-attack range (previous live range × 1.2). */
+/** Live Witch skull travel. Hit-marker ring is `WITCH_HIT_MARKER_RANGE`. */
 export const WITCH_VS_COLE_RANGE = WITCH.attackRange;

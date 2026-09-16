@@ -5,7 +5,7 @@ import { resolveAbilityHit } from '../resolveAbilityHit';
 import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { DEMON_HELL_BAT, demonHellBatRecoil } from './tunables';
-import { grantDemonRage, demonRageFromAbilityDamage, type DemonForm } from './form';
+import { type DemonForm } from './form';
 import { distanceBetween } from '../geometry';
 import type { NinjaBody } from '../../NinjaBody';
 
@@ -90,6 +90,12 @@ class HellBatAbility implements ActiveAbility {
     }
     if (this.phase === 'launch') {
       this.drive(caster, this.launchSpeed());
+      if (DEMON_HELL_BAT.explodeOnContact && this.contactTarget(ctx)) {
+        this.explode(ctx);
+        this.phase = 'burst';
+        this.burstAt = now;
+        return true;
+      }
       if (now >= this.launchUntil) {
         this.phase = 'fly';
       }
@@ -100,7 +106,8 @@ class HellBatAbility implements ActiveAbility {
       caster.status.applyDefenseBuff(now, 80, DEMON_HELL_BAT.defenseMul);
       const recast = this.wantBurst && now >= this.recastArmedAt;
       const timedOut = now >= this.flyUntil;
-      if (recast || timedOut) {
+      const contact = DEMON_HELL_BAT.explodeOnContact && this.contactTarget(ctx);
+      if (recast || timedOut || contact) {
         this.explode(ctx);
         this.phase = 'burst';
         this.burstAt = now;
@@ -123,6 +130,20 @@ class HellBatAbility implements ActiveAbility {
 
   private flySpeed(caster: NinjaBody): number {
     return caster.stats.moveSpeed * DEMON_HELL_BAT.moveMul;
+  }
+
+  private contactTarget(ctx: AbilityContext): NinjaBody | undefined {
+    const { caster } = ctx;
+    for (const enemy of ctx.enemies) {
+      if (enemy.down || !enemy.isPresent) {
+        continue;
+      }
+      const reach = caster.stats.bodyRadius + enemy.stats.bodyRadius + 8;
+      if (distanceBetween(caster.x, caster.y, enemy.x, enemy.y) <= reach) {
+        return enemy;
+      }
+    }
+    return undefined;
   }
 
   private steer(caster: NinjaBody): void {
@@ -181,7 +202,6 @@ class HellBatAbility implements ActiveAbility {
       if (kind === 'hit') {
         enemy.status.applySlow(now, DEMON_HELL_BAT.slowMs, DEMON_HELL_BAT.slowMul);
         enemy.status.applyAttackSpeedSlow(now, DEMON_HELL_BAT.slowMs, DEMON_HELL_BAT.attackSlowMul);
-        grantDemonRage(caster, demonRageFromAbilityDamage(DEMON_HELL_BAT.damage), enemy);
       }
     }
     const recoil = demonHellBatRecoil(DEMON_HELL_BAT.recoilDistance);
