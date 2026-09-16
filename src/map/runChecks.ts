@@ -1,5 +1,6 @@
 import { ARENA } from '../config/arena';
 import { CRATE } from '../config/crate';
+import { MAP } from './config';
 import { HERO_VISUAL, PROP } from './scale';
 import { generateBattlefield } from './generate';
 import { pickObjectiveLocation } from '../match/objectives/pickLocation';
@@ -18,6 +19,12 @@ export const runMapChecks = (): CheckResult[] => {
     name: 'map size modestly larger',
     ok: growthW >= 1.14 && growthW <= 1.22 && growthH >= 1.14 && growthH <= 1.22,
     detail: `${ARENA.width}x${ARENA.height} (${growthW.toFixed(3)}x ${growthH.toFixed(3)}y)`,
+  });
+
+  results.push({
+    name: 'trees taller than heroes',
+    ok: PROP.treeSmall.vh >= 80 && PROP.treeSmall.vh > HERO_VISUAL.height,
+    detail: `tree ${PROP.treeSmall.vh} heroArt ${HERO_VISUAL.height}`,
   });
 
   results.push({
@@ -46,6 +53,10 @@ export const runMapChecks = (): CheckResult[] => {
   let blocked = false;
   let landmarksNearMid = 0;
   let interiorsOk = true;
+  let lampsOk = true;
+  let dualDoors = true;
+  let roadsClean = true;
+  let treesPlenty = true;
   for (const seed of seeds) {
     const result = generateBattlefield({ seed, log: false });
     if (result.usedFallback) {
@@ -59,15 +70,36 @@ export const runMapChecks = (): CheckResult[] => {
     const enterable = result.layout.obstacles.filter((obs) => obs.enterable);
     enterableMin = Math.min(enterableMin, enterable.length);
     enterableMax = Math.max(enterableMax, enterable.length);
-    if (enterable.some((obs) => !obs.interior)) {
+    if (enterable.some((obs) => !obs.interior || obs.visual.w < 160 || obs.visual.h < 140)) {
       interiorsOk = false;
+    }
+    if (
+      enterable.some((home) => {
+        const walls = result.layout.obstacles.filter(
+          (obs) => obs.kind === 'wall' && obs.id.startsWith(`${home.id}-`),
+        );
+        return walls.length < 6;
+      })
+    ) {
+      dualDoors = false;
     }
     wallsLive = wallsLive || result.layout.obstacles.some((obs) => obs.kind === 'wall' && obs.destructible);
     treesLive = treesLive || result.layout.obstacles.some((obs) => obs.kind === 'tree' && obs.physicsClass === 'lightweight');
+    const lamps = result.layout.obstacles.filter((obs) => obs.kind === 'lamp');
+    if (lamps.length < 4) {
+      lampsOk = false;
+    }
+    const trees = result.layout.obstacles.filter((obs) => obs.kind === 'tree');
+    if (trees.length < 6) {
+      treesPlenty = false;
+    }
     if (result.layout.roads.patches.length < 8) {
       roadsOk = false;
     }
-    if (result.layout.obstacles.length > 88) {
+    if (result.layout.roads.marks.length > 0 || result.layout.roads.patches.some((patch) => patch.damage !== 'worn')) {
+      roadsClean = false;
+    }
+    if (result.layout.obstacles.length > MAP.maxObstacles) {
       compact = false;
     }
     const midLandmarks = result.layout.obstacles.filter((obs) => {
@@ -119,7 +151,7 @@ export const runMapChecks = (): CheckResult[] => {
   });
   results.push({
     name: 'sparse explosive barrels',
-    ok: barrelMax >= 1 && barrelMax <= 8,
+    ok: barrelMax >= 1 && barrelMax <= 4,
     detail: `barrels<=${barrelMax}`,
   });
   results.push({
@@ -130,7 +162,27 @@ export const runMapChecks = (): CheckResult[] => {
   results.push({
     name: 'enterable buildings have interiors',
     ok: interiorsOk,
-    detail: interiorsOk ? 'door + interior rect' : 'missing interior',
+    detail: interiorsOk ? 'front+back doors + interior' : 'missing interior',
+  });
+  results.push({
+    name: 'enterable homes have two doors',
+    ok: dualDoors,
+    detail: dualDoors ? 'front and back wall gaps' : 'missing door walls',
+  });
+  results.push({
+    name: 'light posts throughout',
+    ok: lampsOk,
+    detail: lampsOk ? 'street lamps planted' : 'too few lamps',
+  });
+  results.push({
+    name: 'trees and fences fill the streets',
+    ok: treesPlenty,
+    detail: treesPlenty ? 'tree coverage' : 'too few trees',
+  });
+  results.push({
+    name: 'roads start clean',
+    ok: roadsClean,
+    detail: roadsClean ? 'worn pavement, no baked scars' : 'pre-damaged roads',
   });
   results.push({
     name: 'walls and trees can break',

@@ -56,7 +56,11 @@ const widePath = (): ChunkTemplate => ({
   nearSpawn: true,
   nearCenter: true,
   nearRoute: true,
-  obstacles: [{ kind: 'sandbag', variant: 'line', nx: 0.22, ny: 0.2, spec: PROP.sandbag }],
+  obstacles: [
+    { kind: 'sandbag', variant: 'line', nx: 0.22, ny: 0.2, spec: PROP.sandbag },
+    { kind: 'tree', variant: 'small', nx: 0.78, ny: 0.18, spec: PROP.treeSmall },
+    { kind: 'fence', variant: 'wire', nx: 0.16, ny: 0.78, spec: PROP.fence },
+  ],
   decorations: [
     { kind: 'dirt', nx: 0.5, ny: 0.5, variant: 1 },
     { kind: 'tuft', nx: 0.18, ny: 0.8, variant: 0 },
@@ -77,6 +81,8 @@ const forest = (): ChunkTemplate => ({
     { kind: 'tree', variant: 'medium', nx: 0.28, ny: 0.24, spec: PROP.treeMedium },
     { kind: 'tree', variant: 'small', nx: 0.72, ny: 0.22, spec: PROP.treeSmall },
     { kind: 'tree', variant: 'broad', nx: 0.78, ny: 0.76, spec: PROP.treeBroad },
+    { kind: 'tree', variant: 'small', nx: 0.46, ny: 0.7, spec: PROP.treeSmall },
+    { kind: 'fence', variant: 'wood', nx: 0.18, ny: 0.62, spec: PROP.fence },
     { kind: 'rubble', variant: 'chunk', nx: 0.3, ny: 0.78, spec: PROP.rubbleSmall },
   ],
   decorations: [
@@ -118,6 +124,7 @@ const crateYard = (): ChunkTemplate => ({
   nearRoute: true,
   obstacles: [
     { kind: 'fence', variant: 'wood', nx: 0.24, ny: 0.28, spec: PROP.fence },
+    { kind: 'lamp', variant: 'street', nx: 0.5, ny: 0.18, spec: PROP.lamp },
     { kind: 'rubble', variant: 'chunk', nx: 0.76, ny: 0.72, spec: PROP.rubbleSmall },
   ],
   decorations: [
@@ -178,6 +185,8 @@ const scattered = (): ChunkTemplate => ({
   obstacles: [
     { kind: 'barricade', variant: 'wood', nx: 0.24, ny: 0.22, spec: PROP.barricade },
     { kind: 'sandbag', variant: 'line', nx: 0.76, ny: 0.76, spec: PROP.sandbag },
+    { kind: 'tree', variant: 'medium', nx: 0.2, ny: 0.72, spec: PROP.treeMedium },
+    { kind: 'lamp', variant: 'short', nx: 0.82, ny: 0.28, spec: PROP.lampShort },
   ],
   decorations: [
     { kind: 'debris', nx: 0.48, ny: 0.48, variant: 0 },

@@ -6,6 +6,9 @@ import {
   EDGE_CLUSTERS,
   plantCratesBeside,
   plantBarrelsBeside,
+  plantLampsAlong,
+  plantTreesBeside,
+  plantFencesBeside,
   stampCluster,
   templateById,
   type ClusterId,
@@ -17,7 +20,7 @@ import { inflate, rectsOverlap } from './geometry';
 import { generateRoads } from './roads';
 import { buildReservedZones, reservedBlocks, spawnZonesOf } from './reserved';
 import { decorateObstacle } from './envProps';
-import { visualForProp } from './scale';
+import { visualForProp, PROP } from './scale';
 import { scatterFieldDetails } from './scatter';
 import { SeededRNG } from './seed';
 import type {
@@ -61,7 +64,7 @@ const hierarchyOf = (kind: MapObstacle['kind']): EnvHierarchy => {
   if (kind === 'building' || kind === 'vehicle') {
     return 'landmark';
   }
-  if (kind === 'crate' || kind === 'barricade' || kind === 'sandbag' || kind === 'fence' || kind === 'wall' || kind === 'rubble' || kind === 'tree') {
+  if (kind === 'crate' || kind === 'barricade' || kind === 'sandbag' || kind === 'fence' || kind === 'wall' || kind === 'rubble' || kind === 'tree' || kind === 'lamp') {
     return 'cover';
   }
   return 'detail';
@@ -116,7 +119,7 @@ const instantiate = (
         visual,
         keepout: keepoutOf(local.kind, collision, visual),
         blocksMovement: true,
-        blocksProjectiles: local.kind !== 'fence',
+        blocksProjectiles: local.kind !== 'fence' && local.kind !== 'lamp',
         blocksLos: local.kind === 'building' || local.kind === 'vehicle' || local.kind === 'wall',
         destructible: local.kind === 'crate',
         hierarchy: hierarchyOf(local.kind),
@@ -234,9 +237,88 @@ const placeApproachCluster = (
   return { obstacles: [], decorations: [] };
 };
 
-const markEnterableBuildings = (obstacles: MapObstacle[], playable: Rect): void => {
-  const left = playable.x + playable.w * 0.26;
-  const right = playable.x + playable.w * 0.74;
+const houseWall = (
+  id: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): MapObstacle =>
+  decorateObstacle({
+    id,
+    kind: 'wall',
+    variant: 'wood',
+    x,
+    y,
+    collision: { x: x - w / 2, y: y - h / 2, w, h },
+    visual: { x: x - w / 2, y: y - h / 2 - 2, w, h: h + 4 },
+    keepout: inflate({ x: x - w / 2, y: y - h / 2, w, h }, 4),
+    blocksMovement: true,
+    blocksProjectiles: true,
+    blocksLos: true,
+    destructible: true,
+    hierarchy: 'cover',
+  });
+
+const openHome = (obs: MapObstacle, obstacles: MapObstacle[]): void => {
+  obs.enterable = true;
+  obs.variant = 'shop';
+  obs.visual = visualForProp(PROP.house, obs.x, obs.y);
+  obs.keepout = inflate(obs.visual, 6);
+  obs.blocksMovement = false;
+  obs.blocksProjectiles = false;
+  obs.blocksLos = false;
+  obs.collision = { x: obs.x - 4, y: obs.y - 4, w: 8, h: 8 };
+  const wall = ENV_WORLD.houseWall;
+  const door = ENV_WORLD.houseDoor;
+  const v = obs.visual;
+  obs.interior = {
+    x: v.x + wall + 6,
+    y: v.y + 32,
+    w: v.w - wall * 2 - 12,
+    h: Math.max(56, v.h - 56),
+  };
+  const southY = v.y + v.h - wall / 2 - 6;
+  const northY = v.y + 28 + wall / 2;
+  const westX = v.x + wall / 2 + 4;
+  const eastX = v.x + v.w - wall / 2 - 4;
+  const midX = obs.x;
+  const side = (v.w - door) / 2;
+  const leftLen = Math.max(28, side - wall - 10);
+  const rightLen = Math.max(28, side - wall - 10);
+  const wallH = Math.max(36, v.h - 64);
+  obstacles.push(
+    houseWall(`${obs.id}-n-l`, midX - door / 2 - leftLen / 2, northY, leftLen, wall),
+    houseWall(`${obs.id}-n-r`, midX + door / 2 + rightLen / 2, northY, rightLen, wall),
+    houseWall(`${obs.id}-s-l`, midX - door / 2 - leftLen / 2, southY, leftLen, wall),
+    houseWall(`${obs.id}-s-r`, midX + door / 2 + rightLen / 2, southY, rightLen, wall),
+    houseWall(`${obs.id}-w`, westX, obs.y + 8, wall, wallH),
+    houseWall(`${obs.id}-e`, eastX, obs.y + 8, wall, wallH),
+  );
+  const room = obs.interior;
+  for (const other of obstacles) {
+    if (other.id === obs.id || other.id.startsWith(`${obs.id}-`)) {
+      continue;
+    }
+    const hitsRoom = Boolean(room && rectsOverlap(other.collision, room));
+    const hitsWall = obstacles.some(
+      (wallObs) => wallObs.id.startsWith(`${obs.id}-`) && rectsOverlap(inflate(other.collision, 2), wallObs.collision),
+    );
+    if (hitsRoom || hitsWall) {
+      other.blocksMovement = false;
+      other.blocksProjectiles = false;
+      other.blocksLos = false;
+    }
+  }
+};
+
+const markEnterableBuildings = (
+  obstacles: MapObstacle[],
+  playable: Rect,
+  reserved: ReservedZone[],
+): void => {
+  const left = playable.x + playable.w / 3;
+  const right = playable.x + (playable.w * 2) / 3;
   const midY = playable.y + playable.h * 0.5;
   const candidates = obstacles.filter((obs) => {
     if (obs.kind !== 'building' || obs.enterable) {
@@ -252,19 +334,49 @@ const markEnterableBuildings = (obstacles: MapObstacle[], playable: Rect): void 
     if (opened >= ENV_WORLD.maxEnterable) {
       break;
     }
-    obs.enterable = true;
-    if (obs.variant !== 'stub') {
-      obs.variant = 'shop';
+    openHome(obs, obstacles);
+    opened += 1;
+  }
+  const sites = [
+    { x: 640, y: 500 },
+    { x: 1944, y: 980 },
+    { x: 640, y: 980 },
+    { x: 1944, y: 500 },
+  ];
+  for (const site of sites) {
+    if (opened >= ENV_WORLD.maxEnterable) {
+      break;
     }
-    const door = 28;
-    obs.collision.w = Math.max(26, obs.collision.w - door);
-    obs.collision.x = obs.x - obs.collision.w / 2 - door * 0.42;
-    obs.interior = {
-      x: obs.visual.x + 12,
-      y: obs.visual.y + 10,
-      w: obs.visual.w - 24,
-      h: Math.max(40, obs.visual.h - obs.collision.h - 16),
+    const collision = {
+      x: site.x - PROP.building.w / 2,
+      y: site.y - PROP.building.h / 2,
+      w: PROP.building.w,
+      h: PROP.building.h,
     };
+    if (reservedBlocks(collision, reserved, 2)) {
+      continue;
+    }
+    if (obstacles.some((obs) => obs.blocksMovement && rectsOverlap(inflate(obs.collision, 10), inflate(collision, 10)))) {
+      continue;
+    }
+    const visual = visualForProp(PROP.building, site.x, site.y);
+    const home = decorateObstacle({
+      id: `home-${opened}`,
+      kind: 'building',
+      variant: 'shop',
+      x: site.x,
+      y: site.y,
+      collision,
+      visual,
+      keepout: inflate(visual, 6),
+      blocksMovement: true,
+      blocksProjectiles: true,
+      blocksLos: true,
+      destructible: false,
+      hierarchy: 'landmark',
+    });
+    obstacles.push(home);
+    openHome(home, obstacles);
     opened += 1;
   }
 };
@@ -330,7 +442,8 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
     { id: 'rubble-slide', x: 820, y: 628, mirror: false },
     { id: 'defensive-nest', x: 1764, y: 876, mirror: true },
     { id: 'overgrown-ruin', x: 1880, y: 1034, mirror: true },
-    { id: 'corner-shop', x: 470, y: 1110, mirror: false },
+    { id: 'corner-shop', x: 640, y: 500, mirror: false },
+    { id: 'corner-shop', x: 1940, y: 980, mirror: true },
   ];
   for (const [index, site] of nearMid.entries()) {
     const stamp = stampCluster(templateById(site.id), site.x, site.y, site.mirror, reserved, obstacles, `mid-${index}`);
@@ -340,9 +453,13 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
     }
   }
 
+  const roads = generateRoads(playable, seed);
+  markEnterableBuildings(obstacles, playable, reserved);
   obstacles.push(...plantCratesBeside(obstacles, reserved, obstacles));
   obstacles.push(...plantBarrelsBeside(obstacles, reserved, obstacles));
-  markEnterableBuildings(obstacles, playable);
+  obstacles.push(...plantLampsAlong(roads, reserved, obstacles));
+  obstacles.push(...plantTreesBeside(obstacles, reserved, obstacles));
+  obstacles.push(...plantFencesBeside(obstacles, reserved, obstacles));
   decorations.push(...scatterFieldDetails(new SeededRNG(seed ^ 0x7e2a), obstacles));
 
   const layout: MapLayout = {
@@ -366,7 +483,7 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
     chunks,
     obstacles,
     decorations,
-    roads: generateRoads(playable, seed),
+    roads,
     reserved,
     spawnZones: zones,
     routes: buildRoutes(playable),

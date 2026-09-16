@@ -37,18 +37,22 @@ export const PROP = {
   wallStone: spec(120, 22, 124, 28, 3),
   wallRuin: spec(86, 22, 90, 30, 4),
   wallWood: spec(96, 20, 100, 26, 3),
-  treeSmall: spec(16, 16, 48, 56, 18),
-  treeMedium: spec(18, 18, 56, 66, 22),
-  treeBroad: spec(20, 18, 64, 60, 20),
+  treeSmall: spec(18, 18, 80, 104, 36),
+  treeMedium: spec(20, 20, 96, 128, 44),
+  treeBroad: spec(22, 20, 112, 108, 38),
   rubble: spec(52, 36, 58, 42, 3),
   rubbleSmall: spec(28, 20, 32, 24, 2),
   car: spec(108, 50, 118, 62, 5),
   truck: spec(140, 62, 156, 74, 6),
   /** Collision is the remaining south wall; the ruin visual is taller and walkable. */
   building: spec(100, 26, 120, 108, 36),
+  /** Enterable homes. Collision is replaced with perimeter walls + two doors. */
+  house: spec(16, 16, 200, 176, 58),
   buildingWall: spec(108, 22, 112, 28, 3),
   buildingStub: spec(22, 64, 28, 72, 4),
   sign: spec(10, 12, 18, 40, 14),
+  lamp: spec(8, 10, 20, 80, 32),
+  lampShort: spec(8, 8, 18, 56, 22),
   barrel: spec(22, 28, 26, 34, 3),
 } as const;
 

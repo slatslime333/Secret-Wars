@@ -6,7 +6,7 @@ export const physicsClassOf = (obs: Pick<MapObstacle, 'kind' | 'variant' | 'expl
   if (obs.kind === 'barrel' || obs.explosive) {
     return 'explosive';
   }
-  if (obs.kind === 'tree' || obs.kind === 'fence') {
+  if (obs.kind === 'tree' || obs.kind === 'fence' || obs.kind === 'lamp') {
     return 'lightweight';
   }
   if (obs.kind === 'crate' || obs.kind === 'wall' || obs.kind === 'barricade' || obs.kind === 'sandbag') {
@@ -28,6 +28,8 @@ export const maxHpOf = (obs: Pick<MapObstacle, 'kind' | 'variant' | 'explosive'>
       return ENV_WORLD.treeHp;
     case 'fence':
       return ENV_WORLD.fenceHp;
+    case 'lamp':
+      return ENV_WORLD.lampHp;
     case 'barricade':
       return ENV_WORLD.barricadeHp;
     case 'sandbag':
@@ -55,6 +57,7 @@ export const isDestructibleKind = (kind: MapObstacle['kind'], variant?: string):
     kind === 'wall' ||
     kind === 'tree' ||
     kind === 'fence' ||
+    kind === 'lamp' ||
     kind === 'barricade' ||
     kind === 'sandbag' ||
     kind === 'barrel' ||
@@ -79,18 +82,8 @@ export const damageStateOf = (hp: number, maxHp: number, knocked: boolean): Dama
   return 'intact';
 };
 
-const hashId = (id: string): number => {
-  let h = 2166136261;
-  for (let i = 0; i < id.length; i += 1) {
-    h ^= id.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-};
-
 export const decorateObstacle = (obs: MapObstacle): MapObstacle => {
-  const explosive =
-    obs.kind === 'barrel' || (obs.kind === 'vehicle' && obs.variant === 'car' && hashId(obs.id) % 100 < 28);
+  const explosive = obs.kind === 'barrel' || (obs.kind === 'vehicle' && obs.variant === 'car');
   const destructible = obs.kind === 'crate' || isDestructibleKind(obs.kind, obs.variant) || explosive;
   const physicsClass = physicsClassOf({ ...obs, explosive });
   const maxHp = maxHpOf({ ...obs, explosive });

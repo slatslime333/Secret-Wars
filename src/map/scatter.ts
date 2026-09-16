@@ -5,13 +5,13 @@ import type { MapDecoration, MapObstacle } from './types';
 const MARGIN = 64;
 const KINDS: readonly MapDecoration['kind'][] = [
   'dirt',
-  'dirt',
-  'debris',
-  'burn',
-  'grassCrack',
   'tuft',
   'rock',
   'curbBit',
+  'tuft',
+  'grassCrack',
+  'dirt',
+  'tuft',
 ];
 
 /** Non-blocking stains and debris so midfield grass does not look empty. */

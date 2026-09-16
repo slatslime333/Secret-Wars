@@ -71,17 +71,21 @@ export const drawWall = (ctx: CanvasRenderingContext2D, variant: string, w: numb
 export const drawTree = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
   const wide = variant === 'broad';
   const tall = variant === 'medium';
-  const canopyW = wide ? w - 8 : tall ? w - 12 : w - 14;
-  const canopyH = wide ? 22 : tall ? 26 : 20;
+  const canopyW = wide ? w - 6 : tall ? w - 10 : w - 12;
+  const canopyH = wide ? Math.floor(h * 0.58) : tall ? Math.floor(h * 0.62) : Math.floor(h * 0.56);
   const left = Math.round((w - canopyW) / 2);
-  const top = tall ? 4 : 8;
-  const trunkX = Math.round(w / 2) - 3;
-  fillPx(ctx, ENV.trunkDark, trunkX, h - 16, 7, 14);
-  fillPx(ctx, ENV.trunk, trunkX, h - 16, 6, 12);
-  fillPx(ctx, ENV.ink, left - 1, top + 1, canopyW + 2, canopyH + 2);
-  fillPx(ctx, ENV.canopy, left, top + 2, canopyW, canopyH);
-  fillPx(ctx, ENV.canopyLite, left + 3, top, canopyW - 6, canopyH - 6);
-  fillPx(ctx, ENV.canopyTip, left + 8, top + 4, Math.max(8, canopyW - 16), 4);
+  const top = tall ? 4 : 6;
+  const trunkW = wide ? 12 : tall ? 10 : 9;
+  const trunkH = Math.max(18, h - canopyH - 10);
+  const trunkX = Math.round(w / 2) - Math.floor(trunkW / 2);
+  fillPx(ctx, ENV.trunkDark, trunkX, h - trunkH, trunkW, trunkH);
+  fillPx(ctx, ENV.trunk, trunkX + 1, h - trunkH, trunkW - 3, trunkH - 2);
+  fillPx(ctx, ENV.ink, left - 1, top + 2, canopyW + 2, canopyH + 2);
+  fillPx(ctx, ENV.canopy, left, top + 4, canopyW, canopyH);
+  fillPx(ctx, ENV.canopyLite, left + 6, top, canopyW - 14, Math.floor(canopyH * 0.62));
+  fillPx(ctx, ENV.canopyTip, left + 14, top + 6, Math.max(12, canopyW - 32), 8);
+  fillPx(ctx, ENV.canopy, left + 10, top + Math.floor(canopyH * 0.45), canopyW - 22, Math.floor(canopyH * 0.4));
+  fillPx(ctx, ENV.inkSoft, trunkX + 2, h - 8, trunkW - 4, 4);
 };
 
 const crateFace = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void => {
@@ -181,31 +185,73 @@ const drawBuildingInterior = (ctx: CanvasRenderingContext2D, style: 'shop' | 'st
   if (style === 'shop') {
     fillPx(ctx, ENV.concrete, 10, 20, w - 20, h - 32);
     fillPx(ctx, ENV.sidewalkLite, 12, 22, w - 24, 4);
-    for (let x = 16; x < w - 28; x += 18) {
-      fillPx(ctx, ENV.inkSoft, x, 26, 14, 2);
+    for (let x = 18; x < w - 32; x += 20) {
+      fillPx(ctx, ENV.inkSoft, x, 28, 16, 2);
     }
-    fillPx(ctx, ENV.woodDark, 16, 34, 18, 36);
-    fillPx(ctx, ENV.wood, 18, 36, 14, 32);
-    fillPx(ctx, ENV.crate, 20, 40, 10, 6);
-    fillPx(ctx, ENV.crate, 20, 50, 10, 6);
-    fillPx(ctx, ENV.woodDark, w - 48, 52, 28, 12);
-    fillPx(ctx, ENV.woodLite, w - 46, 54, 24, 4);
-    fillPx(ctx, ENV.metal, w - 36, 50, 8, 4);
+    fillPx(ctx, ENV.woodDark, 18, 40, 28, 52);
+    fillPx(ctx, ENV.wood, 20, 42, 24, 48);
+    fillPx(ctx, ENV.crate, 24, 48, 16, 8);
+    fillPx(ctx, ENV.crate, 24, 62, 16, 8);
+    fillPx(ctx, ENV.crateLite, 24, 76, 16, 8);
+    fillPx(ctx, ENV.woodDark, w - 72, 70, 44, 18);
+    fillPx(ctx, ENV.woodLite, w - 70, 72, 40, 6);
+    fillPx(ctx, ENV.metal, w - 52, 66, 12, 6);
+    fillPx(ctx, ENV.wood, 70, 48, 36, 22);
+    fillPx(ctx, ENV.woodLite, 72, 50, 32, 4);
   } else {
     fillPx(ctx, ENV.wood, 10, 20, w - 20, h - 32);
     fillPx(ctx, ENV.woodLite, 12, 22, w - 24, 4);
-    for (let y = 30; y < h - 22; y += 8) {
+    for (let y = 32; y < h - 26; y += 10) {
       fillPx(ctx, ENV.woodDark, 12, y, w - 24, 1);
     }
-    fillPx(ctx, ENV.woodDark, 22, 44, 28, 16);
-    fillPx(ctx, ENV.woodLite, 24, 46, 24, 4);
-    fillPx(ctx, ENV.inkSoft, 34, 50, 6, 6);
-    fillPx(ctx, ENV.oliveDark, w - 54, 40, 26, 14);
-    fillPx(ctx, ENV.oliveLite, w - 52, 42, 22, 4);
+    fillPx(ctx, ENV.woodDark, 28, 56, 40, 22);
+    fillPx(ctx, ENV.woodLite, 30, 58, 36, 6);
+    fillPx(ctx, ENV.inkSoft, 44, 66, 8, 8);
+    fillPx(ctx, ENV.oliveDark, w - 78, 48, 40, 20);
+    fillPx(ctx, ENV.oliveLite, w - 76, 50, 36, 6);
+    fillPx(ctx, ENV.wood, 88, 86, 32, 16);
+    fillPx(ctx, ENV.crate, 92, 90, 10, 8);
   }
-  fillPx(ctx, ENV.concrete, 10, h - 18, w - 20, 8);
-  fillPx(ctx, ENV.inkSoft, w - 42, h - 22, 16, 14);
-  fillPx(ctx, ENV.woodDark, w - 40, h - 20, 12, 10);
+  fillPx(ctx, ENV.concrete, 10, h - 22, w - 20, 10);
+  fillPx(ctx, ENV.inkSoft, Math.floor(w / 2) - 14, h - 26, 28, 16);
+  fillPx(ctx, ENV.woodDark, Math.floor(w / 2) - 12, h - 24, 24, 12);
+  fillPx(ctx, ENV.inkSoft, Math.floor(w / 2) - 14, 22, 28, 14);
+  fillPx(ctx, ENV.woodDark, Math.floor(w / 2) - 12, 24, 24, 10);
+};
+
+const drawDoorGap = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void => {
+  fillPx(ctx, ENV.ink, x, y, w, h);
+  fillPx(ctx, ENV.inkSoft, x + 2, y + 2, w - 4, h - 4);
+  fillPx(ctx, ENV.woodDark, x + w - 7, y + Math.floor(h / 2) - 2, 4, 6);
+  fillPx(ctx, ENV.wood, x + 3, y + 3, 5, h - 8);
+};
+
+const drawBuildingShell = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, h: number): void => {
+  const wall = 12;
+  const doorW = 28;
+  const doorX = Math.floor(w / 2) - Math.floor(doorW / 2);
+  paintBrickBody(ctx, 6, 22, doorX - 6, wall + 4);
+  paintBrickBody(ctx, doorX + doorW, 22, w - (doorX + doorW) - 6, wall + 4);
+  paintBrickBody(ctx, 6, 22, wall, h - 36);
+  paintBrickBody(ctx, w - 18, 22, wall, h - 36);
+  paintBrickBody(ctx, 6, h - 18, doorX - 6, 12);
+  paintBrickBody(ctx, doorX + doorW, h - 18, w - (doorX + doorW) - 6, 12);
+  drawDoorGap(ctx, doorX, 20, doorW, wall + 8);
+  drawDoorGap(ctx, doorX, h - 24, doorW, 18);
+  if (style === 'shop') {
+    fillPx(ctx, ENV.ink, 20, 40, 28, 18);
+    fillPx(ctx, ENV.glass, 22, 42, 24, 14);
+    fillPx(ctx, ENV.ink, 54, 40, 28, 18);
+    fillPx(ctx, ENV.glass, 56, 42, 24, 14);
+    fillPx(ctx, ENV.rust, 18, 36, 68, 5);
+  } else {
+    fillPx(ctx, ENV.ink, 22, 40, 18, 16);
+    fillPx(ctx, ENV.glass, 24, 42, 14, 12);
+    fillPx(ctx, ENV.ink, w - 48, 40, 18, 16);
+    fillPx(ctx, ENV.glass, w - 46, 42, 14, 12);
+  }
+  fillPx(ctx, ENV.concrete, 8, h - 10, w - 18, 6);
+  fillPx(ctx, ENV.grass, w - 28, h - 16, 16, 5);
 };
 
 const drawBuildingRoof = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, _h: number): void => {
@@ -225,30 +271,6 @@ const drawBuildingRoof = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' 
     fillPx(ctx, ENV.dirt, 16, 18, 28, 10);
     fillPx(ctx, ENV.grass, w - 48, 12, 14, 8);
   }
-};
-
-const drawBuildingShell = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, h: number): void => {
-  const wall = 10;
-  paintBrickBody(ctx, 6, 22, w - 12, wall + 4);
-  paintBrickBody(ctx, 6, 22, wall, h - 36);
-  paintBrickBody(ctx, w - 16, 22, wall, h - 36);
-  paintBrickBody(ctx, 6, h - 18, Math.floor(w * 0.42), 12);
-  paintBrickBody(ctx, Math.floor(w * 0.62), h - 18, w - Math.floor(w * 0.62) - 8, 12);
-  if (style === 'shop') {
-    fillPx(ctx, ENV.ink, 16, 28, 22, 14);
-    fillPx(ctx, ENV.glass, 18, 30, 18, 10);
-    fillPx(ctx, ENV.ink, 44, 28, 22, 14);
-    fillPx(ctx, ENV.glass, 46, 30, 18, 10);
-    fillPx(ctx, ENV.rust, 14, 24, 56, 5);
-  } else {
-    fillPx(ctx, ENV.ink, 18, 28, 14, 12);
-    fillPx(ctx, ENV.glass, 20, 30, 10, 8);
-  }
-  fillPx(ctx, ENV.ink, Math.floor(w * 0.44), h - 22, 18, 16);
-  fillPx(ctx, ENV.inkSoft, Math.floor(w * 0.44) + 2, h - 20, 14, 12);
-  fillPx(ctx, ENV.woodDark, Math.floor(w * 0.44) + 12, h - 14, 3, 5);
-  fillPx(ctx, ENV.concrete, 8, h - 10, w - 18, 6);
-  fillPx(ctx, ENV.grass, w - 24, h - 16, 14, 5);
 };
 
 const drawBuildingLandmark = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, h: number): void => {
@@ -371,15 +393,33 @@ export const drawFire = (ctx: CanvasRenderingContext2D, _variant: string, w: num
   fillPx(ctx, ENV.paper, 8, 6, 3, 4);
 };
 
-export const drawBarrel = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
-  const fuel = variant === 'fuel';
+export const drawBarrel = (ctx: CanvasRenderingContext2D, _variant: string, w: number, h: number): void => {
   fillPx(ctx, ENV.ink, 2, 2, w - 4, h - 4);
-  fillPx(ctx, fuel ? ENV.rust : ENV.metal, 3, 4, w - 6, h - 8);
-  fillPx(ctx, fuel ? ENV.rustLite : ENV.metalLite, 5, 6, w - 10, 5);
+  fillPx(ctx, ENV.rust, 3, 4, w - 6, h - 8);
+  fillPx(ctx, ENV.rustLite, 5, 6, w - 10, 5);
   fillPx(ctx, ENV.inkSoft, 4, 12, w - 8, 3);
   fillPx(ctx, ENV.inkSoft, 4, h - 14, w - 8, 3);
-  fillPx(ctx, fuel ? ENV.fire : ENV.oliveDark, 6, Math.floor(h / 2) - 3, w - 12, 7);
-  fillPx(ctx, ENV.paper, 8, 8, 4, 3);
+  const sx = Math.floor(w / 2) - 5;
+  const sy = Math.floor(h / 2) - 6;
+  fillPx(ctx, ENV.paper, sx, sy + 2, 10, 10);
+  fillPx(ctx, ENV.paper, sx + 1, sy, 8, 3);
+  fillPx(ctx, ENV.ink, sx + 2, sy + 4, 2, 3);
+  fillPx(ctx, ENV.ink, sx + 6, sy + 4, 2, 3);
+  fillPx(ctx, ENV.ink, sx + 4, sy + 8, 2, 2);
+  fillPx(ctx, ENV.ink, sx + 2, sy + 10, 6, 1);
+  fillPx(ctx, ENV.fire, 6, 8, w - 12, 2);
+};
+
+export const drawLamp = (ctx: CanvasRenderingContext2D, variant: string, w: number, h: number): void => {
+  const poleX = Math.floor(w / 2) - 1;
+  fillPx(ctx, ENV.ink, poleX - 1, 16, 4, h - 16);
+  fillPx(ctx, ENV.metal, poleX, 18, 2, h - 20);
+  fillPx(ctx, ENV.concreteDark, poleX - 3, h - 6, 8, 5);
+  const headY = variant === 'short' ? 4 : 2;
+  fillPx(ctx, ENV.ink, 2, headY, w - 4, 16);
+  fillPx(ctx, ENV.metalLite, 3, headY + 1, w - 6, 14);
+  fillPx(ctx, ENV.fireCore, 5, headY + 4, w - 10, 8);
+  fillPx(ctx, ENV.paper, 7, headY + 6, w - 14, 4);
 };
 
 export const ASSET_SIZE: Record<string, { w: number; h: number }> = {
@@ -392,24 +432,24 @@ export const ASSET_SIZE: Record<string, { w: number; h: number }> = {
   'wall:wood': { w: 100, h: 26 },
   'wall:wood-damaged': { w: 100, h: 26 },
   'wall:wood-cracked': { w: 100, h: 26 },
-  'tree:small': { w: 48, h: 56 },
-  'tree:medium': { w: 56, h: 66 },
-  'tree:broad': { w: 64, h: 60 },
+  'tree:small': { w: 80, h: 104 },
+  'tree:medium': { w: 96, h: 128 },
+  'tree:broad': { w: 112, h: 108 },
   'crate:single': { w: 40, h: 36 },
   'crate:stack': { w: 42, h: 52 },
   'crate:pair': { w: 78, h: 36 },
-  'building:house': { w: 120, h: 108 },
-  'building:house-floor': { w: 120, h: 108 },
-  'building:house-roof': { w: 120, h: 108 },
-  'building:house-shell': { w: 120, h: 108 },
+  'building:house': { w: 200, h: 176 },
+  'building:house-floor': { w: 200, h: 176 },
+  'building:house-roof': { w: 200, h: 176 },
+  'building:house-shell': { w: 200, h: 176 },
   'building:stub': { w: 120, h: 108 },
   'building:stub-floor': { w: 120, h: 108 },
   'building:stub-roof': { w: 120, h: 108 },
   'building:stub-shell': { w: 120, h: 108 },
-  'building:shop': { w: 120, h: 108 },
-  'building:shop-floor': { w: 120, h: 108 },
-  'building:shop-roof': { w: 120, h: 108 },
-  'building:shop-shell': { w: 120, h: 108 },
+  'building:shop': { w: 200, h: 176 },
+  'building:shop-floor': { w: 200, h: 176 },
+  'building:shop-roof': { w: 200, h: 176 },
+  'building:shop-shell': { w: 200, h: 176 },
   'vehicle:truck': { w: 156, h: 74 },
   'vehicle:truck-damaged': { w: 156, h: 74 },
   'vehicle:car': { w: 118, h: 62 },
@@ -425,5 +465,8 @@ export const ASSET_SIZE: Record<string, { w: number; h: number }> = {
   'fence:wire': { w: 92, h: 34 },
   'barrel:drum': { w: 26, h: 34 },
   'barrel:fuel': { w: 26, h: 34 },
+  'barrel:skull': { w: 26, h: 34 },
+  'lamp:street': { w: 20, h: 80 },
+  'lamp:short': { w: 18, h: 56 },
   'fire:small': { w: 14, h: 18 },
 };

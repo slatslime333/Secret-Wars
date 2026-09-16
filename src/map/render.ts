@@ -17,7 +17,7 @@ const depthFor = (kind: string, hierarchy: string, enterable = false): number =>
   if (kind === 'building') {
     return enterable ? 5 : 6;
   }
-  if (kind === 'vehicle' || kind === 'tree' || kind === 'barrel') {
+  if (kind === 'vehicle' || kind === 'tree' || kind === 'barrel' || kind === 'lamp') {
     return 5;
   }
   if (hierarchy === 'cover' || kind === 'crate' || kind === 'barricade' || kind === 'sandbag') {
@@ -69,7 +69,7 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
       image.setOrigin(0.5, 0.86);
     } else if (obs.kind === 'building') {
       image.setOrigin(0.5, 0.78);
-    } else if (obs.kind === 'fence') {
+    } else if (obs.kind === 'fence' || obs.kind === 'lamp') {
       image.setOrigin(0.5, 0.82);
     }
     if (obs.kind === 'wall' && obs.collision.h > obs.collision.w) {

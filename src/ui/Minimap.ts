@@ -81,9 +81,11 @@ export class Minimap {
           ? 0x1f3a1c
           : obs.kind === 'building' || obs.kind === 'vehicle'
             ? 0x3a3228
-            : obs.kind === 'wall' || obs.kind === 'barricade' || obs.kind === 'sandbag'
-              ? 0x4a4f46
-              : 0x7a5a28,
+            : obs.kind === 'lamp'
+              ? 0x8a7840
+              : obs.kind === 'wall' || obs.kind === 'barricade' || obs.kind === 'sandbag'
+                ? 0x4a4f46
+                : 0x7a5a28,
         obs.hierarchy === 'detail' ? 0.45 : 0.85,
       );
       this.art.fillRect(p.x - 1.5, p.y - 1.5, obs.kind === 'wall' || obs.kind === 'building' ? 4 : 3, 3);

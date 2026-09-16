@@ -1,9 +1,10 @@
 import { CRATE } from '../config/crate';
+import { ENV_WORLD } from '../config/environment';
 import { decorateObstacle } from './envProps';
 import { PROP, visualForProp, type PropSpec } from './scale';
 import { inflate, rectsOverlap } from './geometry';
 import { reservedBlocks } from './reserved';
-import type { EnvHierarchy, MapDecoration, MapObstacle, ObstacleKind, Rect, ReservedZone } from './types';
+import type { EnvHierarchy, MapDecoration, MapObstacle, ObstacleKind, Rect, ReservedZone, RoadNetwork } from './types';
 
 export type ClusterId =
   | 'collapsed-building'
@@ -79,7 +80,6 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
     [
       { kind: 'vehicle', variant: 'truck', ox: -10, oy: 0, spec: PROP.truck, hierarchy: 'landmark' },
       { kind: 'rubble', variant: 'chunk', ox: 70, oy: 18, spec: PROP.rubbleSmall, hierarchy: 'cover' },
-      { kind: 'barrel', variant: 'drum', ox: 62, oy: -16, spec: PROP.barrel, hierarchy: 'cover', destructible: true },
       { kind: 'crate', variant: 'single', ox: 88, oy: 10, spec: PROP.crate, hierarchy: 'cover', destructible: true },
     ],
     [
@@ -97,6 +97,7 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
     [
       { kind: 'barricade', variant: 'wood', ox: -20, oy: 4, spec: PROP.barricade, hierarchy: 'cover' },
       { kind: 'sandbag', variant: 'line', ox: 36, oy: -8, spec: PROP.sandbag, hierarchy: 'cover' },
+      { kind: 'fence', variant: 'wood', ox: -48, oy: 28, spec: PROP.fence, hierarchy: 'cover' },
       { kind: 'crate', variant: 'single', ox: 48, oy: 22, spec: PROP.crate, hierarchy: 'cover', destructible: true },
     ],
     [
@@ -131,7 +132,6 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
     [
       { kind: 'vehicle', variant: 'car', ox: -8, oy: 0, spec: PROP.car, hierarchy: 'landmark' },
       { kind: 'barricade', variant: 'metal', ox: 52, oy: 16, spec: PROP.barricade, hierarchy: 'cover' },
-      { kind: 'barrel', variant: 'fuel', ox: 48, oy: -18, spec: PROP.barrel, hierarchy: 'cover', destructible: true },
     ],
     [
       { kind: 'burn', ox: -16, oy: 18, variant: 0 },
@@ -147,8 +147,9 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
     130,
     [
       { kind: 'building', variant: 'stub', ox: -24, oy: -10, spec: PROP.building, hierarchy: 'landmark' },
-      { kind: 'tree', variant: 'medium', ox: 40, oy: 8, spec: PROP.treeMedium, hierarchy: 'cover' },
-      { kind: 'tree', variant: 'small', ox: 62, oy: -18, spec: PROP.treeSmall, hierarchy: 'cover' },
+      { kind: 'tree', variant: 'medium', ox: 56, oy: 12, spec: PROP.treeMedium, hierarchy: 'cover' },
+      { kind: 'tree', variant: 'small', ox: 84, oy: -22, spec: PROP.treeSmall, hierarchy: 'cover' },
+      { kind: 'fence', variant: 'wood', ox: 20, oy: 48, spec: PROP.fence, hierarchy: 'cover' },
       { kind: 'crate', variant: 'single', ox: 20, oy: 32, spec: PROP.crate, hierarchy: 'cover', destructible: true },
     ],
     [
@@ -199,6 +200,7 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
     [
       { kind: 'building', variant: 'shop', ox: -8, oy: -8, spec: PROP.building, hierarchy: 'landmark' },
       { kind: 'tree', variant: 'small', ox: 72, oy: -22, spec: PROP.treeSmall, hierarchy: 'cover' },
+      { kind: 'fence', variant: 'wood', ox: 78, oy: 36, spec: PROP.fence, hierarchy: 'cover' },
       { kind: 'crate', variant: 'single', ox: 58, oy: 16, spec: PROP.crate, hierarchy: 'cover', destructible: true },
     ],
     [
@@ -292,7 +294,7 @@ export const stampCluster = (
             ? inflate(visualForProp(local.spec, x, y), 8)
             : keepoutFor(local.kind, collision),
         blocksMovement: true,
-        blocksProjectiles: local.kind !== 'fence',
+        blocksProjectiles: local.kind !== 'fence' && local.kind !== 'lamp',
         blocksLos: local.kind === 'building' || local.kind === 'vehicle' || local.kind === 'wall',
         destructible: Boolean(local.destructible),
         hierarchy: local.hierarchy,
@@ -347,7 +349,7 @@ export const plantCratesBeside = (
   const anchors = hosts.filter((obs) => obs.kind === 'building' || obs.kind === 'vehicle' || obs.kind === 'barricade');
   let n = 0;
   for (const host of anchors) {
-    if (existing.filter((obs) => obs.kind === 'crate').length + extras.length >= 16) {
+    if (existing.filter((obs) => obs.kind === 'crate').length + extras.length >= ENV_WORLD.maxCrates) {
       break;
     }
     const already = [...existing, ...extras].filter(
@@ -356,10 +358,11 @@ export const plantCratesBeside = (
     if (already >= 2) {
       continue;
     }
+    const box = host.kind === 'building' ? host.visual : host.collision;
     const slots = [
-      { x: host.collision.x + host.collision.w + PROP.crate.w / 2 + 8, y: host.y },
-      { x: host.collision.x - PROP.crate.w / 2 - 8, y: host.y + 10 },
-      { x: host.x + 12, y: host.collision.y + host.collision.h + PROP.crate.h / 2 + 6 },
+      { x: box.x + box.w + PROP.crate.w / 2 + 8, y: host.y },
+      { x: box.x - PROP.crate.w / 2 - 8, y: host.y + 10 },
+      { x: host.x + 12, y: box.y + box.h + PROP.crate.h / 2 + 6 },
     ];
     let placed = already;
     for (const slot of slots) {
@@ -383,7 +386,7 @@ export const plantCratesBeside = (
   return extras;
 };
 
-const barrelObstacle = (id: string, x: number, y: number, variant: 'drum' | 'fuel'): MapObstacle => {
+const barrelObstacle = (id: string, x: number, y: number, variant: 'drum' | 'fuel' | 'skull'): MapObstacle => {
   const spec = PROP.barrel;
   const collision = { x: x - spec.w / 2, y: y - spec.h / 2, w: spec.w, h: spec.h };
   const visual = visualForProp(spec, x, y);
@@ -417,7 +420,7 @@ export const plantBarrelsBeside = (
   );
   let n = 0;
   for (const host of anchors) {
-    if (existing.filter((obs) => obs.kind === 'barrel').length + extras.length >= 6) {
+    if (existing.filter((obs) => obs.kind === 'barrel').length + extras.length >= ENV_WORLD.maxBarrels) {
       break;
     }
     if (Math.abs(host.y - 752) < 70) {
@@ -429,12 +432,13 @@ export const plantBarrelsBeside = (
     if (already >= 1) {
       continue;
     }
+    const box = host.kind === 'building' ? host.visual : host.collision;
     const slots = [
-      { x: host.collision.x + host.collision.w + PROP.barrel.w / 2 + 10, y: host.y + 16 },
-      { x: host.collision.x - PROP.barrel.w / 2 - 10, y: host.y - 12 },
+      { x: box.x + box.w + PROP.barrel.w / 2 + 10, y: host.y + 16 },
+      { x: box.x - PROP.barrel.w / 2 - 10, y: host.y - 12 },
     ];
     for (const slot of slots) {
-      const barrel = barrelObstacle(`drum-${host.id}-${n}`, slot.x, slot.y, n % 2 === 0 ? 'drum' : 'fuel');
+      const barrel = barrelObstacle(`drum-${host.id}-${n}`, slot.x, slot.y, 'skull');
       if (reservedBlocks(barrel.collision, reserved, 2)) {
         continue;
       }
@@ -446,6 +450,208 @@ export const plantBarrelsBeside = (
         continue;
       }
       extras.push(barrel);
+      n += 1;
+      break;
+    }
+  }
+  return extras;
+};
+
+const inInterior = (x: number, y: number, hosts: readonly MapObstacle[]): boolean =>
+  hosts.some((obs) => {
+    const room = obs.interior;
+    if (!obs.enterable || !room) {
+      return false;
+    }
+    return x >= room.x && x <= room.x + room.w && y >= room.y && y <= room.y + room.h;
+  });
+
+const tryPlace = (
+  obs: MapObstacle,
+  reserved: readonly ReservedZone[],
+  existing: readonly MapObstacle[],
+  extras: readonly MapObstacle[],
+): boolean => {
+  if (reservedBlocks(obs.collision, reserved, 2)) {
+    return false;
+  }
+  if (inInterior(obs.x, obs.y, existing)) {
+    return false;
+  }
+  return ![...existing, ...extras].some(
+    (other) => other.blocksMovement && rectsOverlap(inflate(other.collision, 4), obs.collision),
+  );
+};
+
+const makeSolid = (
+  id: string,
+  kind: ObstacleKind,
+  variant: string,
+  x: number,
+  y: number,
+  spec: PropSpec,
+  hierarchy: EnvHierarchy,
+): MapObstacle => {
+  const collision = { x: x - spec.w / 2, y: y - spec.h / 2, w: spec.w, h: spec.h };
+  const visual = visualForProp(spec, x, y);
+  return decorateObstacle({
+    id,
+    kind,
+    variant,
+    x,
+    y,
+    collision,
+    visual,
+    keepout: inflate(collision, kind === 'lamp' ? 4 : 8),
+    blocksMovement: true,
+    blocksProjectiles: kind !== 'fence' && kind !== 'lamp',
+    blocksLos: false,
+    destructible: true,
+    hierarchy,
+  });
+};
+
+/** Street lamps along sidewalks. Lightweight, breakable. */
+export const plantLampsAlong = (
+  roads: RoadNetwork,
+  reserved: readonly ReservedZone[],
+  existing: MapObstacle[],
+): MapObstacle[] => {
+  const extras: MapObstacle[] = [];
+  let n = 0;
+  for (const patch of roads.patches) {
+    if (patch.kind !== 'sidewalk') {
+      continue;
+    }
+    const step = 260;
+    if (patch.heading === 'h') {
+      for (let x = patch.x + 48; x < patch.x + patch.w - 36; x += step) {
+        if (existing.filter((obs) => obs.kind === 'lamp').length + extras.length >= ENV_WORLD.maxLamps) {
+          return extras;
+        }
+        const y = patch.y + patch.h / 2;
+        if (Math.abs(y - 752) < 36) {
+          continue;
+        }
+        const short = n % 3 === 0;
+        const lamp = makeSolid(
+          `lamp-${n}`,
+          'lamp',
+          short ? 'short' : 'street',
+          x,
+          y,
+          short ? PROP.lampShort : PROP.lamp,
+          'detail',
+        );
+        if (!tryPlace(lamp, reserved, existing, extras)) {
+          continue;
+        }
+        extras.push(lamp);
+        n += 1;
+      }
+    } else {
+      for (let y = patch.y + 48; y < patch.y + patch.h - 36; y += step) {
+        if (existing.filter((obs) => obs.kind === 'lamp').length + extras.length >= ENV_WORLD.maxLamps) {
+          return extras;
+        }
+        const x = patch.x + patch.w / 2;
+        const lamp = makeSolid(`lamp-v-${n}`, 'lamp', 'street', x, y, PROP.lamp, 'detail');
+        if (!tryPlace(lamp, reserved, existing, extras)) {
+          continue;
+        }
+        extras.push(lamp);
+        n += 1;
+      }
+    }
+  }
+  return extras;
+};
+
+/** Extra trees beside buildings and existing cover, collision kept compact. */
+export const plantTreesBeside = (
+  hosts: readonly MapObstacle[],
+  reserved: readonly ReservedZone[],
+  existing: MapObstacle[],
+): MapObstacle[] => {
+  const extras: MapObstacle[] = [];
+  const anchors = hosts.filter(
+    (obs) => obs.kind === 'building' || obs.kind === 'fence' || obs.kind === 'wall' || obs.kind === 'tree',
+  );
+  let n = 0;
+  for (const host of anchors) {
+    if (n >= ENV_WORLD.maxExtraTrees) {
+      break;
+    }
+    const already = [...existing, ...extras].filter(
+      (obs) => obs.kind === 'tree' && Math.hypot(obs.x - host.x, obs.y - host.y) < 70,
+    ).length;
+    if (already >= 2) {
+      continue;
+    }
+    const box = host.kind === 'building' ? host.visual : host.collision;
+    const slots = [
+      { x: box.x - PROP.treeSmall.w / 2 - 10, y: box.y + 8 },
+      { x: box.x + box.w + PROP.treeSmall.w / 2 + 10, y: box.y + 12 },
+    ];
+    for (const slot of slots) {
+      if (Math.abs(slot.y - 752) < 50) {
+        continue;
+      }
+      const spec = n % 3 === 0 ? PROP.treeMedium : PROP.treeSmall;
+      const variant = n % 3 === 0 ? 'medium' : n % 5 === 0 ? 'broad' : 'small';
+      const tree = makeSolid(`tree-${host.id}-${n}`, 'tree', variant, slot.x, slot.y, spec, 'cover');
+      if (!tryPlace(tree, reserved, existing, extras)) {
+        continue;
+      }
+      extras.push(tree);
+      n += 1;
+      break;
+    }
+  }
+  return extras;
+};
+
+/** Extra fences along yards and shops. */
+export const plantFencesBeside = (
+  hosts: readonly MapObstacle[],
+  reserved: readonly ReservedZone[],
+  existing: MapObstacle[],
+): MapObstacle[] => {
+  const extras: MapObstacle[] = [];
+  const anchors = hosts.filter((obs) => obs.kind === 'building' || obs.kind === 'barricade' || obs.kind === 'sandbag');
+  let n = 0;
+  for (const host of anchors) {
+    if (n >= ENV_WORLD.maxExtraFences) {
+      break;
+    }
+    const already = [...existing, ...extras].filter(
+      (obs) => obs.kind === 'fence' && Math.hypot(obs.x - host.x, obs.y - host.y) < 90,
+    ).length;
+    if (already >= 1) {
+      continue;
+    }
+    const box = host.kind === 'building' ? host.visual : host.collision;
+    const slots = [
+      { x: host.x, y: box.y + box.h + PROP.fence.h / 2 + 8 },
+      { x: box.x - PROP.fence.w / 2 - 8, y: host.y + 18 },
+    ];
+    for (const slot of slots) {
+      if (Math.abs(slot.y - 752) < 60) {
+        continue;
+      }
+      const fence = makeSolid(
+        `fence-${host.id}-${n}`,
+        'fence',
+        n % 2 === 0 ? 'wood' : 'wire',
+        slot.x,
+        slot.y,
+        PROP.fence,
+        'cover',
+      );
+      if (!tryPlace(fence, reserved, existing, extras)) {
+        continue;
+      }
+      extras.push(fence);
       n += 1;
       break;
     }

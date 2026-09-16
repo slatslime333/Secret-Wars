@@ -5,22 +5,7 @@ import type { DamageLevel, PavementKind, PavementPatch, Point, Rect, RoadMark, R
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
-const damageOf = (rng: SeededRNG, heat: number): DamageLevel => {
-  const roll = rng.float() + heat * 0.22;
-  if (roll > 1.05) {
-    return 'missing';
-  }
-  if (roll > 0.86) {
-    return 'overgrown';
-  }
-  if (roll > 0.62) {
-    return 'broken';
-  }
-  if (roll > 0.32) {
-    return 'cracked';
-  }
-  return 'worn';
-};
+const damageOf = (_rng: SeededRNG, _heat: number): DamageLevel => 'worn';
 
 const splitSpine = (
   rng: SeededRNG,
@@ -126,68 +111,13 @@ const sidewalksAlong = (
   return walks;
 };
 
-const markRoad = (rng: SeededRNG, patches: PavementPatch[]): RoadMark[] => {
-  const marks: RoadMark[] = [];
-  for (const patch of patches) {
-    if (patch.kind === 'sidewalk' && (patch.damage === 'worn' || patch.damage === 'missing')) {
-      continue;
-    }
-    const cx = patch.x + patch.w / 2;
-    const cy = patch.y + patch.h / 2;
-    if (patch.damage === 'cracked' || patch.damage === 'broken') {
-      const cracks = patch.damage === 'broken' ? rng.int(2, 3) : 1;
-      for (let i = 0; i < cracks; i += 1) {
-        marks.push({
-          kind: 'crack',
-          x: cx + rng.int(-Math.floor(patch.w * 0.3), Math.floor(patch.w * 0.3)),
-          y: cy + rng.int(-Math.floor(patch.h * 0.28), Math.floor(patch.h * 0.28)),
-          w: patch.heading === 'h' ? rng.int(18, 42) : rng.int(3, 6),
-          h: patch.heading === 'h' ? rng.int(3, 6) : rng.int(18, 40),
-          variant: rng.int(0, 2),
-        });
-      }
-    }
-    if (patch.damage === 'broken' || patch.damage === 'overgrown') {
-      marks.push({
-        kind: patch.damage === 'overgrown' ? 'grass' : 'pothole',
-        x: cx + rng.int(-16, 16),
-        y: cy + rng.int(-10, 10),
-        w: rng.int(10, ROAD.pothole),
-        h: rng.int(8, 16),
-        variant: rng.int(0, 2),
-      });
-    }
-    if (patch.damage === 'missing') {
-      marks.push({
-        kind: 'hole',
-        x: cx,
-        y: cy,
-        w: Math.max(16, patch.w * 0.45),
-        h: Math.max(12, patch.h * 0.45),
-        variant: 0,
-      });
-    }
-    if (patch.kind === 'intersection' && rng.chance(0.7)) {
-      marks.push({
-        kind: rng.chance(0.45) ? 'burn' : 'spill',
-        x: cx + rng.int(-18, 18),
-        y: cy + rng.int(-14, 14),
-        w: rng.int(22, 48),
-        h: rng.int(16, 32),
-        variant: rng.int(0, 2),
-      });
-    }
-  }
-  return marks;
-};
+const markRoad = (_rng: SeededRNG, _patches: PavementPatch[]): RoadMark[] => [];
 
 const crosses = (ax: number, ay: number, bx: number, by: number): boolean =>
   Math.abs(ax - bx) < ROAD.width * 0.85 && Math.abs(ay - by) < ROAD.width * 0.85;
 
 /**
- * Believable damaged street grid: three east-west roads along the combat
- * belts, plus two north-south connectors. Damage is stronger toward midfield
- * and intersections, never a noisy scatter of fragments.
+ * Clean street grid at match start. Combat scars the pavement at runtime.
  */
 export const generateRoads = (playable: Rect, seed: number): RoadNetwork => {
   const rng = new SeededRNG(seed ^ 0x51d2);

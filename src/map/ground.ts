@@ -339,7 +339,7 @@ const drawMidfieldDust = (graphics: Phaser.GameObjects.Graphics, layout: MapLayo
   const rng = new SeededRNG(layout.seed ^ 0x33aa);
   const cx = ARENA.width / 2;
   const cy = ARENA.height / 2;
-  for (let i = 0; i < 18; i += 1) {
+  for (let i = 0; i < 6; i += 1) {
     const ang = rng.float(0, Math.PI * 2);
     const rx = rng.float(0, 1) ** 0.55 * 220;
     const ry = rng.float(0, 1) ** 0.55 * 110;
@@ -348,7 +348,7 @@ const drawMidfieldDust = (graphics: Phaser.GameObjects.Graphics, layout: MapLayo
     graphics.fillStyle(i % 4 === 0 ? 0x2a1c14 : 0x4a4030, 0.28);
     graphics.fillRect(x - 10, y - 5, 22 + (i % 3) * 6, 9 + (i % 2) * 4);
   }
-  for (let i = 0; i < 70; i += 1) {
+  for (let i = 0; i < 22; i += 1) {
     const ang = rng.float(0, Math.PI * 2);
     const rx = rng.float(0, 1) ** 0.6 * 190;
     const ry = rng.float(0, 1) ** 0.6 * 78;

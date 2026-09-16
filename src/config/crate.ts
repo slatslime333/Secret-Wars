@@ -6,8 +6,8 @@ import { MATCH } from './match';
  * Tuned from Cole's light damage so every hero can crack them without farming.
  */
 export const CRATE = {
-  /** ~3 Cole lights / ~4 Ninja lights. Not a one-shot, not a tank. */
-  maxHealth: Math.round(COLE.attackDamage * 3.4),
+  /** ~2–3 Cole lights / ~4 Mender lights. Easy for every kit, never a one-shot. */
+  maxHealth: Math.round(COLE.attackDamage * 2.4),
   /** Always drop a small pip. Less than a sword minion (18). */
   xp: 8,
   bonusXpChance: 0.3,

@@ -141,7 +141,7 @@ export const scoreLayout = (layout: MapLayout, issues: ValidationIssue[]): MapQu
   const openSpace = clampScore(70 + (open - 0.7) * 80);
   const cover = clampScore(40 + layout.obstacles.filter((obs) => obs.blocksMovement).length * 1.5);
   const regionalConnectivity = clampScore((northOk ? 34 : 0) + 32 + (southOk ? 34 : 0));
-  const readability = clampScore(92 - chokes * 8 - Math.max(0, layout.obstacles.length - 72) * 1.2);
+  const readability = clampScore(92 - chokes * 8 - Math.max(0, layout.obstacles.length - 96) * 1.1);
   const total = clampScore(
     connectivity * 0.18 +
       spawnSafety * 0.14 +
@@ -267,8 +267,14 @@ export const validateLayout = (layout: MapLayout): ValidationIssue[] => {
         }
       }
       if (
+        a.blocksMovement &&
+        b.blocksMovement &&
         (a.kind === 'wall' || a.kind === 'barricade' || a.kind === 'sandbag') &&
         (b.kind === 'wall' || b.kind === 'barricade' || b.kind === 'sandbag') &&
+        !a.id.includes('-n-') &&
+        !a.id.includes('-s-') &&
+        !b.id.includes('-n-') &&
+        !b.id.includes('-s-') &&
         wallsColinear(a.collision, b.collision)
       ) {
         const gap = gapBetween(a.collision, b.collision);

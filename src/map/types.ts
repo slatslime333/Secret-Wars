@@ -13,7 +13,8 @@ export type ObstacleKind =
   | 'sandbag'
   | 'rubble'
   | 'fence'
-  | 'barrel';
+  | 'barrel'
+  | 'lamp';
 
 /** How the live city treats this prop during combat. */
 export type PhysicsClass = 'static' | 'breakable' | 'lightweight' | 'explosive' | 'temporary';
@@ -25,7 +26,8 @@ export type TreeVariant = 'small' | 'medium' | 'broad';
 export type CrateVariant = 'single' | 'stack' | 'pair';
 export type VehicleVariant = 'truck' | 'car';
 export type BuildingVariant = 'house' | 'stub' | 'shop';
-export type BarrelVariant = 'drum' | 'fuel';
+export type BarrelVariant = 'drum' | 'fuel' | 'skull';
+export type LampVariant = 'street' | 'short';
 export type BarricadeVariant = 'wood' | 'metal';
 export type SandbagVariant = 'line' | 'corner';
 export type RubbleVariant = 'pile' | 'chunk';

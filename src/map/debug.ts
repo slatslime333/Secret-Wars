@@ -65,9 +65,11 @@ export class MapDebugOverlay {
             ? 0xd4a050
             : obs.kind === 'barrel'
               ? 0xff6a18
-              : obs.kind === 'vehicle' || obs.kind === 'building'
-                ? 0xc47a48
-                : 0xc8c8c8;
+              : obs.kind === 'lamp'
+                ? 0xf4c45a
+                : obs.kind === 'vehicle' || obs.kind === 'building'
+                  ? 0xc47a48
+                  : 0xc8c8c8;
       this.graphics.lineStyle(1, obs.destructible ? color : 0x889099, obs.destructible ? 0.85 : 0.45);
       this.graphics.strokeRect(obs.collision.x, obs.collision.y, obs.collision.w, obs.collision.h);
       if (obs.enterable && obs.interior) {

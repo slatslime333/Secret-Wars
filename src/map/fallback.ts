@@ -74,7 +74,7 @@ export const buildFallbackLayout = (seed: number, attempt: number): MapLayout =>
             visual,
             keepout: visual,
             blocksMovement: true,
-            blocksProjectiles: local.kind !== 'fence',
+            blocksProjectiles: local.kind !== 'fence' && local.kind !== 'lamp',
             blocksLos: local.kind === 'wall' || local.kind === 'vehicle' || local.kind === 'building',
             destructible: local.kind === 'crate',
             hierarchy: local.kind === 'vehicle' || local.kind === 'building' ? 'landmark' : 'cover',

@@ -62,6 +62,15 @@ type LiveProp = {
   spawn: MapObstacle;
   gone: boolean;
   respawnAt: number;
+  arming: boolean;
+};
+
+type Scar = {
+  x: number;
+  y: number;
+  kind: 'crack' | 'rubble' | 'burn' | 'hole';
+  w: number;
+  h: number;
 };
 
 type Pickup = {
@@ -99,6 +108,8 @@ export class EnvironmentWorld {
   private readonly props: LiveProp[] = [];
   private readonly pickups: Pickup[] = [];
   private readonly fx: Fx[] = [];
+  private readonly scars: Scar[] = [];
+  private readonly scarGfx: Phaser.GameObjects.Graphics;
   private readonly swingHits = new WeakMap<NinjaBody, Map<string, number>>();
   private readonly shotHits = new Set<string>();
   private offStrike?: () => void;
@@ -109,6 +120,7 @@ export class EnvironmentWorld {
     private readonly world: MapWorld,
     private readonly view: MapView,
   ) {
+    this.scarGfx = scene.add.graphics().setDepth(2);
     for (const obs of world.layout.obstacles) {
       this.props.push(this.liveFrom(obs));
     }
@@ -195,6 +207,8 @@ export class EnvironmentWorld {
       item.view.destroy();
     }
     this.fx.length = 0;
+    this.scars.length = 0;
+    this.scarGfx.destroy();
     this.props.length = 0;
   }
 
@@ -217,12 +231,19 @@ export class EnvironmentWorld {
       spawn: copyObstacle(obs),
       gone: false,
       respawnAt: 0,
+      arming: false,
     };
   }
 
   private onStrike(event: WorldStrikeEvent): void {
     const hits = this.swingHits.get(event.attacker) ?? new Map<string, number>();
     this.swingHits.set(event.attacker, hits);
+    if (event.kind === 'ability' || event.kind === 'explosion') {
+      const dx = event.dirX ?? event.attacker.aim.x;
+      const dy = event.dirY ?? event.attacker.aim.y;
+      const len = Math.hypot(dx, dy) || 1;
+      this.scarAt(event.attacker.x + (dx / len) * event.reach * 0.55, event.attacker.y + (dy / len) * event.reach * 0.55, event.kind);
+    }
     for (const prop of this.props) {
       if (prop.gone || hits.get(prop.obs.id) === event.now) {
         continue;
@@ -289,7 +310,7 @@ export class EnvironmentWorld {
   }
 
   private hit(prop: LiveProp, amount: number, event: WorldStrikeEvent, attacker?: NinjaBody): void {
-    if (amount <= 0 || prop.gone) {
+    if (amount <= 0 || prop.gone || prop.arming) {
       return;
     }
     if (prop.physics === 'static' && !prop.obs.destructible) {
@@ -306,16 +327,16 @@ export class EnvironmentWorld {
     if (prop.hp > 0) {
       return;
     }
+    if (prop.obs.kind === 'vehicle' && prop.obs.variant === 'car') {
+      this.armCar(prop, attacker);
+      return;
+    }
     if (prop.obs.explosive || prop.physics === 'explosive') {
       this.explode(prop, attacker);
       return;
     }
     if (prop.physics === 'lightweight') {
       this.knockDown(prop, event);
-      return;
-    }
-    if (prop.obs.kind === 'vehicle') {
-      this.wreckVehicle(prop, event);
       return;
     }
     this.destroyProp(prop, attacker);
@@ -425,11 +446,15 @@ export class EnvironmentWorld {
 
   private explode(prop: LiveProp, attacker?: NinjaBody): void {
     const { x, y } = prop.obs;
+    const car = prop.obs.kind === 'vehicle';
+    const radius = car ? ENV_WORLD.carRadius : ENV_WORLD.barrelRadius;
+    const damage = car ? ENV_WORLD.carDamage : ENV_WORLD.barrelDamage;
+    const knock = car ? ENV_WORLD.carKnockback : ENV_WORLD.barrelKnockback;
     this.destroyProp(prop, attacker);
-    this.burst(x, y, ENV.fire, ENV.fireCore);
-    const radius = ENV_WORLD.barrelRadius;
+    this.burst(x, y, radius);
+    this.scarBlast(x, y, radius);
     for (const other of this.props) {
-      if (other.gone || other === prop) {
+      if (other.gone || other === prop || other.arming) {
         continue;
       }
       const dist = Math.hypot(other.obs.x - x, other.obs.y - y);
@@ -440,12 +465,12 @@ export class EnvironmentWorld {
       const fake: WorldStrikeEvent = {
         attacker: attacker ?? this.hooks.heroes()[0],
         now: this.scene.time.now,
-        damage: ENV_WORLD.barrelDamage * falloff,
+        damage: damage * falloff,
         reach: radius,
         kind: 'explosion',
         dirX: other.obs.x - x,
         dirY: other.obs.y - y,
-        impulse: 1.4,
+        impulse: car ? 1.35 : 1.7,
       };
       if (!fake.attacker) {
         continue;
@@ -465,10 +490,10 @@ export class EnvironmentWorld {
       const dy = hero.y - y;
       const len = Math.hypot(dx, dy) || 1;
       hero.takeHit({
-        damage: Math.round(ENV_WORLD.barrelDamage * falloff),
+        damage: Math.round(damage * falloff),
         dirX: dx / len,
         dirY: dy / len,
-        knockback: ENV_WORLD.barrelKnockback * falloff,
+        knockback: knock * falloff,
         staminaDamage: 4,
         step: 2,
       });
@@ -587,27 +612,41 @@ export class EnvironmentWorld {
     }
   }
 
-  private wreckVehicle(prop: LiveProp, event: WorldStrikeEvent): void {
-    if (prop.state === 'knocked' || prop.gone) {
+  private armCar(prop: LiveProp, attacker?: NinjaBody): void {
+    if (prop.arming || prop.gone) {
       return;
     }
-    prop.state = 'knocked';
-    prop.obs.damageState = 'knocked';
-    prop.physics = 'temporary';
-    prop.knockedAt = this.scene.time.now;
-    prop.obs.collision.w = Math.max(28, prop.obs.collision.w * 0.55);
-    prop.obs.collision.h = Math.max(16, prop.obs.collision.h * 0.45);
-    prop.obs.collision.x = prop.obs.x - prop.obs.collision.w / 2;
-    prop.obs.collision.y = prop.obs.y - prop.obs.collision.h / 2;
-    this.world.refreshCollision(prop.obs.id);
-    if (prop.sprite) {
-      prop.sprite.setTexture(textureKeyFor(prop.obs));
-      prop.sprite.setDisplaySize(prop.obs.visual.w * 0.92, prop.obs.visual.h * 0.7);
-      prop.sprite.setTint(0x6a5040);
+    prop.arming = true;
+    prop.hp = 0;
+    prop.state = 'cracked';
+    prop.obs.damageState = 'cracked';
+    const sprite = prop.sprite;
+    if (sprite) {
+      sprite.setTexture(textureKeyFor(prop.obs));
+      sprite.setDisplaySize(prop.obs.visual.w, prop.obs.visual.h);
     }
-    this.push(prop, event);
-    this.puff(prop.obs.x, prop.obs.y, ENV.burn, 0.7);
-    this.stain(prop.obs.x, prop.obs.y);
+    const flashes = ENV_WORLD.carFlashCount;
+    const pulse = ENV_WORLD.carFlashMs;
+    for (let i = 0; i < flashes; i += 1) {
+      this.scene.time.delayedCall(i * pulse * 2, () => {
+        if (prop.gone || !prop.sprite) {
+          return;
+        }
+        prop.sprite.setTint(0xf03b45);
+      });
+      this.scene.time.delayedCall(i * pulse * 2 + pulse, () => {
+        if (prop.gone || !prop.sprite) {
+          return;
+        }
+        prop.sprite.setTint(0xd0a090);
+      });
+    }
+    this.scene.time.delayedCall(flashes * pulse * 2, () => {
+      if (prop.gone) {
+        return;
+      }
+      this.explode(prop, attacker);
+    });
   }
 
   private tickRoofs(): void {
@@ -697,19 +736,109 @@ export class EnvironmentWorld {
     this.fx.push({ view: stain, until: this.scene.time.now + ENV_WORLD.stainLifeMs });
   }
 
-  private burst(x: number, y: number, a: number, b: number): void {
-    const puff = this.scene.add.graphics().setDepth(22);
-    puff.fillStyle(a, 0.95);
-    puff.fillCircle(x, y, 22);
-    puff.fillStyle(b, 0.9);
-    puff.fillCircle(x, y, 10);
+  private burst(x: number, y: number, radius: number): void {
+    const puff = this.scene.add.graphics().setDepth(22).setPosition(x, y);
+    puff.fillStyle(ENV.fire, 0.95);
+    puff.fillCircle(0, 0, Math.max(18, radius * 0.28));
+    puff.fillStyle(ENV.fireCore, 0.95);
+    puff.fillCircle(0, 0, Math.max(8, radius * 0.12));
+    puff.fillStyle(0xf6f1de, 0.7);
+    puff.fillCircle(0, 0, 6);
     this.scene.tweens.add({
       targets: puff,
       alpha: 0,
+      scaleX: 2.4,
+      scaleY: 2.4,
       duration: 420,
       onComplete: () => puff.destroy(),
     });
     this.fx.push({ view: puff, until: this.scene.time.now + 420 });
+    const ring = this.scene.add.graphics().setDepth(21).setPosition(x, y);
+    ring.lineStyle(5, ENV.fire, 0.9);
+    ring.strokeCircle(0, 0, 10);
+    this.scene.tweens.add({
+      targets: ring,
+      alpha: 0,
+      scaleX: Math.max(3, radius / 14),
+      scaleY: Math.max(3, radius / 14),
+      duration: 360,
+      onComplete: () => ring.destroy(),
+    });
+    this.fx.push({ view: ring, until: this.scene.time.now + 360 });
+  }
+
+  private onPavement(x: number, y: number): boolean {
+    return this.world.layout.roads.patches.some(
+      (patch) =>
+        patch.kind !== 'sidewalk' &&
+        x >= patch.x &&
+        x <= patch.x + patch.w &&
+        y >= patch.y &&
+        y <= patch.y + patch.h,
+    );
+  }
+
+  private scarAt(x: number, y: number, cause: WorldStrikeEvent['kind']): void {
+    const road = this.onPavement(x, y);
+    if (cause === 'explosion') {
+      this.pushScar({ x, y, kind: road ? 'rubble' : 'burn', w: road ? 28 : 34, h: road ? 16 : 22 });
+      return;
+    }
+    this.pushScar({
+      x,
+      y,
+      kind: road ? 'crack' : 'burn',
+      w: road ? 22 : 18,
+      h: road ? 5 : 14,
+    });
+  }
+
+  private scarBlast(x: number, y: number, radius: number): void {
+    this.scarAt(x, y, 'explosion');
+    this.pushScar({ x: x - 10, y: y + 6, kind: this.onPavement(x, y) ? 'crack' : 'hole', w: 26, h: 8 });
+    this.pushScar({ x: x + radius * 0.28, y: y - 8, kind: this.onPavement(x + 12, y) ? 'rubble' : 'burn', w: 20, h: 12 });
+    this.pushScar({ x: x - radius * 0.22, y: y + 10, kind: 'hole', w: 16, h: 12 });
+  }
+
+  private pushScar(scar: Scar): void {
+    if (this.scars.length >= ENV_WORLD.maxScars) {
+      this.scars.shift();
+    }
+    this.scars.push(scar);
+    this.redrawScars();
+  }
+
+  private redrawScars(): void {
+    const g = this.scarGfx;
+    g.clear();
+    for (const scar of this.scars) {
+      if (scar.kind === 'crack') {
+        g.fillStyle(ENV.inkSoft, 0.85);
+        g.fillRect(scar.x - scar.w / 2, scar.y - scar.h / 2, scar.w, scar.h);
+        g.fillRect(scar.x - 4, scar.y, scar.w * 0.45, 3);
+        continue;
+      }
+      if (scar.kind === 'rubble') {
+        g.fillStyle(ENV.asphaltDark, 0.95);
+        g.fillRect(scar.x - scar.w / 2, scar.y - scar.h / 2, scar.w, scar.h);
+        g.fillStyle(ENV.concreteDark, 0.9);
+        g.fillRect(scar.x - 6, scar.y - 3, 10, 7);
+        g.fillStyle(ENV.dirt, 0.7);
+        g.fillRect(scar.x + 2, scar.y, 8, 5);
+        continue;
+      }
+      if (scar.kind === 'hole') {
+        g.fillStyle(ENV.ink, 0.9);
+        g.fillRect(scar.x - scar.w / 2, scar.y - scar.h / 2, scar.w, scar.h);
+        g.fillStyle(ENV.dirtDark, 0.95);
+        g.fillRect(scar.x - scar.w / 2 + 2, scar.y - scar.h / 2 + 2, scar.w - 4, scar.h - 4);
+        continue;
+      }
+      g.fillStyle(0x1a120c, 0.8);
+      g.fillRect(scar.x - scar.w / 2, scar.y - scar.h / 2, scar.w, scar.h);
+      g.fillStyle(0x2a1c14, 0.7);
+      g.fillRect(scar.x - scar.w / 3, scar.y - scar.h / 3, scar.w * 0.5, scar.h * 0.5);
+    }
   }
 
   private dropRewards(x: number, y: number, attacker?: NinjaBody): void {
