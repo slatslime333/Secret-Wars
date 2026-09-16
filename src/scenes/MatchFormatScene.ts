@@ -55,8 +55,8 @@ export class MatchFormatScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
 
-    this.drawChoice(width / 2 - 130, height / 2 - 20, '3 VS 3', 'ONE OF EACH CLASS', '3v3');
-    this.drawChoice(width / 2 + 130, height / 2 - 20, '6 VS 6', 'TWO OF EACH CLASS', '6v6');
+    this.drawChoice(width / 2 - 130, height / 2 - 20, '3 VS 3', '6 FIGHTERS  //  STANDARD MAP', '3v3');
+    this.drawChoice(width / 2 + 130, height / 2 - 20, '6 VS 6', '12 FIGHTERS  //  MAP +65%', '6v6');
 
     new ActionButton(this, inset.left + 70, height - inset.bottom - 28, {
       label: 'BACK',
