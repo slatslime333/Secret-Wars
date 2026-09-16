@@ -12,7 +12,7 @@ import {
 } from './evaluate';
 import type { TacticalField } from './field';
 import { kitProfileOf, isRopeDisarmed, isShadowDry } from './kitProfile';
-import { clusterRiskOf } from './spacing';
+import { clusterRiskOf, occupancyOf } from './spacing';
 import { pocketRadius } from './fightRead';
 import { personalityFromSeed } from './personality';
 import { pickRetreatGoal, type RetreatGoal } from './retreat';
@@ -113,6 +113,7 @@ export class TacticalMind {
   private director?: GamePlanController;
   private readonly teamBuf: UnitFact[] = [];
   private combatNote?: string;
+  private ultNote?: { decision: 'use' | 'save' | 'wait' | 'reposition'; reason: string; current: number; future: number };
 
   constructor(kind: TacticalKind, seed: string, homeX: number, homeY: number) {
     this.kind = kind;
@@ -215,6 +216,15 @@ export class TacticalMind {
       mates,
       clusterRisk,
       threatReach: focus && focus.kind === 'hero' ? pocketRadius(focus) : undefined,
+      ultDecision: this.ultNote?.decision,
+      ultKind:
+        self.heroId === 'shadow' || (self.heroId === 'demon' && self.demonForm !== 'big' && self.demonForm !== 'bat')
+          ? 'transform'
+          : self.heroId === 'mender' || kit?.stance === 'support'
+            ? 'heal'
+            : kit?.stance === 'ranged'
+              ? 'attack'
+              : undefined,
       objective: this.situation.objective
         ? {
             kind: this.situation.objective.kind,
@@ -243,6 +253,11 @@ export class TacticalMind {
 
   noteUltSaved(saved: boolean): void {
     this.director?.markUltSaved(saved);
+  }
+
+  noteUltDecision(decision: 'use' | 'save' | 'wait' | 'reposition', reason: string, current = 0, future = 0): void {
+    this.ultNote = { decision, reason, current, future };
+    this.director?.markUltSaved(decision !== 'use');
   }
 
   noteCombat(note: string): void {
@@ -352,6 +367,26 @@ export class TacticalMind {
     const maxHp = Math.max(1, self.stats.maxHealth);
     const team = assessTeam(this.situation);
     const obj = assessObjective(this.situation);
+    const selfView = this.situation.self;
+    const cluster = clusterRiskOf(selfView, this.allies, this.enemies);
+    const occupancy = occupancyOf(selfView, this.allies);
+    const levelOf = (n: number): string => (n >= 0.62 ? 'High' : n >= 0.32 ? 'Medium' : 'Low');
+    const join =
+      this.intent.action === 'assist_ally' || this.intent.action === 'protect_ally'
+        ? occupancy > 0.4
+          ? 'Low'
+          : this.intent.reason.includes('staffed') || this.intent.reason.includes('handled')
+            ? 'Low'
+            : 'High'
+        : this.intent.reason.includes('staffed') || this.intent.reason.includes('handled')
+          ? 'Low'
+          : AGGRESSIVE.has(this.intent.action)
+            ? 'Medium'
+            : 'Low';
+    const combat =
+      this.intent.action === 'attack' || this.intent.action === 'finish_target' || this.intent.action === 'flank'
+        ? levelOf(Math.min(1, this.intent.score / 48))
+        : 'Low';
     const teamLine = team.allyInDanger
       ? `${team.debug}  LOW HP ALLY`
       : team.fightHandled
@@ -377,6 +412,16 @@ export class TacticalMind {
       team: teamLine,
       objective: obj?.debug,
       combatNote: this.combatNote,
+      clusterRisk: `${levelOf(cluster)} (${cluster.toFixed(2)})`,
+      joinValue: join,
+      combatValue: combat,
+      objectiveValue: obj ? levelOf(obj.urgency) : 'Low',
+      positionValue: occupancy > 0.4 ? 'Low' : occupancy > 0.22 ? 'Medium' : 'High',
+      desiredSpacing: `${Math.round((this.kit?.stance === 'ranged' || this.kit?.stance === 'support' ? 70 : 48) + occupancy * 40)}`,
+      ultDecision: this.ultNote ? this.ultNote.decision.toUpperCase() : this.director?.savedUlt ? 'SAVE' : undefined,
+      ultReason: this.ultNote
+        ? `${this.ultNote.reason}  now ${Math.round(this.ultNote.current)}  later ${Math.round(this.ultNote.future)}`
+        : undefined,
     };
   }
 
@@ -607,7 +652,19 @@ export class TacticalMind {
       return true;
     }
     if ((intent.action === 'recover' || intent.action === 'farm_minions') && this.lastEnemyCount > intent.enemyCountAtCommit) {
-      return true;
+      if (intent.action === 'recover') {
+        return true;
+      }
+      const me = this.situation.self;
+      const pressed = this.enemies.some(
+        (enemy) =>
+          enemy.kind === 'hero' &&
+          enemy.visible &&
+          Math.hypot(enemy.x - me.x, enemy.y - me.y) < me.attackRange * 1.45 + 36,
+      );
+      if (pressed) {
+        return true;
+      }
     }
     if (hp < TACTIC.criticalHp && AGGRESSIVE.has(intent.action) && intent.action !== 'finish_target') {
       return true;
@@ -685,8 +742,8 @@ export class TacticalMind {
     if (action === 'flank') {
       return TACTIC.flankCommit + this.slot * 2 + stick;
     }
-    if (action === 'wait_for_opening' || action === 'hold_position') {
-      return 640 + this.slot * 3 + stick * 0.4;
+    if (action === 'reposition' || action === 'hold_position' || action === 'wait_for_opening') {
+      return 720 + this.slot * 3 + stick * 0.5;
     }
     if (action === 'retreat' || action === 'escape') {
       return 720 + this.personality.retreatWillingness * 80;

@@ -1,7 +1,7 @@
 import { ARENA, atFarEdge, nearestLane, roamHuntPoint } from '../../config/arena';
 import type { ObjectiveKind } from '../../config/objective';
 import type { KitStance, TacticalAction } from './types';
-import { clearanceFor, nudgeOffMates, protectStand, regroupStand, type CrowdMate } from './spacing';
+import { clearanceFor, combatStand, nudgeOffMates, protectStand, regroupStand, type CrowdMate } from './spacing';
 
 export type MoveSample = {
   x: number;
@@ -39,6 +39,9 @@ export type MoveHint = {
   clusterRisk?: number;
   /** Enemy comfort reach. Stand outside it when we can still hit. */
   threatReach?: number;
+  /** Last ult SAVE/WAIT/REPOSITION so dests can seek cover or heal radius. */
+  ultDecision?: 'use' | 'save' | 'wait' | 'reposition';
+  ultKind?: 'transform' | 'heal' | 'attack' | 'defense' | 'utility';
   objective?: {
     kind: ObjectiveKind;
     x: number;
@@ -311,6 +314,12 @@ export const moveGoal = (
   }
 
   if (!target) {
+    if (ally && (action === 'hold_position' || action === 'protect_ally' || hint?.ultKind === 'heal')) {
+      const stand = protectStand(body, ally, ally, flankSign, true, slot);
+      const dest = applyCrowd(stand, body, action, slot, hint);
+      const gap = Math.hypot(dest.x - body.x, dest.y - body.y);
+      return { x: dest.x, y: dest.y, halt: gap < 28, ...aimTo(ally.x, ally.y) };
+    }
     const dest = applyCrowd(idleAnchor(body, now, slot, hint), body, action, slot, hint);
     const gap = Math.hypot(dest.x - body.x, dest.y - body.y);
     const aim = aimTo(dest.x, dest.y);
@@ -339,11 +348,17 @@ export const moveGoal = (
   }
 
   if (action === 'wait_for_opening' || action === 'hold_position') {
+    if (hint?.ultKind === 'heal' && ally) {
+      const stand = protectStand(body, ally, target ?? ally, flankSign, true, slot);
+      const aim = target ? aimTo(target.x, target.y) : aimTo(ally.x, ally.y);
+      const standGap = Math.hypot(stand.x - body.x, stand.y - body.y);
+      return finish({ x: stand.x, y: stand.y, halt: standGap < 22, ...aim });
+    }
     const nx = toX / gap;
     const ny = toY / gap;
     const radius = range + 16;
-    const gx = target.x - nx * radius + -ny * 26 * flankSign;
-    const gy = target.y - ny * radius + nx * 26 * flankSign;
+    const gx = target.x - nx * radius + -ny * (42 + (hint?.clusterRisk ?? 0) * 24) * flankSign;
+    const gy = target.y - ny * radius + nx * (42 + (hint?.clusterRisk ?? 0) * 24) * flankSign;
     const aim = aimTo(target.x, target.y);
     const standGap = Math.hypot(gx - body.x, gy - body.y);
     const halt = action === 'hold_position' && standGap < 22;
@@ -357,8 +372,8 @@ export const moveGoal = (
     const flen = Math.hypot(fx, fy) || 1;
     fx /= flen;
     fy /= flen;
-    const gx = target.x - fx * range * 0.55 + -fy * range * 0.9 * flankSign;
-    const gy = target.y - fy * range * 0.55 + fx * range * 0.9 * flankSign;
+    const gx = target.x - fx * range * 0.55 + -fy * range * 1.05 * flankSign;
+    const gy = target.y - fy * range * 0.55 + fx * range * 1.05 * flankSign;
     const aim = aimTo(target.x, target.y);
     return finish({ x: gx, y: gy, halt: false, ...aim });
   }
@@ -367,9 +382,16 @@ export const moveGoal = (
     const side = flankSign >= 0 ? 1 : -1;
     const nx = toX / gap;
     const ny = toY / gap;
-    const back = ranged && gap < range * 0.7 ? range * 1.02 : range;
-    const gx = target.x - nx * back + -ny * 46 * side;
-    const gy = target.y - ny * back + nx * 46 * side;
+    const transformSpace = hint?.ultKind === 'transform' && hint.ultDecision !== 'use';
+    const back =
+      transformSpace && gap < range * 1.35
+        ? range * 1.28
+        : ranged && gap < range * 0.7
+          ? range * 1.02
+          : range;
+    const lat = 62 + (hint?.clusterRisk ?? 0) * 24 + (transformSpace ? 28 : 0);
+    const gx = target.x - nx * back + -ny * lat * side;
+    const gy = target.y - ny * back + nx * lat * side;
     const aim = aimTo(target.x, target.y);
     return finish({ x: gx, y: gy, halt: false, ...aim });
   }
@@ -403,16 +425,25 @@ export const moveGoal = (
 
   const nx = toX / gap;
   const ny = toY / gap;
-  const stand = range * (ranged ? 0.9 : 0.64);
   const slop = range * 0.2;
-  const spread = 14 + (hint?.clusterRisk ?? 0) * 32;
-  const gx = target.x - nx * stand + -ny * spread * flankSign;
-  const gy = target.y - ny * stand + nx * spread * flankSign;
+  const picked = combatStand(
+    body,
+    target,
+    action,
+    flankSign,
+    slot,
+    hint?.mates,
+    hint?.stance,
+    hint?.clusterRisk ?? 0,
+    range,
+  );
+  const gx = picked.x;
+  const gy = picked.y;
   if (ranged && gap < range - slop && action !== 'chase' && action !== 'finish_target') {
     const side = flankSign >= 0 ? 1 : -1;
     return finish({
-      x: target.x - nx * range + -ny * 32 * side,
-      y: target.y - ny * range + nx * 32 * side,
+      x: target.x - nx * range + -ny * (48 + (hint?.clusterRisk ?? 0) * 28) * side,
+      y: target.y - ny * range + nx * (48 + (hint?.clusterRisk ?? 0) * 28) * side,
       halt: false,
       aimX: nx,
       aimY: ny,

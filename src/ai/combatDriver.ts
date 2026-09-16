@@ -7,7 +7,7 @@ import type { AbilityContext, AbilitySlot } from '../heroes/abilities/types';
 import { SLOT_ORDER, canStartAbility } from '../heroes/abilities/types';
 import type { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import type { NinjaBody } from '../heroes/NinjaBody';
-import { scoreKitSlot } from './tactical/kitTactics';
+import { evaluateUltimate, scoreKitSlot } from './tactical/kitTactics';
 import { isShadowDry } from './tactical/kitProfile';
 import { FightSense } from './tactical/fightSense';
 import type { TacticalMind } from './tactical/mind';
@@ -275,22 +275,34 @@ export class CombatDriver {
       return false;
     }
     const p = situation.personality;
-    if (rng() < p.abilityConservation * 0.1) {
+    const ultState = abilities.slotState('ultimate', now);
+    const ultReady = ultState.ready && !ultState.consumed;
+    const pendingUlt = ultReady ? evaluateUltimate(ultState.def, situation) : undefined;
+    if (rng() < p.abilityConservation * 0.1 && pendingUlt?.decision !== 'use') {
       this.nextAbilityAt = now + 240 + rng() * 180;
+      if (pendingUlt) {
+        mind.noteUltDecision(pendingUlt.decision, pendingUlt.reason, pendingUlt.current, pendingUlt.future);
+      }
       return false;
     }
     let bestSlot: AbilitySlot | undefined;
     let bestScore = 18;
     let skippedUlt = false;
+    let ultRead = pendingUlt;
     for (const slot of SLOTS) {
       const state = abilities.slotState(slot, now);
       if (!state.ready || state.consumed) {
         continue;
       }
-      const score = scoreKitSlot(state.def, situation, slot) + rng() * 6;
-      if (slot === 'ultimate' && score < 26 + situation.personality.abilityConservation * 18) {
-        skippedUlt = true;
-        continue;
+      const score = scoreKitSlot(state.def, situation, slot) + (slot === 'ultimate' ? rng() * 3 : rng() * 6);
+      if (slot === 'ultimate') {
+        ultRead = evaluateUltimate(state.def, situation);
+        const bar = 22 + situation.personality.abilityConservation * 12;
+        if (ultRead.decision !== 'use' || score < bar) {
+          skippedUlt = true;
+          mind.noteUltDecision(ultRead.decision, ultRead.reason, ultRead.current, ultRead.future);
+          continue;
+        }
       }
       if (score > bestScore) {
         bestScore = score;
@@ -306,6 +318,9 @@ export class CombatDriver {
     }
     if (bestSlot === 'ultimate') {
       mind.noteUltSaved(false);
+      if (ultRead) {
+        mind.noteUltDecision('use', ultRead.reason, ultRead.current, ultRead.future);
+      }
     }
     const def = abilities.slotState(bestSlot, now).def;
     const purposes = purposesOf(def);

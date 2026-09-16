@@ -167,23 +167,23 @@ export const formationOffset = (
   personality: Personality,
   flankSign: number,
 ): { x: number; y: number } => {
-  const side = 28 + personality.independence * 36;
+  const side = 40 + personality.independence * 48;
   if (kit.stance === 'ranged') {
-    return { x: -70 - personality.preferredDistance * 24, y: side * flankSign };
+    return { x: -78 - personality.preferredDistance * 28, y: side * flankSign };
   }
   if (kit.stance === 'support') {
-    return { x: -48, y: 42 * flankSign };
+    return { x: -56, y: 58 * flankSign };
   }
   if (kit.wantsFlank) {
-    return { x: 18, y: (70 + personality.flankTendency * 40) * flankSign };
+    return { x: 18, y: (86 + personality.flankTendency * 44) * flankSign };
   }
-  return { x: 36 + personality.aggression * 18, y: 16 * flankSign };
+  return { x: 40 + personality.aggression * 18, y: 28 * flankSign };
 };
 
 const openingDuration = (personality: Personality, slot: number): number =>
   4800 + personality.patience * 2200 + (slot % 7) * 180;
 
-const shouldAbandonOpening = (situation: Situation): string | undefined => {
+const shouldAbandonOpening = (situation: Situation, kit: KitProfile): string | undefined => {
   const foes = visibleEnemyHeroes(situation);
   const p = situation.personality;
   if (situation.projectile?.willHit) {
@@ -198,10 +198,17 @@ const shouldAbandonOpening = (situation: Situation): string | undefined => {
   if (foes.length >= 3 && allyHeroesOf(situation).length === 0) {
     return 'outnumbered';
   }
+  const closeThreat = foes.some((enemy) => {
+    const d = Math.hypot(enemy.x - situation.self.x, enemy.y - situation.self.y);
+    return d < kit.comfortMax * 1.12 || ((enemy.attacking || enemy.recentlyHit) && d < kit.comfortMax * 1.45);
+  });
+  if (closeThreat && foes.length >= 2 && allyHeroesOf(situation).length === 0) {
+    return 'pressed';
+  }
   const threatened = situation.allies.find(
     (ally) => ally.kind === 'hero' && ally.hpRatio < 0.32 && ally.recentlyHit,
   );
-  if (threatened && p.protectionInstinct > 0.42) {
+  if (threatened && p.protectionInstinct > 0.42 && Math.hypot(threatened.x - situation.self.x, threatened.y - situation.self.y) < 280) {
     return 'ally in trouble';
   }
   return undefined;
@@ -235,6 +242,15 @@ const nextState = (situation: Situation, kit: KitProfile, opening: OpeningPlan, 
     const d = Math.hypot(enemy.x - situation.self.x, enemy.y - situation.self.y);
     return !best || d < best.d ? { enemy, d } : best;
   }, undefined as { enemy: CombatantView; d: number } | undefined);
+  const alliesOnNearest = nearest
+    ? situation.allies.filter((ally) => {
+        if (ally.kind !== 'hero') {
+          return false;
+        }
+        const d = Math.hypot(ally.x - nearest.enemy.x, ally.y - nearest.enemy.y);
+        return d < 170 && (ally.attacking || ally.recentlyHit);
+      }).length
+    : 0;
   const allyNeed = situation.allies.find((ally) => ally.kind === 'hero' && ally.hpRatio < 0.36 && ally.recentlyHit);
   if (situation.hasAllySupport) {
     const mode = situation.supportMode;
@@ -278,6 +294,18 @@ const nextState = (situation: Situation, kit: KitProfile, opening: OpeningPlan, 
   }
   if (allyNeed) {
     return 'support';
+  }
+  if (alliesOnNearest >= 2 && p.independence > 0.4 && !(allyNeed && p.protectionInstinct > 0.72)) {
+    if (kit.wantsFlank || p.flankTendency > 0.5) {
+      return 'flank';
+    }
+    if (situation.objective && situation.objective.urgency >= 0.45) {
+      return 'advance';
+    }
+    return 'patrol';
+  }
+  if (nearest && nearest.d > kit.comfortMax * 1.4 && p.independence > 0.52 && !kit.wantsInitiate) {
+    return 'patrol';
   }
   return kit.wantsInitiate ? 'engage' : 'advance';
 };
@@ -335,12 +363,16 @@ export class GamePlanController {
     }
 
     this.reactingToShot = Boolean(situation.projectile?.willHit);
-    const abandon = this.state === 'opening' ? shouldAbandonOpening(situation) : undefined;
+    const abandon = this.state === 'opening' ? shouldAbandonOpening(situation, kit) : undefined;
+    const closeFoe = visibleEnemyHeroes(situation).some((enemy) => {
+      const d = Math.hypot(enemy.x - situation.self.x, enemy.y - situation.self.y);
+      return d < kit.comfortMax * 1.12 || ((enemy.attacking || enemy.recentlyHit) && d < kit.comfortMax * 1.4);
+    });
     if (abandon) {
       this.state = nextState(situation, kit, this.opening, this.state);
       this.reason = abandon;
       this.until = now + 1600 + situation.personality.thinkJitterMs;
-    } else if (now >= this.until || (this.state === 'opening' && visibleEnemyHeroes(situation).length > 0 && now > this.until - 1800)) {
+    } else if (now >= this.until || (this.state === 'opening' && closeFoe && now > this.until - 1800)) {
       const prev = this.state;
       this.state = nextState(situation, kit, this.opening, prev);
       if (this.state !== prev) {
@@ -406,8 +438,18 @@ export class GamePlanController {
       return;
     }
     if (this.state === 'regroup' || this.state === 'support' || this.state === 'protect') {
-      this.anchorX = team.x + forward * offset.x;
-      this.anchorY = team.y + offset.y;
+      const focus =
+        situation.allies.find((ally) => ally.kind === 'hero' && ally.hpRatio < 0.36 && ally.recentlyHit) ??
+        heroes.reduce(
+          (best, ally) => {
+            const d = Math.hypot(ally.x - self.x, ally.y - self.y);
+            return !best || d < best.d ? { ally, d } : best;
+          },
+          undefined as { ally: CombatantView; d: number } | undefined,
+        )?.ally;
+      const origin = focus ?? team;
+      this.anchorX = origin.x + forward * offset.x;
+      this.anchorY = origin.y + offset.y;
       return;
     }
     if (this.state === 'patrol' || this.state === 'search' || this.state === 'hold') {

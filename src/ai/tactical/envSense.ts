@@ -279,18 +279,29 @@ const coverBias = (
   if (gap > 130 || gap < 22) {
     return count;
   }
+  const transformKit =
+    kit?.heroId === 'shadow' ||
+    (kit?.heroId === 'demon' && situation.self.demonForm !== 'big' && situation.self.demonForm !== 'bat');
   const wantsCover =
     inFight ||
     situation.self.recentlyHit ||
     Boolean(situation.projectile?.willHit) ||
     kit?.heroId === 'cole' ||
     kit?.heroId === 'mender' ||
-    kit?.heroId === 'witch';
+    kit?.heroId === 'witch' ||
+    transformKit;
   if (!wantsCover || situation.personality.caution < 0.18) {
     return count;
   }
-  if (!inFight && kit?.heroId !== 'cole' && kit?.heroId !== 'mender' && kit?.heroId !== 'witch') {
+  if (!inFight && kit?.heroId !== 'cole' && kit?.heroId !== 'mender' && kit?.heroId !== 'witch' && !transformKit) {
     return count;
   }
-  return write(out, count, 'reposition', (inFight ? 11 : 8) * jitter, 'use cover');
+  const boost = transformKit ? 6 : 0;
+  return write(
+    out,
+    count,
+    'reposition',
+    ((inFight ? 11 : 8) + boost) * jitter,
+    transformKit ? 'cover to transform' : 'use cover',
+  );
 };

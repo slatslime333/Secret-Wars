@@ -9,7 +9,7 @@ import { atFarEdge, roamHuntPoint, ARENA } from '../../config/arena';
 import { kitProfileOf } from './kitProfile';
 import { personalityFromSeed } from './personality';
 import { pickOpeningForTest } from './strategy';
-import { clusterRiskOf, guardHome, nudgeOffMates, protectStand, regroupStand } from './spacing';
+import { clusterRiskOf, occupancyOf, combatStand, guardHome, nudgeOffMates, protectStand, regroupStand } from './spacing';
 import { cameraPrefs } from '../../config/cameraPrefs';
 import { MENDER } from '../../config/mender';
 import { DEMON, DEMON_BIG } from '../../config/demon';
@@ -173,6 +173,18 @@ if (!protectOk) {
   console.log(`ok  protect stand  allyGap=${protectGapAlly.toFixed(0)} pair=${protectPair.toFixed(0)}`);
 }
 
+const attackFocus = { x: 520, y: 400 };
+const standA = combatStand(protectBody, attackFocus, 'attack', 1, 0, [{ x: 400, y: 400, id: 9, kind: 'hero' }], 'melee', 0.4, 80);
+const standB = combatStand({ ...protectBody, id: 3, x: 390, y: 410 }, attackFocus, 'attack', -1, 1, [{ x: 400, y: 400, id: 2, kind: 'hero' }, { x: standA.x, y: standA.y, id: 9, kind: 'hero' }], 'melee', 0.4, 80);
+const standPair = Math.hypot(standA.x - standB.x, standA.y - standB.y);
+const standOk = standPair > 36 && Math.hypot(standA.x - attackFocus.x, standA.y - attackFocus.y) > 40;
+if (!standOk) {
+  failed += 1;
+  console.log(`FAIL  combat stand  pair=${standPair.toFixed(0)} a=(${standA.x.toFixed(0)},${standA.y.toFixed(0)})`);
+} else {
+  console.log(`ok  combat stand  pair=${standPair.toFixed(0)}`);
+}
+
 const regroupDest = regroupStand(protectBody, ally, false, 1, 0);
 const regroupGap = Math.hypot(regroupDest.x - ally.x, regroupDest.y - ally.y);
 const regroupOk = regroupGap > 28;
@@ -219,12 +231,31 @@ const safeRisk = clusterRiskOf(
   ],
   [{ x: 900, y: 400, kind: 'hero', visible: true, attacking: false, role: 'frontliner', heroId: 'ninja', attackRange: 70 }],
 );
-const clusterOk = packedRisk > 0.2 && safeRisk === 0;
+const occupancyRisk = occupancyOf(
+  { x: 400, y: 400, kind: 'hero' },
+  [
+    { x: 408, y: 402, kind: 'hero' },
+    { x: 404, y: 396, kind: 'hero' },
+  ],
+);
+const spreadRisk = clusterRiskOf(
+  { x: 400, y: 400, kind: 'hero' },
+  [
+    { x: 520, y: 400, kind: 'hero' },
+    { x: 400, y: 530, kind: 'hero' },
+  ],
+  [{ x: 900, y: 400, kind: 'hero', visible: true, attacking: false, role: 'frontliner', heroId: 'ninja', attackRange: 70 }],
+);
+const clusterOk = packedRisk > 0.2 && occupancyRisk > 0.15 && spreadRisk < 0.12 && safeRisk >= occupancyRisk * 0.5;
 if (!clusterOk) {
   failed += 1;
-  console.log(`FAIL  cluster risk  packed=${packedRisk.toFixed(2)} safe=${safeRisk.toFixed(2)}`);
+  console.log(
+    `FAIL  cluster risk  packed=${packedRisk.toFixed(2)} occ=${occupancyRisk.toFixed(2)} spread=${spreadRisk.toFixed(2)} far=${safeRisk.toFixed(2)}`,
+  );
 } else {
-  console.log(`ok  cluster risk  packed=${packedRisk.toFixed(2)} safe=${safeRisk.toFixed(2)}`);
+  console.log(
+    `ok  cluster risk  packed=${packedRisk.toFixed(2)} occ=${occupancyRisk.toFixed(2)} spread=${spreadRisk.toFixed(2)} far=${safeRisk.toFixed(2)}`,
+  );
 }
 
 const savedFov = cameraPrefs.getFov();

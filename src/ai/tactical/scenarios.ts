@@ -12,7 +12,7 @@ import { ROPE } from '../../config/rope';
 import { COLE } from '../../config/cole';
 import { MENDER } from '../../config/mender';
 import { assessSupport } from './supportSense';
-import { scoreKitSlot } from './kitTactics';
+import { scoreKitSlot, evaluateUltimate, guessEnemyUlt } from './kitTactics';
 import { pickHealMinion, pickRetreatGoal } from './retreat';
 import { evaluateOffensiveDash } from './dashOffense';
 import { poiForIntent } from './houseSense';
@@ -2160,6 +2160,220 @@ const scenarioDB = (): ScenarioResult => {
   return { name: 'DB house entry walks to a door POI, not the idle lane', ok, detail: `poi=${poi ? `${Math.round(poi.x)},${Math.round(poi.y)}` : 'none'} dest=${Math.round(sample.x)},${Math.round(sample.y)}` };
 };
 
+const scenarioDC = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.88, level: 3, heroId: 'death' });
+  const minions = [0, 1, 2].map((i) => minionAt(20 + i, 430 + i * 10, 758 + (i % 2) * 8));
+  const far = [unit({ id: 10, team: 'bravo', x: 720, y: 640, hpRatio: 0.9 })];
+  const rows = rankActions(
+    situationOf(self, [], [...minions, ...far], { remainingMs: 200_000, teamScore: { self: 80, enemy: 80 } }),
+  );
+  const farm = scoreOf(rows, 'farm_minions');
+  const ok = among(rows, ['farm_minions'], 2) && farm > scoreOf(rows, 'attack', 10);
+  return { name: 'DC farming holds when a distant enemy is only visible', ok, detail: `best=${best(rows)} farm=${farm.toFixed(1)} attack=${scoreOf(rows, 'attack', 10).toFixed(1)}` };
+};
+
+const scenarioDD = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 300, y: 750, hpRatio: 0.9 });
+  const allies = [
+    unit({ id: 2, team: 'alpha', x: 490, y: 748, attacking: true, hpRatio: 0.8 }),
+    unit({ id: 3, team: 'alpha', x: 498, y: 760, attacking: true, hpRatio: 0.78 }),
+  ];
+  const enemies = [unit({ id: 10, team: 'bravo', x: 520, y: 750, hpRatio: 0.55, recentlyHit: true })];
+  const rows = rankActions(
+    situationOf(self, allies, enemies, {
+      personality: { ...NEUTRAL_PERSONALITY, independence: 0.86, assistTendency: 0.22 },
+    }),
+  );
+  const join = Math.max(scoreOf(rows, 'attack', 10), scoreOf(rows, 'assist_ally'), scoreOf(rows, 'finish_target', 10));
+  const leave = Math.max(scoreOf(rows, 'farm_minions'), scoreOf(rows, 'advance'), scoreOf(rows, 'search_for_target'), scoreOf(rows, 'reposition'), scoreOf(rows, 'hold_position'));
+  const ok = leave > join - 4 && !['attack', 'assist_ally', 'finish_target'].includes(best(rows));
+  return { name: 'DD independent CPU skips a staffed 2v1', ok, detail: `best=${best(rows)} leave=${leave.toFixed(1)} join=${join.toFixed(1)}` };
+};
+
+const scenarioDE = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.82 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 470, y: 750, hpRatio: 0.7, attacking: true })];
+  const enemies = [unit({ id: 10, team: 'bravo', x: 510, y: 750, hpRatio: 0.65, attacking: true, lastAttackerId: 2 })];
+  const rows = rankActions(situationOf(self, allies, enemies));
+  const flank = scoreOf(rows, 'flank', 10);
+  const protect = scoreOf(rows, 'protect_ally');
+  const ok = flank > 0 && flank >= protect - 6;
+  return { name: 'DE help prefers an angle over standing on the ally', ok, detail: `best=${best(rows)} flank=${flank.toFixed(1)} protect=${protect.toFixed(1)}` };
+};
+
+const scenarioDF = (): ScenarioResult => {
+  const storm = mockAbility('cole-thunderstorm', 'ultimate', { roles: ['aoe', 'burst', 'damage', 'space', 'cc'], range: 180 });
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, heroId: 'cole', hpRatio: 0.85 });
+  const scatter = [
+    unit({ id: 10, team: 'bravo', x: 430, y: 750, hpRatio: 0.8, vx: 120, vy: 40 }),
+    unit({ id: 11, team: 'bravo', x: 450, y: 780, hpRatio: 0.82, vx: -90, vy: 110 }),
+    unit({ id: 12, team: 'bravo', x: 410, y: 720, hpRatio: 0.78, vx: 80, vy: -100 }),
+  ];
+  const committed = [
+    unit({ id: 10, team: 'bravo', x: 430, y: 750, hpRatio: 0.55, attacking: true, recentlyHit: true, slowLeftMs: 400 }),
+    unit({ id: 11, team: 'bravo', x: 445, y: 762, hpRatio: 0.5, attacking: true, recentlyHit: true, stunned: true }),
+    unit({ id: 12, team: 'bravo', x: 420, y: 740, hpRatio: 0.48, attacking: true, recentlyHit: true }),
+  ];
+  const save = evaluateUltimate(storm, situationOf(self, [], scatter));
+  const use = evaluateUltimate(storm, situationOf(self, [], committed));
+  const ok = save.decision !== 'use' && use.decision === 'use' && use.current > save.current;
+  return { name: 'DF attack ult saves on scatter and uses on committed foes', ok, detail: `save=${save.decision}/${save.reason} use=${use.decision}/${use.reason}` };
+};
+
+const scenarioDG = (): ScenarioResult => {
+  const rage = mockAbility('shadow-rage', 'ultimate', { roles: ['burst', 'damage', 'initiate'], range: 80 });
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, heroId: 'shadow', hpRatio: 0.8 });
+  const pack = [
+    unit({ id: 10, team: 'bravo', x: 430, y: 748, hpRatio: 0.8, aimX: -1, aimY: 0 }),
+    unit({ id: 11, team: 'bravo', x: 440, y: 760, hpRatio: 0.82, aimX: -1, aimY: 0 }),
+  ];
+  const coverSit = situationOf(
+    unit({ id: 1, team: 'alpha', x: 280, y: 750, heroId: 'shadow', hpRatio: 0.8 }),
+    [unit({ id: 2, team: 'alpha', x: 420, y: 750, attacking: true })],
+    [unit({ id: 10, team: 'bravo', x: 500, y: 750, attacking: true, lastAttackerId: 2, aimX: 1, aimY: 0 })],
+    { environment: { nearby: [], cover: wallFact(270, 750), wall: wallFact(270, 750) } },
+  );
+  const unsafe = evaluateUltimate(rage, situationOf(self, [], pack));
+  const safe = evaluateUltimate(rage, coverSit);
+  const ok = unsafe.decision !== 'use' && (safe.decision === 'use' || safe.decision === 'wait' || safe.current > unsafe.current);
+  return { name: 'DG Shadow Rage saves in a watched pack', ok, detail: `unsafe=${unsafe.decision}/${unsafe.reason} safe=${safe.decision}/${safe.reason}` };
+};
+
+const scenarioDH = (): ScenarioResult => {
+  const wind = mockAbility('mender-second-wind', 'ultimate', {
+    roles: ['defense', 'peel', 'aoe', 'space', 'heal', 'buff'],
+    range: 160,
+    includesSelf: true,
+  });
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, heroId: 'mender', role: 'support', hpRatio: 0.88 });
+  const chip = [unit({ id: 2, team: 'alpha', x: 430, y: 750, hpRatio: 0.82 })];
+  const hurt = [
+    unit({ id: 2, team: 'alpha', x: 430, y: 748, hpRatio: 0.28, recentlyHit: true }),
+    unit({ id: 3, team: 'alpha', x: 420, y: 760, hpRatio: 0.32, recentlyHit: true }),
+    unit({ id: 4, team: 'alpha', x: 410, y: 740, hpRatio: 0.4, recentlyHit: true }),
+  ];
+  const save = evaluateUltimate(wind, situationOf(self, chip, []));
+  const use = evaluateUltimate(wind, situationOf(self, hurt, [unit({ id: 10, team: 'bravo', x: 520, y: 750, attacking: true })]));
+  const ok = save.decision !== 'use' && use.decision === 'use';
+  return { name: 'DH Second Wind saves on chip and uses on three injured', ok, detail: `save=${save.decision}/${save.reason} use=${use.decision}/${use.reason}` };
+};
+
+const scenarioDI = (): ScenarioResult => {
+  const storm = mockAbility('ninja-tornado', 'ultimate', { roles: ['aoe', 'burst', 'cc', 'damage', 'space'], range: 140 });
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, heroId: 'ninja', hpRatio: 0.8 });
+  const foes = [
+    unit({ id: 10, team: 'bravo', x: 430, y: 750, hpRatio: 0.5, attacking: true, recentlyHit: true, slowLeftMs: 300 }),
+    unit({ id: 11, team: 'bravo', x: 440, y: 760, hpRatio: 0.48, attacking: true, recentlyHit: true }),
+  ];
+  const allyCasting = unit({ id: 2, team: 'alpha', x: 410, y: 752, hpRatio: 0.7, controlLockLeftMs: 400, attacking: true });
+  const alone = evaluateUltimate(storm, situationOf(self, [], foes));
+  const chained = evaluateUltimate(storm, situationOf(self, [allyCasting], foes));
+  const ok = alone.decision === 'use' && chained.decision !== 'use';
+  return { name: 'DI teammate ult lock does not auto-chain another ult', ok, detail: `alone=${alone.decision} chained=${chained.decision}/${chained.reason}` };
+};
+
+const scenarioDJ = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.72 });
+  const allies = [
+    unit({ id: 2, team: 'alpha', x: 408, y: 752, hpRatio: 0.8 }),
+    unit({ id: 3, team: 'alpha', x: 404, y: 744, hpRatio: 0.82 }),
+  ];
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 480, y: 740, hpRatio: 0.8 }),
+    unit({ id: 11, team: 'bravo', x: 490, y: 760, hpRatio: 0.78 }),
+    unit({ id: 12, team: 'bravo', x: 470, y: 770, hpRatio: 0.82 }),
+  ];
+  const rows = rankActions(situationOf(self, allies, enemies));
+  const ok = among(rows, ['reposition', 'hold_position', 'wait_for_opening', 'retreat', 'flank'], 3) && !['assist_ally', 'protect_ally'].includes(best(rows));
+  return { name: 'DJ packed team vs grouped foes prefers spacing', ok, detail: `best=${best(rows)} top=${rows.slice(0, 4).map((row) => row.action).join(',')}` };
+};
+
+const scenarioDK = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 500, y: 750, hpRatio: 0.8 });
+  const allies = [
+    unit({ id: 2, team: 'alpha', x: 508, y: 742, hpRatio: 0.78, attacking: true }),
+    unit({ id: 3, team: 'alpha', x: 512, y: 760, hpRatio: 0.76, attacking: true }),
+  ];
+  const enemies = [
+    unit({
+      id: 10,
+      team: 'bravo',
+      x: 540,
+      y: 750,
+      hpRatio: 0.82,
+      heroId: 'witch',
+      role: 'ranged-tank',
+      attackRange: 220,
+      attacking: true,
+    }),
+  ];
+  const sit = situationOf(self, allies, enemies);
+  const guess = guessEnemyUlt(sit);
+  const rows = rankActions(sit);
+  const ok = guess.likely && among(rows, ['reposition', 'hold_position', 'wait_for_opening', 'flank'], 3);
+  return { name: 'DK surrounded enemy predicts ult and spacing', ok, detail: `guess=${guess.reason}/${guess.pressure.toFixed(2)} best=${best(rows)}` };
+};
+
+const scenarioDL = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, hpRatio: 0.85 });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 460, y: 750, hpRatio: 0.12, recentlyHit: true })];
+  const guess = guessEnemyUlt(situationOf(self, [], enemies));
+  const ok = guess.unlikely && !guess.likely && !guess.casting;
+  return { name: 'DL isolated sliver is not assumed to ultimate', ok, detail: `likely=${guess.likely} pressure=${guess.pressure.toFixed(2)} ${guess.reason}` };
+};
+
+const scenarioDM = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, heroId: 'mender', role: 'support', attackRange: 240, hpRatio: 0.9 });
+  const allies = [
+    unit({ id: 2, team: 'alpha', x: 470, y: 740, hpRatio: 0.28, recentlyHit: true }),
+    unit({ id: 3, team: 'alpha', x: 480, y: 760, hpRatio: 0.34, recentlyHit: true }),
+    unit({ id: 4, team: 'alpha', x: 455, y: 770, hpRatio: 0.4, recentlyHit: true }),
+  ];
+  const kit = kitProfileOf('mender', 'support', 240);
+  const rows = rankActions(situationOf(self, allies, [unit({ id: 10, team: 'bravo', x: 560, y: 750, attacking: true })], { kit, hasAllySupport: true }));
+  const cover = Math.max(scoreOf(rows, 'protect_ally'), scoreOf(rows, 'hold_position'), scoreOf(rows, 'assist_ally'));
+  const ok = cover > scoreOf(rows, 'farm_minions') && among(rows, ['protect_ally', 'hold_position', 'assist_ally'], 3);
+  return { name: 'DM Mender holds heal radius near injured allies', ok, detail: `best=${best(rows)} cover=${cover.toFixed(1)}` };
+};
+
+const scenarioDN = (): ScenarioResult => {
+  const storm = mockAbility('cole-thunderstorm', 'ultimate', { roles: ['aoe', 'burst', 'damage', 'space', 'cc'], range: 180 });
+  const self = unit({ id: 1, team: 'alpha', x: 400, y: 750, heroId: 'cole', hpRatio: 0.8 });
+  const windup = unit({
+    id: 10,
+    team: 'bravo',
+    x: 430,
+    y: 750,
+    hpRatio: 0.7,
+    heroId: 'witch',
+    role: 'ranged-tank',
+    attackRange: 220,
+    controlLockLeftMs: 500,
+    attacking: true,
+  });
+  const inside = evaluateUltimate(storm, situationOf(self, [], [windup]));
+  const outside = evaluateUltimate(
+    storm,
+    situationOf(unit({ id: 1, team: 'alpha', x: 220, y: 750, heroId: 'cole', hpRatio: 0.8 }), [], [windup]),
+  );
+  const ok = inside.decision !== 'use' || outside.current >= inside.current;
+  return { name: 'DN attack ult respects enemy windup vs safer range', ok, detail: `inside=${inside.decision}/${inside.reason} outside=${outside.decision}/${outside.reason}` };
+};
+
+const scenarioDO = (): ScenarioResult => {
+  const rage = mockAbility('shadow-rage', 'ultimate', { roles: ['burst', 'damage', 'initiate'], range: 80 });
+  const self = unit({ id: 1, team: 'alpha', x: 280, y: 750, heroId: 'shadow', hpRatio: 0.9 });
+  const empty = evaluateUltimate(
+    rage,
+    situationOf(self, [], [], {
+      remainingMs: 240_000,
+      environment: { nearby: [], cover: wallFact(270, 750), wall: wallFact(270, 750) },
+    }),
+  );
+  const ok = empty.decision !== 'use';
+  return { name: 'DO Shadow does not transform in empty cover', ok, detail: `${empty.decision}/${empty.reason}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -2267,4 +2481,17 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioCZ(),
   scenarioDA(),
   scenarioDB(),
+  scenarioDC(),
+  scenarioDD(),
+  scenarioDE(),
+  scenarioDF(),
+  scenarioDG(),
+  scenarioDH(),
+  scenarioDI(),
+  scenarioDJ(),
+  scenarioDK(),
+  scenarioDL(),
+  scenarioDM(),
+  scenarioDN(),
+  scenarioDO(),
 ];

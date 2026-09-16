@@ -230,7 +230,7 @@ export const biasAction = (
     next -= 18;
   }
   if (team.fightHandled && (action === 'attack' || action === 'assist_ally' || action === 'finish_target')) {
-    next -= 7;
+    next -= 14 + personality.independence * 6;
   }
   if (team.fightHandled && action === 'contest_objective') {
     next += 10 + personality.opportunism * 4;
