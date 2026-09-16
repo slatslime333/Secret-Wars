@@ -20,9 +20,9 @@ import { WITCH, WITCH_HIT_MARKER_LINE, WITCH_HIT_MARKER_RANGE, WITCH_LIGHT_RANGE
 import { SHADOW } from '../../config/shadow';
 import { DEMON_HELLFIRE, DEMON_HELL_BAT, DEMON_RAGE } from '../../heroes/abilities/demon/tunables';
 import { demonRageFromLightDamage, demonRageFromAbilityDamage } from '../../heroes/abilities/demon/form';
-import { SHADOW_CLAW } from '../../heroes/abilities/shadow/tunables';
+import { SHADOW_CLAW, SHADOW_DASH } from '../../heroes/abilities/shadow/tunables';
 import { NINJA_SMOKE } from '../../heroes/abilities/ninja/tunables';
-import { ABILITY_DAMAGE_CURVE, abilityDamage } from '../../config/ratings';
+import { ABILITY_DAMAGE_CURVE } from '../../config/ratings';
 import { MENDER_HIT_MARKER_LINE, MENDER_PULSE, MENDER_SOUL, MENDER_ANGEL, MENDER_WIND } from '../../heroes/abilities/mender/tunables';
 import { NINJA_BASE_RANGE } from '../../config/ninja';
 import { runCombatFeedbackChecks } from '../../ui/combatFeedback/runChecks';
@@ -425,11 +425,11 @@ if (DEMON_RAGE.fillCostMul !== 1.35) {
 } else {
   console.log('ok  rage fill cost  1.35');
 }
-if (DEMON_RAGE.lockMs !== 1000 || DEMON_RAGE.durationMs !== 9000) {
+if (DEMON_RAGE.lockMs !== 1000 || DEMON_RAGE.durationMs !== 10000) {
   failed += 1;
   console.log(`FAIL  demon rage duration  lock=${DEMON_RAGE.lockMs} big=${DEMON_RAGE.durationMs}`);
 } else {
-  console.log('ok  demon rage duration  1s lock then 9s');
+  console.log('ok  demon rage  1s lock + 10s big');
 }
 if (
   DEMON_RAGE.lightDamageToRage !== 0.2 ||
@@ -511,11 +511,17 @@ if (MENDER_HIT_MARKER_LINE <= MENDER.attackRange) {
 } else {
   console.log('ok  mender hit marker line  longer than pulse range');
 }
-if (Math.abs(SHADOW_CLAW.damage - abilityDamage(64) * 2.7 * 0.9 * 0.77) > 0.001) {
+if (Math.abs(SHADOW_CLAW.damage - 50) > 0.001) {
   failed += 1;
   console.log(`FAIL  shadow claw damage  ${SHADOW_CLAW.damage}`);
 } else {
-  console.log('ok  shadow claw damage  -23%');
+  console.log('ok  shadow claw damage  50');
+}
+if (Math.abs(SHADOW_DASH.damage - 26) > 0.001) {
+  failed += 1;
+  console.log(`FAIL  shadow dash damage  ${SHADOW_DASH.damage}`);
+} else {
+  console.log('ok  shadow dash damage  26');
 }
 if (DEATH.ratings.damage !== 70) {
   failed += 1;
@@ -541,11 +547,11 @@ if (WITCH_SKELETON.maxHealth !== 150 || WITCH_SKELETON.attackDamage !== 6) {
     console.log('ok  light combo  two-hit wrap, no finisher');
   }
 }
-if (SHADOW.ratings.damage !== 61 || SHADOW.ratings.defense !== 39) {
+if (SHADOW.ratings.damage !== 64 || SHADOW.ratings.defense !== 39) {
   failed += 1;
   console.log(`FAIL  shadow ratings  dmg=${SHADOW.ratings.damage} def=${SHADOW.ratings.defense}`);
 } else {
-  console.log('ok  shadow ratings  damage 61 / defense 39');
+  console.log('ok  shadow ratings  damage 64 / defense 39');
 }
 if (
   ROPE.ratings.damage !== 39 ||

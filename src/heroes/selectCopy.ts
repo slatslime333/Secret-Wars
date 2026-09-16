@@ -182,7 +182,7 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
   },
   demon: {
     description:
-      'A fragile ranged harasser who builds Demon Rage, then becomes a melee frontliner for 11 seconds.',
+      'A fragile ranged harasser who builds Demon Rage, then becomes a melee frontliner for 10 seconds.',
     light:
       `Candle Flame: a long-range fireball for ${hit(DEMON.attackDamage)} damage with low hitstun. Applies Burn (${DEMON_BURN.candleDamage} every 0.5s for ${seconds(DEMON_BURN.candleDurationMs)}, no stack). Built to poke and fill Demon Rage, not to burst.`,
   },

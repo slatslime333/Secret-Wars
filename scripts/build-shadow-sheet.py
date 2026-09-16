@@ -115,19 +115,49 @@ def shift_region(im: Image.Image, y0: int, y1: int, dx: int, dy: int = 0) -> Ima
     return out
 
 
-def claw_mask(im: Image.Image, side: str) -> Image.Image:
+def is_blouse(r: int, g: int, b: int, a: int) -> bool:
+    return a > 180 and r > 190 and g > 180 and b > 170 and abs(r - g) < 40
+
+
+def is_skin(r: int, g: int, b: int, a: int) -> bool:
+    return a > 180 and r > 160 and g > 110 and b > 90 and r > g + 10 and r > b + 20
+
+
+def body_core(im: Image.Image) -> tuple[int, int]:
     px = im.load()
+    w, h = im.size
+    lefts: list[int] = []
+    rights: list[int] = []
+    for y in range(int(h * 0.40), int(h * 0.50)):
+        xs = [x for x in range(w) if px[x, y][3] >= 160]
+        if len(xs) >= 6:
+            lefts.append(xs[0])
+            rights.append(xs[-1])
+    if not lefts:
+        return int(w * 0.35), int(w * 0.65)
+    lefts.sort()
+    rights.sort()
+    return lefts[len(lefts) // 2], rights[len(rights) // 2]
+
+
+def claw_mask(im: Image.Image, side: str) -> Image.Image:
+    """Only the hanging right-arm claw, not the hair mass."""
+    px = im.load()
+    w, h = im.size
+    cl, cr = body_core(im)
+    pad = 8
     mask = Image.new("L", im.size, 0)
     mp = mask.load()
-    w, h = im.size
-    x0, x1 = (0, int(w * 0.52)) if side == "left" else (int(w * 0.48), w)
-    y0 = int(h * 0.36)
-    for y in range(y0, h):
+    y0, y1 = int(h * 0.46), int(h * 0.80)
+    if side == "left":
+        x0, x1 = 0, min(w, cl + pad)
+    else:
+        x0, x1 = max(0, cr - pad), w
+    for y in range(y0, y1):
         for x in range(x0, x1):
             r, g, b, a = px[x, y]
-            if is_claw_color(r, g, b, a):
+            if is_claw_color(r, g, b, a) and not is_blouse(r, g, b, a) and not is_skin(r, g, b, a):
                 mp[x, y] = 255
-    # Keep only the largest blob so hair specks stay put.
     return largest_blob(mask)
 
 
@@ -159,19 +189,77 @@ def largest_blob(mask: Image.Image) -> Image.Image:
     return out
 
 
+def fill_mask_inward(body: Image.Image, mask: Image.Image, toward_right: bool) -> Image.Image:
+    """Close holes left by moving a limb, using nearby body pixels."""
+    src = body.load()
+    mp = mask.load()
+    w, h = body.size
+    out = body.copy()
+    op = out.load()
+    step = 1 if toward_right else -1
+    for y in range(h):
+        xs = [x for x in range(w) if mp[x, y] >= 128]
+        if not xs:
+            continue
+        for x in xs:
+            found = None
+            nx = x
+            for _ in range(12):
+                nx += step
+                if nx < 0 or nx >= w:
+                    break
+                if mp[nx, y] >= 128:
+                    continue
+                r, g, b, a = src[nx, y]
+                if a >= 160:
+                    found = (r, g, b, a)
+                    break
+            if found is None:
+                for ny in range(y - 1, max(-1, y - 8), -1):
+                    r, g, b, a = src[x, ny]
+                    if a >= 160 and mp[x, ny] < 128:
+                        found = (r, g, b, a)
+                        break
+            op[x, y] = found if found else (0, 0, 0, 0)
+    return out
+
+
+def keep_body_solid(posed: Image.Image, idle: Image.Image) -> Image.Image:
+    """Restore interior idle pixels so walk/attack cannot punch see-through holes."""
+    out = posed.copy()
+    op = out.load()
+    ip = idle.load()
+    w, h = posed.size
+    for _ in range(2):
+        snapshot = out.copy()
+        sp = snapshot.load()
+        for y in range(h):
+            for x in range(w):
+                if ip[x, y][3] < 160 or op[x, y][3] >= 160:
+                    continue
+                n = 0
+                for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                    if 0 <= nx < w and 0 <= ny < h and sp[nx, ny][3] >= 160:
+                        n += 1
+                if n >= 3:
+                    op[x, y] = ip[x, y]
+    return out
+
+
 def pose_claw(idle: Image.Image, side: str, scale: float, dx: int, dy: int) -> Image.Image:
     mask = claw_mask(idle, side)
+    if mask.getbbox() is None:
+        return idle
     claw = Image.new("RGBA", idle.size, (0, 0, 0, 0))
     claw.paste(idle, (0, 0), mask)
-    body = idle.copy()
-    body.paste(Image.new("RGBA", idle.size, (0, 0, 0, 0)), (0, 0), mask)
+    body = fill_mask_inward(idle.copy(), mask, toward_right=(side == "left"))
     bb = claw.getbbox()
     if not bb:
         return idle
     piece = claw.crop(bb)
     nw = max(2, round(piece.size[0] * scale))
     nh = max(2, round(piece.size[1] * scale))
-    grown = piece.resize((nw, nh), Image.Resampling.BOX)
+    grown = piece.resize((nw, nh), Image.Resampling.NEAREST)
     if side == "left":
         x = bb[2] - nw + dx
     else:
@@ -179,6 +267,34 @@ def pose_claw(idle: Image.Image, side: str, scale: float, dx: int, dy: int) -> I
     y = bb[1] + dy
     out = body.copy()
     out.paste(grown, (x, y), grown)
+    return keep_body_solid(out, idle)
+
+
+def foot_mask(im: Image.Image, side: str) -> Image.Image:
+    px = im.load()
+    w, h = im.size
+    mask = Image.new("L", im.size, 0)
+    mp = mask.load()
+    y0 = 64
+    x0, x1 = (0, w // 2) if side == "left" else (w // 2, w)
+    for y in range(y0, h):
+        for x in range(x0, x1):
+            if px[x, y][3] >= 160:
+                mp[x, y] = 255
+    return mask
+
+
+def shift_foot(im: Image.Image, side: str, dx: int, dy: int) -> Image.Image:
+    mask = foot_mask(im, side)
+    if mask.getbbox() is None or (dx == 0 and dy == 0):
+        return im
+    piece = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    piece.paste(im, (0, 0), mask)
+    body = fill_mask_inward(im.copy(), mask, toward_right=(side == "left"))
+    shifted = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    shifted.paste(piece, (dx, dy), piece)
+    out = body
+    out.alpha_composite(shifted)
     return out
 
 
@@ -210,22 +326,29 @@ def stamp_sash(im: Image.Image) -> Image.Image:
 
 
 def walk_frames(idle: Image.Image, facing: str) -> list[Image.Image]:
-    side = CLAW_SIDE[facing]
-    y0, y1 = 52, 80
+    """Step the boots, not the whole skirt/hair band, so legs don't shear see-through."""
+    fwd = -1 if facing == "west" else 1 if facing == "east" else 0
+    # bob, left(dx,dy), right(dx,dy), lean
+    if facing in ("west", "east"):
+        steps = [
+            (0, (0, 0), (0, 0), 0),
+            (1, (fwd * 2, 1), (-fwd, 0), fwd),
+            (0, (0, 0), (0, 0), 0),
+            (1, (-fwd, 0), (fwd * 2, 1), fwd),
+        ]
+    else:
+        steps = [
+            (0, (0, 0), (0, 0), 0),
+            (1, (-2, 1), (2, 0), 0),
+            (0, (0, 0), (0, 0), 0),
+            (1, (2, 0), (-2, 1), 0),
+        ]
     frames = []
-    steps = [
-        (0, 0, 0, 0),
-        (0, 1, -2, 1),
-        (0, 0, 0, 0),
-        (0, 1, 2, -1),
-    ]
-    for dx, bob, leg, claw in steps:
-        fr = shift(idle, dx, -bob)
-        fr = shift_region(fr, y0, y1, leg, 0)
-        if claw:
-            out_dx = -claw if side == "left" else claw
-            fr = pose_claw(fr, side, 1.0, out_dx, 0)
-        frames.append(fr)
+    for bob, left, right, lean in steps:
+        fr = shift(idle, lean, -bob)
+        fr = shift_foot(fr, "left", left[0], left[1])
+        fr = shift_foot(fr, "right", right[0], right[1])
+        frames.append(keep_body_solid(fr, idle))
     return frames
 
 
@@ -233,12 +356,12 @@ def attack_frames(idle: Image.Image, facing: str) -> list[Image.Image]:
     side = CLAW_SIDE[facing]
     # Windup: claw pulled back/up. Slash: same right claw, much bigger.
     if side == "left":
-        wind = pose_claw(idle, side, 1.18, 1, -5)
-        mid = pose_claw(idle, side, 1.4, -2, -2)
+        wind = pose_claw(idle, side, 1.2, 1, -4)
+        mid = pose_claw(idle, side, 1.45, -2, -2)
         slash = pose_claw(idle, side, 1.7, -5, 0)
     else:
-        wind = pose_claw(idle, side, 1.18, -1, -5)
-        mid = pose_claw(idle, side, 1.4, 2, -2)
+        wind = pose_claw(idle, side, 1.2, -1, -4)
+        mid = pose_claw(idle, side, 1.45, 2, -2)
         slash = pose_claw(idle, side, 1.7, 5, 0)
     return [wind, mid, slash]
 

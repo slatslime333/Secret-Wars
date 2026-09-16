@@ -1,6 +1,5 @@
 import { COMBAT } from '../../../config/combat';
 import { SHADOW } from '../../../config/shadow';
-import { abilityDamage } from '../../../config/ratings';
 
 export const SHADOW_ATTACK = {
   animMs: 280,
@@ -26,7 +25,7 @@ export const SHADOW_CLAW = {
   halfArc: 0.95,
   aimHalfWidth: SHADOW.bodyRadius * 2 + 10,
   damageRating: 64,
-  damage: abilityDamage(64) * 2.7 * 0.9 * 0.77,
+  damage: 50,
   knockbackMul: 5.2,
   launchCap: 780,
   staminaDamage: 7,
@@ -39,7 +38,7 @@ export const SHADOW_DASH = {
   aimHalfWidth: SHADOW.bodyRadius * 2 + 8,
   pathPadding: 10,
   damageRating: 44,
-  damage: abilityDamage(44) * 1.35,
+  damage: 26,
   knockbackMul: 4.25,
   staminaDamage: 4,
   slowMul: 0.8,
