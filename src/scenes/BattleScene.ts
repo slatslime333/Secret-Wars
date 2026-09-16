@@ -30,6 +30,7 @@ import { witchHexAllyRange } from '../heroes/abilities/witch/tunables';
 import { WITCH_HIT_MARKER_LINE, WITCH_HIT_MARKER_RANGE } from '../config/witch';
 import { SHADOW_CLAW, SHADOW_DASH } from '../heroes/abilities/shadow/tunables';
 import { MENDER_ANGEL, MENDER_HIT_MARKER_LINE, MENDER_PULSE, MENDER_SOUL } from '../heroes/abilities/mender/tunables';
+import { menderArmOrigin } from '../heroes/drawMender';
 import { DEMON_HELLFIRE } from '../heroes/abilities/demon/tunables';
 import { NinjaBody, allowsHeroCollide } from '../heroes/NinjaBody';
 import { stampKitPressure } from '../heroes/kitPressure';
@@ -455,9 +456,17 @@ export class BattleScene extends Phaser.Scene {
         ROPE_SHOT.armOffsetRad,
       );
     } else if (this.ninja.heroId === 'mender' && !frame.ability1Aiming && !frame.ability2Aiming) {
-      this.marker.syncPulseAim(
+      const aim = Math.atan2(this.ninja.aim.y, this.ninja.aim.x);
+      const origin = menderArmOrigin(
         this.ninja.x,
         this.ninja.y,
+        aim,
+        this.attacks.nextRopeArm,
+        MENDER_PULSE.armReach,
+      );
+      this.marker.syncPulseAim(
+        origin.x,
+        origin.y,
         this.ninja.aim.x,
         this.ninja.aim.y,
         MENDER_HIT_MARKER_LINE,

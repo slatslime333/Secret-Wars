@@ -102,11 +102,15 @@ export const menderArmOrigin = (
   y: number,
   aimAngle: number,
   arm: -1 | 1,
-  reach = 14,
-): { x: number; y: number } => ({
-  x: x + Math.cos(aimAngle + arm * 1.05) * reach,
-  y: y + Math.sin(aimAngle + arm * 1.05) * reach - 6,
-});
+  reach = 16,
+): { x: number; y: number } => {
+  const nx = Math.cos(aimAngle);
+  const ny = Math.sin(aimAngle);
+  return {
+    x: x + nx * (reach + 2) - ny * arm * 5,
+    y: y + ny * 7 - 24,
+  };
+};
 
 const drawSuitBody = (g: Phaser.GameObjects.Graphics, p: Palette): void => {
   g.fillStyle(p.suitDark);
