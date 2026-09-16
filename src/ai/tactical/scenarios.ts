@@ -2360,6 +2360,20 @@ const scenarioDN = (): ScenarioResult => {
   return { name: 'DN attack ult respects enemy windup vs safer range', ok, detail: `inside=${inside.decision}/${inside.reason} outside=${outside.decision}/${outside.reason}` };
 };
 
+const scenarioDO = (): ScenarioResult => {
+  const rage = mockAbility('shadow-rage', 'ultimate', { roles: ['burst', 'damage', 'initiate'], range: 80 });
+  const self = unit({ id: 1, team: 'alpha', x: 280, y: 750, heroId: 'shadow', hpRatio: 0.9 });
+  const empty = evaluateUltimate(
+    rage,
+    situationOf(self, [], [], {
+      remainingMs: 240_000,
+      environment: { nearby: [], cover: wallFact(270, 750), wall: wallFact(270, 750) },
+    }),
+  );
+  const ok = empty.decision !== 'use';
+  return { name: 'DO Shadow does not transform in empty cover', ok, detail: `${empty.decision}/${empty.reason}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -2479,4 +2493,5 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioDL(),
   scenarioDM(),
   scenarioDN(),
+  scenarioDO(),
 ];

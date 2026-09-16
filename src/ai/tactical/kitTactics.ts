@@ -230,11 +230,16 @@ export const evaluateUltimate = (def: AbilityDef, situation: Situation): UltRead
   const conservation = personality.abilityConservation;
   const chaining = allyCastingNear(self, allies);
   const guess = guessEnemyUlt(situation);
-  const objUrgent = (situation.objective?.urgency ?? 0) >= 0.62;
-  const late = (situation.remainingMs ?? 999_000) <= 40_000;
+  const remaining = situation.remainingMs;
+  const late = remaining !== undefined && remaining <= 40_000;
+  const early = remaining !== undefined && remaining > 165_000;
+  const objUrgent = (situation.objective?.urgency ?? 0) >= (early ? 0.82 : 0.62);
   let future = 20 + conservation * 16 + (kit?.ultSaveUntilFoes ?? 2) * 2;
   if (late) {
     future -= 16;
+  }
+  if (early && !objUrgent && hp > 0.32) {
+    future += 12;
   }
   if (objUrgent) {
     future -= 8;
@@ -254,7 +259,12 @@ export const evaluateUltimate = (def: AbilityDef, situation: Situation): UltRead
       (enemy) => enemy.attacking && enemy.lastAttackerId >= 0 && enemy.lastAttackerId !== self.id,
     );
     current = 10 + personality.aggression * 6;
-    if (watchers >= 2 || (watchers >= 1 && nearestD < 130)) {
+    const fightOn = Boolean(nearest) && nearestD < 420;
+    if (!fightOn) {
+      current -= 16;
+      reason = 'no fight to transform for';
+      decision = 'save';
+    } else if (watchers >= 2 || (watchers >= 1 && nearestD < 130)) {
       current -= 28 + watchers * 8;
       reason = 'unsafe transformation position';
       decision = cover || nearestD > 180 ? 'reposition' : 'save';
@@ -262,7 +272,7 @@ export const evaluateUltimate = (def: AbilityDef, situation: Situation): UltRead
       current -= 18;
       reason = 'too close to transform';
       decision = 'reposition';
-    } else if ((cover && nearestD > 150) || (distracted && nearestD > 140 && watchers === 0)) {
+    } else if ((cover && nearestD > 150 && nearestD < 380) || (distracted && nearestD > 140 && watchers === 0)) {
       current += 26 + personality.opportunism * 8;
       reason = cover ? 'cover + space to transform' : 'enemies occupied, safe to transform';
       decision = 'use';
@@ -402,7 +412,7 @@ export const evaluateUltimate = (def: AbilityDef, situation: Situation): UltRead
     decision = 'save';
     reason = `future ${Math.round(future)} > now ${Math.round(current)}`;
   }
-  if (decision !== 'use' && current > future + 6 && current > 34 && hp > 0.18) {
+  if (decision !== 'use' && current > future + 10 && current > 40 && hp > 0.18) {
     decision = 'use';
     if (reason === 'not worth it' || reason.startsWith('future')) {
       reason = 'window is good enough';
