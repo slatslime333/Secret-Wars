@@ -90,7 +90,7 @@ class HellBatAbility implements ActiveAbility {
     }
     if (this.phase === 'launch') {
       this.drive(caster, this.launchSpeed());
-      if (this.contactTarget(ctx)) {
+      if (DEMON_HELL_BAT.explodeOnContact && this.contactTarget(ctx)) {
         this.explode(ctx);
         this.phase = 'burst';
         this.burstAt = now;
@@ -106,7 +106,7 @@ class HellBatAbility implements ActiveAbility {
       caster.status.applyDefenseBuff(now, 80, DEMON_HELL_BAT.defenseMul);
       const recast = this.wantBurst && now >= this.recastArmedAt;
       const timedOut = now >= this.flyUntil;
-      const contact = this.contactTarget(ctx);
+      const contact = DEMON_HELL_BAT.explodeOnContact && this.contactTarget(ctx);
       if (recast || timedOut || contact) {
         this.explode(ctx);
         this.phase = 'burst';

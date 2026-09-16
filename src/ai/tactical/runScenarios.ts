@@ -18,9 +18,10 @@ import { ROPE } from '../../config/rope';
 import { WITCH, WITCH_HIT_MARKER_LINE, WITCH_HIT_MARKER_RANGE, WITCH_LIGHT_RANGE_BASE } from '../../config/witch';
 import { SHADOW } from '../../config/shadow';
 import { DEMON_HELLFIRE, DEMON_HELL_BAT, DEMON_RAGE } from '../../heroes/abilities/demon/tunables';
+import { demonRageFromLightDamage } from '../../heroes/abilities/demon/form';
 import { SHADOW_CLAW } from '../../heroes/abilities/shadow/tunables';
 import { NINJA_SMOKE } from '../../heroes/abilities/ninja/tunables';
-import { abilityDamage } from '../../config/ratings';
+import { ABILITY_DAMAGE_CURVE, abilityDamage } from '../../config/ratings';
 import { MENDER_HIT_MARKER_LINE, MENDER_PULSE, MENDER_SOUL, MENDER_ANGEL, MENDER_WIND } from '../../heroes/abilities/mender/tunables';
 import { NINJA_BASE_RANGE } from '../../config/ninja';
 import { runCombatFeedbackChecks } from '../../ui/combatFeedback/runChecks';
@@ -429,11 +430,14 @@ if (DEMON_RAGE.lockMs !== 1000 || DEMON_RAGE.durationMs !== 9000) {
 } else {
   console.log('ok  demon rage duration  1s lock then 9s');
 }
-if (DEMON_RAGE.abilityDamageToRage !== 0) {
+if (
+  DEMON_RAGE.lightDamageToRage !== 0.2 ||
+  Math.abs(demonRageFromLightDamage(ABILITY_DAMAGE_CURVE.at50) - 0.2) > 0.0001
+) {
   failed += 1;
-  console.log(`FAIL  demon rage convert  ${DEMON_RAGE.abilityDamageToRage}`);
+  console.log(`FAIL  demon light rage  convert=${demonRageFromLightDamage(ABILITY_DAMAGE_CURVE.at50)}`);
 } else {
-  console.log('ok  demon abilities  do not fill rage');
+  console.log('ok  demon lights  fill rage; abilities do not');
 }
 if (DEMON_RAGE.staminaOnActivate !== 0.2) {
   failed += 1;

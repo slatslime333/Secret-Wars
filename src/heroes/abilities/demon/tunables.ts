@@ -71,8 +71,8 @@ export const DEMON_RAGE = {
   durationMs: 9000,
   /** Meter needs 35% more damage to fill. */
   fillCostMul: 1.35,
-  /** Abilities no longer fill rage. Lights still convert through grantDemonRage. */
-  abilityDamageToRage: 0,
+  /** 20% of light-attack damage converts into rage, relative to the rating-50 ability hit. */
+  lightDamageToRage: 0.20,
   /** Restored when Big Demon form actually starts. */
   staminaOnActivate: 0.2,
   /** Applied when the 1s transform pause ends and Big form begins. */
