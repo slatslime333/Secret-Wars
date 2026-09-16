@@ -45,6 +45,9 @@ export const matesInPocket = (
       continue;
     }
     if (distOf(ally, enemy) <= reach) {
+      if (canStrikeOutsidePocket(ally, enemy) && distOf(ally, enemy) > enemy.attackRange * 0.85) {
+        continue;
+      }
       n += 1;
     }
   }

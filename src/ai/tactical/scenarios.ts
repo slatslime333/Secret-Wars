@@ -1429,7 +1429,7 @@ const scenarioBT = (): ScenarioResult => {
   const rows = rankActions(situationOf(self, allies, enemies, { currentTargetId: 10, homeX: 220 }));
   const chase = scoreOf(rows, 'chase', 10);
   const leave = Math.max(scoreOf(rows, 'retreat'), scoreOf(rows, 'reposition'), scoreOf(rows, 'advance'), scoreOf(rows, 'protect_ally'));
-  const ok = leave > chase && best(rows) !== 'chase';
+  const ok = leave > chase && !['chase', 'finish_target'].includes(best(rows));
   return { name: 'BT does not chase a sliver into the enemy team', ok, detail: `best=${best(rows)} chase=${chase.toFixed(1)} leave=${leave.toFixed(1)}` };
 };
 
@@ -1538,6 +1538,7 @@ const scenarioCA = (): ScenarioResult => {
       attackRange: WITCH.attackRange,
     }),
   ];
+  const details: string[] = [];
   for (const self of team) {
     const allies = team.filter((ally) => ally.id !== self.id);
     const kit = kitProfileOf(self.heroId, String(self.role), self.attackRange, {
@@ -1545,11 +1546,13 @@ const scenarioCA = (): ScenarioResult => {
       dashCharges: self.dashCharges,
       abilityReady: self.abilityReady,
     });
-    views.push(best(rankActions(situationOf(self, allies, [death], { kit }))));
+    const rows = rankActions(situationOf(self, allies, [death], { kit }));
+    views.push(best(rows));
+    details.push(`${self.heroId}:${rows.slice(0, 3).map((row) => `${row.action}${row.score.toFixed(0)}`).join('/')}`);
   }
   const stacked = views.filter((action) => action === 'attack' || action === 'chase' || action === 'finish_target').length;
-  const ok = stacked <= 2 && views[2] !== 'attack' && views[2] !== 'chase';
-  return { name: 'CA mixed team vs Death does not all dive melee', ok, detail: `views=${views.join(',')} stacked=${stacked}` };
+  const ok = stacked <= 2 && views[2] !== 'attack' && views[2] !== 'chase' && views[2] !== 'finish_target' && views[1] === 'attack';
+  return { name: 'CA mixed team vs Death does not all dive melee', ok, detail: `views=${views.join(',')} stacked=${stacked} ${details.join(' | ')}` };
 };
 
 export const runTacticalScenarios = (): ScenarioResult[] => [

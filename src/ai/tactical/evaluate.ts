@@ -11,6 +11,7 @@ import {
   futurePositionCost,
   lifeTradeCost,
   matesInPocket,
+  pocketRadius,
   readFightShape,
   reserveGap,
   threatZoneCost,
@@ -118,10 +119,10 @@ const pushUnique = (list: CombatantView[], unit: CombatantView): void => {
 export const pressOnEnemy = (enemy: CombatantView, allies: CombatantView[]): FightPress => {
   const on: CombatantView[] = [];
   let allyPower = 0;
-  const pocket = enemy.attackRange * 1.32 + 18;
+  const pocket = enemy.attackRange * 0.9 + 10;
   for (const ally of allies) {
     const d = dist(ally, enemy);
-    const inPocket = ally.kind === 'hero' && d <= pocket;
+    const inPocket = ally.kind === 'hero' && d <= pocket && (ally.attacking || ally.recentlyHit || d <= enemy.attackRange * 0.72);
     if (engagedWith(ally, enemy) || (ally.attacking && d < 190) || inPocket) {
       on.push(ally);
       allyPower += effectivePower(ally) * (inPocket && !engagedWith(ally, enemy) && !ally.attacking ? 0.82 : 1);
@@ -633,6 +634,10 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     const iso = isolation(enemy, enemies);
     const pile = overkillWeight(enemy, allies, enemies);
     const press = pressOnEnemy(enemy, allies);
+    const pocketMates = matesInPocket(enemy, allies);
+    const selfInPocket = d <= pocketRadius(enemy) * 0.92;
+    const meleeStay = selfInPocket && !canStrikeOutsidePocket(self, enemy) && pocketMates <= 1;
+    const pileUse = meleeStay ? pile * 0.42 : pile;
     const victim = threatensAlly(enemy, allies);
     const distracted = Boolean(victim) || (enemy.attacking && enemy.lastAttackerId >= 0 && enemy.lastAttackerId !== self.id);
     const finishable = enemy.hpRatio <= TACTIC.finishHp && iso > 0.4;
@@ -642,17 +647,17 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     const vis = ghostMul(enemy);
 
     let attack = 36 - (d / situation.vision) * 34 + (1 - enemy.hpRatio) * 12 + iso * 12;
-    attack -= pile * 58;
+    attack -= pileUse * 58;
     attack -= risk * 20;
     attack += (self.hpRatio - 0.32) * 10;
-    if (pile < 0.45) {
+    if (pileUse < 0.45) {
       if (victim) {
         attack += 12 + (1 - victim.hpRatio) * 10;
       }
       if (distracted) {
         attack += 8;
       }
-    } else if (pile > 0.7) {
+    } else if (pileUse > 0.7) {
       attack -= 14;
     }
     if (stand) {
@@ -661,10 +666,10 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (ranged && d < range * 0.42) {
       attack -= 9;
     }
-    if (!ranged && d < range * 1.25 && pile < 0.5) {
+    if (!ranged && d < range * 1.25 && pileUse < 0.5) {
       attack += 7;
     }
-    if (front && pile < 0.5) {
+    if (front && pileUse < 0.5) {
       attack += 4;
     }
     if (support && d < range * 1.2) {
@@ -675,7 +680,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     if (kit?.stance === 'ranged' && d < (kit.comfortMin || range * 0.55)) {
       attack -= 14;
     }
-    if (kind === 'minion' && pile < 0.5) {
+    if (kind === 'minion' && pileUse < 0.5) {
       attack += 4;
     }
     if (enemy.kind === 'minion') {
@@ -689,7 +694,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         attack -= 14;
       }
     }
-    if (self.hpRatio < personality.retreatHp && pile < 0.4 && !finishable) {
+    if (self.hpRatio < personality.retreatHp && pileUse < 0.4 && !finishable) {
       const poke =
         d > self.attackRange * 0.55 && d <= self.attackRange * 1.2 && risk < 0.6 && self.attackRange > 120;
       if (poke) {
@@ -711,11 +716,11 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
     const lull = inferredLull(enemy, self, situation.homeX);
     const inStrike = d <= range * 1.14;
     const zone = threatZoneCost(self, enemy, allies, kit, d);
-    const pocketMates = matesInPocket(enemy, allies);
+    const zoneUse = meleeStay ? zone * 0.35 : zone;
     const future = futurePositionCost({
       self,
       enemy,
-      zone,
+      zone: zoneUse,
       strain,
       clusterRisk,
       escapeOpen: situation.escapeOpen,
@@ -734,22 +739,25 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       const cheapStrain = inStrike && (enemy.hpRatio < 0.4 || enemy.recentlyHit || enemy.stunned);
       const strainMul = cheapStrain ? 3 + personality.caution * 3 : 12 + personality.caution * 8;
       attack -= strain * strainMul;
-      attack -= clusterRisk * (inStrike && cheapStrain ? 3 : 8);
+      attack -= clusterRisk * (meleeStay ? 2 : inStrike && cheapStrain ? 3 : 8);
     } else {
       attack -= strain * 2;
-      attack -= clusterRisk * 3;
+      attack -= clusterRisk * (meleeStay ? 1 : 3);
     }
-    attack -= zone * (inStrike ? 16 + personality.caution * 8 : 10 + personality.caution * 6);
+    attack -= zoneUse * (inStrike ? 16 + personality.caution * 8 : 10 + personality.caution * 6);
     attack -= future * 18;
     attack -= spent * (10 + personality.abilityConservation * 6);
     attack -= trade * 28;
-    if (pocketMates >= 1 && d <= range * 1.35) {
+    if (pocketMates >= 1 && d <= range * 1.35 && !meleeStay) {
       attack -= 6 + pocketMates * 5;
     }
-    if (inStrike && pile < 0.55) {
+    if (inStrike && pileUse < 0.55) {
       const commitBonus =
         strain > 0.7 && enemy.hpRatio > 0.32 ? 2 : 8 + (kit?.pressureBias ?? personality.aggression) * 8;
       attack += commitBonus;
+      if (meleeStay) {
+        attack += 10;
+      }
       if (enemy.recentlyHit || enemy.stunned) {
         attack += 8;
       }
@@ -799,7 +807,7 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
         attack += 9;
       }
     }
-    count = write(out, count, 'attack', tune('attack', persist(enemy, attack * vis)), pile > 0.7 ? 'already handled' : zone > 0.55 ? 'bad range to trade' : enemy.blocking ? 'shield up' : victim ? 'press the threat' : 'take the fight', enemy.id);
+    count = write(out, count, 'attack', tune('attack', persist(enemy, attack * vis)), pileUse > 0.7 ? 'already handled' : zoneUse > 0.55 ? 'bad range to trade' : enemy.blocking ? 'shield up' : victim ? 'press the threat' : 'take the fight', enemy.id);
 
     if (enemy.hpRatio <= TACTIC.finishHp) {
       let finish = 26 + (TACTIC.finishHp - enemy.hpRatio) * 90 + iso * 18;
@@ -826,6 +834,20 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       finish -= strain * 4;
       finish -= future * 8;
       finish -= zone * (canStrikeOutsidePocket(self, enemy) ? 10 : 3);
+      if (!inStrike) {
+        finish -=
+          chaseQualityCost({
+            self,
+            enemy,
+            allies,
+            enemies,
+            homeX: situation.homeX,
+            pile,
+            strain,
+            zone,
+            escapeOpen: situation.escapeOpen,
+          }) * 20;
+      }
       if (strain > 0.7 && enemy.hpRatio > 0.08) {
         finish -= 8;
       }
@@ -849,8 +871,11 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
       if (kit?.wantsFlank) {
         flank += 6;
       }
-      if (pocketMates >= 1) {
+      if (pocketMates >= 1 && !meleeStay) {
         flank += 8 + personality.flankTendency * 6;
+      }
+      if (meleeStay) {
+        flank -= 10;
       }
       if (zone > 0.4 && !canStrikeOutsidePocket(self, enemy)) {
         flank += 6;
