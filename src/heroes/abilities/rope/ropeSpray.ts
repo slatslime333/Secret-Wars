@@ -47,6 +47,7 @@ class RopeSprayAbility implements ActiveAbility {
       armLiftRight: 0.45 + Math.cos(frac * Math.PI * 24) * 0.45,
       jumpY: -6 - Math.abs(Math.sin(frac * Math.PI * 10)) * 8,
       swayX: Math.sin(frac * Math.PI * 18) * 3,
+      ropeAction: 'shot' as const,
     }));
   }
 

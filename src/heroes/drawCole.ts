@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { TeamId } from '../config/hero';
 import { COLORS } from '../ui/theme';
 import { HeroDrawOptions } from './heroDraw';
 import type { CardinalFacing } from './drawNinja';
@@ -188,15 +189,93 @@ const jagged = (
   graphics.strokePath();
 };
 
-/** Dense blue arcs that run shoulder → forearm → hand. */
+export type ColeSparkOptions = {
+  facing: CardinalFacing;
+  now: number;
+  liftL?: number;
+  liftR?: number;
+  attacking?: boolean;
+  team?: TeamId;
+  pixel?: boolean;
+};
+
+const sparkPalette = (team?: TeamId): { core: number; mid: number; dark: number } =>
+  team === 'bravo'
+    ? { core: 0xffe0e4, mid: COLORS.redBright, dark: COLORS.red }
+    : { core: 0xe8ffff, mid: COLORS.cyan, dark: COLORS.cyanDark };
+
+const frameToLocal = (fx: number, fy: number): { x: number; y: number } => ({
+  x: (fx - 40) * 0.92,
+  y: 16 + (fy - 80) * 0.92,
+});
+
+const pixelArms = (
+  facing: CardinalFacing,
+  attacking: boolean,
+): { hand: { x: number; y: number }; shoulder: { x: number; y: number }; shoot: { x: number; y: number } }[] => {
+  const map = (hx: number, hy: number, sx: number, sy: number, shx: number, shy: number) => ({
+    hand: frameToLocal(hx, hy),
+    shoulder: frameToLocal(sx, sy),
+    shoot: frameToLocal(hx + shx, hy + shy),
+  });
+  if (facing === 'south') {
+    return attacking
+      ? [map(18, 50, 28, 36, -8, 4), map(61, 50, 51, 36, 8, 4)]
+      : [map(27, 56, 30, 38, 0, 6), map(53, 56, 49, 38, 0, 6)];
+  }
+  if (facing === 'north') {
+    return attacking
+      ? [map(18, 48, 28, 34, -6, -8), map(61, 48, 51, 34, 6, -8)]
+      : [map(26, 56, 30, 38, 0, -4), map(53, 56, 49, 38, 0, -4)];
+  }
+  if (facing === 'west') {
+    return attacking
+      ? [map(14, 42, 32, 34, -12, -2)]
+      : [map(34, 54, 36, 38, -4, 4)];
+  }
+  return attacking ? [map(65, 42, 47, 34, 12, -2)] : [map(45, 54, 43, 38, 4, 4)];
+};
+
+/** Electricity flows from the hands up the arms; attack also shoots it forward. */
 export const drawColeElectricity = (
   graphics: Phaser.GameObjects.Graphics,
-  facing: CardinalFacing,
-  now: number,
-  liftL = 0,
-  liftR = 0,
+  facingOrOpts: CardinalFacing | ColeSparkOptions,
+  nowArg?: number,
+  liftLArg = 0,
+  liftRArg = 0,
 ): void => {
+  const opts: ColeSparkOptions =
+    typeof facingOrOpts === 'string'
+      ? { facing: facingOrOpts, now: nowArg ?? 0, liftL: liftLArg, liftR: liftRArg }
+      : facingOrOpts;
   graphics.clear();
+  const { facing, now, attacking, team, pixel } = opts;
+  const palette = sparkPalette(team);
+  if (pixel) {
+    const flow = ((now / 70) % 100) / 100;
+    const arms = pixelArms(facing, Boolean(attacking));
+    for (const arm of arms) {
+      const mx = arm.hand.x + (arm.shoulder.x - arm.hand.x) * (0.25 + flow * 0.75);
+      const my = arm.hand.y + (arm.shoulder.y - arm.hand.y) * (0.25 + flow * 0.75);
+      graphics.lineStyle(3, palette.dark, 0.85);
+      jagged(graphics, arm.hand.x, arm.hand.y, mx, my, 5, 4);
+      graphics.lineStyle(1.6, palette.mid, 1);
+      jagged(graphics, arm.hand.x, arm.hand.y, arm.shoulder.x, arm.shoulder.y, 5, 3);
+      graphics.lineStyle(1, palette.core, 0.9);
+      jagged(graphics, arm.hand.x, arm.hand.y, mx, my, 4, 2);
+      graphics.fillStyle(palette.core, 1);
+      graphics.fillRect(Math.round(arm.hand.x) - 1, Math.round(arm.hand.y) - 1, 3, 3);
+      if (attacking) {
+        graphics.lineStyle(2.4, palette.mid, 1);
+        jagged(graphics, arm.hand.x, arm.hand.y, arm.shoot.x, arm.shoot.y, 5, 5);
+        graphics.lineStyle(1.2, palette.core, 0.95);
+        jagged(graphics, arm.hand.x, arm.hand.y, arm.shoot.x, arm.shoot.y, 4, 3);
+      }
+    }
+    return;
+  }
+  const liftL = opts.liftL ?? 0;
+  const liftR = opts.liftR ?? 0;
   const leftY = 0 - liftL * 10;
   const rightY = 0 - liftR * 10;
   const west = facing === 'west';
@@ -206,15 +285,15 @@ export const drawColeElectricity = (
   ];
   const pulse = 0.7 + ((now / 80) % 4) * 0.07;
   for (const arm of arms) {
-    graphics.lineStyle(4, 0xdff4ff, 0.9 * pulse);
+    graphics.lineStyle(4, palette.core, 0.9 * pulse);
     jagged(graphics, arm.sx, arm.sy, arm.ex, arm.ey, 6, 7);
-    graphics.lineStyle(2.4, 0x4aa8ff, 1);
+    graphics.lineStyle(2.4, palette.mid, 1);
     jagged(graphics, arm.sx + 2, arm.sy, arm.ex + 2, arm.ey, 5, 6);
-    graphics.lineStyle(1.6, 0x7ecbff, 0.85);
+    graphics.lineStyle(1.6, palette.dark, 0.85);
     jagged(graphics, arm.sx - 2, arm.sy + 1, arm.ex - 2, arm.ey, 5, 5);
-    graphics.fillStyle(0xdff4ff, 0.9);
+    graphics.fillStyle(palette.core, 0.9);
     graphics.fillCircle(arm.ex, arm.ey, 2.2);
-    graphics.fillStyle(0x4aa8ff, 0.7);
+    graphics.fillStyle(palette.mid, 0.7);
     graphics.fillCircle(arm.ex + 2, arm.ey - 2, 1.4);
   }
 };

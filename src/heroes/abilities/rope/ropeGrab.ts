@@ -67,6 +67,7 @@ class RopeGrabAbility implements ActiveAbility {
     caster.playCustomAttack(ctx.now, 220, () => ({
       armLiftRight: 0.95,
       armLiftLeft: 0.2,
+      ropeAction: 'grab' as const,
     }));
   }
 
@@ -143,6 +144,7 @@ class RopeGrabAbility implements ActiveAbility {
       armLiftLeft: 0.9,
       armLiftRight: 0.9,
       jumpY: -12 - Math.sin(frac * Math.PI) * 14,
+      ropeAction: 'grab' as const,
     }));
     playWorld('rope-grab-zip', caster);
   }

@@ -25,6 +25,9 @@ export const MENDER_PULSE = {
   color: 0x4ec8ff,
 } as const;
 
+/** Pulse aim line only. Shot travel is not range-capped. */
+export const MENDER_HIT_MARKER_LINE = Math.round(MENDER.attackRange * 1.6);
+
 export const MENDER_ANGEL = {
   cooldownMs: 9000,
   durationMs: 4000,
