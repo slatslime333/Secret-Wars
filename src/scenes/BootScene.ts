@@ -5,6 +5,8 @@ import { filterColeSheet, preloadColeSheet } from '../heroes/coleSprite';
 import { filterNinjaSheet, preloadNinjaSheet } from '../heroes/ninjaSprite';
 import { filterRopeSheet, preloadRopeSheet } from '../heroes/ropeSprite';
 import { filterDeathSheet, preloadDeathSheet } from '../heroes/deathSprite';
+import { filterMenderSheet, preloadMenderSheet } from '../heroes/menderSprite';
+import { filterShadowSheet, preloadShadowSheet } from '../heroes/shadowSprite';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -17,6 +19,8 @@ export class BootScene extends Phaser.Scene {
     preloadNinjaSheet(this);
     preloadRopeSheet(this);
     preloadDeathSheet(this);
+    preloadMenderSheet(this);
+    preloadShadowSheet(this);
   }
 
   create(): void {
@@ -25,6 +29,8 @@ export class BootScene extends Phaser.Scene {
     filterNinjaSheet(this);
     filterRopeSheet(this);
     filterDeathSheet(this);
+    filterMenderSheet(this);
+    filterShadowSheet(this);
     ensureAbilityIcons(this);
     this.scene.start('Title');
   }

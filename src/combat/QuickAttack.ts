@@ -17,6 +17,7 @@ import { ComboTracker } from './ComboTracker';
 import { HitMarker } from './HitMarker';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { COLORS } from '../ui/theme';
+import { spawnMuzzleFlash } from '../effects/muzzleFlash';
 import { spawnCombatCallout } from '../effects/combatCallout';
 import { spawnLightningArc, spawnShockwaveRing } from '../effects/lightning';
 import { resolveMelee } from './resolveMelee';
@@ -52,6 +53,8 @@ export class QuickAttack {
   lastSwingAt = -9999;
   lastSwingStep: ComboStep = 1;
   private deathPairLockUntil = 0;
+  /** After Death's first bat, the second swing is forced. Taps cannot skip it. */
+  private deathBurstPending = false;
   private ropeArm: -1 | 1 = -1;
   private readonly ropeShots: Projectile[] = [];
   private readonly menderShots: Projectile[] = [];
@@ -76,6 +79,7 @@ export class QuickAttack {
     this.combo.interrupt(now);
     this.pendingTaps = 0;
     this.pendingImpact = undefined;
+    this.deathBurstPending = false;
     this.clearRopeShots();
     this.clearMenderShots();
     this.clearDemonShots();
@@ -105,7 +109,15 @@ export class QuickAttack {
 
     const tapQueued = this.pendingTaps > 0;
     this.combo.expire(now, COMBAT.comboWindowMs, held || tapQueued || pressed);
-    if (pressed && attacker.heroId !== 'witch' && attacker.heroId !== 'rope' && attacker.heroId !== 'shadow' && attacker.heroId !== 'mender' && attacker.heroId !== 'demon') {
+    if (
+      pressed &&
+      attacker.heroId !== 'witch' &&
+      attacker.heroId !== 'rope' &&
+      attacker.heroId !== 'shadow' &&
+      attacker.heroId !== 'mender' &&
+      attacker.heroId !== 'demon' &&
+      attacker.heroId !== 'death'
+    ) {
       this.pendingTaps = Math.min(2, this.pendingTaps + 1);
       this.lastPendingAt = now;
     }
@@ -122,24 +134,41 @@ export class QuickAttack {
     if (this.pendingImpact) {
       return;
     }
-    if (attacker.status.cannotAttack(now) || attacker.status.isHitReacting(now)) {
+    if (attacker.heroId === 'death' && now < this.deathPairLockUntil) {
+      this.pendingTaps = 0;
       return;
     }
-    if ((!held && this.pendingTaps === 0) || now < this.nextSwingAt) {
+    const deathFollow = attacker.heroId === 'death' && this.deathBurstPending;
+    if (attacker.status.isHitReacting(now)) {
+      return;
+    }
+    if (attacker.status.cannotAttack(now) && !deathFollow) {
+      return;
+    }
+    if ((!held && this.pendingTaps === 0 && !deathFollow) || now < this.nextSwingAt) {
       return;
     }
 
-    const step = this.nextComboStep(now, attacker);
-    if (attacker.heroId === 'death' && now < this.deathPairLockUntil) {
-      return;
-    }
+    const step = deathFollow ? 2 : this.nextComboStep(now, attacker);
     const staminaCost = lightAttackStaminaCost(step, attacker.stats.attackStaminaMul ?? 1);
-    if (!attacker.hasAttackStamina(staminaCost, now)) {
-      return;
+    if (!deathFollow) {
+      if (!attacker.hasAttackStamina(staminaCost, now)) {
+        return;
+      }
+      attacker.trySpendStamina(staminaCost, now);
+    } else if (attacker.hasAttackStamina(staminaCost, now)) {
+      attacker.trySpendStamina(staminaCost, now);
     }
-    attacker.trySpendStamina(staminaCost, now);
     const profile = COMBAT.combo[step];
-    if (this.pendingTaps > 0) {
+    if (attacker.heroId === 'death') {
+      spawnCombatCallout(
+        this.scene,
+        attacker.x,
+        attacker.y,
+        step === 2 ? 'HIT 2' : 'HIT 1',
+        COLORS.orange,
+      );
+    } else if (this.pendingTaps > 0) {
       this.combo.tap(now, COMBAT.comboWindowMs);
       this.pendingTaps -= 1;
       if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch' && attacker.heroId !== 'shadow' && attacker.heroId !== 'mender' && attacker.heroId !== 'demon') {
@@ -180,8 +209,14 @@ export class QuickAttack {
     } else if (attacker.heroId === 'death') {
       this.playDeathLightSwing(attacker, now, step);
       this.spawnBatSweep(attacker, step);
-      if (step === 2) {
+      if (step === 1) {
+        this.deathBurstPending = true;
+        this.nextSwingAt = now + DEATH_ATTACK.animMs;
+      } else {
+        this.deathBurstPending = false;
         this.deathPairLockUntil = now + DEATH_ATTACK.pairDelayMs;
+        this.nextSwingAt = this.deathPairLockUntil;
+        this.pendingTaps = 0;
         this.combo.reset();
       }
     } else if (attacker.heroId === 'rope') {
@@ -211,11 +246,11 @@ export class QuickAttack {
     if (attacker.heroId === 'rope' || attacker.heroId === 'witch' || attacker.heroId === 'shadow' || attacker.heroId === 'mender' || attacker.heroId === 'demon') {
       return 1;
     }
+    if (attacker.heroId === 'death') {
+      return this.deathBurstPending ? 2 : 1;
+    }
     if (this.pendingTaps > 0) {
       return comboStepOf(this.combo.preview(now, COMBAT.comboWindowMs));
-    }
-    if (attacker.heroId === 'death' && this.lastSwingStep === 1 && now - this.lastSwingAt < COMBAT.comboWindowMs) {
-      return 2;
     }
     return 1;
   }
@@ -275,17 +310,10 @@ export class QuickAttack {
       attacker.team,
     );
     this.menderShots.push(shot);
-    const flash = this.scene.add.circle(origin.x, origin.y, 2.4, MENDER_PULSE.color, 0.9).setDepth(16);
-    this.scene.tweens.add({
-      targets: flash,
-      alpha: 0,
-      scale: 1.8,
-      duration: 90,
-      onComplete: () => flash.destroy(),
-    });
-    attacker.playCustomAttack(now, 140, (frac) => ({
-      armLiftLeft: arm === -1 ? Math.sin(frac * Math.PI) : 0.1,
-      armLiftRight: arm === 1 ? Math.sin(frac * Math.PI) : 0.1,
+    spawnMuzzleFlash(this.scene, origin.x, origin.y, sx, sy);
+    attacker.playCustomAttack(now, 160, (frac) => ({
+      armLiftLeft: 0.75 + Math.sin(frac * Math.PI) * 0.25,
+      armLiftRight: 0.75 + Math.sin(frac * Math.PI) * 0.25,
       swayX: attacker.aim.x * 4 * Math.sin(frac * Math.PI),
     }));
   }
@@ -512,9 +540,9 @@ export class QuickAttack {
     const nx = attacker.aim.x / len;
     const ny = attacker.aim.y / len;
     attacker.playCustomAttack(now, SHADOW_ATTACK.animMs, (frac) => ({
-      armLiftRight: frac < 0.45 ? 0.25 + frac * 1.8 : Math.max(0.15, 1.1 - (frac - 0.45) * 1.6),
-      armLiftLeft: 0.12,
-      swayX: nx * (frac < 0.4 ? -3 : 8) * Math.min(1, frac * 1.6),
+      armLiftRight: frac < 0.42 ? 0.35 + frac * 2.1 : Math.max(0.2, 1.25 - (frac - 0.42) * 1.7),
+      armLiftLeft: 0.08,
+      swayX: nx * (frac < 0.38 ? -4 : 10) * Math.min(1, frac * 1.7),
     }));
     spawnShadowSlash(this.scene, attacker.x, attacker.y, nx, ny, attacker.stats.attackRange);
   }

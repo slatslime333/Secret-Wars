@@ -4,6 +4,7 @@ import { runDraftChecks } from '../../draft/runChecks';
 import { runMapChecks } from '../../map/runChecks';
 import { moveGoal } from './move';
 import { smashBatHits, smashHitsTarget } from '../../heroes/abilities/death/smashHit';
+import { DEATH_ATTACK } from '../../heroes/abilities/death/tunables';
 import { atFarEdge, roamHuntPoint, ARENA } from '../../config/arena';
 import { kitProfileOf } from './kitProfile';
 import { personalityFromSeed } from './personality';
@@ -586,6 +587,12 @@ if (
   );
 } else {
   console.log('ok  death ratings  health 69 / stamina 65 / regen 49 / speed 28 / damage 70 / defense 70');
+}
+if (DEATH_ATTACK.pairDelayMs !== 820) {
+  failed += 1;
+  console.log(`FAIL  death pair delay  ${DEATH_ATTACK.pairDelayMs}`);
+} else {
+  console.log('ok  death light  locked two-hit burst then 820ms pause');
 }
 const coleRangeBefore = Math.round(Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.15) * 1.17);
 if (COLE.attackRange !== Math.round(coleRangeBefore * 1.13)) {

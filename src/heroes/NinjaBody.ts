@@ -16,6 +16,8 @@ import { applyColeSprite, createColeSprite, COLE_FEET_Y, COLE_WORLD_SCALE } from
 import { applyNinjaSprite, createNinjaSprite, NINJA_FEET_Y, NINJA_WORLD_SCALE } from './ninjaSprite';
 import { applyRopeSprite, createRopeSprite, ROPE_FEET_Y, ROPE_WORLD_SCALE } from './ropeSprite';
 import { applyDeathSprite, createDeathSprite, DEATH_FEET_Y, DEATH_WORLD_SCALE } from './deathSprite';
+import { applyMenderSprite, createMenderSprite, MENDER_FEET_Y, MENDER_WORLD_SCALE } from './menderSprite';
+import { applyShadowSprite, createShadowSprite, SHADOW_FEET_Y, SHADOW_WORLD_SCALE } from './shadowSprite';
 import { playDeath, playWorld } from '../audio';
 import { drawRopeWrap } from './abilities/rope/ropeVisual';
 import { drawMagicVortex } from './abilities/witch/vortex';
@@ -69,7 +71,7 @@ export class NinjaBody {
   private facing: CardinalFacing = 'east';
   private readonly art: Phaser.GameObjects.Graphics;
   private readonly spriteArt?: Phaser.GameObjects.Sprite;
-  private spriteKind?: 'witch' | 'cole' | 'ninja' | 'rope' | 'death';
+  private spriteKind?: 'witch' | 'cole' | 'ninja' | 'rope' | 'death' | 'mender' | 'shadow';
   private spriteScale = 1;
   private spriteFeetY = 16;
   private lastStaffRaise = 0;
@@ -184,6 +186,22 @@ export class NinjaBody {
       this.spriteScale = DEATH_WORLD_SCALE;
       this.spriteFeetY = DEATH_FEET_Y;
       this.spriteArt = createDeathSprite(scene, 0, DEATH_FEET_Y, { rival: this.rival, team: this.team });
+      if (this.spriteArt) {
+        this.view.add(this.spriteArt);
+      }
+    } else if (this.stats.id === 'mender') {
+      this.spriteKind = 'mender';
+      this.spriteScale = MENDER_WORLD_SCALE;
+      this.spriteFeetY = MENDER_FEET_Y;
+      this.spriteArt = createMenderSprite(scene, 0, MENDER_FEET_Y, { rival: this.rival, team: this.team });
+      if (this.spriteArt) {
+        this.view.add(this.spriteArt);
+      }
+    } else if (this.stats.id === 'shadow') {
+      this.spriteKind = 'shadow';
+      this.spriteScale = SHADOW_WORLD_SCALE;
+      this.spriteFeetY = SHADOW_FEET_Y;
+      this.spriteArt = createShadowSprite(scene, 0, SHADOW_FEET_Y, { rival: this.rival, team: this.team });
       if (this.spriteArt) {
         this.view.add(this.spriteArt);
       }
@@ -1226,6 +1244,12 @@ export class NinjaBody {
     this.lastShowUzi = Boolean(options.showUzi);
     this.lastBatScale = options.batScale ?? 1;
     if (this.spriteArt && this.spriteKind) {
+      if (options.fairyForm) {
+        this.spriteArt.setVisible(false);
+        this.drawHero(this.art, options);
+        return;
+      }
+      this.spriteArt.setVisible(true);
       this.art.clear();
       if (options.attacking) {
         this.applyPixelSprite({
@@ -1320,6 +1344,30 @@ export class NinjaBody {
       });
       return;
     }
+    if (this.spriteKind === 'mender') {
+      applyMenderSprite(this.spriteArt, {
+        facing: pose.facing,
+        attacking: pose.attacking,
+        charge: pose.charge ?? Math.max(pose.armLiftLeft ?? 0, pose.armLiftRight ?? 0),
+        hitFlash: pose.hitFlash,
+        moving: pose.moving,
+        walkFrame: pose.walkFrame,
+        now: pose.now,
+      });
+      return;
+    }
+    if (this.spriteKind === 'shadow') {
+      applyShadowSprite(this.spriteArt, {
+        facing: pose.facing,
+        attacking: pose.attacking,
+        charge: pose.charge ?? pose.armLiftRight,
+        hitFlash: pose.hitFlash,
+        moving: pose.moving,
+        walkFrame: pose.walkFrame,
+        now: pose.now,
+      });
+      return;
+    }
     applyWitchSprite(this.spriteArt, {
       facing: pose.facing,
       attacking: pose.attacking,
@@ -1360,6 +1408,11 @@ export class NinjaBody {
     figure.setPosition(this.art.x, this.art.y + this.spriteFeetY + bob);
     figure.setRotation(this.art.rotation);
     figure.setScale(this.art.scaleX * this.spriteScale, this.art.scaleY * this.spriteScale);
+    if (this.fairyForm) {
+      figure.setVisible(false);
+      return;
+    }
+    figure.setVisible(true);
     if (now < this.attackingUntil) {
       this.applyPixelSprite({
         facing: this.facing,

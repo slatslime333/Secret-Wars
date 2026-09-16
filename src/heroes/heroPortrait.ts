@@ -7,6 +7,8 @@ import { applyColeSprite, coleFrameIndex, coleSheetKey, COLE_SHEET } from './col
 import { applyNinjaSprite, ninjaFrameIndex, ninjaSheetKey, NINJA_SHEET } from './ninjaSprite';
 import { applyRopeSprite, ropeFrameIndex, ropeSheetKey, ROPE_SHEET } from './ropeSprite';
 import { applyDeathSprite, deathFrameIndex, deathSheetKey, DEATH_SHEET } from './deathSprite';
+import { applyMenderSprite, menderFrameIndex, menderSheetKey, MENDER_SHEET } from './menderSprite';
+import { applyShadowSprite, shadowFrameIndex, shadowSheetKey, SHADOW_SHEET } from './shadowSprite';
 
 export type HeroPortraitOptions = {
   facing?: CardinalFacing;
@@ -15,7 +17,7 @@ export type HeroPortraitOptions = {
   scale?: number;
 };
 
-/** Graphics for procedural heroes; packed sheets for Witch, Cole, Ninja, Rope Man, and Death. */
+/** Graphics for procedural heroes; packed sheets for pixel roster characters. */
 export const presentHero = (
   scene: Phaser.Scene,
   x: number,
@@ -69,6 +71,24 @@ export const presentHero = (
     sprite.setOrigin(0.5, 1);
     sprite.setScale(scale * 0.72);
     applyDeathSprite(sprite, { facing });
+    return sprite;
+  }
+  const menderKey = menderSheetKey(options.team, rival);
+  const menderSheet = scene.textures.exists(menderKey) ? menderKey : MENDER_SHEET;
+  if (heroId === 'mender' && scene.textures.exists(menderSheet)) {
+    const sprite = scene.add.sprite(x, y + 18, menderSheet, menderFrameIndex({ facing }));
+    sprite.setOrigin(0.5, 1);
+    sprite.setScale(scale * 0.72);
+    applyMenderSprite(sprite, { facing });
+    return sprite;
+  }
+  const shadowKey = shadowSheetKey(options.team, rival);
+  const shadowSheet = scene.textures.exists(shadowKey) ? shadowKey : SHADOW_SHEET;
+  if (heroId === 'shadow' && scene.textures.exists(shadowSheet)) {
+    const sprite = scene.add.sprite(x, y + 18, shadowSheet, shadowFrameIndex({ facing }));
+    sprite.setOrigin(0.5, 1);
+    sprite.setScale(scale * 0.72);
+    applyShadowSprite(sprite, { facing });
     return sprite;
   }
   const art = scene.add.graphics();

@@ -154,7 +154,7 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
     description:
       'A heavy melee tank. Death crowds the lane with bat swings, then mixes in SMG fire and crushing slams.',
     light:
-      `Close-range bat swings in fast pairs, then a ${seconds(DEATH_ATTACK.pairDelayMs)} pause. Hits deal ${deathHit(1)}, then ${deathHit(2)}. Tapping cannot skip the pause.`,
+      `Close-range bat swings in a locked two-hit burst, then a ${seconds(DEATH_ATTACK.pairDelayMs)} pause. Hits deal ${deathHit(1)}, then ${deathHit(2)}. Extra taps cannot skip the second swing or the pause.`,
   },
   rope: {
     description:
@@ -172,13 +172,13 @@ const HERO_TEXT: Record<HeroId, { description: string; light: string }> = {
     description:
       'A committed melee bruiser. Shadow claws into the fight, marks wounds, and rages when she can stay in close.',
     light:
-      `Fast shadow-claw swipes dealing ${shadowHit(1)} damage with light knockback. Each hit leaves a wound that drains ${markPct}% of their max health each second for ${seconds(SHADOW_MARK.durationMs)}.`,
+      `Fast right-claw swipes dealing ${shadowHit(1)} damage with light knockback. Each hit leaves a wound that drains ${markPct}% of their max health each second for ${seconds(SHADOW_MARK.durationMs)}.`,
   },
   mender: {
     description:
       'A fragile ranged support. Mender pokes with dual uzis, then spends her kit protecting teammates instead of finishing fights herself.',
     light:
-      `Pulse: alternating cyan SMG shots. Enemy hits deal ${hit(MENDER.attackDamage)} damage with light knockback and a brief slow. Ally hits restore ${MENDER_PULSE.healHealth} health and ${MENDER_PULSE.healStamina} stamina. Mender splits fire between poking and topping off teammates.`,
+      `Pulse: both uzis come up and fire cyan SMG shots with a barrel flash on each round. Enemy hits deal ${hit(MENDER.attackDamage)} damage with light knockback and a brief slow. Ally hits restore ${MENDER_PULSE.healHealth} health and ${MENDER_PULSE.healStamina} stamina.`,
   },
   demon: {
     description:
