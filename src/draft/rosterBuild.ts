@@ -106,6 +106,184 @@ export const draftFromEnemyPicks = (playerId: HeroId, picks: Record<DraftClass, 
   return { playerId, allies, enemies, format };
 };
 
+/** Editable pre-match sides. Player is whoever `playerId` is on YOUR TEAM. */
+export type WarSides = {
+  playerId: HeroId;
+  yours: HeroId[];
+  theirs: HeroId[];
+  format: MatchFormat;
+};
+
+export const sidesFromDraft = (draft: PlayDraft): WarSides => ({
+  playerId: draft.playerId,
+  yours: [draft.playerId, ...draft.allies],
+  theirs: [...draft.enemies],
+  format: draft.format ?? '3v3',
+});
+
+export const draftFromSides = (sides: WarSides): PlayDraft => {
+  const yours = [...sides.yours];
+  const idx = yours.indexOf(sides.playerId);
+  if (idx >= 0) {
+    yours.splice(idx, 1);
+  }
+  return {
+    playerId: sides.playerId,
+    allies: yours,
+    enemies: [...sides.theirs],
+    format: sides.format,
+  };
+};
+
+export const swapWarTeams = (sides: WarSides): WarSides => {
+  const yours = [...sides.theirs];
+  const theirs = [...sides.yours];
+  const playerId = yours.includes(sides.playerId) ? sides.playerId : (yours[0] ?? sides.playerId);
+  return repairWarSides({ ...sides, yours, theirs, playerId });
+};
+
+const takeClass = (
+  prefer: readonly HeroId[],
+  cls: DraftClass,
+  used: Set<HeroId>,
+  avoid: HeroId | undefined,
+): HeroId => {
+  const pool = HEROES_BY_CLASS[cls];
+  const fromPrefer = prefer.find((id) => draftClassOf(id) === cls && id !== avoid && !used.has(id));
+  if (fromPrefer) {
+    used.add(fromPrefer);
+    return fromPrefer;
+  }
+  const open = pool.find((id) => id !== avoid && !used.has(id));
+  const chosen = open ?? pool.find((id) => id !== avoid) ?? pool[0] ?? 'ninja';
+  used.add(chosen);
+  return chosen;
+};
+
+const repairPlay3v3 = (sides: WarSides): WarSides => {
+  let yours = [...sides.yours];
+  let theirs = [...sides.theirs];
+  let playerId = sides.playerId;
+  if (!yours.includes(playerId) && theirs.includes(playerId)) {
+    [yours, theirs] = [theirs, yours];
+  }
+  if (!yours.includes(playerId)) {
+    playerId = yours[0] ?? playerId;
+  }
+  const used = new Set<HeroId>([playerId]);
+  const playerClass = draftClassOf(playerId);
+  const yourNext = DRAFT_CLASSES.map((cls) => (cls === playerClass ? playerId : takeClass(yours, cls, used, playerId)));
+  const theirNext = DRAFT_CLASSES.map((cls) => {
+    if (cls === playerClass) {
+      const kept = theirs.find((id) => draftClassOf(id) === cls && id !== playerId && !used.has(id));
+      if (kept) {
+        used.add(kept);
+        return kept;
+      }
+      const locked = otherHeroOfClass(playerId);
+      if (!used.has(locked)) {
+        used.add(locked);
+        return locked;
+      }
+    }
+    return takeClass(theirs, cls, used, playerId);
+  });
+  return { playerId, yours: yourNext, theirs: theirNext, format: '3v3' };
+};
+
+const fillSix = (existing: readonly HeroId[], playerId?: HeroId): HeroId[] => {
+  const need = 2;
+  const counts: Record<DraftClass, number> = { frontliner: 0, support: 0, tank: 0 };
+  const next: HeroId[] = [];
+  const used = new Set<HeroId>();
+  const push = (id: HeroId): void => {
+    const cls = draftClassOf(id);
+    if (counts[cls] >= need || used.has(id)) {
+      return;
+    }
+    next.push(id);
+    used.add(id);
+    counts[cls] += 1;
+  };
+  if (playerId && existing.includes(playerId)) {
+    push(playerId);
+  }
+  for (const id of existing) {
+    push(id);
+  }
+  for (const cls of DRAFT_CLASSES) {
+    for (const id of HEROES_BY_CLASS[cls]) {
+      if (counts[cls] >= need) {
+        break;
+      }
+      push(id);
+    }
+  }
+  return next.slice(0, 6);
+};
+
+const repairPlay6v6 = (sides: WarSides): WarSides => {
+  let yours = [...sides.yours];
+  let theirs = [...sides.theirs];
+  let playerId = sides.playerId;
+  if (!yours.includes(playerId) && theirs.includes(playerId)) {
+    [yours, theirs] = [theirs, yours];
+  }
+  if (!yours.includes(playerId)) {
+    playerId = yours[0] ?? playerId;
+  }
+  yours = fillSix(yours, playerId);
+  theirs = fillSix(theirs);
+  if (!yours.includes(playerId)) {
+    yours[0] = playerId;
+    yours = fillSix(yours, playerId);
+  }
+  return { playerId, yours, theirs, format: '6v6' };
+};
+
+export const repairWarSides = (sides: WarSides): WarSides =>
+  sides.format === '6v6' ? repairPlay6v6(sides) : repairPlay3v3(sides);
+
+export const applyHeroPick = (
+  sides: WarSides,
+  side: 'yours' | 'theirs',
+  index: number,
+  nextId: HeroId,
+  playerSlot: boolean,
+): WarSides => {
+  const yours = [...sides.yours];
+  const theirs = [...sides.theirs];
+  const target = side === 'yours' ? yours : theirs;
+  const other = side === 'yours' ? theirs : yours;
+  const current = target[index];
+  if (!current || current === nextId) {
+    return sides;
+  }
+  const sameIdx = target.findIndex((id, i) => i !== index && id === nextId);
+  if (sameIdx >= 0) {
+    target[sameIdx] = current;
+    target[index] = nextId;
+  } else {
+    const otherIdx = other.indexOf(nextId);
+    if (otherIdx >= 0) {
+      other[otherIdx] = current;
+      target[index] = nextId;
+    } else if (draftClassOf(current) === draftClassOf(nextId)) {
+      target[index] = nextId;
+    } else {
+      const mate = target.findIndex((id, i) => i !== index && draftClassOf(id) === draftClassOf(nextId));
+      if (mate >= 0) {
+        target[index] = nextId;
+        target[mate] = current;
+      } else {
+        target[index] = nextId;
+      }
+    }
+  }
+  const playerId = playerSlot ? nextId : sides.playerId;
+  return repairWarSides({ ...sides, yours, theirs, playerId });
+};
+
 const pickClassPair = (cls: DraftClass, prefer: HeroId | undefined, rng: () => number, avoid: Set<HeroId>): HeroId[] => {
   const pool = [...HEROES_BY_CLASS[cls]];
   const first = prefer && pool.includes(prefer) ? prefer : pool[Math.floor(rng() * pool.length)] ?? pool[0];

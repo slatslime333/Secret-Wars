@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
+import type { TeamId } from '../config/hero';
 import type { HeroStatLine } from '../match/CombatStatsTracker';
 import type { TeamScore } from '../match/ScoreManager';
 import { formatWarScore } from '../config/score';
 import { OBJECTIVE_LABEL, type ObjectiveKind } from '../config/objective';
 import { formatMatchClock } from '../match/MatchManager';
 import { sortScoreboardLines } from '../match/scoreboard/sortLines';
+import { teamLevelOf } from '../match/scoreboard/teamLevel';
 import { ScrollPanel } from './layout/ScrollPanel';
 import { measureViewport } from './layout/viewport';
 import { adoptHud } from './layout/hudCamera';
@@ -14,7 +16,12 @@ export type ScoreboardHeader = {
   score: TeamScore;
   remainingMs: number;
   finished?: boolean;
+  playerTeam?: TeamId;
+  teamLevel?: number;
+  enemyLevel?: number;
 };
+
+export { teamLevelOf } from '../match/scoreboard/teamLevel';
 
 export { sortScoreboardLines } from '../match/scoreboard/sortLines';
 
@@ -134,8 +141,23 @@ export class ScoreboardPanel {
         strokeThickness: 4,
       })
       .setOrigin(0.5, 0);
-    this.root.add([title, left, right, clock]);
-    return 54;
+    const playerTeam = header.playerTeam ?? 'alpha';
+    const enemyTeam = playerTeam === 'alpha' ? 'bravo' : 'alpha';
+    const teamLv = header.teamLevel ?? teamLevelOf(this.lines, playerTeam);
+    const enemyLv = header.enemyLevel ?? teamLevelOf(this.lines, enemyTeam);
+    const levels = this.scene.add
+      .text(this.width / 2, 46, `TEAM LV ${teamLv}    VS    ENEMY LV ${enemyLv}`, {
+        fontFamily: FONTS.body,
+        fontSize: compact ? '10px' : '11px',
+        fontStyle: 'bold',
+        color: hex(COLORS.muted),
+        letterSpacing: compact ? 1 : 2,
+        stroke: hex(COLORS.ink),
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5, 0);
+    this.root.add([title, left, right, clock, levels]);
+    return 64;
   }
 
   private drawTeam(lines: HeroStatLine[], label: string, accent: number, startY: number, compact: boolean): number {

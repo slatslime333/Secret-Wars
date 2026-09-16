@@ -1,4 +1,4 @@
-import type { LaneId } from '../config/arena';
+import type { LaneId, MatchFormat } from '../config/arena';
 import { LANES } from '../config/arena';
 import type { TeamId } from '../config/hero';
 import { HERO_IDS, type HeroId } from '../heroes/roster';
@@ -17,10 +17,23 @@ export const DEFAULT_SIMULATOR_ROSTER: MatchRoster = {
   bravo: ['ninja', 'cole', 'death'],
 };
 
+export const DEFAULT_SIMULATOR_ROSTER_6V6: MatchRoster = {
+  alpha: ['ninja', 'cole', 'death', 'rope', 'shadow', 'witch'],
+  bravo: ['ninja', 'cole', 'death', 'rope', 'shadow', 'witch'],
+};
+
+export const defaultSimulatorRoster = (format: MatchFormat = '3v3'): MatchRoster =>
+  cloneRoster(format === '6v6' ? DEFAULT_SIMULATOR_ROSTER_6V6 : DEFAULT_SIMULATOR_ROSTER);
+
 export const cloneRoster = (roster: MatchRoster): MatchRoster => ({
   alpha: [...roster.alpha],
   bravo: [...roster.bravo],
 });
+
+export const rosterFitsFormat = (roster: MatchRoster, format: MatchFormat): boolean => {
+  const size = format === '6v6' ? 6 : 3;
+  return roster.alpha.length === size && roster.bravo.length === size;
+};
 
 export const heroForLane = (roster: TeamRoster, lane: LaneId, slot = 0): HeroId => {
   const base = LANES.indexOf(lane);
@@ -38,6 +51,48 @@ export const cycleRosterLane = (roster: MatchRoster, team: TeamId, lane: LaneId)
   const current = heroForLane(roster[team], lane);
   const index = HERO_IDS.indexOf(current);
   return setRosterLane(roster, team, lane, HERO_IDS[(index + 1) % HERO_IDS.length]);
+};
+
+export const swapSimulatorTeams = (roster: MatchRoster): MatchRoster => ({
+  alpha: [...roster.bravo],
+  bravo: [...roster.alpha],
+});
+
+export const simulatorSlotLabel = (index: number): string => {
+  const lane = LANES[index % LANES.length] ?? 'mid';
+  return index >= 3 ? `${lane.toUpperCase()} 2` : lane.toUpperCase();
+};
+
+/** Replace a slot. Same-team duplicates swap; other class picks swap with that class seat. */
+export const applySimulatorPick = (
+  roster: MatchRoster,
+  team: TeamId,
+  index: number,
+  nextId: HeroId,
+): MatchRoster => {
+  const next = cloneRoster(roster);
+  const current = next[team][index];
+  if (!current || current === nextId) {
+    return roster;
+  }
+  const same = next[team].findIndex((id, i) => i !== index && id === nextId);
+  if (same >= 0) {
+    next[team][same] = current;
+    next[team][index] = nextId;
+    return next;
+  }
+  if (draftClassOf(current) === draftClassOf(nextId)) {
+    next[team][index] = nextId;
+    return next;
+  }
+  const mate = next[team].findIndex((id, i) => i !== index && draftClassOf(id) === draftClassOf(nextId));
+  if (mate >= 0) {
+    next[team][index] = nextId;
+    next[team][mate] = current;
+    return next;
+  }
+  next[team][index] = nextId;
+  return next;
 };
 
 const pickFrom = (pool: readonly HeroId[], rng: () => number, used: Set<HeroId>): HeroId => {
@@ -61,15 +116,22 @@ const shuffle = <T>(items: readonly T[], rng: () => number): T[] => {
   return deck;
 };
 
-/** One support, one frontliner, one tank, shuffled onto the three lanes. */
-export const randomizeSimulatorRoster = (rng: () => number = Math.random): MatchRoster => {
+/** One of each class (3v3) or two of each class (6v6), shuffled onto the pads. */
+export const randomizeSimulatorRoster = (
+  rng: () => number = Math.random,
+  format: MatchFormat = '3v3',
+): MatchRoster => {
+  const need = format === '6v6' ? 2 : 1;
   const teamOf = (): TeamRoster => {
     const used = new Set<HeroId>();
-    const picks = DRAFT_CLASSES.map((cls) => {
-      const hero = pickFrom(HEROES_BY_CLASS[cls], rng, used);
-      used.add(hero);
-      return hero;
-    });
+    const picks: HeroId[] = [];
+    for (const cls of DRAFT_CLASSES) {
+      for (let n = 0; n < need; n += 1) {
+        const hero = pickFrom(HEROES_BY_CLASS[cls], rng, used);
+        used.add(hero);
+        picks.push(hero);
+      }
+    }
     return shuffle(picks, rng);
   };
   return { alpha: teamOf(), bravo: teamOf() };
