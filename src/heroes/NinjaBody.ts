@@ -12,6 +12,7 @@ import { drawNinja, facingFromAim, type CardinalFacing } from './drawNinja';
 import { drawColeElectricity } from './drawCole';
 import type { HeroDrawFn, HeroDrawOptions } from './heroDraw';
 import { applyWitchSprite, createWitchSprite, WITCH_FEET_Y, WITCH_WORLD_SCALE } from './witchSprite';
+import { applyColeSprite, createColeSprite, COLE_FEET_Y, COLE_WORLD_SCALE } from './coleSprite';
 import { playDeath, playWorld } from '../audio';
 import { drawRopeWrap } from './abilities/rope/ropeVisual';
 import { drawMagicVortex } from './abilities/witch/vortex';
@@ -65,6 +66,9 @@ export class NinjaBody {
   private facing: CardinalFacing = 'east';
   private readonly art: Phaser.GameObjects.Graphics;
   private readonly spriteArt?: Phaser.GameObjects.Sprite;
+  private spriteKind?: 'witch' | 'cole';
+  private spriteScale = 1;
+  private spriteFeetY = 16;
   private lastStaffRaise = 0;
   private witchMoving = false;
   private witchWalkPx = 0;
@@ -137,7 +141,18 @@ export class NinjaBody {
     this.art = scene.add.graphics();
     this.view.add(this.art);
     if (this.stats.id === 'witch') {
+      this.spriteKind = 'witch';
+      this.spriteScale = WITCH_WORLD_SCALE;
+      this.spriteFeetY = WITCH_FEET_Y;
       this.spriteArt = createWitchSprite(scene, 0, WITCH_FEET_Y, { rival: this.rival, team: this.team });
+      if (this.spriteArt) {
+        this.view.add(this.spriteArt);
+      }
+    } else if (this.stats.id === 'cole') {
+      this.spriteKind = 'cole';
+      this.spriteScale = COLE_WORLD_SCALE;
+      this.spriteFeetY = COLE_FEET_Y;
+      this.spriteArt = createColeSprite(scene, 0, COLE_FEET_Y, { rival: this.rival, team: this.team });
       if (this.spriteArt) {
         this.view.add(this.spriteArt);
       }
@@ -203,7 +218,7 @@ export class NinjaBody {
       const hop = Math.abs(Math.sin(now / 130)) * 3.4;
       this.art.setY(-hop);
     }
-    this.syncWitchSprite(now);
+    this.syncPixelSprite(now);
     const flashing = this.status.isFlashingHit(now);
     if (flashing !== this.lastDrawnFlash && this.now() >= this.attackingUntil) {
       this.lastDrawnFlash = flashing;
@@ -1173,15 +1188,15 @@ export class NinjaBody {
 
   private paintHero(options: HeroDrawOptions): void {
     this.lastStaffRaise = options.staffRaise ?? 0;
-    if (this.spriteArt) {
+    if (this.spriteArt && this.spriteKind) {
       this.art.clear();
       if (options.attacking) {
-        applyWitchSprite(this.spriteArt, {
+        this.applyPixelSprite({
           facing: options.facing,
           attacking: true,
           staffRaise: options.staffRaise,
+          charge: Math.max(options.armLiftLeft ?? 0, options.armLiftRight ?? 0, options.staffRaise ?? 0),
           hitFlash: options.hitFlash,
-          rival: this.rival,
         });
       }
       return;
@@ -1189,7 +1204,44 @@ export class NinjaBody {
     this.drawHero(this.art, options);
   }
 
-  private syncWitchSprite(now: number): void {
+  private applyPixelSprite(pose: {
+    facing: CardinalFacing;
+    attacking?: boolean;
+    staffRaise?: number;
+    charge?: number;
+    hitFlash?: boolean;
+    moving?: boolean;
+    walkFrame?: number;
+    now?: number;
+  }): void {
+    if (!this.spriteArt) {
+      return;
+    }
+    if (this.spriteKind === 'cole') {
+      applyColeSprite(this.spriteArt, {
+        facing: pose.facing,
+        attacking: pose.attacking,
+        charge: pose.charge ?? pose.staffRaise,
+        hitFlash: pose.hitFlash,
+        moving: pose.moving,
+        walkFrame: pose.walkFrame,
+        now: pose.now,
+      });
+      return;
+    }
+    applyWitchSprite(this.spriteArt, {
+      facing: pose.facing,
+      attacking: pose.attacking,
+      staffRaise: pose.staffRaise,
+      hitFlash: pose.hitFlash,
+      rival: this.rival,
+      moving: pose.moving,
+      walkFrame: pose.walkFrame,
+      now: pose.now,
+    });
+  }
+
+  private syncPixelSprite(now: number): void {
     const figure = this.spriteArt;
     if (!figure) {
       return;
@@ -1214,26 +1266,25 @@ export class NinjaBody {
       !this.witchMoving && now >= this.attackingUntil && this.present && !this.down
         ? Math.sin(now / 280) * 0.8
         : 0;
-    figure.setPosition(this.art.x, this.art.y + WITCH_FEET_Y + bob);
+    figure.setPosition(this.art.x, this.art.y + this.spriteFeetY + bob);
     figure.setRotation(this.art.rotation);
-    figure.setScale(this.art.scaleX * WITCH_WORLD_SCALE, this.art.scaleY * WITCH_WORLD_SCALE);
+    figure.setScale(this.art.scaleX * this.spriteScale, this.art.scaleY * this.spriteScale);
     if (now < this.attackingUntil) {
-      applyWitchSprite(figure, {
+      this.applyPixelSprite({
         facing: this.facing,
         attacking: true,
         staffRaise: this.lastStaffRaise,
+        charge: Math.max(this.armLiftLeft, this.armLiftRight, this.lastStaffRaise),
         hitFlash: this.status.isFlashingHit(now),
-        rival: this.rival,
         now,
       });
       return;
     }
-    applyWitchSprite(figure, {
+    this.applyPixelSprite({
       facing: this.facing,
       moving: this.witchMoving,
       walkFrame: Math.floor(this.witchWalkPx / 14) % 4,
       hitFlash: this.status.isFlashingHit(now),
-      rival: this.rival,
       now,
     });
   }
@@ -1256,7 +1307,15 @@ export class NinjaBody {
     if (!this.sparks) {
       return;
     }
-    drawColeElectricity(this.sparks, this.facing, this.now(), this.armLiftLeft, this.armLiftRight);
+    drawColeElectricity(this.sparks, {
+      facing: this.facing,
+      now: this.now(),
+      liftL: this.armLiftLeft,
+      liftR: this.armLiftRight,
+      attacking: this.now() < this.attackingUntil,
+      team: this.team,
+      pixel: this.spriteKind === 'cole',
+    });
   }
 }
 
