@@ -41,7 +41,7 @@ export const ENV_WORLD = {
   carDamage: 18,
   carKnockback: 260,
   carFlashCount: 3,
-  carFlashMs: 150,
+  carFlashMs: 220,
 
   crateRespawnMs: 28_000,
   crateOccupiedPad: 28,
@@ -52,7 +52,7 @@ export const ENV_WORLD = {
   maxExtraTrees: 12,
   maxExtraFences: 10,
   maxEnterable: 2,
-  maxFx: 16,
+  maxFx: 36,
   maxScars: 48,
   fxLifeMs: 520,
   stainLifeMs: 18_000,

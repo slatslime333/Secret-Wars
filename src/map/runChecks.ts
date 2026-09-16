@@ -23,7 +23,7 @@ export const runMapChecks = (): CheckResult[] => {
 
   results.push({
     name: 'trees taller than heroes',
-    ok: PROP.treeSmall.vh >= 80 && PROP.treeSmall.vh > HERO_VISUAL.height,
+    ok: PROP.treeSmall.vh >= 140 && PROP.treeSmall.vh > HERO_VISUAL.height,
     detail: `tree ${PROP.treeSmall.vh} heroArt ${HERO_VISUAL.height}`,
   });
 
@@ -70,7 +70,7 @@ export const runMapChecks = (): CheckResult[] => {
     const enterable = result.layout.obstacles.filter((obs) => obs.enterable);
     enterableMin = Math.min(enterableMin, enterable.length);
     enterableMax = Math.max(enterableMax, enterable.length);
-    if (enterable.some((obs) => !obs.interior || obs.visual.w < 160 || obs.visual.h < 140)) {
+    if (enterable.some((obs) => !obs.interior || obs.visual.w < 240 || obs.visual.h < 200)) {
       interiorsOk = false;
     }
     if (

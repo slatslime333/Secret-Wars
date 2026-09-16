@@ -737,34 +737,75 @@ export class EnvironmentWorld {
   }
 
   private burst(x: number, y: number, radius: number): void {
-    const puff = this.scene.add.graphics().setDepth(22).setPosition(x, y);
-    puff.fillStyle(ENV.fire, 0.95);
-    puff.fillCircle(0, 0, Math.max(18, radius * 0.28));
-    puff.fillStyle(ENV.fireCore, 0.95);
-    puff.fillCircle(0, 0, Math.max(8, radius * 0.12));
-    puff.fillStyle(0xf6f1de, 0.7);
-    puff.fillCircle(0, 0, 6);
+    const now = this.scene.time.now;
+    const scorch = this.scene.add.graphics().setDepth(3).setPosition(x, y);
+    scorch.fillStyle(0x1a1008, 0.72);
+    scorch.fillEllipse(0, 6, radius * 1.15, radius * 0.62);
+    scorch.fillStyle(ENV.burn, 0.55);
+    scorch.fillEllipse(-8, 4, radius * 0.7, radius * 0.4);
     this.scene.tweens.add({
-      targets: puff,
-      alpha: 0,
-      scaleX: 2.4,
-      scaleY: 2.4,
-      duration: 420,
-      onComplete: () => puff.destroy(),
+      targets: scorch,
+      alpha: 0.35,
+      duration: 900,
     });
-    this.fx.push({ view: puff, until: this.scene.time.now + 420 });
+    this.fx.push({ view: scorch, until: now + ENV_WORLD.stainLifeMs });
+    const ball = this.scene.add.graphics().setDepth(22).setPosition(x, y);
+    ball.fillStyle(ENV.fire, 0.96);
+    ball.fillCircle(0, 0, Math.max(22, radius * 0.42));
+    ball.fillStyle(ENV.fireCore, 0.98);
+    ball.fillCircle(-2, -4, Math.max(12, radius * 0.24));
+    ball.fillStyle(0xf6f1de, 0.95);
+    ball.fillCircle(0, -2, Math.max(6, radius * 0.1));
+    this.scene.tweens.add({
+      targets: ball,
+      alpha: 0,
+      scaleX: 2.8,
+      scaleY: 2.8,
+      duration: 560,
+      onComplete: () => ball.destroy(),
+    });
+    this.fx.push({ view: ball, until: now + 560 });
     const ring = this.scene.add.graphics().setDepth(21).setPosition(x, y);
-    ring.lineStyle(5, ENV.fire, 0.9);
-    ring.strokeCircle(0, 0, 10);
+    ring.lineStyle(7, ENV.fire, 0.95);
+    ring.strokeCircle(0, 0, 12);
+    ring.lineStyle(3, ENV.fireCore, 0.8);
+    ring.strokeCircle(0, 0, 18);
     this.scene.tweens.add({
       targets: ring,
       alpha: 0,
-      scaleX: Math.max(3, radius / 14),
-      scaleY: Math.max(3, radius / 14),
-      duration: 360,
+      scaleX: Math.max(4.2, radius / 12),
+      scaleY: Math.max(4.2, radius / 12),
+      duration: 480,
       onComplete: () => ring.destroy(),
     });
-    this.fx.push({ view: ring, until: this.scene.time.now + 360 });
+    this.fx.push({ view: ring, until: now + 480 });
+    for (let i = 0; i < 8; i += 1) {
+      const ang = (i / 8) * Math.PI * 2;
+      const spark = this.scene.add.rectangle(x, y, 7, 4, i % 2 ? ENV.fireCore : ENV.fire).setDepth(23);
+      this.scene.tweens.add({
+        targets: spark,
+        x: x + Math.cos(ang) * radius * 0.7,
+        y: y + Math.sin(ang) * radius * 0.55,
+        alpha: 0,
+        duration: 420,
+        onComplete: () => spark.destroy(),
+      });
+    }
+    const smoke = this.scene.add.graphics().setDepth(20).setPosition(x, y - 8);
+    smoke.fillStyle(ENV.inkSoft, 0.45);
+    smoke.fillCircle(-10, 0, 16);
+    smoke.fillCircle(8, -6, 14);
+    smoke.fillCircle(0, -12, 12);
+    this.scene.tweens.add({
+      targets: smoke,
+      alpha: 0,
+      y: smoke.y - 28,
+      scaleX: 1.6,
+      scaleY: 1.4,
+      duration: 640,
+      onComplete: () => smoke.destroy(),
+    });
+    this.fx.push({ view: smoke, until: now + 640 });
   }
 
   private onPavement(x: number, y: number): boolean {
@@ -781,23 +822,32 @@ export class EnvironmentWorld {
   private scarAt(x: number, y: number, cause: WorldStrikeEvent['kind']): void {
     const road = this.onPavement(x, y);
     if (cause === 'explosion') {
-      this.pushScar({ x, y, kind: road ? 'rubble' : 'burn', w: road ? 28 : 34, h: road ? 16 : 22 });
+      this.pushScar({ x, y, kind: road ? 'rubble' : 'burn', w: road ? 64 : 72, h: road ? 36 : 48 });
       return;
     }
     this.pushScar({
       x,
       y,
       kind: road ? 'crack' : 'burn',
-      w: road ? 22 : 18,
-      h: road ? 5 : 14,
+      w: road ? 48 : 36,
+      h: road ? 10 : 28,
     });
   }
 
   private scarBlast(x: number, y: number, radius: number): void {
-    this.scarAt(x, y, 'explosion');
-    this.pushScar({ x: x - 10, y: y + 6, kind: this.onPavement(x, y) ? 'crack' : 'hole', w: 26, h: 8 });
-    this.pushScar({ x: x + radius * 0.28, y: y - 8, kind: this.onPavement(x + 12, y) ? 'rubble' : 'burn', w: 20, h: 12 });
-    this.pushScar({ x: x - radius * 0.22, y: y + 10, kind: 'hole', w: 16, h: 12 });
+    const road = this.onPavement(x, y);
+    this.pushScar({ x, y, kind: road ? 'rubble' : 'burn', w: Math.max(56, radius * 0.7), h: Math.max(32, radius * 0.38) });
+    this.pushScar({ x: x - 18, y: y + 10, kind: 'crack', w: Math.max(54, radius * 0.65), h: 12 });
+    this.pushScar({ x: x + 16, y: y - 8, kind: 'crack', w: Math.max(40, radius * 0.45), h: 8 });
+    this.pushScar({
+      x: x + radius * 0.32,
+      y: y - 12,
+      kind: this.onPavement(x + 18, y - 8) ? 'rubble' : 'burn',
+      w: 44,
+      h: 28,
+    });
+    this.pushScar({ x: x - radius * 0.24, y: y + 14, kind: 'hole', w: 30, h: 22 });
+    this.pushScar({ x: x + 8, y: y + radius * 0.2, kind: this.onPavement(x, y + 16) ? 'rubble' : 'hole', w: 26, h: 18 });
   }
 
   private pushScar(scar: Scar): void {
@@ -812,32 +862,46 @@ export class EnvironmentWorld {
     const g = this.scarGfx;
     g.clear();
     for (const scar of this.scars) {
+      const left = scar.x - scar.w / 2;
+      const top = scar.y - scar.h / 2;
       if (scar.kind === 'crack') {
-        g.fillStyle(ENV.inkSoft, 0.85);
-        g.fillRect(scar.x - scar.w / 2, scar.y - scar.h / 2, scar.w, scar.h);
-        g.fillRect(scar.x - 4, scar.y, scar.w * 0.45, 3);
+        g.fillStyle(ENV.ink, 0.92);
+        g.fillRect(left, top, scar.w, scar.h);
+        g.fillRect(left + scar.w * 0.18, top + scar.h - 2, scar.w * 0.42, 4);
+        g.fillRect(left + scar.w * 0.55, top - 3, scar.w * 0.28, 5);
+        g.fillStyle(ENV.asphaltDark, 0.85);
+        g.fillRect(left + 2, top + 2, scar.w - 6, Math.max(2, scar.h - 4));
         continue;
       }
       if (scar.kind === 'rubble') {
-        g.fillStyle(ENV.asphaltDark, 0.95);
-        g.fillRect(scar.x - scar.w / 2, scar.y - scar.h / 2, scar.w, scar.h);
-        g.fillStyle(ENV.concreteDark, 0.9);
-        g.fillRect(scar.x - 6, scar.y - 3, 10, 7);
-        g.fillStyle(ENV.dirt, 0.7);
-        g.fillRect(scar.x + 2, scar.y, 8, 5);
+        g.fillStyle(ENV.ink, 0.9);
+        g.fillRect(left - 2, top - 2, scar.w + 4, scar.h + 4);
+        g.fillStyle(ENV.asphaltDark, 0.98);
+        g.fillRect(left, top, scar.w, scar.h);
+        g.fillStyle(ENV.concreteDark, 0.95);
+        g.fillRect(left + 8, top + 4, 16, 10);
+        g.fillRect(left + scar.w * 0.45, top + scar.h * 0.4, 14, 8);
+        g.fillStyle(ENV.dirt, 0.85);
+        g.fillRect(left + 4, top + scar.h - 10, 18, 7);
+        g.fillStyle(ENV.concreteLite, 0.7);
+        g.fillRect(left + scar.w - 16, top + 6, 10, 6);
         continue;
       }
       if (scar.kind === 'hole') {
-        g.fillStyle(ENV.ink, 0.9);
-        g.fillRect(scar.x - scar.w / 2, scar.y - scar.h / 2, scar.w, scar.h);
-        g.fillStyle(ENV.dirtDark, 0.95);
-        g.fillRect(scar.x - scar.w / 2 + 2, scar.y - scar.h / 2 + 2, scar.w - 4, scar.h - 4);
+        g.fillStyle(ENV.ink, 0.95);
+        g.fillEllipse(scar.x, scar.y, scar.w + 6, scar.h + 4);
+        g.fillStyle(0x0c0a08, 0.96);
+        g.fillEllipse(scar.x, scar.y + 1, scar.w - 4, scar.h - 4);
+        g.fillStyle(ENV.dirtDark, 0.9);
+        g.fillEllipse(scar.x - 2, scar.y + 2, scar.w * 0.45, scar.h * 0.4);
         continue;
       }
-      g.fillStyle(0x1a120c, 0.8);
-      g.fillRect(scar.x - scar.w / 2, scar.y - scar.h / 2, scar.w, scar.h);
-      g.fillStyle(0x2a1c14, 0.7);
-      g.fillRect(scar.x - scar.w / 3, scar.y - scar.h / 3, scar.w * 0.5, scar.h * 0.5);
+      g.fillStyle(0x120c08, 0.88);
+      g.fillEllipse(scar.x, scar.y, scar.w, scar.h);
+      g.fillStyle(0x1c120c, 0.8);
+      g.fillEllipse(scar.x - 6, scar.y - 4, scar.w * 0.62, scar.h * 0.55);
+      g.fillStyle(ENV.burn, 0.7);
+      g.fillRect(left + 8, top + 6, scar.w * 0.4, scar.h * 0.35);
     }
   }
 
