@@ -243,6 +243,7 @@ export class HitMarker {
     length: number,
     aiming: boolean,
     hexRange = Math.round(length * 0.625),
+    lineLength = length,
   ): void {
     const angle = Math.atan2(aimY, aimX);
     const g = this.graphics;
@@ -260,11 +261,11 @@ export class HitMarker {
     const nx = Math.cos(angle);
     const ny = Math.sin(angle);
     g.lineStyle(3.5, 0x4a1a6a, alpha * 0.22);
-    g.lineBetween(nx * 10, ny * 10, nx * length, ny * length);
+    g.lineBetween(nx * 10, ny * 10, nx * lineLength, ny * lineLength);
     g.lineStyle(aiming ? 1.8 : 1.4, 0xc090ff, alpha);
-    g.lineBetween(nx * 10, ny * 10, nx * length, ny * length);
+    g.lineBetween(nx * 10, ny * 10, nx * lineLength, ny * lineLength);
     g.fillStyle(0x4cff6a, alpha);
-    g.fillCircle(nx * length, ny * length, 3);
+    g.fillCircle(nx * lineLength, ny * lineLength, 3);
   }
 
   /** Rope Grab travel line. */
