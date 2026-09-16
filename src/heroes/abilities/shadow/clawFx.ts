@@ -5,40 +5,42 @@ export const spawnShadowHitBurst = (
   x: number,
   y: number,
 ): void => {
-  const count = 14;
+  const cloud = scene.add.circle(x, y, 16, 0x120814, 0.72).setDepth(21);
+  scene.tweens.add({
+    targets: cloud,
+    scale: 2.6,
+    alpha: 0,
+    duration: 280,
+    ease: 'Cubic.Out',
+    onComplete: () => cloud.destroy(),
+  });
+  const count = 12;
   for (let i = 0; i < count; i += 1) {
-    const ang = (Math.PI * 2 * i) / count + Math.random() * 0.35;
-    const dist = 18 + Math.random() * 28;
-    const puff = scene.add.ellipse(
-      x,
-      y,
-      7 + (i % 3) * 3,
-      9 + (i % 4) * 2,
-      i % 2 === 0 ? 0x140816 : 0x2a1440,
-    );
-    puff.setAlpha(0.92).setDepth(21);
+    const ang = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+    const dist = 22 + Math.random() * 26;
+    const puff = scene.add.circle(x, y, 6 + (i % 3) * 3, i % 2 === 0 ? 0x1a0c24 : 0x4a2870, 0.95);
+    puff.setDepth(21);
     scene.tweens.add({
       targets: puff,
       x: x + Math.cos(ang) * dist,
-      y: y + Math.sin(ang) * dist - 8,
+      y: y + Math.sin(ang) * dist - 10,
       alpha: 0,
-      scaleX: 1.8,
-      scaleY: 1.8,
-      duration: 220 + i * 12,
+      scale: 1.7,
+      duration: 240 + i * 10,
       ease: 'Cubic.Out',
       onComplete: () => puff.destroy(),
     });
   }
-  for (let i = 0; i < 8; i += 1) {
-    const speck = scene.add.rectangle(x, y, 3, 3, i % 2 === 0 ? 0x0a0610 : 0x4a2870).setDepth(22);
+  for (let i = 0; i < 10; i += 1) {
+    const speck = scene.add.rectangle(x, y, 4, 4, i % 2 === 0 ? 0x0a0610 : 0x6a48a0).setDepth(22);
     const ang = Math.random() * Math.PI * 2;
-    const dist = 10 + Math.random() * 22;
+    const dist = 14 + Math.random() * 24;
     scene.tweens.add({
       targets: speck,
       x: x + Math.cos(ang) * dist,
       y: y + Math.sin(ang) * dist,
       alpha: 0,
-      duration: 160 + i * 18,
+      duration: 180 + i * 16,
       ease: 'Quad.Out',
       onComplete: () => speck.destroy(),
     });
