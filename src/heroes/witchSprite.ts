@@ -22,6 +22,7 @@ export type WitchSpritePose = {
   hitFlash?: boolean;
   rival?: boolean;
   moving?: boolean;
+  walkFrame?: number;
   now?: number;
 };
 
@@ -51,7 +52,7 @@ export const witchFrameIndex = (pose: WitchSpritePose): number => {
     const raise = pose.staffRaise ?? 0;
     col = raise < 0.34 ? 5 : raise < 0.72 ? 6 : 7;
   } else if (pose.moving) {
-    col = 1 + (Math.floor((pose.now ?? 0) / 120) % 4);
+    col = 1 + ((pose.walkFrame ?? 0) % 4);
   }
   return row * WITCH_COLS + col;
 };

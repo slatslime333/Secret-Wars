@@ -66,6 +66,9 @@ export class NinjaBody {
   private readonly art: Phaser.GameObjects.Graphics;
   private readonly spriteArt?: Phaser.GameObjects.Sprite;
   private lastStaffRaise = 0;
+  private witchMoving = false;
+  private witchWalkPx = 0;
+  private witchWalkAt = 0;
   private readonly sparks?: Phaser.GameObjects.Graphics;
   private readonly drawHero: HeroDrawFn;
   private readonly scene: Phaser.Scene;
@@ -1172,13 +1175,15 @@ export class NinjaBody {
     this.lastStaffRaise = options.staffRaise ?? 0;
     if (this.spriteArt) {
       this.art.clear();
-      applyWitchSprite(this.spriteArt, {
-        facing: options.facing,
-        attacking: options.attacking,
-        staffRaise: options.staffRaise,
-        hitFlash: options.hitFlash,
-        rival: this.rival,
-      });
+      if (options.attacking) {
+        applyWitchSprite(this.spriteArt, {
+          facing: options.facing,
+          attacking: true,
+          staffRaise: options.staffRaise,
+          hitFlash: options.hitFlash,
+          rival: this.rival,
+        });
+      }
       return;
     }
     this.drawHero(this.art, options);
@@ -1189,9 +1194,25 @@ export class NinjaBody {
     if (!figure) {
       return;
     }
+    const speed = this.body?.speed ?? 0;
+    const wantMove = this.present && !this.down && (speed > 26 || this.steer.length() > 0.28);
+    if (this.witchMoving) {
+      this.witchMoving = this.present && !this.down && (speed > 10 || this.steer.length() > 0.12);
+    } else {
+      this.witchMoving = wantMove;
+    }
+    if (this.witchMoving) {
+      if (this.witchWalkAt > 0 && now > this.witchWalkAt) {
+        this.witchWalkPx += speed * ((now - this.witchWalkAt) / 1000);
+      }
+      this.witchWalkAt = now;
+    } else {
+      this.witchWalkPx = 0;
+      this.witchWalkAt = 0;
+    }
     const bob =
-      now >= this.attackingUntil && this.present && !this.down
-        ? Math.sin(now / 240) * 1.1
+      !this.witchMoving && now >= this.attackingUntil && this.present && !this.down
+        ? Math.sin(now / 280) * 0.8
         : 0;
     figure.setPosition(this.art.x, this.art.y + WITCH_FEET_Y + bob);
     figure.setRotation(this.art.rotation);
@@ -1207,11 +1228,10 @@ export class NinjaBody {
       });
       return;
     }
-    const speed = this.body?.speed ?? 0;
-    const moving = this.present && !this.down && (speed > 22 || this.steer.length() > 0.22);
     applyWitchSprite(figure, {
       facing: this.facing,
-      moving,
+      moving: this.witchMoving,
+      walkFrame: Math.floor(this.witchWalkPx / 14) % 4,
       hitFlash: this.status.isFlashingHit(now),
       rival: this.rival,
       now,
