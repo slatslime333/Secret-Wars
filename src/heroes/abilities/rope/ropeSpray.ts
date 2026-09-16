@@ -42,13 +42,17 @@ class RopeSprayAbility implements ActiveAbility {
     this.ring = ctx.scene.add.graphics().setDepth(8);
     spawnCombatCallout(ctx.scene, ctx.caster.x, ctx.caster.y, 'SPRAY', COLORS.yellow);
     playUltimateShake(ctx.scene);
-    ctx.caster.playCustomAttack(ctx.now, ROPE_SPRAY.durationMs, (frac) => ({
-      armLiftLeft: 0.45 + Math.sin(frac * Math.PI * 24) * 0.45,
-      armLiftRight: 0.45 + Math.cos(frac * Math.PI * 24) * 0.45,
-      jumpY: -6 - Math.abs(Math.sin(frac * Math.PI * 10)) * 8,
-      swayX: Math.sin(frac * Math.PI * 18) * 3,
-      ropeAction: 'shot' as const,
-    }));
+    ctx.caster.playCustomAttack(ctx.now, ROPE_SPRAY.durationMs, (frac) => {
+      const pulse = Math.floor(frac * (ROPE_SPRAY.durationMs / ROPE_SPRAY.intervalMs));
+      const left = pulse % 2 === 0;
+      return {
+        armLiftLeft: left ? 1 : 0.06,
+        armLiftRight: left ? 0.06 : 1,
+        jumpY: 0,
+        swayX: 0,
+        ropeAction: 'shot' as const,
+      };
+    });
   }
 
   update(ctx: AbilityContext): boolean {
@@ -57,7 +61,6 @@ class RopeSprayAbility implements ActiveAbility {
       return false;
     }
     this.drawBound(caster.x, caster.y);
-    caster.view.setRotation(((now % 380) / 380) * Math.PI * 2);
     if (now >= this.nextShotAt && now < this.endsAt) {
       this.nextShotAt = now + ROPE_SPRAY.intervalMs;
       this.firePulse(ctx);
