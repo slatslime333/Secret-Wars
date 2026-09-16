@@ -12,7 +12,7 @@ export const SHADOW_RATINGS = {
   health: 70,
   stamina: 50,
   staminaRegen: 66,
-  damage: 61,
+  damage: 64,
   defense: 39,
   speed: 39,
   attackSpeed: 39,

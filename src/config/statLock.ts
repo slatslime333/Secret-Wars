@@ -3,7 +3,7 @@ import { COLE } from './cole';
 import { DEATH } from './death';
 import { NINJA, NINJA_BASE_RANGE } from './ninja';
 import { SHADOW } from './shadow';
-import { gameplayFromRatings, abilityDamage } from './ratings';
+import { gameplayFromRatings } from './ratings';
 import { lightAttackStaminaCost } from './combat';
 import { NINJA_KICK, NINJA_TORNADO } from '../heroes/abilities/ninja/tunables';
 import { COLE_BALL, COLE_DISCHARGE, COLE_STORM } from '../heroes/abilities/cole/tunables';
@@ -121,8 +121,8 @@ export const assertFoundationalStatLock = (): void => {
     }
   });
 
-  if (SHADOW.ratings.damage !== 61) {
-    mismatches.push(`shadow damage rating ${SHADOW.ratings.damage} !== 61`);
+  if (SHADOW.ratings.damage !== 64) {
+    mismatches.push(`shadow damage rating ${SHADOW.ratings.damage} !== 64`);
   }
   if (SHADOW.ratings.defense !== 39) {
     mismatches.push(`shadow defense rating ${SHADOW.ratings.defense} !== 39`);
@@ -136,13 +136,11 @@ export const assertFoundationalStatLock = (): void => {
   if (SHADOW_CLAW.radius !== 186) {
     mismatches.push(`shadow claw radius ${SHADOW_CLAW.radius} !== 186`);
   }
-  const clawWas = abilityDamage(64);
-  if (Math.abs(SHADOW_CLAW.damage - clawWas * 2.7 * 0.9 * 0.77) > 0.001) {
-    mismatches.push(`shadow claw damage ${SHADOW_CLAW.damage} !== ${clawWas * 2.7 * 0.9 * 0.77}`);
+  if (SHADOW_CLAW.damage !== 50) {
+    mismatches.push(`shadow claw damage ${SHADOW_CLAW.damage} !== 50`);
   }
-  const dashWas = abilityDamage(44);
-  if (Math.abs(SHADOW_DASH.damage - dashWas * 1.35) > 0.001) {
-    mismatches.push(`shadow dash damage ${SHADOW_DASH.damage} !== ${dashWas * 1.35}`);
+  if (SHADOW_DASH.damage !== 26) {
+    mismatches.push(`shadow dash damage ${SHADOW_DASH.damage} !== 26`);
   }
   if (Math.abs(SHADOW_DASH.knockbackMul - 3.4 * 1.25) > 0.001) {
     mismatches.push(`shadow dash knockbackMul ${SHADOW_DASH.knockbackMul} !== ${3.4 * 1.25}`);
