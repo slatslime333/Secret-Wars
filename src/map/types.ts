@@ -90,6 +90,8 @@ export type MapObstacle = {
   enterable?: boolean;
   interior?: Rect;
   doors?: HouseDoor[];
+  /** Horizontal is default. Vertical swaps collision and rotates the sprite. */
+  facing?: 'h' | 'v';
 };
 
 export type DecorationKind =

@@ -4,10 +4,10 @@ import type { MapQuery } from '../../map/query';
 import type { Point } from '../../map/types';
 
 const SPAWN_PAD = MAP.spawnHeroRadius + 72;
-const MID_X = ARENA.width / 2;
 
 const scoreContest = (x: number, y: number): number => {
-  const dx = Math.abs(x - MID_X) / (ARENA.width * 0.5);
+  const midX = ARENA.width / 2;
+  const dx = Math.abs(x - midX) / (ARENA.width * 0.5);
   const edge = Math.min(y, ARENA.height - y) / (ARENA.height * 0.5);
   const midBias = 1 - Math.min(1, dx * 1.15);
   const vertical = Math.min(1, edge * 1.4);
@@ -59,11 +59,11 @@ export const pickObjectiveLocation = (query: MapQuery, clearRadius: number, rng:
       return point;
     }
   }
-  return { x: MID_X, y: ARENA.height / 2 };
+  return { x: ARENA.width / 2, y: ARENA.height / 2 };
 };
 
 export const pickCenterObjectiveLocation = (query: MapQuery, clearRadius: number): Point => {
-  const x = MID_X;
+  const x = ARENA.width / 2;
   const y = ARENA.height / 2;
   if (query.clearForObjective(x, y, clearRadius)) {
     return { x, y };
@@ -77,7 +77,7 @@ type ClusterHero = { alive: boolean; team: 'alpha' | 'bravo'; body: { x: number;
 export const pickFightCluster = (heroes: readonly ClusterHero[], rng: () => number): Point => {
   const live = heroes.filter((hero) => hero.alive);
   if (live.length === 0) {
-    return { x: MID_X, y: ARENA.height / 2 };
+    return { x: ARENA.width / 2, y: ARENA.height / 2 };
   }
   const engaged = live.filter((hero) =>
     live.some(
@@ -87,7 +87,7 @@ export const pickFightCluster = (heroes: readonly ClusterHero[], rng: () => numb
   const pool = engaged.length > 0 ? engaged : live;
   const seed = pool[Math.floor(rng() * pool.length)] ?? live[0];
   if (!seed) {
-    return { x: MID_X, y: ARENA.height / 2 };
+    return { x: ARENA.width / 2, y: ARENA.height / 2 };
   }
   let nearest: ClusterHero | undefined;
   let nearestD = 9999;

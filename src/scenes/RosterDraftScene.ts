@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { MatchFormat } from '../config/arena';
 import type { TeamId } from '../config/hero';
 import type { HeroId } from '../heroes/roster';
 import { presentHero } from '../heroes/heroPortrait';
@@ -12,6 +13,7 @@ import {
   placeDraft,
   randomizeDraft,
   rememberPlayerSpawn,
+  type PlayDraft,
 } from '../draft/rosterBuild';
 import { ActionButton } from '../ui/ActionButton';
 import { createBackdrop } from '../ui/createBackdrop';
@@ -24,13 +26,17 @@ import { fadeToScene } from './fadeToScene';
 export type RosterDraftData = {
   heroId?: HeroId;
   picks?: Record<DraftClass, HeroId>;
+  format?: MatchFormat;
+  sixDraft?: PlayDraft;
 };
 
-/** After fighter select: pick the other team or randomize a legal 3v3. */
+/** After fighter select: pick the other team or randomize a legal war. */
 export class RosterDraftScene extends Phaser.Scene {
   private leaving = false;
   private playerId: HeroId = 'ninja';
   private picks: Record<DraftClass, HeroId> = defaultEnemyPicks('ninja', Math.random);
+  private format: MatchFormat = '3v3';
+  private sixDraft?: PlayDraft;
 
   constructor() {
     super('RosterDraft');
@@ -38,6 +44,8 @@ export class RosterDraftScene extends Phaser.Scene {
 
   init(data: RosterDraftData = {}): void {
     this.playerId = data.heroId ?? 'ninja';
+    this.format = data.format ?? '3v3';
+    this.sixDraft = this.format === '6v6' ? data.sixDraft ?? randomizeDraft(this.playerId, Math.random, '6v6') : undefined;
     this.picks = data.picks ?? defaultEnemyPicks(this.playerId, Math.random);
     if (draftClassOf(this.playerId) && this.picks[draftClassOf(this.playerId)] === this.playerId) {
       this.picks = defaultEnemyPicks(this.playerId, Math.random);
@@ -67,7 +75,7 @@ export class RosterDraftScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
     this.add
-      .text(width / 2, inset.top + (frame.isPortrait ? 22 : 30), 'ONE SUPPORT  //  ONE FRONTLINER  //  ONE TANK', {
+      .text(width / 2, inset.top + (frame.isPortrait ? 22 : 30), this.format === '6v6' ? 'TWO SUPPORT  //  TWO FRONTLINER  //  TWO TANK' : 'ONE SUPPORT  //  ONE FRONTLINER  //  ONE TANK', {
         fontFamily: FONTS.body,
         fontSize: frame.isPortrait ? '10px' : '12px',
         fontStyle: 'bold',
@@ -82,12 +90,13 @@ export class RosterDraftScene extends Phaser.Scene {
     const bodyBottom = height - inset.bottom - footerH;
     const bodyH = Math.max(140, bodyBottom - bodyTop);
 
+    const panelH = this.format === '6v6' ? 328 : 250;
     if (stack) {
       const colW = Math.min(420, width - inset.left - inset.right);
       const scroll = new ScrollPanel(this, (width - colW) / 2, bodyTop, colW, bodyH);
       this.drawTeam('yours', colW / 2, 0, colW, scroll.content);
-      this.drawTeam('theirs', colW / 2, 268, colW, scroll.content);
-      scroll.setContentSize(colW, 536);
+      this.drawTeam('theirs', colW / 2, panelH + 18, colW, scroll.content);
+      scroll.setContentSize(colW, panelH * 2 + 18);
     } else {
       const colW = Math.min(400, width * 0.42);
       this.drawTeam('yours', width / 2 - colW / 2 - 14, bodyTop, colW);
@@ -99,7 +108,7 @@ export class RosterDraftScene extends Phaser.Scene {
       width: 140,
       height: 40,
       compact: true,
-      onPress: () => this.leaveTo('CharacterSelect', { selected: this.playerId }),
+      onPress: () => this.leaveTo('MatchFormat', { heroId: this.playerId }),
     });
     new ActionButton(this, width / 2, height - inset.bottom - 28, {
       label: 'RANDOMIZE',
@@ -117,13 +126,13 @@ export class RosterDraftScene extends Phaser.Scene {
       onPress: () => this.startMatch(false),
     });
 
-    this.input.keyboard?.on('keydown-ESC', () => this.leaveTo('CharacterSelect', { selected: this.playerId }));
+    this.input.keyboard?.on('keydown-ESC', () => this.leaveTo('MatchFormat', { heroId: this.playerId }));
     this.input.keyboard?.on('keydown-ENTER', () => this.startMatch(false));
     this.input.keyboard?.on('keydown-R', () => this.startMatch(true));
 
     const onResize = () => {
       if (!this.leaving) {
-        this.scene.restart({ heroId: this.playerId, picks: this.picks });
+        this.scene.restart({ heroId: this.playerId, picks: this.picks, format: this.format, sixDraft: this.sixDraft });
       }
     };
     this.scale.on(Phaser.Scale.Events.RESIZE, onResize);
@@ -133,6 +142,9 @@ export class RosterDraftScene extends Phaser.Scene {
   }
 
   private draft() {
+    if (this.format === '6v6') {
+      return this.sixDraft ?? randomizeDraft(this.playerId, Math.random, '6v6');
+    }
     return draftFromEnemyPicks(this.playerId, this.picks);
   }
 
@@ -146,7 +158,21 @@ export class RosterDraftScene extends Phaser.Scene {
     const theirs = side === 'theirs';
     const accent = theirs ? COLORS.redBright : COLORS.cyan;
     const draft = this.draft();
-    const panel = this.add.rectangle(x, y, width, 250, COLORS.ink, 0.82).setOrigin(0.5, 0);
+    const six = this.format === '6v6';
+    const heroes: HeroId[] = theirs
+      ? six
+        ? draft.enemies
+        : DRAFT_CLASSES.map((cls) => this.picks[cls])
+      : six
+        ? [this.playerId, ...draft.allies]
+        : DRAFT_CLASSES.map((cls) =>
+            cls === draftClassOf(this.playerId)
+              ? this.playerId
+              : (draft.allies.find((id) => draftClassOf(id) === cls) ?? this.playerId),
+          );
+    const rowH = six ? 44 : 66;
+    const panelH = 46 + heroes.length * rowH + 10;
+    const panel = this.add.rectangle(x, y, width, panelH, COLORS.ink, 0.82).setOrigin(0.5, 0);
     panel.setStrokeStyle(2, accent);
     const title = this.add
       .text(x, y + 10, theirs ? 'OTHER TEAM' : 'YOUR TEAM', {
@@ -157,23 +183,29 @@ export class RosterDraftScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
     const hint = this.add
-      .text(x, y + 28, theirs ? 'TAP A CLASS TO SWAP' : 'YOU  +  TWO ALLIES', {
-        fontFamily: FONTS.body,
-        fontSize: '10px',
-        fontStyle: 'bold',
-        color: hex(COLORS.muted),
-        letterSpacing: 1,
-      })
+      .text(
+        x,
+        y + 28,
+        six
+          ? theirs
+            ? 'TWO OF EACH CLASS'
+            : 'YOU  +  FIVE ALLIES'
+          : theirs
+            ? 'TAP A CLASS TO SWAP'
+            : 'YOU  +  TWO ALLIES',
+        {
+          fontFamily: FONTS.body,
+          fontSize: '10px',
+          fontStyle: 'bold',
+          color: hex(COLORS.muted),
+          letterSpacing: 1,
+        },
+      )
       .setOrigin(0.5, 0);
     parent?.add([panel, title, hint]);
 
-    DRAFT_CLASSES.forEach((cls, index) => {
-      const heroId = theirs
-        ? this.picks[cls]
-        : cls === draftClassOf(this.playerId)
-          ? this.playerId
-          : draft.allies.find((id) => draftClassOf(id) === cls) ?? this.playerId;
-      this.drawSlot(side, cls, heroId, x, y + 46 + index * 66, width - 24, parent);
+    heroes.forEach((heroId, index) => {
+      this.drawSlot(side, draftClassOf(heroId), heroId, x, y + 46 + index * rowH, width - 24, parent, six);
     });
   }
 
@@ -185,41 +217,49 @@ export class RosterDraftScene extends Phaser.Scene {
     y: number,
     width: number,
     parent?: Phaser.GameObjects.Container,
+    compact = false,
   ): void {
     const theirs = side === 'theirs';
-    const locked = !theirs || cls === draftClassOf(this.playerId);
+    const locked = compact || !theirs || cls === draftClassOf(this.playerId);
     const copy = heroSelectCopy(heroId);
     const accent = theirs ? COLORS.redBright : COLORS.cyan;
-    const row = this.add.rectangle(x, y, width, 58, COLORS.panel, 0.96).setOrigin(0.5, 0);
+    const rowH = compact ? 40 : 58;
+    const row = this.add.rectangle(x, y, width, rowH, COLORS.panel, 0.96).setOrigin(0.5, 0);
     row.setStrokeStyle(2, locked ? accent : COLORS.yellow);
     if (theirs && !locked) {
       row.setInteractive({ useHandCursor: true });
       row.on(Phaser.Input.Events.POINTER_UP, () => this.cycle(cls));
     }
 
-    const art = presentHero(this, x - width / 2 + 36, y + 12, heroId, {
+    const art = presentHero(this, x - width / 2 + 36, y + (compact ? 6 : 12), heroId, {
       facing: 'south',
       team: (theirs ? 'bravo' : 'alpha') as TeamId,
       rival: theirs,
-      scale: 0.78,
+      scale: compact ? 0.64 : 0.78,
     });
 
+    const you = !theirs && heroId === this.playerId;
     const name = this.add
-      .text(x - width / 2 + 68, y + 10, copy.name.toUpperCase(), {
+      .text(x - width / 2 + 68, y + (compact ? 4 : 10), copy.name.toUpperCase(), {
         fontFamily: FONTS.display,
-        fontSize: '14px',
+        fontSize: compact ? '12px' : '14px',
         color: hex(COLORS.paper),
         letterSpacing: 1,
       })
       .setOrigin(0, 0);
     const role = this.add
-      .text(x - width / 2 + 68, y + 30, DRAFT_CLASS_LABEL[cls] + (locked ? '  //  LOCKED' : '  //  TAP'), {
-        fontFamily: FONTS.body,
-        fontSize: '11px',
-        fontStyle: 'bold',
-        color: hex(locked ? COLORS.muted : COLORS.yellow),
-        letterSpacing: 1,
-      })
+      .text(
+        x - width / 2 + 68,
+        y + (compact ? 20 : 30),
+        DRAFT_CLASS_LABEL[cls] + (you ? '  //  YOU' : compact ? '' : locked ? '  //  LOCKED' : '  //  TAP'),
+        {
+          fontFamily: FONTS.body,
+          fontSize: compact ? '10px' : '11px',
+          fontStyle: 'bold',
+          color: hex(you ? COLORS.cyan : locked ? COLORS.muted : COLORS.yellow),
+          letterSpacing: 1,
+        },
+      )
       .setOrigin(0, 0);
     parent?.add([row, art, name, role]);
   }
@@ -231,11 +271,14 @@ export class RosterDraftScene extends Phaser.Scene {
     this.picks = cycleEnemyPick(this.playerId, this.picks, cls);
     audio.unlock();
     playHeroSelect(this.picks[cls]);
-    this.scene.restart({ heroId: this.playerId, picks: this.picks });
+    this.scene.restart({ heroId: this.playerId, picks: this.picks, format: this.format, sixDraft: this.sixDraft });
   }
 
   private startMatch(randomize: boolean): void {
-    const draft = randomize ? randomizeDraft(this.playerId) : this.draft();
+    if (this.format === '6v6' && randomize) {
+      this.sixDraft = randomizeDraft(this.playerId, Math.random, '6v6');
+    }
+    const draft = this.format === '6v6' ? this.draft() : randomize ? randomizeDraft(this.playerId) : this.draft();
     const spawn = pickPlayerSpawn();
     rememberPlayerSpawn(spawn);
     const placed = placeDraft(draft, spawn);
@@ -245,6 +288,7 @@ export class RosterDraftScene extends Phaser.Scene {
       roster: placed.roster,
       playerTeam: placed.playerTeam,
       playerLane: placed.playerLane,
+      format: this.format,
     });
   }
 

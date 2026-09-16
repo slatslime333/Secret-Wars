@@ -20,6 +20,7 @@ export type HeroRuntimeOptions = {
   team: TeamId;
   lane: LaneId;
   isPlayer: boolean;
+  slot?: number;
   x?: number;
   y?: number;
 };
@@ -46,7 +47,7 @@ export class HeroRuntime {
 
   constructor(private readonly scene: Phaser.Scene, options: HeroRuntimeOptions) {
     const playable = PLAYABLE_HEROES[options.heroId];
-    const pad = laneSpawn(options.team, options.lane);
+    const pad = laneSpawn(options.team, options.lane, options.slot ?? 0);
     const inward = options.isPlayer ? 0 : MATCH.enemyInwardOffset;
     const x = options.x ?? pad.x + pad.facingX * inward;
     const y = options.y ?? pad.y;

@@ -9,6 +9,7 @@ import {
   plantLampsAlong,
   plantTreesBeside,
   plantFencesBeside,
+  plantFencesAlong,
   stampCluster,
   templateById,
   type ClusterId,
@@ -341,11 +342,13 @@ const markEnterableBuildings = (
     openHome(obs, obstacles);
     opened += 1;
   }
+  const sx = ARENA.width / 2584;
+  const sy = ARENA.height / 1504;
   const sites = [
-    { x: 640, y: 500 },
-    { x: 1944, y: 980 },
-    { x: 640, y: 980 },
-    { x: 1944, y: 500 },
+    { x: Math.round(640 * sx), y: Math.round(500 * sy) },
+    { x: Math.round(1944 * sx), y: Math.round(980 * sy) },
+    { x: Math.round(640 * sx), y: Math.round(980 * sy) },
+    { x: Math.round(1944 * sx), y: Math.round(500 * sy) },
   ];
   for (const site of sites) {
     if (opened >= ENV_WORLD.maxEnterable) {
@@ -437,17 +440,21 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
     }
   }
 
+  const sx = ARENA.width / 2584;
+  const sy = ARENA.height / 1504;
   const nearMid: Array<{ id: ClusterId; x: number; y: number; mirror: boolean }> = [
-    { id: 'collapsed-building', x: 700, y: 430, mirror: false },
-    { id: 'wrecked-car', x: 920, y: 508, mirror: false },
-    { id: 'overrun-barricade', x: 920, y: 996, mirror: false },
-    { id: 'abandoned-convoy', x: 1664, y: 508, mirror: true },
-    { id: 'supply-dump', x: 1664, y: 996, mirror: true },
-    { id: 'rubble-slide', x: 820, y: 628, mirror: false },
-    { id: 'defensive-nest', x: 1764, y: 876, mirror: true },
-    { id: 'overgrown-ruin', x: 1880, y: 1034, mirror: true },
-    { id: 'corner-shop', x: 640, y: 500, mirror: false },
-    { id: 'corner-shop', x: 1940, y: 980, mirror: true },
+    { id: 'collapsed-building', x: Math.round(700 * sx), y: Math.round(430 * sy), mirror: false },
+    { id: 'wrecked-car', x: Math.round(920 * sx), y: Math.round(508 * sy), mirror: false },
+    { id: 'parked-cars', x: Math.round(1180 * sx), y: Math.round(430 * sy), mirror: false },
+    { id: 'overrun-barricade', x: Math.round(920 * sx), y: Math.round(996 * sy), mirror: false },
+    { id: 'abandoned-convoy', x: Math.round(1664 * sx), y: Math.round(508 * sy), mirror: true },
+    { id: 'supply-dump', x: Math.round(1664 * sx), y: Math.round(996 * sy), mirror: true },
+    { id: 'rubble-slide', x: Math.round(820 * sx), y: Math.round(628 * sy), mirror: false },
+    { id: 'defensive-nest', x: Math.round(1764 * sx), y: Math.round(876 * sy), mirror: true },
+    { id: 'overgrown-ruin', x: Math.round(1880 * sx), y: Math.round(1034 * sy), mirror: true },
+    { id: 'corner-shop', x: Math.round(640 * sx), y: Math.round(500 * sy), mirror: false },
+    { id: 'corner-shop', x: Math.round(1940 * sx), y: Math.round(980 * sy), mirror: true },
+    { id: 'parked-cars', x: Math.round(1480 * sx), y: Math.round(1000 * sy), mirror: true },
   ];
   for (const [index, site] of nearMid.entries()) {
     const stamp = stampCluster(templateById(site.id), site.x, site.y, site.mirror, reserved, obstacles, `mid-${index}`);
@@ -464,6 +471,7 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
   obstacles.push(...plantLampsAlong(roads, reserved, obstacles));
   obstacles.push(...plantTreesBeside(obstacles, reserved, obstacles));
   obstacles.push(...plantFencesBeside(obstacles, reserved, obstacles));
+  obstacles.push(...plantFencesAlong(roads, reserved, obstacles));
   decorations.push(...scatterFieldDetails(new SeededRNG(seed ^ 0x7e2a), obstacles));
 
   const layout: MapLayout = {

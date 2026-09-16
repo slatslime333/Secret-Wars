@@ -90,6 +90,10 @@ export const resetDemonForm = (body: NinjaBody): void => {
   body.view.setScale(1);
 };
 
-/** Lights convert into rage. Abilities do not call this. */
+/** Lights convert into rage. */
 export const demonRageFromLightDamage = (damage: number): number =>
   (Math.max(0, damage) * DEMON_RAGE.lightDamageToRage) / ABILITY_DAMAGE_CURVE.at50;
+
+/** Abilities convert a smaller share so lights stay the main fill. */
+export const demonRageFromAbilityDamage = (damage: number): number =>
+  (Math.max(0, damage) * DEMON_RAGE.abilityDamageToRage) / ABILITY_DAMAGE_CURVE.at50;

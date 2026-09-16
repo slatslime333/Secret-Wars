@@ -36,3 +36,6 @@ export const chunkSize = () => {
     h: playable.h / MAP.grid.rows,
   };
 };
+
+/** 6v6 stretches the same grid; allow more props without crowding 3v3. */
+export const maxObstaclesOf = (): number => Math.round(MAP.maxObstacles * (ARENA.width / 2584));

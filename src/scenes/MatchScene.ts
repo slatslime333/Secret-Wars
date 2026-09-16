@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ARENA, LANES, type LaneId } from '../config/arena';
+import { ARENA, LANES, applyMatchFormat, matchFormatOf, type LaneId, type MatchFormat } from '../config/arena';
 import { MATCH, xpForMinion } from '../config/match';
 import { DEV_CHEATS, resetDevCheats } from '../debug/devCheats';
 import { MinionWorld } from '../minions/MinionWorld';
@@ -80,6 +80,7 @@ export type MatchSceneData = {
   draft?: PlayDraft;
   playerTeam?: TeamId;
   playerLane?: LaneId;
+  format?: MatchFormat;
 };
 
 /** Draft match. Allies fill the other two heroes; non-players use HeroPilot. */
@@ -136,6 +137,7 @@ export class MatchScene extends Phaser.Scene {
 
   init(data: MatchSceneData = {}): void {
     this.simulator = Boolean(data.simulator);
+    applyMatchFormat(data.simulator ? '3v3' : data.format ?? data.draft?.format ?? '3v3');
     this.startHeroId = data.heroId ?? getSelectedHeroId();
     this.playDraft = data.draft;
     if (this.simulator) {
@@ -166,6 +168,7 @@ export class MatchScene extends Phaser.Scene {
     ensureAbilityIcons(this);
     installHudCamera(this);
     setSelectedHeroId(this.startHeroId);
+    this.tactics = new TacticalField();
     const hero = PLAYABLE_HEROES[this.startHeroId];
     const battlefield = Battlefield.install(this, { seed: resolvePlayTestSeed(), log: true });
     this.battlefield = battlefield;
@@ -337,6 +340,7 @@ export class MatchScene extends Phaser.Scene {
       this.pauseOverlay?.destroy();
       this.feedback?.destroy();
       this.battlefield?.destroy();
+      applyMatchFormat('3v3');
       for (const unit of this.heroes) {
         unit.destroy();
       }
@@ -679,27 +683,34 @@ export class MatchScene extends Phaser.Scene {
 
   private spawnDraft(): void {
     const foe: TeamId = this.playerTeam === 'alpha' ? 'bravo' : 'alpha';
-    for (const lane of LANES) {
-      const isPlayer = lane === this.playerLane;
-      const unit = this.spawnHero({
-        instanceId: `${this.playerTeam}-${lane}${isPlayer ? '-player' : ''}`,
-        heroId: this.roster[this.playerTeam][LANES.indexOf(lane)],
-        team: this.playerTeam,
-        lane,
-        isPlayer,
-      });
-      if (isPlayer) {
-        this.player = unit;
+    const slots = matchFormatOf() === '6v6' ? [0, 1] : [0];
+    for (const slot of slots) {
+      for (const lane of LANES) {
+        const isPlayer = lane === this.playerLane && slot === 0;
+        const unit = this.spawnHero({
+          instanceId: `${this.playerTeam}-${lane}-${slot}${isPlayer ? '-player' : ''}`,
+          heroId: this.roster[this.playerTeam][slot === 0 ? LANES.indexOf(lane) : 3 + LANES.indexOf(lane)],
+          team: this.playerTeam,
+          lane,
+          slot,
+          isPlayer,
+        });
+        if (isPlayer) {
+          this.player = unit;
+        }
       }
     }
-    for (const lane of LANES) {
-      this.spawnHero({
-        instanceId: `${foe}-${lane}`,
-        heroId: this.roster[foe][LANES.indexOf(lane)],
-        team: foe,
-        lane,
-        isPlayer: false,
-      });
+    for (const slot of slots) {
+      for (const lane of LANES) {
+        this.spawnHero({
+          instanceId: `${foe}-${lane}-${slot}`,
+          heroId: this.roster[foe][slot === 0 ? LANES.indexOf(lane) : 3 + LANES.indexOf(lane)],
+          team: foe,
+          lane,
+          slot,
+          isPlayer: false,
+        });
+      }
     }
   }
 
@@ -725,6 +736,7 @@ export class MatchScene extends Phaser.Scene {
     heroId: HeroId;
     team: TeamId;
     lane: LaneId;
+    slot?: number;
     isPlayer: boolean;
   }): HeroRuntime {
     const unit = new HeroRuntime(this, options);

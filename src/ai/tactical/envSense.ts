@@ -272,12 +272,25 @@ const coverBias = (
   write: Write,
 ): number => {
   const cover = env.cover;
-  if (!cover || inFight || kit?.heroId !== 'cole') {
+  if (!cover) {
     return count;
   }
   const gap = dist(situation.self.x, situation.self.y, cover.x, cover.y);
-  if (gap > 110 || gap < 28) {
+  if (gap > 130 || gap < 22) {
     return count;
   }
-  return write(out, count, 'reposition', 8 * jitter, 'use cover');
+  const wantsCover =
+    inFight ||
+    situation.self.recentlyHit ||
+    Boolean(situation.projectile?.willHit) ||
+    kit?.heroId === 'cole' ||
+    kit?.heroId === 'mender' ||
+    kit?.heroId === 'witch';
+  if (!wantsCover || situation.personality.caution < 0.18) {
+    return count;
+  }
+  if (!inFight && kit?.heroId !== 'cole' && kit?.heroId !== 'mender' && kit?.heroId !== 'witch') {
+    return count;
+  }
+  return write(out, count, 'reposition', (inFight ? 11 : 8) * jitter, 'use cover');
 };

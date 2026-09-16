@@ -91,6 +91,7 @@ const copyObstacle = (obs: MapObstacle): MapObstacle => ({
   keepout: { ...obs.keepout },
   interior: obs.interior ? { ...obs.interior } : undefined,
   doors: obs.doors?.map((door) => ({ ...door })),
+  facing: obs.facing,
 });
 
 const impulseFor = (event: WorldStrikeEvent): number => {

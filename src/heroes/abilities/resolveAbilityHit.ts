@@ -12,6 +12,7 @@ import type { DamageSourceKind } from '../../combat/damageEvents';
 import { playAbilityConnect } from '../../audio';
 import { NinjaBody } from '../NinjaBody';
 import { emitWorldStrike } from '../../match/objectives/worldStrike';
+import { grantDemonRage, demonRageFromAbilityDamage, isDemon } from './demon/form';
 
 export type AbilityHitProfile = {
   rawDamage: number;
@@ -128,6 +129,9 @@ export const resolveAbilityHit = (
     attacker.status.applyHitStop(now, profile.hitStopMs ?? (profile.heavy ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs));
   }
   playAbilityConnect('hit', attacker, defender, { heavy: profile.heavy, sourceKind: profile.sourceKind });
+  if (isDemon(attacker) && (profile.sourceKind ?? 'ability') === 'ability') {
+    grantDemonRage(attacker, demonRageFromAbilityDamage(profile.rawDamage), defender);
+  }
   emitWorldStrike({
     attacker,
     now,

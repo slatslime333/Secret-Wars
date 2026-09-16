@@ -1,5 +1,6 @@
 import { CRATE } from '../config/crate';
 import { ENV_WORLD } from '../config/environment';
+import { ARENA } from '../config/arena';
 import { decorateObstacle } from './envProps';
 import { PROP, visualForProp, type PropSpec } from './scale';
 import { inflate, rectsOverlap } from './geometry';
@@ -12,6 +13,7 @@ export type ClusterId =
   | 'overrun-barricade'
   | 'supply-dump'
   | 'wrecked-car'
+  | 'parked-cars'
   | 'overgrown-ruin'
   | 'defensive-nest'
   | 'rubble-slide'
@@ -62,7 +64,7 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
       { kind: 'building', variant: 'house', ox: -18, oy: -8, spec: PROP.building, hierarchy: 'landmark' },
       { kind: 'rubble', variant: 'pile', ox: 52, oy: 28, spec: PROP.rubble, hierarchy: 'cover' },
       { kind: 'crate', variant: 'single', ox: 58, oy: -18, spec: PROP.crate, hierarchy: 'cover', destructible: true },
-      { kind: 'crate', variant: 'stack', ox: 78, oy: 8, spec: PROP.crateStack, hierarchy: 'cover', destructible: true },
+      { kind: 'crate', variant: 'single', ox: 78, oy: 8, spec: PROP.crate, hierarchy: 'cover', destructible: true },
     ],
     [
       { kind: 'debris', ox: 36, oy: 48, variant: 1 },
@@ -78,7 +80,7 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
     190,
     120,
     [
-      { kind: 'vehicle', variant: 'truck', ox: -10, oy: 0, spec: PROP.truck, hierarchy: 'landmark' },
+      { kind: 'vehicle', variant: 'car', ox: -10, oy: 0, spec: PROP.car, hierarchy: 'landmark' },
       { kind: 'rubble', variant: 'chunk', ox: 70, oy: 18, spec: PROP.rubbleSmall, hierarchy: 'cover' },
       { kind: 'crate', variant: 'single', ox: 88, oy: 10, spec: PROP.crate, hierarchy: 'cover', destructible: true },
     ],
@@ -114,7 +116,7 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
     120,
     [
       { kind: 'fence', variant: 'wood', ox: -36, oy: -8, spec: PROP.fence, hierarchy: 'cover' },
-      { kind: 'crate', variant: 'stack', ox: 8, oy: -6, spec: PROP.crateStack, hierarchy: 'cover', destructible: true },
+      { kind: 'crate', variant: 'single', ox: 8, oy: -6, spec: PROP.crate, hierarchy: 'cover', destructible: true },
       { kind: 'crate', variant: 'single', ox: 36, oy: 10, spec: PROP.crate, hierarchy: 'cover', destructible: true },
       { kind: 'crate', variant: 'single', ox: 18, oy: 28, spec: PROP.crate, hierarchy: 'cover', destructible: true },
       { kind: 'rubble', variant: 'chunk', ox: -20, oy: 28, spec: PROP.rubbleSmall, hierarchy: 'cover' },
@@ -138,6 +140,21 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
       { kind: 'debris', ox: 20, oy: 28, variant: 1 },
       { kind: 'fire', ox: -4, oy: 6, variant: 1 },
       { kind: 'sign', ox: 60, oy: -28, variant: 2 },
+    ],
+  ),
+  t(
+    'parked-cars',
+    'Cars left in the street.',
+    160,
+    110,
+    [
+      { kind: 'vehicle', variant: 'car', ox: -28, oy: -6, spec: PROP.car, hierarchy: 'landmark' },
+      { kind: 'vehicle', variant: 'car', ox: 36, oy: 12, spec: PROP.car, hierarchy: 'landmark' },
+      { kind: 'barricade', variant: 'wood', ox: 70, oy: -18, spec: PROP.barricade, hierarchy: 'cover' },
+    ],
+    [
+      { kind: 'debris', ox: 8, oy: 28, variant: 1 },
+      { kind: 'dirt', ox: -20, oy: 20, variant: 0 },
     ],
   ),
   t(
@@ -167,7 +184,7 @@ export const CLUSTER_LIBRARY: readonly ClusterTemplate[] = [
     [
       { kind: 'sandbag', variant: 'corner', ox: -24, oy: 0, spec: PROP.sandbag, hierarchy: 'cover' },
       { kind: 'sandbag', variant: 'line', ox: 28, oy: 12, spec: PROP.sandbag, hierarchy: 'cover' },
-      { kind: 'crate', variant: 'stack', ox: 8, oy: -16, spec: PROP.crateStack, hierarchy: 'cover', destructible: true },
+      { kind: 'crate', variant: 'single', ox: 8, oy: -16, spec: PROP.crate, hierarchy: 'cover', destructible: true },
       { kind: 'fence', variant: 'wire', ox: -8, oy: 32, spec: PROP.fence, hierarchy: 'cover' },
     ],
     [
@@ -234,6 +251,8 @@ export const templateById = (id: ClusterId): ClusterTemplate => {
   return found;
 };
 
+const densityCap = (n: number): number => Math.max(n, Math.round(n * (ARENA.width / 2584)));
+
 const keepoutFor = (kind: ObstacleKind, collision: Rect): Rect => {
   if (kind === 'building' || kind === 'vehicle') {
     return inflate(collision, 16);
@@ -270,7 +289,17 @@ export const stampCluster = (
     const ox = mirror ? -local.ox : local.ox;
     const x = cx + ox;
     const y = cy + local.oy;
-    const collision = { x: x - local.spec.w / 2, y: y - local.spec.h / 2, w: local.spec.w, h: local.spec.h };
+    const vertical =
+      (local.kind === 'vehicle' || local.kind === 'barricade' || local.kind === 'sandbag') &&
+      ((idBase.length + n + local.ox + local.oy) & 3) === 1;
+    const cw = vertical ? local.spec.h : local.spec.w;
+    const ch = vertical ? local.spec.w : local.spec.h;
+    const vw = vertical ? local.spec.vh : local.spec.vw;
+    const vh = vertical ? local.spec.vw : local.spec.vh;
+    const collision = { x: x - cw / 2, y: y - ch / 2, w: cw, h: ch };
+    const visual = vertical
+      ? { x: x - vw / 2, y: y - vh / 2 - local.spec.lift, w: vw, h: vh }
+      : visualForProp(local.spec, x, y);
     if (reservedBlocks(collision, reserved, 2)) {
       continue;
     }
@@ -288,10 +317,10 @@ export const stampCluster = (
         x,
         y,
         collision,
-        visual: visualForProp(local.spec, x, y),
+        visual,
         keepout:
           local.hierarchy === 'landmark'
-            ? inflate(visualForProp(local.spec, x, y), 8)
+            ? inflate(visual, 8)
             : keepoutFor(local.kind, collision),
         blocksMovement: true,
         blocksProjectiles: local.kind !== 'fence' && local.kind !== 'lamp',
@@ -299,6 +328,7 @@ export const stampCluster = (
         destructible: Boolean(local.destructible),
         hierarchy: local.hierarchy,
         hp: local.kind === 'crate' ? CRATE.maxHealth : undefined,
+        facing: vertical ? 'v' : 'h',
       }),
     );
     n += 1;
@@ -349,7 +379,7 @@ export const plantCratesBeside = (
   const anchors = hosts.filter((obs) => obs.kind === 'building' || obs.kind === 'vehicle' || obs.kind === 'barricade');
   let n = 0;
   for (const host of anchors) {
-    if (existing.filter((obs) => obs.kind === 'crate').length + extras.length >= ENV_WORLD.maxCrates) {
+    if (existing.filter((obs) => obs.kind === 'crate').length + extras.length >= densityCap(ENV_WORLD.maxCrates)) {
       break;
     }
     const already = [...existing, ...extras].filter(
@@ -420,10 +450,10 @@ export const plantBarrelsBeside = (
   );
   let n = 0;
   for (const host of anchors) {
-    if (existing.filter((obs) => obs.kind === 'barrel').length + extras.length >= ENV_WORLD.maxBarrels) {
+    if (existing.filter((obs) => obs.kind === 'barrel').length + extras.length >= densityCap(ENV_WORLD.maxBarrels)) {
       break;
     }
-    if (Math.abs(host.y - 752) < 70) {
+    if (Math.abs(host.y - ARENA.laneY.mid) < 70) {
       continue;
     }
     const already = [...existing, ...extras].filter(
@@ -526,11 +556,11 @@ export const plantLampsAlong = (
     const step = 220;
     if (patch.heading === 'h') {
       for (let x = patch.x + 48; x < patch.x + patch.w - 36; x += step) {
-        if (existing.filter((obs) => obs.kind === 'lamp').length + extras.length >= ENV_WORLD.maxLamps) {
+        if (existing.filter((obs) => obs.kind === 'lamp').length + extras.length >= densityCap(ENV_WORLD.maxLamps)) {
           return extras;
         }
         const y = patch.y + patch.h / 2;
-        if (Math.abs(y - 752) < 36) {
+        if (Math.abs(y - ARENA.laneY.mid) < 36) {
           continue;
         }
         const short = n % 3 === 0;
@@ -551,7 +581,7 @@ export const plantLampsAlong = (
       }
     } else {
       for (let y = patch.y + 48; y < patch.y + patch.h - 36; y += step) {
-        if (existing.filter((obs) => obs.kind === 'lamp').length + extras.length >= ENV_WORLD.maxLamps) {
+        if (existing.filter((obs) => obs.kind === 'lamp').length + extras.length >= densityCap(ENV_WORLD.maxLamps)) {
           return extras;
         }
         const x = patch.x + patch.w / 2;
@@ -579,7 +609,7 @@ export const plantTreesBeside = (
   );
   let n = 0;
   for (const host of anchors) {
-    if (n >= ENV_WORLD.maxExtraTrees) {
+    if (n >= densityCap(ENV_WORLD.maxExtraTrees)) {
       break;
     }
     const already = [...existing, ...extras].filter(
@@ -594,7 +624,7 @@ export const plantTreesBeside = (
       { x: box.x + box.w + PROP.treeSmall.w / 2 + 10, y: box.y + 12 },
     ];
     for (const slot of slots) {
-      if (Math.abs(slot.y - 752) < 50) {
+      if (Math.abs(slot.y - ARENA.laneY.mid) < 50) {
         continue;
       }
       const spec = n % 3 === 0 ? PROP.treeMedium : PROP.treeSmall;
@@ -621,33 +651,47 @@ export const plantFencesBeside = (
   const anchors = hosts.filter((obs) => obs.kind === 'building' || obs.kind === 'barricade' || obs.kind === 'sandbag');
   let n = 0;
   for (const host of anchors) {
-    if (n >= ENV_WORLD.maxExtraFences) {
+    if (n >= densityCap(ENV_WORLD.maxExtraFences)) {
       break;
     }
     const already = [...existing, ...extras].filter(
       (obs) => obs.kind === 'fence' && Math.hypot(obs.x - host.x, obs.y - host.y) < 80,
     ).length;
-    if (already >= 1) {
+    if (already >= 1 || (host.id.length + n) % 5 === 0) {
       continue;
     }
     const box = host.kind === 'building' ? host.visual : host.collision;
     const slots = [
-      { x: host.x, y: box.y + box.h + PROP.fence.h / 2 + 8 },
-      { x: box.x - PROP.fence.w / 2 - 8, y: host.y + 18 },
+      { x: host.x, y: box.y + box.h + PROP.fence.h / 2 + 8, facing: 'h' as const },
+      { x: host.x, y: box.y - PROP.fence.h / 2 - 8, facing: 'h' as const },
+      { x: box.x - PROP.fence.h / 2 - 8, y: host.y + 18, facing: 'v' as const },
     ];
     for (const slot of slots) {
-      if (Math.abs(slot.y - 752) < 60) {
+      if (Math.abs(slot.y - ARENA.laneY.mid) < 60) {
         continue;
       }
-      const fence = makeSolid(
-        `fence-${host.id}-${n}`,
-        'fence',
-        n % 2 === 0 ? 'wood' : 'wire',
-        slot.x,
-        slot.y,
-        PROP.fence,
-        'cover',
-      );
+      const vertical = slot.facing === 'v';
+      const spec = PROP.fence;
+      const cw = vertical ? spec.h : spec.w;
+      const ch = vertical ? spec.w : spec.h;
+      const fence = decorateObstacle({
+        id: `fence-${host.id}-${n}`,
+        kind: 'fence',
+        variant: n % 2 === 0 ? 'wood' : 'wire',
+        x: slot.x,
+        y: slot.y,
+        collision: { x: slot.x - cw / 2, y: slot.y - ch / 2, w: cw, h: ch },
+        visual: vertical
+          ? { x: slot.x - spec.vh / 2, y: slot.y - spec.vw / 2 - spec.lift, w: spec.vh, h: spec.vw }
+          : visualForProp(spec, slot.x, slot.y),
+        keepout: inflate({ x: slot.x - cw / 2, y: slot.y - ch / 2, w: cw, h: ch }, 4),
+        blocksMovement: true,
+        blocksProjectiles: false,
+        blocksLos: false,
+        destructible: true,
+        hierarchy: 'cover',
+        facing: slot.facing,
+      });
       if (!tryPlace(fence, reserved, existing, extras)) {
         continue;
       }
@@ -655,6 +699,57 @@ export const plantFencesBeside = (
       n += 1;
       break;
     }
+  }
+  return extras;
+};
+
+/** Occasional fences along sidewalks, not a wall on every block. */
+export const plantFencesAlong = (
+  roads: RoadNetwork,
+  reserved: readonly ReservedZone[],
+  existing: MapObstacle[],
+): MapObstacle[] => {
+  const extras: MapObstacle[] = [];
+  let n = 0;
+  for (const patch of roads.patches) {
+    if (patch.kind !== 'sidewalk' || (Math.round(patch.x + patch.y + patch.w) % 5 === 0)) {
+      continue;
+    }
+    if (n + existing.filter((obs) => obs.kind === 'fence').length >= densityCap(ENV_WORLD.maxExtraFences)) {
+      return extras;
+    }
+    const vertical = patch.heading === 'v';
+    const spec = PROP.fence;
+    const x = vertical ? patch.x + patch.w / 2 : patch.x + patch.w * 0.45;
+    const y = vertical ? patch.y + patch.h * 0.4 : patch.y + patch.h / 2;
+    if (Math.abs(y - ARENA.laneY.mid) < 50) {
+      continue;
+    }
+    const cw = vertical ? spec.h : spec.w;
+    const ch = vertical ? spec.w : spec.h;
+    const fence = decorateObstacle({
+      id: `road-fence-${n}`,
+      kind: 'fence',
+      variant: n % 2 === 0 ? 'wood' : 'wire',
+      x,
+      y,
+      collision: { x: x - cw / 2, y: y - ch / 2, w: cw, h: ch },
+      visual: vertical
+        ? { x: x - spec.vh / 2, y: y - spec.vw / 2 - spec.lift, w: spec.vh, h: spec.vw }
+        : visualForProp(spec, x, y),
+      keepout: inflate({ x: x - cw / 2, y: y - ch / 2, w: cw, h: ch }, 4),
+      blocksMovement: true,
+      blocksProjectiles: false,
+      blocksLos: false,
+      destructible: true,
+      hierarchy: 'cover',
+      facing: vertical ? 'v' : 'h',
+    });
+    if (!tryPlace(fence, reserved, existing, extras)) {
+      continue;
+    }
+    extras.push(fence);
+    n += 1;
   }
   return extras;
 };

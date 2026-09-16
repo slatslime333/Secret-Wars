@@ -6,6 +6,7 @@ import { getViewportSize } from './device';
 import { BattleScene } from './scenes/BattleScene';
 import { BootScene } from './scenes/BootScene';
 import { CharacterSelectScene } from './scenes/CharacterSelectScene';
+import { MatchFormatScene } from './scenes/MatchFormatScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { MatchScene } from './scenes/MatchScene';
 import { SettingsScene } from './scenes/SettingsScene';
@@ -62,7 +63,7 @@ const game = new Phaser.Game({
       debug: false,
     },
   },
-  scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, ControlLayoutScene, CharacterSelectScene, RosterDraftScene, SimulatorSetupScene, BattleScene, MatchScene],
+  scene: [BootScene, TitleScene, MainMenuScene, SettingsScene, ControlLayoutScene, CharacterSelectScene, MatchFormatScene, RosterDraftScene, SimulatorSetupScene, BattleScene, MatchScene],
   render: {
     pixelArt: true,
     antialias: false,

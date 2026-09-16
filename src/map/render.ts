@@ -75,6 +75,9 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
     if (obs.kind === 'wall' && obs.collision.h > obs.collision.w) {
       image.setRotation(Math.PI / 2);
       image.setDisplaySize(Math.max(22, obs.collision.h), Math.max(18, obs.collision.w));
+    } else if (obs.facing === 'v' && (obs.kind === 'vehicle' || obs.kind === 'barricade' || obs.kind === 'sandbag' || obs.kind === 'fence')) {
+      image.setRotation(Math.PI / 2);
+      image.setDisplaySize(obs.visual.h, obs.visual.w);
     }
     byId.set(obs.id, image);
     if (obs.kind === 'crate') {

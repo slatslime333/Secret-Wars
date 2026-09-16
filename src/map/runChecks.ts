@@ -1,6 +1,6 @@
-import { ARENA } from '../config/arena';
+import { ARENA, applyMatchFormat } from '../config/arena';
 import { CRATE } from '../config/crate';
-import { MAP } from './config';
+import { maxObstaclesOf } from './config';
 import { HERO_VISUAL, PROP } from './scale';
 import { generateBattlefield } from './generate';
 import { pickObjectiveLocation } from '../match/objectives/pickLocation';
@@ -12,6 +12,7 @@ export type CheckResult = { name: string; ok: boolean; detail: string };
 const seeds = [1001, 1098, 2048, 3333, 7777, 9001, 4242, 1812];
 
 export const runMapChecks = (): CheckResult[] => {
+  applyMatchFormat('3v3');
   const results: CheckResult[] = [];
   const growthW = ARENA.width / 2200;
   const growthH = ARENA.height / 1280;
@@ -57,6 +58,10 @@ export const runMapChecks = (): CheckResult[] => {
   let dualDoors = true;
   let roadsClean = true;
   let treesPlenty = true;
+  let carsOk = true;
+  let noStacks = true;
+  let verticalOk = false;
+  let fencesOk = true;
   for (const seed of seeds) {
     const result = generateBattlefield({ seed, log: false });
     if (result.usedFallback) {
@@ -101,8 +106,21 @@ export const runMapChecks = (): CheckResult[] => {
     if (result.layout.roads.marks.length > 0 || result.layout.roads.patches.some((patch) => patch.damage !== 'worn')) {
       roadsClean = false;
     }
-    if (result.layout.obstacles.length > MAP.maxObstacles) {
+    if (result.layout.obstacles.length > maxObstaclesOf()) {
       compact = false;
+    }
+    const cars = result.layout.obstacles.filter((obs) => obs.kind === 'vehicle' && obs.variant === 'car');
+    if (cars.length < 1) {
+      carsOk = false;
+    }
+    if (result.layout.obstacles.some((obs) => obs.kind === 'crate' && obs.variant === 'stack')) {
+      noStacks = false;
+    }
+    if (result.layout.obstacles.some((obs) => obs.facing === 'v')) {
+      verticalOk = true;
+    }
+    if (result.layout.obstacles.filter((obs) => obs.kind === 'fence').length < 2) {
+      fencesOk = false;
     }
     const midLandmarks = result.layout.obstacles.filter((obs) => {
       if (obs.hierarchy !== 'landmark' && obs.kind !== 'vehicle' && obs.kind !== 'building') {
@@ -206,6 +224,40 @@ export const runMapChecks = (): CheckResult[] => {
     ok: landmarksNearMid >= 2,
     detail: `nearMidLandmarks=${landmarksNearMid}`,
   });
+  results.push({
+    name: 'cars on the streets',
+    ok: carsOk,
+    detail: carsOk ? 'cars placed besides trucks' : 'no cars generated',
+  });
+  results.push({
+    name: 'no crate box piles',
+    ok: noStacks,
+    detail: noStacks ? 'only breakable crates' : 'stack piles still spawn',
+  });
+  results.push({
+    name: 'some props face vertical',
+    ok: verticalOk,
+    detail: verticalOk ? 'vertical cars/barriers/fences' : 'all props horizontal',
+  });
+  results.push({
+    name: 'fences along yards and roads',
+    ok: fencesOk,
+    detail: fencesOk ? 'yard/road fences planted' : 'too few fences',
+  });
+
+  applyMatchFormat('6v6');
+  const six = generateBattlefield({ seed: 1001, log: false });
+  const sixOk =
+    ARENA.width === Math.round(2584 * 1.65) &&
+    !six.usedFallback &&
+    six.layout.playable.w > 4000 &&
+    six.layout.obstacles.some((obs) => obs.enterable && (obs.doors?.length ?? 0) >= 2);
+  results.push({
+    name: '6v6 battlefield scales',
+    ok: sixOk,
+    detail: `width=${six.layout.playable.w + 80} fallback=${six.usedFallback} doors=${six.layout.obstacles.some((obs) => obs.enterable)}`,
+  });
+  applyMatchFormat('3v3');
 
   return results;
 };

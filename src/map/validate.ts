@@ -1,5 +1,5 @@
 import { ARENA, LANES } from '../config/arena';
-import { MAP } from './config';
+import { MAP, maxObstaclesOf } from './config';
 import { gapBetween, inflate, rectArea, rectsOverlap } from './geometry';
 import type { MapLayout, MapQuality, Rect, ValidationIssue } from './types';
 
@@ -244,7 +244,7 @@ export const validateLayout = (layout: MapLayout): ValidationIssue[] => {
   if (blocking.length < MAP.minObstacles) {
     issues.push({ code: 'cover-low', message: 'Not enough obstacles.' });
   }
-  if (blocking.length > MAP.maxObstacles) {
+  if (blocking.length > maxObstaclesOf()) {
     issues.push({ code: 'cover-high', message: 'Excessive obstacle density.' });
   }
 

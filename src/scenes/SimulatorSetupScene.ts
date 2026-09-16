@@ -7,6 +7,7 @@ import {
   DEFAULT_SIMULATOR_ROSTER,
   cloneRoster,
   cycleRosterLane,
+  randomizeSimulatorRoster,
   type MatchRoster,
 } from '../match/rosterSetup';
 import { ActionButton } from '../ui/ActionButton';
@@ -53,7 +54,7 @@ export class SimulatorSetupScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
     this.add
-      .text(width / 2, inset.top + 30, 'PICK BOTH TEAMS  //  THEN WATCH', {
+      .text(width / 2, inset.top + 30, 'PICK BOTH TEAMS  //  1 TANK  1 FRONTLINER  1 SUPPORT', {
         fontFamily: FONTS.body,
         fontSize: '12px',
         fontStyle: 'bold',
@@ -71,6 +72,13 @@ export class SimulatorSetupScene extends Phaser.Scene {
       compact: true,
       onPress: () => this.leaveTo('MainMenu'),
     });
+    new ActionButton(this, width / 2, height - inset.bottom - 28, {
+      label: 'RANDOMIZE',
+      width: 180,
+      height: 44,
+      compact: true,
+      onPress: () => this.randomize(),
+    });
     new ActionButton(this, width - inset.right - 100, height - inset.bottom - 28, {
       label: 'WATCH',
       width: 200,
@@ -82,6 +90,7 @@ export class SimulatorSetupScene extends Phaser.Scene {
 
     this.input.keyboard?.on('keydown-ESC', () => this.leaveTo('MainMenu'));
     this.input.keyboard?.on('keydown-ENTER', () => this.startMatch());
+    this.input.keyboard?.on('keydown-R', () => this.randomize());
 
     const onResize = () => {
       if (!this.leaving) {
@@ -200,6 +209,14 @@ export class SimulatorSetupScene extends Phaser.Scene {
     const heroId = this.roster[team][LANES.indexOf(lane)];
     audio.unlock();
     playHeroSelect(heroId);
+    this.scene.restart({ roster: this.roster });
+  }
+
+  private randomize(): void {
+    if (this.leaving) {
+      return;
+    }
+    this.roster = randomizeSimulatorRoster();
     this.scene.restart({ roster: this.roster });
   }
 

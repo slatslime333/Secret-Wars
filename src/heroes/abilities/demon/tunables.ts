@@ -73,6 +73,8 @@ export const DEMON_RAGE = {
   fillCostMul: 1.35,
   /** 20% of light-attack damage converts into rage, relative to the rating-50 ability hit. */
   lightDamageToRage: 0.20,
+  /** 12% of ability damage converts into rage on the same curve. */
+  abilityDamageToRage: 0.12,
   /** Restored when Big Demon form actually starts. */
   staminaOnActivate: 0.2,
   /** Applied when the 1s transform pause ends and Big form begins. */

@@ -4,9 +4,6 @@ import { battlefieldOf } from '../../map';
 import { TACTIC } from './constants';
 import type { TacticalKind, UnitFact } from './types';
 
-const COLS = Math.ceil(ARENA.width / TACTIC.cellSize);
-const ROWS = Math.ceil(ARENA.height / TACTIC.cellSize);
-
 const combatPowerOf = (body: NinjaBody): number => {
   const stats = body.stats;
   const raw = stats.attackDamage * 1.4 + stats.maxHealth * 0.05 + stats.defense * 0.4 + stats.moveSpeed * 0.02;
@@ -19,13 +16,21 @@ const combatPowerOf = (body: NinjaBody): number => {
  * scanning the full roster every frame.
  */
 export class TacticalField {
+  private readonly cols: number;
+  private readonly rows: number;
   private readonly facts: UnitFact[] = [];
   private factCount = 0;
   private nextRefreshAt = 0;
-  private readonly cells: number[][] = Array.from({ length: COLS * ROWS }, () => []);
+  private readonly cells: number[][];
   private readonly indexOf = new Map<NinjaBody, number>();
   private readonly stableId = new WeakMap<NinjaBody, number>();
   private nextStableId = 1;
+
+  constructor() {
+    this.cols = Math.ceil(ARENA.width / TACTIC.cellSize);
+    this.rows = Math.ceil(ARENA.height / TACTIC.cellSize);
+    this.cells = Array.from({ length: this.cols * this.rows }, () => []);
+  }
 
   refresh(now: number, bodies: readonly NinjaBody[], force = false): void {
     if (!force && now < this.nextRefreshAt && this.factCount > 0) {
@@ -44,9 +49,9 @@ export class TacticalField {
       const fact = this.claimFact(count);
       this.fillFact(fact, body, this.idOf(body), now);
       this.indexOf.set(body, count);
-      const col = clampCell(Math.floor(body.x / TACTIC.cellSize), COLS);
-      const row = clampCell(Math.floor(body.y / TACTIC.cellSize), ROWS);
-      this.cells[row * COLS + col].push(count);
+      const col = clampCell(Math.floor(body.x / TACTIC.cellSize), this.cols);
+      const row = clampCell(Math.floor(body.y / TACTIC.cellSize), this.rows);
+      this.cells[row * this.cols + col].push(count);
       count += 1;
     }
     this.factCount = count;
@@ -71,15 +76,15 @@ export class TacticalField {
 
   queryNearby(x: number, y: number, radius: number, out: UnitFact[]): number {
     const reach = radius + TACTIC.cellSize;
-    const minC = clampCell(Math.floor((x - reach) / TACTIC.cellSize), COLS);
-    const maxC = clampCell(Math.floor((x + reach) / TACTIC.cellSize), COLS);
-    const minR = clampCell(Math.floor((y - reach) / TACTIC.cellSize), ROWS);
-    const maxR = clampCell(Math.floor((y + reach) / TACTIC.cellSize), ROWS);
+    const minC = clampCell(Math.floor((x - reach) / TACTIC.cellSize), this.cols);
+    const maxC = clampCell(Math.floor((x + reach) / TACTIC.cellSize), this.cols);
+    const minR = clampCell(Math.floor((y - reach) / TACTIC.cellSize), this.rows);
+    const maxR = clampCell(Math.floor((y + reach) / TACTIC.cellSize), this.rows);
     const radiusSq = radius * radius;
     let n = 0;
     for (let row = minR; row <= maxR; row += 1) {
       for (let col = minC; col <= maxC; col += 1) {
-        const cell = this.cells[row * COLS + col];
+        const cell = this.cells[row * this.cols + col];
         for (let i = 0; i < cell.length; i += 1) {
           const fact = this.facts[cell[i]];
           const dx = fact.x - x;
