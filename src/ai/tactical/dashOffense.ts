@@ -1,5 +1,12 @@
 import { COMBAT } from '../../config/combat';
-import { canStrikeOutsidePocket, matesInPocket, pocketRadius, reserveGap } from './fightRead';
+import {
+  canStrikeOutsidePocket,
+  matesInPocket,
+  opportunityOf,
+  pocketRadius,
+  reserveGap,
+  setupPending,
+} from './fightRead';
 import type { CombatantView, KitProfile, Personality, Situation, TacticalAction } from './types';
 
 export type OffensiveDashPlan = {
@@ -115,16 +122,34 @@ export const evaluateOffensiveDash = (
   const packAtSelf = enemiesNear(self, enemies, 150);
   const packAtThem = enemiesNear(target, enemies, 190);
   const allyNear = allies.some((ally) => ally.kind === 'hero' && ally.visible && dist(ally, target) < 220);
-  const vulnerable = target.stunned || target.recentlyHit || !target.canAttack || target.hpRatio < 0.28;
+  const theirPocket = pocketRadius(target);
+  const pokeOut = canStrikeOutsidePocket(self, target);
+  const pocketAllies = matesInPocket(target, allies);
+  const opening = opportunityOf({
+    self,
+    enemy: target,
+    allies,
+    enemies,
+    kit,
+    isolation: isolated ? 1 : 0.35,
+    pile: Math.max(0, pocketAllies * 0.4),
+    zone: pokeOut && d < theirPocket ? 0.5 : 0.15,
+    distance: d,
+    escapeOpen: situation.escapeOpen,
+  });
+  const pending = setupPending({ self, enemy: target, allies, kit, distance: d });
+  const vulnerable =
+    target.stunned ||
+    target.recentlyHit ||
+    !target.canAttack ||
+    target.hpRatio < 0.28 ||
+    opening.locked > 0.32;
   const bias = stanceBias(kit, String(self.role));
   const melee = kit?.stance === 'melee' || kit?.stance === 'skirmish';
   const ranged = kit?.stance === 'ranged' || kit?.stance === 'support';
   const initiate = Boolean(kit?.wantsInitiate);
   const pressure = kit?.pressureBias ?? personality.aggression;
   const spent = reserveGap(self);
-  const theirPocket = pocketRadius(target);
-  const pokeOut = canStrikeOutsidePocket(self, target);
-  const pocketAllies = matesInPocket(target, allies);
   const mobile = (kit?.escapeIds.length ?? 0) > 0 || self.heroId === 'shadow' || self.heroId === 'ninja';
 
   const spaceOut =
@@ -240,6 +265,12 @@ export const evaluateOffensiveDash = (
   }
   if (vulnerable) {
     chance += 0.14;
+  }
+  if (opening.payoff > 0.22 && melee) {
+    chance += opening.payoff * 0.2;
+  }
+  if (pending > 0.4 && opening.payoff < 0.28) {
+    chance -= 0.16;
   }
   if (finishable) {
     chance += 0.18;

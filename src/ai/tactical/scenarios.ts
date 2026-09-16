@@ -10,6 +10,7 @@ import { NINJA } from '../../config/ninja';
 import { WITCH } from '../../config/witch';
 import { ROPE } from '../../config/rope';
 import { COLE } from '../../config/cole';
+import { MENDER } from '../../config/mender';
 import { assessSupport } from './supportSense';
 import { scoreKitSlot } from './kitTactics';
 import { pickHealMinion, pickRetreatGoal } from './retreat';
@@ -1555,6 +1556,325 @@ const scenarioCA = (): ScenarioResult => {
   return { name: 'CA mixed team vs Death does not all dive melee', ok, detail: `views=${views.join(',')} stacked=${stacked} ${details.join(' | ')}` };
 };
 
+const shadowAt = (partial: Partial<CombatantView> = {}): CombatantView =>
+  unit({
+    id: 1,
+    team: 'alpha',
+    x: 360,
+    y: 750,
+    heroId: 'shadow',
+    role: 'frontliner',
+    attackRange: SHADOW.attackRange,
+    staminaRatio: 0.78,
+    dashCharges: 2,
+    hpRatio: 0.82,
+    ...partial,
+  });
+
+const scenarioCB = (): ScenarioResult => {
+  const self = shadowAt();
+  const open = unit({
+    id: 10,
+    team: 'bravo',
+    x: 500,
+    y: 750,
+    hpRatio: 0.62,
+    slowLeftMs: 1800,
+    recentlyHit: true,
+  });
+  const closed = unit({ id: 10, team: 'bravo', x: 500, y: 750, hpRatio: 0.62 });
+  const kit = kitProfileOf('shadow', 'frontliner', SHADOW.attackRange, { staminaRatio: 0.78, dashCharges: 2, abilityReady: true });
+  const opened = rankActions(situationOf(self, [], [open], { kit }));
+  const even = rankActions(situationOf(self, [], [closed], { kit }));
+  const openAttack = Math.max(scoreOf(opened, 'attack', 10), scoreOf(opened, 'finish_target', 10), scoreOf(opened, 'chase', 10));
+  const evenAttack = Math.max(scoreOf(even, 'attack', 10), scoreOf(even, 'finish_target', 10), scoreOf(even, 'chase', 10));
+  const ok = openAttack > evenAttack + 4 && among(opened, ['attack', 'finish_target', 'chase', 'flank'], 2);
+  return {
+    name: 'CB shadow values a live slow more than the same healthy enemy',
+    ok,
+    detail: `open=${openAttack.toFixed(1)} even=${evenAttack.toFixed(1)} best=${best(opened)}`,
+  };
+};
+
+const scenarioCC = (): ScenarioResult => {
+  const self = shadowAt({ hpRatio: 0.22, staminaRatio: 0.16, dashCharges: 0, x: 480 });
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 520, y: 742, hpRatio: 0.7, slowLeftMs: 1600, attacking: true }),
+    unit({ id: 11, team: 'bravo', x: 530, y: 768, hpRatio: 0.88, attacking: true }),
+    unit({ id: 12, team: 'bravo', x: 500, y: 780, hpRatio: 0.84 }),
+  ];
+  const kit = kitProfileOf('shadow', 'frontliner', SHADOW.attackRange, { staminaRatio: 0.16, dashCharges: 0, abilityReady: false });
+  const rows = rankActions(situationOf(self, [], enemies, { kit, escapeOpen: true }));
+  const ok = !['attack', 'chase', 'finish_target', 'flank'].includes(best(rows)) && among(rows, ['retreat', 'escape', 'recover', 'reposition'], 2);
+  return { name: 'CC low-resource Shadow does not convert an unsafe slow', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioCD = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 420,
+    y: 840,
+    heroId: 'ninja',
+    role: 'disruptor',
+    attackRange: NINJA.attackRange,
+    hpRatio: 0.8,
+    staminaRatio: 0.78,
+    dashCharges: 2,
+  });
+  const allies = [
+    shadowAt({ id: 2, x: 500, y: 750, attacking: true, recentlyHit: true }),
+  ];
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 530, y: 752, hpRatio: 0.48, slowLeftMs: 1600, recentlyHit: true }),
+    unit({ id: 11, team: 'bravo', x: 400, y: 920, hpRatio: 0.6, heroId: 'witch', role: 'ranged-tank', attackRange: WITCH.attackRange }),
+  ];
+  const kit = kitProfileOf('ninja', 'disruptor', NINJA.attackRange, { staminaRatio: 0.78, dashCharges: 2, abilityReady: true });
+  const rows = rankActions(situationOf(self, allies, enemies, { kit }));
+  const stacked = Math.max(scoreOf(rows, 'attack', 10), scoreOf(rows, 'chase', 10), scoreOf(rows, 'finish_target', 10));
+  const other = Math.max(scoreOf(rows, 'flank', 10), scoreOf(rows, 'attack', 11), scoreOf(rows, 'intercept', 11), scoreOf(rows, 'reposition'), scoreOf(rows, 'protect_ally'));
+  const ok = other > stacked - 3 && !((best(rows) === 'attack' || best(rows) === 'chase') && rows[0]?.targetId === 10);
+  return { name: 'CD ninja does not stand on Shadow’s slowed target', ok, detail: `best=${best(rows)}:${rows[0]?.targetId} stacked=${stacked.toFixed(1)} other=${other.toFixed(1)}` };
+};
+
+const scenarioCE = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 620,
+    y: 750,
+    heroId: 'death',
+    role: 'tank',
+    attackRange: DEATH.attackRange,
+    moveSpeed: 80,
+    hpRatio: 0.8,
+    staminaRatio: 0.7,
+  });
+  const allies = [unit({ id: 2, team: 'alpha', x: 420, y: 750, heroId: 'rope', role: 'support', attackRange: ROPE.attackRange, attacking: true })];
+  const enemies = [
+    unit({
+      id: 10,
+      team: 'bravo',
+      x: 540,
+      y: 750,
+      hpRatio: 0.55,
+      slowLeftMs: 1600,
+      vx: 90,
+      aimX: 1,
+    }),
+  ];
+  const kit = kitProfileOf('death', 'tank', DEATH.attackRange);
+  const rows = rankActions(situationOf(self, allies, enemies, { kit, currentTargetId: 10, homeX: 220 }));
+  const chase = scoreOf(rows, 'chase', 10);
+  const cut = Math.max(scoreOf(rows, 'hold_position'), scoreOf(rows, 'intercept'), scoreOf(rows, 'attack', 10));
+  const ok = among(rows, ['hold_position', 'intercept', 'attack', 'wait_for_opening'], 3) && chase < cut + 2 && best(rows) !== 'chase';
+  return { name: 'CE Death holds the cut instead of chasing a slow', ok, detail: `best=${best(rows)} chase=${chase.toFixed(1)} cut=${cut.toFixed(1)}` };
+};
+
+const scenarioCF = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 380,
+    y: 750,
+    heroId: 'mender',
+    role: 'support',
+    attackRange: MENDER.attackRange,
+    hpRatio: 0.88,
+  });
+  const allies = [
+    shadowAt({ id: 2, x: 500, y: 750, hpRatio: 0.58, attacking: true, recentlyHit: true, staminaRatio: 0.4 }),
+  ];
+  const enemies = [unit({ id: 10, team: 'bravo', x: 530, y: 750, hpRatio: 0.5, slowLeftMs: 1400, attacking: true, lastAttackerId: 2 })];
+  const sit = menderSupport(self, allies, enemies);
+  const rows = rankActions(sit);
+  const read = assessSupport(sit);
+  const cover = Math.max(scoreOf(rows, 'protect_ally'), scoreOf(rows, 'assist_ally'));
+  const attack = scoreOf(rows, 'attack', 10);
+  const ok = (read.mode === 'mix' || read.mode === 'support' || read.mode === 'save') && cover > attack - 4 && among(rows, ['protect_ally', 'assist_ally'], 3);
+  return { name: 'CF mender sustains a diving ally over a free shot', ok, detail: `mode=${read.mode} cover=${cover.toFixed(1)} attack=${attack.toFixed(1)} best=${best(rows)}` };
+};
+
+const scenarioCG = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 360,
+    y: 750,
+    heroId: 'rope',
+    role: 'support',
+    attackRange: ROPE.attackRange,
+    hpRatio: 0.9,
+    abilityReady: true,
+  });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 520, y: 750, hpRatio: 0.7, slowLeftMs: 1800 })];
+  const kit = kitProfileOf('rope', 'support', ROPE.attackRange, { staminaRatio: 1, abilityReady: true, dashCharges: 2 });
+  const rows = rankActions(situationOf(self, [], enemies, { kit }));
+  const ok = among(rows, ['attack', 'reposition', 'hold_position', 'wait_for_opening'], 3) && best(rows) !== 'chase' && best(rows) !== 'flank';
+  return { name: 'CG rope does not dive just because the slow landed', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioCH = (): ScenarioResult => {
+  const self = shadowAt({ x: 300, y: 750 });
+  const rope = unit({
+    id: 2,
+    team: 'alpha',
+    x: 340,
+    y: 750,
+    heroId: 'rope',
+    role: 'support',
+    attackRange: ROPE.attackRange,
+    abilityReady: true,
+    attacking: true,
+  });
+  const enemy = unit({ id: 10, team: 'bravo', x: 520, y: 750, hpRatio: 0.78 });
+  const kit = kitProfileOf('shadow', 'frontliner', SHADOW.attackRange, { staminaRatio: 0.78, dashCharges: 2, abilityReady: true });
+  const waiting = rankActions(situationOf(self, [rope], [enemy], { kit }));
+  const solo = rankActions(situationOf(self, [], [enemy], { kit }));
+  const waitUp = scoreOf(waiting, 'wait_for_opening', 10);
+  const waitSolo = scoreOf(solo, 'wait_for_opening', 10);
+  const attackWait = scoreOf(waiting, 'attack', 10);
+  const attackSolo = scoreOf(solo, 'attack', 10);
+  const ok = waitUp > waitSolo + 3 && among(waiting, ['wait_for_opening', 'hold_position'], 4);
+  return {
+    name: 'CH melee waits more when a poke ally is setting up',
+    ok,
+    detail: `wait ${waitUp.toFixed(1)} vs ${waitSolo.toFixed(1)} attack ${attackWait.toFixed(1)} vs ${attackSolo.toFixed(1)} best=${best(waiting)}`,
+  };
+};
+
+const scenarioCI = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 470,
+    y: 820,
+    heroId: 'cole',
+    role: 'frontliner',
+    attackRange: COLE.attackRange,
+    hpRatio: 0.82,
+    staminaRatio: 0.7,
+  });
+  const allies = [shadowAt({ id: 2, x: 500, y: 752, attacking: true, recentlyHit: true })];
+  const enemies = [unit({ id: 10, team: 'bravo', x: 530, y: 750, hpRatio: 0.28, slowLeftMs: 1200, recentlyHit: true })];
+  const kit = kitProfileOf('cole', 'frontliner', COLE.attackRange, { staminaRatio: 0.7, dashCharges: 2 });
+  const rows = rankActions(situationOf(self, allies, enemies, { kit }));
+  const ok = among(rows, ['attack', 'finish_target', 'flank', 'assist_ally'], 3) && best(rows) !== 'chase';
+  return { name: 'CI cole helps a compromised enemy without chasing', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioCJ = (): ScenarioResult => {
+  const little = unit({
+    id: 1,
+    team: 'alpha',
+    x: 400,
+    y: 750,
+    heroId: 'demon',
+    role: 'ranged',
+    attackRange: 220,
+    hpRatio: 0.8,
+    staminaRatio: 0.7,
+    dashCharges: 2,
+    rageRatio: 0.2,
+    demonForm: 'little',
+  });
+  const big = { ...little, demonForm: 'big' as const, attackRange: 90 };
+  const enemy = unit({ id: 10, team: 'bravo', x: 500, y: 750, hpRatio: 0.55, slowLeftMs: 1600, recentlyHit: true });
+  const littleKit = kitProfileOf('demon', 'ranged', 220, { staminaRatio: 0.7, dashCharges: 2, rageRatio: 0.2, demonForm: 'little' });
+  const bigKit = kitProfileOf('demon', 'ranged', 90, { staminaRatio: 0.7, dashCharges: 2, rageRatio: 1, demonForm: 'big', transformLeftMs: 7000 });
+  const littleRows = rankActions(situationOf(little, [], [enemy], { kit: littleKit }));
+  const bigRows = rankActions(situationOf(big, [], [enemy], { kit: bigKit }));
+  const littleCommit = Math.max(scoreOf(littleRows, 'attack', 10), scoreOf(littleRows, 'chase', 10));
+  const bigCommit = Math.max(scoreOf(bigRows, 'attack', 10), scoreOf(bigRows, 'chase', 10), scoreOf(bigRows, 'finish_target', 10));
+  const ok = bigCommit > littleCommit + 3 && !['chase', 'flank'].includes(best(littleRows));
+  return {
+    name: 'CJ little Demon stays cautious while big Demon converts the opening',
+    ok,
+    detail: `little=${best(littleRows)}/${littleCommit.toFixed(1)} big=${best(bigRows)}/${bigCommit.toFixed(1)}`,
+  };
+};
+
+const scenarioCK = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 400,
+    y: 750,
+    heroId: 'ninja',
+    role: 'disruptor',
+    attackRange: NINJA.attackRange,
+    hpRatio: 0.78,
+    staminaRatio: 0.7,
+    dashCharges: 2,
+  });
+  const allies = [unit({ id: 2, team: 'alpha', x: 500, y: 750, heroId: 'rope', role: 'support', hpRatio: 0.42, recentlyHit: true, attackRange: ROPE.attackRange })];
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 530, y: 742, attacking: true, lastAttackerId: 2, hpRatio: 0.7 }),
+    unit({ id: 11, team: 'bravo', x: 360, y: 900, hpRatio: 0.8 }),
+  ];
+  const kit = kitProfileOf('ninja', 'disruptor', NINJA.attackRange, { staminaRatio: 0.7, dashCharges: 2 });
+  const rows = rankActions(situationOf(self, allies, enemies, { kit }));
+  const peel = Math.max(scoreOf(rows, 'assist_ally'), scoreOf(rows, 'protect_ally'), scoreOf(rows, 'attack', 10), scoreOf(rows, 'intercept'));
+  const other = scoreOf(rows, 'attack', 11);
+  const ok = peel > other && among(rows, ['assist_ally', 'protect_ally', 'attack', 'intercept'], 2);
+  return { name: 'CK ninja peels a focused ally instead of hunting the far target', ok, detail: `best=${best(rows)}:${rows[0]?.targetId} peel=${peel.toFixed(1)} other=${other.toFixed(1)}` };
+};
+
+const scenarioCL = (): ScenarioResult => {
+  const self = shadowAt({ x: 380 });
+  const live = unit({ id: 10, team: 'bravo', x: 500, y: 750, hpRatio: 0.6, slowLeftMs: 1600 });
+  const dead = unit({ id: 10, team: 'bravo', x: 500, y: 750, hpRatio: 0.6, slowLeftMs: 0 });
+  const kit = kitProfileOf('shadow', 'frontliner', SHADOW.attackRange, { staminaRatio: 0.78, dashCharges: 2 });
+  const liveRows = rankActions(situationOf(self, [], [live], { kit }));
+  const deadRows = rankActions(situationOf(self, [], [dead], { kit }));
+  const liveScore = Math.max(scoreOf(liveRows, 'attack', 10), scoreOf(liveRows, 'chase', 10));
+  const deadScore = Math.max(scoreOf(deadRows, 'attack', 10), scoreOf(deadRows, 'chase', 10));
+  const ok = liveScore > deadScore + 3;
+  return { name: 'CL expired slow is no longer treated as an opening', ok, detail: `live=${liveScore.toFixed(1)} expired=${deadScore.toFixed(1)}` };
+};
+
+const scenarioCM = (): ScenarioResult => {
+  const slowed = unit({ id: 10, team: 'bravo', x: 520, y: 750, hpRatio: 0.55, slowLeftMs: 1800, recentlyHit: true });
+  const team = [
+    unit({ id: 1, team: 'alpha', x: 340, y: 750, heroId: 'rope', role: 'support', attackRange: ROPE.attackRange, abilityReady: true, hpRatio: 0.9 }),
+    shadowAt({ id: 2, x: 400, y: 760, staminaRatio: 0.5, dashCharges: 2, hpRatio: 0.52, attacking: true, recentlyHit: true }),
+    unit({ id: 3, team: 'alpha', x: 300, y: 780, heroId: 'mender', role: 'support', attackRange: MENDER.attackRange, hpRatio: 0.88 }),
+  ];
+  const views: TacticalAction[] = [];
+  const details: string[] = [];
+  let menderCover = false;
+  for (const self of team) {
+    const allies = team.filter((ally) => ally.id !== self.id);
+    const kit = kitProfileOf(self.heroId, String(self.role), self.attackRange, {
+      staminaRatio: self.staminaRatio,
+      dashCharges: self.dashCharges,
+      abilityReady: self.abilityReady,
+    });
+    const extra = self.heroId === 'mender' ? { hasAllySupport: true as const, kit } : { kit };
+    const rows = rankActions(situationOf(self, allies, [slowed], extra));
+    views.push(best(rows));
+    details.push(`${self.heroId}:${rows.slice(0, 3).map((row) => `${row.action}${row.score.toFixed(0)}`).join('/')}`);
+    if (self.heroId === 'mender') {
+      menderCover = among(rows, ['protect_ally', 'assist_ally'], 3);
+    }
+  }
+  const ropeOk = views[0] !== 'chase' && views[0] !== 'flank';
+  const shadowOk = ['attack', 'finish_target', 'chase', 'flank'].includes(views[1]);
+  const stacked = views.filter((action) => action === 'chase' || action === 'flank').length;
+  const ok = ropeOk && shadowOk && menderCover && stacked <= 1;
+  return { name: 'CM Rope/Shadow/Mender convert a slow as three jobs', ok, detail: `views=${views.join(',')} stacked=${stacked} ${details.join(' | ')}` };
+};
+
+const scenarioCN = (): ScenarioResult => {
+  const self = shadowAt({ x: 380, dashCharges: 2, staminaRatio: 0.8, hpRatio: 0.84 });
+  const enemy = unit({ id: 10, team: 'bravo', x: 560, y: 750, hpRatio: 0.5, slowLeftMs: 1800, recentlyHit: true });
+  const kit = kitProfileOf('shadow', 'frontliner', SHADOW.attackRange, { staminaRatio: 0.8, dashCharges: 2, abilityReady: true });
+  const sit = situationOf(self, [], [enemy], { currentTargetId: 10, kit });
+  const go = evaluateOffensiveDash(sit, 'attack', 2, () => 0);
+  const ok = Boolean(go) && (go?.kind === 'engage' || go?.kind === 'chase' || go?.kind === 'reposition');
+  return { name: 'CN shadow spends a dash to convert a slowed window', ok, detail: `dash=${go?.kind ?? 'none'}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -1635,4 +1955,17 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioBY(),
   scenarioBZ(),
   scenarioCA(),
+  scenarioCB(),
+  scenarioCC(),
+  scenarioCD(),
+  scenarioCE(),
+  scenarioCF(),
+  scenarioCG(),
+  scenarioCH(),
+  scenarioCI(),
+  scenarioCJ(),
+  scenarioCK(),
+  scenarioCL(),
+  scenarioCM(),
+  scenarioCN(),
 ];

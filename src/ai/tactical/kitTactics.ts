@@ -1,6 +1,7 @@
 import { defHasAllySupport, type AbilityDef, type AbilityRole, type AbilitySlot, type AbilityTactics } from '../../heroes/abilities/types';
 import { scoreSupportAbility } from './supportSense';
 import { scoreDemonAbility } from './demonSense';
+import { mobilityLockOf } from './fightRead';
 import type { CombatantView, Situation } from './types';
 
 const dist = (a: CombatantView, b: CombatantView): number => Math.hypot(a.x - b.x, a.y - b.y);
@@ -76,6 +77,17 @@ export const scoreKitSlot = (
     if (hp < 0.28 && nearest && nearest.d < 140) {
       score += 8;
     }
+    if (nearest && mobilityLockOf(nearest.unit) < 0.22 && fightSoon) {
+      const mark = nearest.unit;
+      const converters = allies.filter(
+        (ally) => ally.kind === 'hero' && dist(ally, mark) < 280 && ally.attackRange < 170,
+      ).length;
+      if (converters >= 1) {
+        score += 10;
+      }
+    } else if (nearest && mobilityLockOf(nearest.unit) > 0.45) {
+      score -= 6;
+    }
   } else if (escape || (defensive && !setup)) {
     const nearHeroes = countInRange(self, enemyHeroes, 200);
     const selfThreat =
@@ -105,7 +117,7 @@ export const scoreKitSlot = (
   if (hasRole(tactics, 'damage') || hasRole(tactics, 'burst') || hasRole(tactics, 'finish')) {
     if (nearest && nearest.d <= range * 1.05) {
       score += 12 + (1 - nearest.unit.hpRatio) * 10;
-      if (nearest.unit.stunned || nearest.unit.hpRatio < 0.28) {
+      if (nearest.unit.stunned || nearest.unit.hpRatio < 0.28 || mobilityLockOf(nearest.unit) > 0.35) {
         score += 10;
       }
     } else {
@@ -124,7 +136,12 @@ export const scoreKitSlot = (
   }
 
   if ((hasRole(tactics, 'peel') || hasRole(tactics, 'initiate')) && !setup && !allySupport) {
-    const allyInTrouble = allies.some((ally) => ally.kind === 'hero' && ally.hpRatio < 0.4 && dist(self, ally) < 240);
+    const allyInTrouble = allies.some(
+      (ally) =>
+        ally.kind === 'hero' &&
+        dist(self, ally) < 240 &&
+        (ally.hpRatio < 0.4 || (ally.recentlyHit && ally.hpRatio < 0.62) || (ally.attacking && ally.hpRatio < 0.55)),
+    );
     if (allyInTrouble && foes >= 1) {
       score += 12;
     }
