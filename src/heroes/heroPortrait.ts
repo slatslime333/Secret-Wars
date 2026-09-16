@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { TeamId } from '../config/hero';
 import { PLAYABLE_HEROES, type HeroId } from './roster';
 import type { CardinalFacing } from './drawNinja';
-import { WITCH_SHEET, applyWitchSprite, witchFrameIndex } from './witchSprite';
+import { applyWitchSprite, witchFrameIndex, witchSheetKey, WITCH_SHEET } from './witchSprite';
 
 export type HeroPortraitOptions = {
   facing?: CardinalFacing;
@@ -22,11 +22,13 @@ export const presentHero = (
   const facing = options.facing ?? 'south';
   const scale = options.scale ?? 1;
   const rival = Boolean(options.rival) || options.team === 'bravo';
-  if (heroId === 'witch' && scene.textures.exists(WITCH_SHEET)) {
-    const sprite = scene.add.sprite(x, y + 18, WITCH_SHEET, witchFrameIndex({ facing }));
+  const witchKey = witchSheetKey(options.team, rival);
+  const witchSheet = scene.textures.exists(witchKey) ? witchKey : WITCH_SHEET;
+  if (heroId === 'witch' && scene.textures.exists(witchSheet)) {
+    const sprite = scene.add.sprite(x, y + 18, witchSheet, witchFrameIndex({ facing }));
     sprite.setOrigin(0.5, 1);
     sprite.setScale(scale * 0.72);
-    applyWitchSprite(sprite, { facing, rival });
+    applyWitchSprite(sprite, { facing });
     return sprite;
   }
   const art = scene.add.graphics();
