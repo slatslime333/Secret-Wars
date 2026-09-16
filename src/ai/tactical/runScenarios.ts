@@ -130,6 +130,30 @@ if (!execOk) {
   console.log(`ok  executioner standoff  gap=${execGap.toFixed(0)} stand=${execStand.toFixed(0)}`);
 }
 
+const deathReach = DEATH.attackRange * 1.1 + 8;
+const witchBody = {
+  x: 360,
+  y: ARENA.laneY.mid,
+  team: 'alpha' as const,
+  attackRange: WITCH.attackRange,
+  role: 'ranged-tank',
+  kind: 'hero' as const,
+};
+const deathFocus = { x: 520, y: ARENA.laneY.mid, aimX: -1, aimY: 0 };
+const witchStand = moveGoal('attack', witchBody, 0, 220, ARENA.laneY.mid, deathFocus, undefined, 1, 0, undefined, {
+  stance: 'ranged',
+  preferredRange: WITCH.attackRange * 0.9,
+  threatReach: deathReach,
+});
+const witchGap = Math.hypot(witchStand.x - deathFocus.x, witchStand.y - deathFocus.y);
+const witchOk = witchGap > deathReach && witchGap < WITCH.attackRange * 0.95;
+if (!witchOk) {
+  failed += 1;
+  console.log(`FAIL  witch vs death stand  gap=${witchGap.toFixed(0)} pocket=${deathReach.toFixed(0)}`);
+} else {
+  console.log(`ok  witch vs death stand  gap=${witchGap.toFixed(0)} pocket=${deathReach.toFixed(0)}`);
+}
+
 const ally = { x: 400, y: 400 };
 const threat = { x: 520, y: 400 };
 const protectBody = { x: 360, y: 410, team: 'alpha' as const, attackRange: 70, role: 'frontliner', kind: 'hero' as const, id: 2 };

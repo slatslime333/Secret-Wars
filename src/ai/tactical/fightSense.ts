@@ -214,8 +214,48 @@ export class FightSense {
     if (stam < 0.22 && this.momentum === 'losing' && hp < 0.4 && !inMelee) {
       return false;
     }
+    if (this.exchangeSpent(now, self, foe, kit) && !finish) {
+      return false;
+    }
     const pressure = kit?.pressureBias ?? personality.aggression;
     return inMelee ? stam > 0.1 || pressure > 0.7 : stam > 0.28;
+  }
+
+  /** The burst already did its job — spending the last stamina/dash is a worse trade. */
+  exchangeSpent(
+    now: number,
+    self: NinjaBody,
+    foe: NinjaBody | undefined,
+    kit: KitProfile | undefined,
+  ): boolean {
+    if (!foe) {
+      return false;
+    }
+    const stam = self.stamina / Math.max(1, self.stats.maxStamina);
+    const foeHp = foe.health / Math.max(1, foe.stats.maxHealth);
+    const hp = self.health / Math.max(1, self.stats.maxHealth);
+    const inMelee = this.inStrikeRange(self, foe, 1.16);
+    if (!inMelee || foeHp < 0.16) {
+      return false;
+    }
+    const dashes = self.kitDashCharges;
+    const mobile = (kit?.escapeIds.length ?? 0) > 0 || self.heroId === 'shadow' || self.heroId === 'ninja';
+    if (this.connects >= 2 && stam < 0.24 && this.momentum !== 'winning') {
+      return true;
+    }
+    if (mobile && dashes <= 1 && stam < 0.32 && this.momentum === 'losing') {
+      return true;
+    }
+    if (this.connects >= 3 && stam < 0.18 && foeHp > 0.3) {
+      return true;
+    }
+    if (this.momentum === 'winning' && stam < 0.12 && foeHp > 0.4 && dashes <= 1) {
+      return true;
+    }
+    if (hp < 0.28 && stam < 0.22 && foeHp > 0.35) {
+      return true;
+    }
+    return now >= this.dashLandUntil && this.connects >= 2 && stam < 0.2 && foeHp > 0.42;
   }
 
   shouldChainLights(
@@ -238,6 +278,9 @@ export class FightSense {
     const stam = self.stamina / Math.max(1, self.stats.maxStamina);
     if (stam < 0.1 && foe.health / Math.max(1, foe.stats.maxHealth) > 0.28) {
       return false;
+    }
+    if (this.exchangeSpent(now, self, foe, kit)) {
+      return rng() < 0.08;
     }
     const recovering =
       foe.status.isHitReacting(now) || foe.status.isBlockStunned(now) || now - foe.status.lastAttackAt < 280;

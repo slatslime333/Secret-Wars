@@ -9,6 +9,7 @@ export { personalityFromSeed } from './personality';
 export { kitProfileOf, isRangedLike, isShadowDry, isRopeDisarmed } from './kitProfile';
 export { GamePlanController } from './strategy';
 export { FightSense } from './fightSense';
+export { readFightShape, pocketRadius, threatZoneCost } from './fightRead';
 export { SwingIntent } from './swingIntent';
 export { NEUTRAL_PERSONALITY } from './types';
 export { assessSupport, scoreAllyNeed, pickBestSupportAlly } from './supportSense';

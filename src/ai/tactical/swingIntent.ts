@@ -85,6 +85,11 @@ export class SwingIntent {
       this.pauseUntil = now + 70 + rng() * 90;
       return;
     }
+    if (sense.exchangeSpent(now, body, target, kit) && !sense.counterReady(now) && !target.status.isHitReacting(now)) {
+      this.pauseUntil = now + 90 + rng() * 140;
+      sense.openSpace(now, 280 + rng() * 180);
+      return;
+    }
 
     if (target.blocking) {
       this.hitsIntoBlock += 1;

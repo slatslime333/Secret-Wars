@@ -4,6 +4,12 @@ import { kitProfileOf } from './kitProfile';
 import { OBJECTIVE } from '../../config/objective';
 import { WAR_SCORE } from '../../config/score';
 import { ARENA } from '../../config/arena';
+import { DEATH } from '../../config/death';
+import { SHADOW } from '../../config/shadow';
+import { NINJA } from '../../config/ninja';
+import { WITCH } from '../../config/witch';
+import { ROPE } from '../../config/rope';
+import { COLE } from '../../config/cole';
 import { assessSupport } from './supportSense';
 import { scoreKitSlot } from './kitTactics';
 import { pickHealMinion, pickRetreatGoal } from './retreat';
@@ -1327,6 +1333,225 @@ const scenarioBP = (): ScenarioResult => {
   return { name: 'BP a lead in the last 10s peels instead of gambling', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
 };
 
+const deathAt = (partial: Partial<CombatantView> = {}): CombatantView =>
+  unit({
+    id: 10,
+    team: 'bravo',
+    x: 520,
+    y: 750,
+    heroId: 'death',
+    role: 'tank',
+    attackRange: DEATH.attackRange,
+    power: 1.25,
+    hpRatio: 0.88,
+    ...partial,
+  });
+
+const scenarioBQ = (): ScenarioResult => {
+  const death = deathAt({ attacking: true });
+  const allies = [
+    unit({ id: 2, team: 'alpha', x: 500, y: 748, heroId: 'cole', role: 'frontliner', attackRange: COLE.attackRange, attacking: true }),
+    unit({ id: 3, team: 'alpha', x: 508, y: 760, heroId: 'ninja', role: 'disruptor', attackRange: NINJA.attackRange, attacking: true }),
+  ];
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 492,
+    y: 752,
+    heroId: 'shadow',
+    role: 'frontliner',
+    attackRange: SHADOW.attackRange,
+    staminaRatio: 0.72,
+    dashCharges: 2,
+  });
+  const kit = kitProfileOf('shadow', 'frontliner', SHADOW.attackRange, { staminaRatio: 0.72, dashCharges: 2, abilityReady: true });
+  const rows = rankActions(situationOf(self, allies, [death], { kit }));
+  const attack = Math.max(scoreOf(rows, 'attack', 10), scoreOf(rows, 'chase', 10));
+  const space = Math.max(
+    scoreOf(rows, 'flank', 10),
+    scoreOf(rows, 'reposition'),
+    scoreOf(rows, 'wait_for_opening'),
+    scoreOf(rows, 'hold_position'),
+  );
+  const ok = space > attack && !['attack', 'chase', 'finish_target'].includes(best(rows));
+  return {
+    name: 'BQ third melee does not stack into Death pocket',
+    ok,
+    detail: `best=${best(rows)} space=${space.toFixed(1)} attack=${attack.toFixed(1)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}`,
+  };
+};
+
+const scenarioBR = (): ScenarioResult => {
+  const death = deathAt({ x: 500, y: 750, attacking: true });
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 390,
+    y: 750,
+    heroId: 'witch',
+    role: 'ranged-tank',
+    attackRange: WITCH.attackRange,
+    hpRatio: 0.86,
+  });
+  const kit = kitProfileOf('witch', 'ranged-tank', WITCH.attackRange);
+  const rows = rankActions(situationOf(self, [], [death], { kit }));
+  const ok = among(rows, ['reposition', 'hold_position', 'wait_for_opening', 'retreat'], 3) && !['chase', 'flank'].includes(best(rows));
+  return { name: 'BR witch leaves Death melee instead of trading', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioBS = (): ScenarioResult => {
+  const death = deathAt({ x: 470, y: 750 });
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 400,
+    y: 750,
+    heroId: 'rope',
+    role: 'support',
+    attackRange: ROPE.attackRange,
+    hpRatio: 0.9,
+    abilityReady: true,
+  });
+  const kit = kitProfileOf('rope', 'support', ROPE.attackRange, { staminaRatio: 1, abilityReady: true, dashCharges: 2 });
+  const rows = rankActions(situationOf(self, [], [death], { kit }));
+  const ok = among(rows, ['reposition', 'hold_position', 'wait_for_opening', 'attack'], 3) && best(rows) !== 'chase';
+  return { name: 'BS rope keeps Death at poke range', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioBT = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 980, y: 750, hpRatio: 0.7, staminaRatio: 0.4, dashCharges: 1, moveSpeed: 90 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 520, y: 750, hpRatio: 0.8, attacking: true })];
+  const enemies = [
+    unit({ id: 10, team: 'bravo', x: 1280, y: 750, hpRatio: 0.1, vx: 160, aimX: 1, recentlyHit: true }),
+    unit({ id: 11, team: 'bravo', x: 1240, y: 730, hpRatio: 0.9 }),
+    unit({ id: 12, team: 'bravo', x: 1260, y: 780, hpRatio: 0.88 }),
+  ];
+  const rows = rankActions(situationOf(self, allies, enemies, { currentTargetId: 10, homeX: 220 }));
+  const chase = scoreOf(rows, 'chase', 10);
+  const leave = Math.max(scoreOf(rows, 'retreat'), scoreOf(rows, 'reposition'), scoreOf(rows, 'advance'), scoreOf(rows, 'protect_ally'));
+  const ok = leave > chase && best(rows) !== 'chase';
+  return { name: 'BT does not chase a sliver into the enemy team', ok, detail: `best=${best(rows)} chase=${chase.toFixed(1)} leave=${leave.toFixed(1)}` };
+};
+
+const scenarioBU = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 600, y: 750, hpRatio: 0.78, staminaRatio: 0.7, dashCharges: 2 });
+  const enemies = [unit({ id: 10, team: 'bravo', x: 680, y: 750, hpRatio: 0.1, vx: 80, aimX: 1, recentlyHit: true })];
+  const rows = rankActions(situationOf(self, [], enemies, { currentTargetId: 10 }));
+  const ok = among(rows, ['finish_target', 'attack', 'chase'], 2);
+  return { name: 'BU isolated sliver is still worth finishing', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioBV = (): ScenarioResult => {
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 900,
+    y: 750,
+    heroId: 'death',
+    role: 'tank',
+    attackRange: DEATH.attackRange,
+    moveSpeed: 80,
+    hpRatio: 0.72,
+    staminaRatio: 0.5,
+  });
+  const allies = [unit({ id: 2, team: 'alpha', x: 480, y: 740, hpRatio: 0.6 })];
+  const enemies = [unit({ id: 10, team: 'bravo', x: 1400, y: 750, hpRatio: 0.42, vx: 140, aimX: 1 })];
+  const kit = kitProfileOf('death', 'tank', DEATH.attackRange);
+  const rows = rankActions(situationOf(self, allies, enemies, { kit, currentTargetId: 10, homeX: 220 }));
+  const chase = scoreOf(rows, 'chase', 10);
+  const ok = best(rows) !== 'chase' && chase < 18;
+  return { name: 'BV slow bruiser will not chase across the map', ok, detail: `best=${best(rows)} chase=${chase.toFixed(1)}` };
+};
+
+const scenarioBW = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 420, y: 820, hpRatio: 0.82, attackRange: NINJA.attackRange, heroId: 'ninja', role: 'disruptor' });
+  const allies = [
+    unit({ id: 2, team: 'alpha', x: 500, y: 748, attacking: true, hpRatio: 0.7 }),
+    unit({ id: 3, team: 'alpha', x: 508, y: 760, attacking: true, hpRatio: 0.68 }),
+  ];
+  const enemies = [
+    deathAt({ x: 520, y: 750, hpRatio: 0.4, recentlyHit: true, attacking: true }),
+    unit({ id: 11, team: 'bravo', x: 450, y: 900, hpRatio: 0.55, heroId: 'witch', role: 'ranged-tank', attackRange: WITCH.attackRange }),
+  ];
+  const kit = kitProfileOf('ninja', 'disruptor', NINJA.attackRange, { staminaRatio: 0.8, dashCharges: 2, abilityReady: true });
+  const rows = rankActions(situationOf(self, allies, enemies, { kit }));
+  const onDeath = Math.max(scoreOf(rows, 'attack', 10), scoreOf(rows, 'finish_target', 10), scoreOf(rows, 'chase', 10));
+  const other = Math.max(scoreOf(rows, 'attack', 11), scoreOf(rows, 'flank', 11), scoreOf(rows, 'intercept', 11), scoreOf(rows, 'reposition'));
+  const ok = other > onDeath - 2 && !((best(rows) === 'attack' || best(rows) === 'finish_target') && rows[0]?.targetId === 10);
+  return { name: 'BW extra body looks at another target when Death is already pressured', ok, detail: `best=${best(rows)}:${rows[0]?.targetId} death=${onDeath.toFixed(1)} other=${other.toFixed(1)}` };
+};
+
+const scenarioBX = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 500, y: 750, hpRatio: 0.8, staminaRatio: 0.7, dashCharges: 2 });
+  const allies = [unit({ id: 2, team: 'alpha', x: 520, y: 760, hpRatio: 0.75, attacking: true })];
+  const enemies = [unit({ id: 10, team: 'bravo', x: 545, y: 752, hpRatio: 0.22, recentlyHit: true, power: 0.8 })];
+  const rows = rankActions(situationOf(self, allies, enemies));
+  const ok = among(rows, ['attack', 'finish_target', 'flank'], 2);
+  return { name: 'BX winning 2v1 still commits to the kill', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioBY = (): ScenarioResult => {
+  const self = unit({ id: 1, team: 'alpha', x: 500, y: 750, hpRatio: 0.18, staminaRatio: 0.12, dashCharges: 0 });
+  const enemies = [
+    deathAt({ x: 530, y: 740, attacking: true }),
+    unit({ id: 11, team: 'bravo', x: 540, y: 770, attacking: true, hpRatio: 0.9 }),
+    unit({ id: 12, team: 'bravo', x: 510, y: 780, attacking: true, hpRatio: 0.86 }),
+  ];
+  const rows = rankActions(situationOf(self, [], enemies, { escapeOpen: true }));
+  const ok = among(rows, ['escape', 'retreat', 'recover'], 2) && !['attack', 'chase', 'flank'].includes(best(rows));
+  return { name: 'BY collapsed 1v3 prioritizes surviving', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioBZ = (): ScenarioResult => {
+  const death = deathAt({ x: 470, y: 750, hpRatio: 0.7 });
+  const self = unit({
+    id: 1,
+    team: 'alpha',
+    x: 400,
+    y: 750,
+    heroId: 'shadow',
+    role: 'frontliner',
+    attackRange: SHADOW.attackRange,
+    hpRatio: 0.82,
+    staminaRatio: 0.74,
+    dashCharges: 2,
+  });
+  const kit = kitProfileOf('shadow', 'frontliner', SHADOW.attackRange, { staminaRatio: 0.74, dashCharges: 2, abilityReady: true });
+  const rows = rankActions(situationOf(self, [], [death], { kit }));
+  const ok = among(rows, ['attack', 'flank', 'finish_target', 'chase'], 3);
+  return { name: 'BZ fresh Shadow still takes a fair 1v1', ok, detail: `best=${best(rows)} top=${rows.slice(0, 3).map((row) => row.action).join(',')}` };
+};
+
+const scenarioCA = (): ScenarioResult => {
+  const death = deathAt({ x: 520, y: 750, attacking: true, hpRatio: 0.8 });
+  const views: TacticalAction[] = [];
+  const team = [
+    unit({ id: 1, team: 'alpha', x: 500, y: 748, heroId: 'cole', role: 'frontliner', attackRange: COLE.attackRange, attacking: true }),
+    unit({ id: 2, team: 'alpha', x: 508, y: 758, heroId: 'ninja', role: 'disruptor', attackRange: NINJA.attackRange, attacking: true }),
+    unit({
+      id: 3,
+      team: 'alpha',
+      x: 380,
+      y: 750,
+      heroId: 'witch',
+      role: 'ranged-tank',
+      attackRange: WITCH.attackRange,
+    }),
+  ];
+  for (const self of team) {
+    const allies = team.filter((ally) => ally.id !== self.id);
+    const kit = kitProfileOf(self.heroId, String(self.role), self.attackRange, {
+      staminaRatio: self.staminaRatio,
+      dashCharges: self.dashCharges,
+      abilityReady: self.abilityReady,
+    });
+    views.push(best(rankActions(situationOf(self, allies, [death], { kit }))));
+  }
+  const stacked = views.filter((action) => action === 'attack' || action === 'chase' || action === 'finish_target').length;
+  const ok = stacked <= 2 && views[2] !== 'attack' && views[2] !== 'chase';
+  return { name: 'CA mixed team vs Death does not all dive melee', ok, detail: `views=${views.join(',')} stacked=${stacked}` };
+};
+
 export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioA(),
   scenarioB(),
@@ -1396,4 +1621,15 @@ export const runTacticalScenarios = (): ScenarioResult[] => [
   scenarioBN(),
   scenarioBO(),
   scenarioBP(),
+  scenarioBQ(),
+  scenarioBR(),
+  scenarioBS(),
+  scenarioBT(),
+  scenarioBU(),
+  scenarioBV(),
+  scenarioBW(),
+  scenarioBX(),
+  scenarioBY(),
+  scenarioBZ(),
+  scenarioCA(),
 ];

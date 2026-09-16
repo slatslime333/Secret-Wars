@@ -37,6 +37,8 @@ export type MoveHint = {
   anchorY?: number;
   mates?: CrowdMate[];
   clusterRisk?: number;
+  /** Enemy comfort reach. Stand outside it when we can still hit. */
+  threatReach?: number;
   objective?: {
     kind: ObjectiveKind;
     x: number;
@@ -62,13 +64,20 @@ const preferredRange = (body: MoveBody, action: TacticalAction, hint?: MoveHint)
   const ranged = isRangedMove(body, hint);
   const base = hint?.preferredRange ?? body.attackRange * (ranged ? 0.88 : 0.7);
   const wait = action === 'wait_for_opening' || action === 'hold_position';
+  let stand = base;
   if (wait) {
-    return body.attackRange * (ranged ? 0.92 : 1.14);
+    stand = body.attackRange * (ranged ? 0.92 : 1.14);
+  } else if (action === 'reposition' && ranged) {
+    stand = Math.max(base, body.attackRange * 0.88);
+  } else if (!ranged) {
+    stand = body.attackRange * 0.7;
   }
-  if (action === 'reposition' && ranged) {
-    return Math.max(base, body.attackRange * 0.88);
+  const threat = hint?.threatReach;
+  if (threat && body.attackRange > threat + 10) {
+    const outside = Math.min(body.attackRange * 0.9, threat + 22);
+    stand = Math.max(stand, outside);
   }
-  return ranged ? base : body.attackRange * 0.7;
+  return stand;
 };
 
 const laneYOf = (y: number): number => ARENA.laneY[nearestLane(y)];
@@ -387,8 +396,9 @@ export const moveGoal = (
   const ny = toY / gap;
   const stand = range * (ranged ? 0.9 : 0.64);
   const slop = range * 0.2;
-  const gx = target.x - nx * stand + -ny * 14 * flankSign;
-  const gy = target.y - ny * stand + nx * 14 * flankSign;
+  const spread = 14 + (hint?.clusterRisk ?? 0) * 32;
+  const gx = target.x - nx * stand + -ny * spread * flankSign;
+  const gy = target.y - ny * stand + nx * spread * flankSign;
   if (ranged && gap < range - slop && action !== 'chase' && action !== 'finish_target') {
     const side = flankSign >= 0 ? 1 : -1;
     return finish({

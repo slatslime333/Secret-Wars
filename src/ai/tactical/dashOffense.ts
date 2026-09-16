@@ -1,4 +1,5 @@
 import { COMBAT } from '../../config/combat';
+import { canStrikeOutsidePocket, matesInPocket, pocketRadius, reserveGap } from './fightRead';
 import type { CombatantView, KitProfile, Personality, Situation, TacticalAction } from './types';
 
 export type OffensiveDashPlan = {
@@ -120,8 +121,40 @@ export const evaluateOffensiveDash = (
   const ranged = kit?.stance === 'ranged' || kit?.stance === 'support';
   const initiate = Boolean(kit?.wantsInitiate);
   const pressure = kit?.pressureBias ?? personality.aggression;
+  const spent = reserveGap(self);
+  const theirPocket = pocketRadius(target);
+  const pokeOut = canStrikeOutsidePocket(self, target);
+  const pocketAllies = matesInPocket(target, allies);
+  const mobile = (kit?.escapeIds.length ?? 0) > 0 || self.heroId === 'shadow' || self.heroId === 'ninja';
 
-  if (ranged && d < myRange * 0.55 && d < theirRange * 1.15) {
+  const spaceOut =
+    d < theirPocket * 1.12 &&
+    (ranged || (mobile && (spent > 0.28 || packAtSelf >= 2 || (pocketAllies >= 1 && !finishable)))) &&
+    !finishable &&
+    hp > 0.12;
+  if (spaceOut && (ranged || !ENGAGE_ACTIONS.has(action) || spent > 0.34 || packAtSelf >= 2)) {
+    const awayX = self.x - target.x;
+    const awayY = self.y - target.y;
+    const side = rng() < 0.45 ? 1 : -1;
+    const px = -awayY * side;
+    const py = awayX * side;
+    const dest = landing(awayX * 0.7 + px * 0.45, awayY * 0.7 + py * 0.45);
+    const chance =
+      0.16 +
+      personality.caution * 0.26 +
+      (hp < 0.4 ? 0.16 : 0) +
+      spent * 0.18 +
+      (mobile ? 0.12 : 0) -
+      personality.aggression * 0.05;
+    if (rng() < Math.min(0.7, chance)) {
+      return { x: dest.x - self.x, y: dest.y - self.y, kind: 'space' };
+    }
+    if (ranged) {
+      return undefined;
+    }
+  }
+
+  if (ranged && d < myRange * 0.55 && d < theirRange * 1.15 && !spaceOut) {
     const awayX = self.x - target.x;
     const awayY = self.y - target.y;
     const side = rng() < 0.45 ? 1 : -1;
@@ -146,6 +179,15 @@ export const evaluateOffensiveDash = (
     return undefined;
   }
   if (hp < 0.18 && !finishable) {
+    return undefined;
+  }
+  if (pokeOut && d < theirPocket * 1.08 && !finishable) {
+    return undefined;
+  }
+  if (pocketAllies >= 2 && !finishable && hp < 0.62) {
+    return undefined;
+  }
+  if (spent > 0.55 && !finishable && !vulnerable) {
     return undefined;
   }
   if (d <= myRange * 1.02) {
@@ -176,6 +218,9 @@ export const evaluateOffensiveDash = (
   if (intoPack >= 2 && ranged) {
     return undefined;
   }
+  if (pokeOut && wouldEnter && d < theirPocket && !finishable) {
+    return undefined;
+  }
 
   let chance =
     0.12 +
@@ -204,6 +249,12 @@ export const evaluateOffensiveDash = (
   }
   if (packAtSelf >= 2 && hp < 0.4) {
     chance -= 0.16;
+  }
+  if (pocketAllies >= 1 && !finishable) {
+    chance -= 0.12 + pocketAllies * 0.06;
+  }
+  if (spent > 0.35) {
+    chance -= spent * 0.2;
   }
   if (self.heroId === 'shadow') {
     chance += 0.14;
