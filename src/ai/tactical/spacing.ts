@@ -71,13 +71,35 @@ export const clusterRiskOf = (
       continue;
     }
     const reach = enemy.attackRange * 1.35 + 36;
-    if (Math.hypot(enemy.x - self.x, enemy.y - self.y) > reach) {
+    const toEnemy = Math.hypot(enemy.x - self.x, enemy.y - self.y);
+    if (toEnemy > reach) {
       continue;
     }
-    if (!looksLikeWideHitter(enemy) && !enemy.attacking) {
+    if (looksLikeWideHitter(enemy) || enemy.attacking) {
+      threat += packed * (enemy.attacking ? 0.28 : 0.14);
+    }
+    const envelope = enemy.attackRange * 1.18 + 18;
+    if (toEnemy > envelope) {
       continue;
     }
-    threat += packed * (enemy.attacking ? 0.28 : 0.14);
+    let sharing = 0;
+    for (const ally of allies) {
+      if (self.kind === 'hero' && ally.kind && ally.kind !== 'hero') {
+        continue;
+      }
+      if (Math.hypot(ally.x - enemy.x, ally.y - enemy.y) > envelope) {
+        continue;
+      }
+      if (Math.hypot(ally.x - self.x, ally.y - self.y) > 120) {
+        continue;
+      }
+      sharing += 1;
+    }
+    if (sharing <= 0) {
+      continue;
+    }
+    const meleePocket = enemy.attackRange < 160;
+    threat += sharing * (meleePocket ? 0.12 : 0.08) * (enemy.attacking ? 1.15 : 1);
   }
   return clamp(threat, 0, 1);
 };

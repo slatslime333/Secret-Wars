@@ -11,6 +11,7 @@ import {
 import type { TacticalField } from './field';
 import { kitProfileOf, isRopeDisarmed, isShadowDry } from './kitProfile';
 import { clusterRiskOf } from './spacing';
+import { pocketRadius } from './fightRead';
 import { personalityFromSeed } from './personality';
 import { pickRetreatGoal, type RetreatGoal } from './retreat';
 import { scanProjectileThreat } from './shots';
@@ -184,6 +185,13 @@ export class TacticalMind {
         attackRange: ally.attackRange,
       }));
     const clusterRisk = clusterRiskOf(self, this.allies, this.enemies);
+    const fromIntent = this.intent.target
+      ? this.enemies.find((enemy) => this.bodyById.get(enemy.id) === this.intent.target)
+      : undefined;
+    const focus =
+      fromIntent ??
+      this.enemies.find((enemy) => enemy.id === this.situation.currentTargetId && enemy.visible) ??
+      this.enemies.find((enemy) => enemy.kind === 'hero' && enemy.visible);
     if (!kit && !director && mates.length === 0) {
       return undefined;
     }
@@ -194,6 +202,7 @@ export class TacticalMind {
       anchorY: director?.anchorY,
       mates,
       clusterRisk,
+      threatReach: focus && focus.kind === 'hero' ? pocketRadius(focus) : undefined,
       objective: this.situation.objective
         ? {
             kind: this.situation.objective.kind,
