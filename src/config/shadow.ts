@@ -12,7 +12,7 @@ export const SHADOW_RATINGS = {
   health: 70,
   stamina: 50,
   staminaRegen: 66,
-  damage: 64,
+  damage: 68,
   defense: 39,
   speed: 39,
   attackSpeed: 39,
@@ -42,3 +42,6 @@ export const SHADOW = {
   attackStaminaMul: 12 / 7,
   dashMaxCharges: 2,
 } as const satisfies HeroCombatConfig;
+
+/** Visual hit-marker ring only — not light-claw reach and not Cole's punch radius. */
+export const SHADOW_HIT_MARKER_RANGE = Math.round(SHADOW.attackRange * 2.15);

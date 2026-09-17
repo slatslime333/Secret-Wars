@@ -15,6 +15,8 @@ export type BattleFrame = {
   move: Phaser.Math.Vector2;
   aim: Phaser.Math.Vector2;
   aimActive: boolean;
+  /** Right-stick Y while spectating: up is negative (zoom out). */
+  zoom: number;
   attackHeld: boolean;
   attackPressed: boolean;
   blockHeld: boolean;
@@ -57,7 +59,7 @@ export class BattleInput {
   private readonly isRoundLocked: () => boolean;
   private readonly touch: boolean;
   private readonly leftStick?: VirtualThumbstick;
-  private readonly rightStick?: VirtualThumbstick;
+  private rightStick?: VirtualThumbstick;
   private readonly blockPad?: VirtualAimPad;
   private readonly dashButton?: CombatButton;
   private ability1Button?: AbilityButton;
@@ -79,6 +81,7 @@ export class BattleInput {
   private suppressAttack = false;
   private ultimateButton?: AbilityButton;
   private readonly combatHud: boolean;
+  private combatVisible: boolean;
   private readonly keys?: KeyMap;
   private readonly cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private readonly lastAim = new Phaser.Math.Vector2(1, 0);
@@ -103,6 +106,7 @@ export class BattleInput {
     this.isRoundLocked = isRoundLocked;
     this.touch = isTouchPrimary();
     this.combatHud = combatHud;
+    this.combatVisible = combatHud;
     this.ability1AimOnRelease = Boolean(kit?.ability1.aimOnRelease);
     this.ability2AimOnRelease = Boolean(kit?.ability2.aimOnRelease);
 
@@ -280,6 +284,9 @@ export class BattleInput {
     }
 
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
+    if (!combatHud) {
+      this.setCombatVisible(false);
+    }
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
@@ -372,14 +379,14 @@ export class BattleInput {
   }
 
   layout(width: number, height: number): void {
-    if (!this.touch) {
-      return;
-    }
     const layout = resolveControls(width, height);
     this.leftStick?.setRadius(layout.leftStick.r);
     this.rightStick?.setRadius(layout.rightStick.r);
     this.leftStick?.setPosition(layout.leftStick.x, layout.leftStick.y);
     this.rightStick?.setPosition(layout.rightStick.x, layout.rightStick.y);
+    if (!this.touch) {
+      return;
+    }
     this.blockPad?.setRadius(layout.block.r);
     this.dashButton?.setRadius(layout.dash.r);
     this.blockPad?.setPosition(layout.block.x, layout.block.y);
@@ -400,11 +407,13 @@ export class BattleInput {
     const move = this.readMove();
     const right = this.rightStick?.getValue() ?? new Phaser.Math.Vector2();
     const rightActive = Boolean(this.rightStick?.active && right.length() >= INPUT.rightDeadzone);
+    const zooming = !this.combatVisible;
+    const zoom = zooming && this.rightStick?.active ? right.y : 0;
 
     const aim = this.lastAim.clone();
     let aimActive = false;
 
-    if (rightActive) {
+    if (!zooming && rightActive) {
       aim.copy(right).normalize();
       aimActive = true;
     } else if (!this.touch) {
@@ -427,10 +436,12 @@ export class BattleInput {
       this.suppressAttack = false;
     }
     const attackHeld =
+      !zooming &&
       !aimingAbility &&
       !this.suppressAttack &&
       (rightActive || Boolean(this.keys?.attack.isDown) || pointerAttack);
     const attackPressed =
+      !zooming &&
       !this.suppressAttack &&
       (this.consumeLatch('attackLatched') ||
         Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.attack)) ||
@@ -502,6 +513,7 @@ export class BattleInput {
       move,
       aim,
       aimActive,
+      zoom,
       attackHeld,
       attackPressed: attackEdge,
       blockHeld,
@@ -736,7 +748,7 @@ export class BattleInput {
   }
 
   setCombatVisible(visible: boolean): void {
-    this.rightStick?.setVisible(visible);
+    this.combatVisible = visible;
     this.blockPad?.setVisible(visible);
     this.dashButton?.setVisible(visible);
     this.ability1Button?.setVisible(visible);
@@ -744,6 +756,29 @@ export class BattleInput {
     this.ability2Button?.setVisible(visible);
     this.ability2Pad?.setVisible(visible);
     this.ultimateButton?.setVisible(visible);
+    if (visible) {
+      if (this.touch && this.combatHud) {
+        this.ensureRightStick('AIM', COLORS.redBright);
+      } else {
+        this.rightStick?.setVisible(false);
+      }
+    } else {
+      this.ensureRightStick('ZOOM', COLORS.yellow);
+    }
+  }
+
+  private ensureRightStick(label: string, accent: number): void {
+    if (this.rightStick) {
+      this.rightStick.setLabel(label);
+      this.rightStick.setVisible(true);
+      return;
+    }
+    const layout = resolveControls(this.scene.scale.width, this.scene.scale.height);
+    this.rightStick = new VirtualThumbstick(this.scene, layout.rightStick.x, layout.rightStick.y, {
+      label,
+      accent,
+      radius: layout.rightStick.r,
+    });
   }
 
   private readMove(): Phaser.Math.Vector2 {

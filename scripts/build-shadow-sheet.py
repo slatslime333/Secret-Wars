@@ -65,25 +65,9 @@ def is_claw_color(r: int, g: int, b: int, a: int) -> bool:
 
 
 def extract_idle(name: str, src: Image.Image) -> Image.Image:
-    im = tight(knockout_white(src.crop(CROPS[name])))
-    if name == "west":
-        im = strip_west_left_claw(im)
-    return im
-
-
-def strip_west_left_claw(im: Image.Image) -> Image.Image:
-    """West faces left. Claw lives on the right; left/front hand stays human."""
-    im = im.copy()
-    px = im.load()
-    w, h = im.size
-    cut = int(w * 0.38)
-    hair_y = int(h * 0.40)
-    for y in range(hair_y, h):
-        for x in range(0, cut):
-            r, g, b, a = px[x, y]
-            if is_claw_color(r, g, b, a):
-                px[x, y] = (0, 0, 0, 0)
-    return im
+    # West source already has the claw on the right/back. Do not punch dark
+    # skirt/boot pixels — they match claw color and went see-through.
+    return tight(knockout_white(src.crop(CROPS[name])))
 
 
 def fit_frame(src: Image.Image, max_h: int = 74, max_w: int = 78) -> Image.Image:
@@ -230,7 +214,7 @@ def keep_body_solid(posed: Image.Image, idle: Image.Image) -> Image.Image:
     op = out.load()
     ip = idle.load()
     w, h = posed.size
-    for _ in range(2):
+    for _ in range(3):
         snapshot = out.copy()
         sp = snapshot.load()
         for y in range(h):
@@ -238,10 +222,15 @@ def keep_body_solid(posed: Image.Image, idle: Image.Image) -> Image.Image:
                 if ip[x, y][3] < 160 or op[x, y][3] >= 160:
                     continue
                 n = 0
+                left = right = False
                 for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
                     if 0 <= nx < w and 0 <= ny < h and sp[nx, ny][3] >= 160:
                         n += 1
-                if n >= 3:
+                        if ny == y and nx < x:
+                            left = True
+                        if ny == y and nx > x:
+                            right = True
+                if n >= 2 or left and right:
                     op[x, y] = ip[x, y]
     return out
 

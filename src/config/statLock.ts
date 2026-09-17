@@ -121,14 +121,14 @@ export const assertFoundationalStatLock = (): void => {
     }
   });
 
-  if (SHADOW.ratings.damage !== 64) {
-    mismatches.push(`shadow damage rating ${SHADOW.ratings.damage} !== 64`);
+  if (SHADOW.ratings.damage !== 68) {
+    mismatches.push(`shadow damage rating ${SHADOW.ratings.damage} !== 68`);
   }
   if (SHADOW.ratings.defense !== 39) {
     mismatches.push(`shadow defense rating ${SHADOW.ratings.defense} !== 39`);
   }
-  if (SHADOW.attackDamage !== 15) {
-    mismatches.push(`shadow attackDamage ${SHADOW.attackDamage} !== 15`);
+  if (SHADOW.attackDamage !== 16) {
+    mismatches.push(`shadow attackDamage ${SHADOW.attackDamage} !== 16`);
   }
   if (SHADOW.attackRange !== 145) {
     mismatches.push(`shadow attackRange ${SHADOW.attackRange} !== 145`);

@@ -14,6 +14,7 @@ import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
 import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT } from '../heroes/abilities/rope/tunables';
 import { witchHexAllyRange } from '../heroes/abilities/witch/tunables';
 import { WITCH_HIT_MARKER_LINE, WITCH_HIT_MARKER_RANGE } from '../config/witch';
+import { SHADOW_HIT_MARKER_RANGE } from '../config/shadow';
 import { SHADOW_CLAW, SHADOW_DASH } from '../heroes/abilities/shadow/tunables';
 import { MENDER_ANGEL, MENDER_HIT_MARKER_LINE, MENDER_PULSE, MENDER_SOUL } from '../heroes/abilities/mender/tunables';
 import { menderArmOrigin } from '../heroes/drawMender';
@@ -312,6 +313,7 @@ export class MatchScene extends Phaser.Scene {
     }
     this.cameras.main.setRoundPixels(true);
     applyGameplayCamera(this.cameras.main, this.scale.width, this.scale.height);
+    this.spectator.syncZoom();
     resizeHudCamera(this, this.scale.width, this.scale.height);
     this.cameras.main.fadeIn(220, 7, 10, 18);
 
@@ -766,6 +768,7 @@ export class MatchScene extends Phaser.Scene {
     const focus = this.hudFocus();
     const frame = this.inputReader.sample(focus.body.x, focus.body.y);
     this.spectator.tick(frame.move, delta, this.inputLocked());
+    this.spectator.tickZoom(frame.zoom, delta);
     const cam = this.cameras.main;
     const locked = this.spectator.mode === 'lock' ? this.spectator.target : null;
     if (locked?.alive) {
@@ -938,7 +941,12 @@ export class MatchScene extends Phaser.Scene {
     } else if (ninja.heroId === 'demon' && ninja.demonForm !== 'big') {
       this.marker.clearRange();
     } else {
-      const range = ninja.heroId === 'cole' ? COLE_ATTACK.range : ninja.stats.attackRange;
+      const range =
+        ninja.heroId === 'shadow'
+          ? SHADOW_HIT_MARKER_RANGE
+          : ninja.heroId === 'cole'
+            ? COLE_ATTACK.range
+            : ninja.stats.attackRange;
       this.marker.sync(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, range, ninja.stats.attackArcDegrees);
     }
     if (ninja.heroId === 'cole') {
@@ -1201,6 +1209,7 @@ export class MatchScene extends Phaser.Scene {
       );
     }
     applyGameplayCamera(this.cameras.main, width, height);
+    this.spectator?.syncZoom();
     if (this.pauseOverlay?.isOpen) {
       this.pauseOverlay.show(this.stats.allLines(), this.scoreboardHeader());
     }

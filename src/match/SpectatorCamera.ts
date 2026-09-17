@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { MATCH } from '../config/match';
-import { lockCameraFollow } from '../ui/layout';
+import { INPUT } from '../config/input';
+import { applyGameplayCamera, lockCameraFollow, spectatorZoomLimits } from '../ui/layout';
 import type { HeroRuntime } from './HeroRuntime';
 
 export type SpectatorMode = 'free' | 'lock';
@@ -8,12 +9,15 @@ export type SpectatorMode = 'free' | 'lock';
 /**
  * Shared death / simulator camera: WASD or the left stick pans and breaks
  * lock; [ ] / TAB (and on-screen PREV/NEXT) cycle living heroes.
+ * Right stick zooms: up pulls out, down pushes in toward the FOV slider.
  */
 export class SpectatorCamera {
   mode: SpectatorMode = 'lock';
   target: HeroRuntime | null = null;
   enabled = false;
 
+  private zoom = 1;
+  private zoomReady = false;
   private readonly prevKey?: Phaser.Input.Keyboard.Key;
   private readonly nextKey?: Phaser.Input.Keyboard.Key;
   private readonly tabKey?: Phaser.Input.Keyboard.Key;
@@ -40,6 +44,8 @@ export class SpectatorCamera {
     this.enabled = false;
     this.target = null;
     this.mode = 'lock';
+    this.zoomReady = false;
+    applyGameplayCamera(this.scene.cameras.main, this.scene.scale.width, this.scene.scale.height);
   }
 
   follow(unit: HeroRuntime | null): void {
@@ -94,6 +100,40 @@ export class SpectatorCamera {
     if (this.mode === 'lock' && !this.target?.alive) {
       this.follow(this.living()[0] ?? null);
     }
+  }
+
+  /** Apply right-stick zoom. Up (negative Y) zooms out; down zooms in. */
+  tickZoom(stickY: number, delta: number): void {
+    if (!this.enabled) {
+      return;
+    }
+    const { min, max } = this.limits();
+    if (!this.zoomReady) {
+      this.zoom = max;
+      this.zoomReady = true;
+    }
+    if (Math.abs(stickY) >= INPUT.rightDeadzone) {
+      this.zoom += stickY * MATCH.spectator.zoomSpeed * (delta / 1000);
+    }
+    this.zoom = Phaser.Math.Clamp(this.zoom, min, max);
+    this.scene.cameras.main.setZoom(this.zoom);
+  }
+
+  syncZoom(): void {
+    if (!this.enabled) {
+      return;
+    }
+    const { min, max } = this.limits();
+    if (!this.zoomReady) {
+      this.zoom = max;
+      this.zoomReady = true;
+    }
+    this.zoom = Phaser.Math.Clamp(this.zoom, min, max);
+    this.scene.cameras.main.setZoom(this.zoom);
+  }
+
+  private limits(): { min: number; max: number } {
+    return spectatorZoomLimits(this.scene.scale.width, this.scene.scale.height);
   }
 
   private living(): HeroRuntime[] {

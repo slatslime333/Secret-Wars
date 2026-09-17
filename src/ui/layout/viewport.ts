@@ -1,6 +1,12 @@
 import Phaser from 'phaser';
 import { ARENA } from '../../config/arena';
-import { CAMERA_ZOOM_MAX, CAMERA_ZOOM_MIN, cameraPrefs } from '../../config/cameraPrefs';
+import {
+  CAMERA_ZOOM_MAX,
+  CAMERA_ZOOM_MIN,
+  cameraPrefs,
+  gameplayCameraZoomAt,
+  spectatorZoomLimits as spectatorZoomRange,
+} from '../../config/cameraPrefs';
 import { getViewportSize, isTouchPrimary } from '../../device';
 import { HUD_CAMERA_NAME } from './hudCamera';
 
@@ -190,6 +196,24 @@ export const applyGameplayCamera = (
   camera.removeBounds();
   camera.setBackgroundColor(ARENA.wallColor);
   camera.setDeadzone(0, 0);
+};
+
+/** Gameplay zoom after the FOV slider, used as spectate's zoom-in ceiling. */
+export const gameplayCameraZoom = (width: number, height: number): number => {
+  cameraPrefs.load();
+  return gameplayCameraZoomAt(measureViewport(width, height).cameraZoom);
+};
+
+/**
+ * Spectate zoom range: cannot zoom in past the FOV slider, and cannot zoom
+ * out far enough for the whole map to fill the view.
+ */
+export const spectatorZoomLimits = (
+  width: number,
+  height: number,
+): { min: number; max: number } => {
+  cameraPrefs.load();
+  return spectatorZoomRange(width, height, measureViewport(width, height).cameraZoom);
 };
 
 /** Menus, select, and settings stay at 1×. FOV never scales UI cameras. */
