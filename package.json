@@ -7,6 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc && vite build",
     "build:pages": "npm run build && node scripts/copy-pages-bundle.mjs",
+    "icons": "node scripts/generate-pwa-icons.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },

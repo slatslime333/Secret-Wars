@@ -6,6 +6,11 @@
     <meta name="theme-color" content="#070a12" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Secret Wars" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
 
     <title>Secret Wars</title>
     <!-- Inline critical CSS so a JS/CSS miss cannot brick the page. GitHub
@@ -68,12 +73,12 @@
 
         const css = document.createElement('link');
         css.rel = 'stylesheet';
-        css.href = `${dir}assets/game.css?v=e06597d0`;
+        css.href = `${dir}assets/game.css?v=2ab964df`;
         document.head.appendChild(css);
 
         const bundle = document.createElement('script');
         bundle.type = 'module';
-        bundle.src = `${dir}assets/game.js?v=e06597d0`;
+        bundle.src = `${dir}assets/game.js?v=2ab964df`;
         document.body.appendChild(bundle);
       }
     </script>

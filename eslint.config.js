@@ -12,6 +12,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist', 'assets', 'scripts'],
+    ignores: ['dist', 'assets', 'scripts', 'public', 'icons', 'sw.js'],
   },
 );
