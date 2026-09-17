@@ -3,6 +3,7 @@ import { audioSettings } from './audio';
 import { cameraPrefs } from './config/cameraPrefs';
 import './style.css';
 import { getViewportSize } from './device';
+import { registerServiceWorker } from './pwa';
 import { BattleScene } from './scenes/BattleScene';
 import { BootScene } from './scenes/BootScene';
 import { CharacterSelectScene } from './scenes/CharacterSelectScene';
@@ -19,6 +20,7 @@ import { applyBackingStore, installBackingStore } from './ui/layout/backingStore
 
 audioSettings.load();
 cameraPrefs.load();
+registerServiceWorker();
 
 const gameRoot = document.getElementById('game');
 
