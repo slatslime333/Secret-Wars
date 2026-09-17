@@ -9,7 +9,7 @@ import { gameplayFromRatings, type CoreRatings } from './ratings';
 export const MENDER_RATINGS = {
   health: 40,
   stamina: 58,
-  staminaRegen: 68,
+  staminaRegen: 71,
   damage: 8,
   defense: 32,
   speed: 62,

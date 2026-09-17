@@ -19,8 +19,8 @@ export const MENDER_PULSE = {
   staminaDamage: 2,
   hitSlowMul: 0.88,
   hitSlowMs: 450,
-  /** Ally Pulse hits restore a sliver of health and stamina. */
-  healHealth: 0.75,
+  /** Ally Pulse hits restore 1 health and a sliver of stamina. */
+  healHealth: 1,
   healStamina: 0.5,
   color: 0x4ec8ff,
 } as const;

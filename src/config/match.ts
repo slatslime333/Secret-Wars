@@ -19,6 +19,13 @@ export const MATCH = {
   /** Free-roam pan while spectating (left stick / WASD). [ ] / TAB lock onto heroes. */
   spectator: {
     panSpeed: 460,
+    /** Stick Y units per second. Up zooms out; down zooms in. */
+    zoomSpeed: 1.15,
+    /**
+     * Zoom-out floor is this times the full-map fit, so spectate never
+     * pulls back far enough to show the entire arena.
+     */
+    zoomOutFitMul: 1.22,
   },
   assistWindowMs: 8_000,
   enemyInwardOffset: 72,
