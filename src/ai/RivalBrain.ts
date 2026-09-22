@@ -11,7 +11,7 @@ import { battlefieldOf } from '../map';
 import { CombatDriver } from './combatDriver';
 import { TacticalField } from './tactical/field';
 import { TacticalMind } from './tactical/mind';
-import { MovementCommit, resolveCpuWalk } from './tactical/locomotion';
+import { MovementCommit, aimThroughDoor, resolveCpuWalk } from './tactical/locomotion';
 import { moveGoal } from './tactical/move';
 import { SwingIntent } from './tactical/swingIntent';
 import type { TacticalDebugInfo } from './tactical/types';
@@ -229,10 +229,11 @@ export class RivalBrain {
       cpu.stop();
       return;
     }
-    let dx = goal.x - cpu.x;
-    let dy = goal.y - cpu.y;
+    const aimed = aimThroughDoor(cpu.x, cpu.y, goal.x, goal.y, battlefieldOf(scene)?.query);
+    let dx = aimed.x;
+    let dy = aimed.y;
     const strafe = this.combat.strafeDir(now);
-    if (strafe) {
+    if (strafe && !aimed.door) {
       dx = dx * 0.35 + strafe.x * 80;
       dy = dy * 0.35 + strafe.y * 80;
     }

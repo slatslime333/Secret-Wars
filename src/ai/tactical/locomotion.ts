@@ -58,6 +58,21 @@ export class MovementCommit {
   }
 }
 
+/** Point a chase at a door before combat strafe can pull the aim back into a wall. */
+export const aimThroughDoor = (
+  x: number,
+  y: number,
+  goalX: number,
+  goalY: number,
+  query: WalkQuery | undefined,
+): { x: number; y: number; door: boolean } => {
+  const door = query?.doorStep?.(x, y, goalX, goalY);
+  if (door) {
+    return { x: door.x - x, y: door.y - y, door: true };
+  }
+  return { x: goalX - x, y: goalY - y, door: false };
+};
+
 export const resolveCpuWalk = (
   now: number,
   x: number,
@@ -72,12 +87,19 @@ export const resolveCpuWalk = (
   mates?: WalkMate[],
   role?: string,
 ): { x: number; y: number; stop: boolean } => {
-  const len = Math.hypot(desiredX, desiredY) || 1;
+  let aimX = desiredX;
+  let aimY = desiredY;
+  const door = query?.doorStep?.(x, y, x + desiredX, y + desiredY);
+  if (door) {
+    aimX = door.x - x;
+    aimY = door.y - y;
+  }
+  const len = Math.hypot(aimX, aimY) || 1;
   if (len < 12 && !loco.stuck.recovering) {
     loco.reset();
     return { x: 0, y: 0, stop: true };
   }
-  const committed = loco.heading(now, desiredX / len, desiredY / len, personality);
+  const committed = loco.heading(now, aimX / len, aimY / len, personality);
   const steered = query?.steer(x, y, committed.x, committed.y) ?? committed;
   const dir = loco.stuck.filter(
     now,
