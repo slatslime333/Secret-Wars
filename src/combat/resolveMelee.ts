@@ -14,7 +14,7 @@ import { NinjaBody } from '../heroes/NinjaBody';
 
 const halfArcOf = (fighter: NinjaBody): number => (fighter.stats.attackArcDegrees * Math.PI) / 360;
 
-const inArc = (attacker: NinjaBody, defender: NinjaBody, rangeMul = 1): boolean =>
+const inArc = (attacker: NinjaBody, defender: NinjaBody, rangeMul = 1, forgiveness: number = COMBAT.hitForgiveness): boolean =>
   isInAttackArc(
     attacker.x,
     attacker.y,
@@ -22,7 +22,7 @@ const inArc = (attacker: NinjaBody, defender: NinjaBody, rangeMul = 1): boolean 
     attacker.aim.y,
     defender.x,
     defender.y,
-    attacker.stats.attackRange * rangeMul + COMBAT.hitForgiveness,
+    attacker.stats.attackRange * rangeMul + forgiveness,
     halfArcOf(attacker),
     defender.stats.bodyRadius,
   );
@@ -68,12 +68,14 @@ export const resolveMelee = (
     dirY?: number;
     rangeMul?: number;
     launchCap?: number;
+    /** Added on top of attack range. Shadow light passes 0 so the hit ends on the marker. */
+    forgiveness?: number;
   } = {},
 ): HitKind => {
   if (defender.down) {
     return 'whiff';
   }
-  if (!inArc(attacker, defender, options.rangeMul ?? 1)) {
+  if (!inArc(attacker, defender, options.rangeMul ?? 1, options.forgiveness ?? COMBAT.hitForgiveness)) {
     return 'whiff';
   }
   if (defender.isInvulnerable(now)) {

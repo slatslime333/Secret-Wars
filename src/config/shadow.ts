@@ -29,11 +29,11 @@ export const SHADOW = {
   ratings: SHADOW_RATINGS,
   ...shadowGameplay,
   /**
-   * Previous live Cole×0.75 (143px), then +25% on that light-attack radius,
-   * then two −10% cuts on the resulting swipe.
+   * Previous live swipe, then −25%.
+   * Light attack, hit marker, and the swing graphic all use this radius.
    * Claw radius is frozen separately so this does not shrink the ability.
    */
-  attackRange: Math.round(Math.round(Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.25) * 0.9) * 0.9),
+  attackRange: Math.round(Math.round(Math.round(Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.25) * 0.9) * 0.9) * 0.75),
   attackArcDegrees: 68,
   bodyRadius: NINJA.bodyRadius,
   /** Moderately fast — quicker than Death’s 16/s, not Ninja-fast. Rage still multiplies this. */
@@ -43,5 +43,5 @@ export const SHADOW = {
   dashMaxCharges: 2,
 } as const satisfies HeroCombatConfig;
 
-/** Visual hit-marker ring only — not light-claw reach and not Cole's punch radius. */
-export const SHADOW_HIT_MARKER_RANGE = Math.round(SHADOW.attackRange * 2.15);
+/** Same radius as the light swipe and the hit test. */
+export const SHADOW_HIT_MARKER_RANGE = SHADOW.attackRange;
