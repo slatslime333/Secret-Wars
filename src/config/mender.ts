@@ -26,7 +26,7 @@ export const MENDER = {
   ...gameplayFromRatings(MENDER_RATINGS),
   attackArcDegrees: 22,
   bodyRadius: NINJA.bodyRadius,
-  /** Fast Pulse volleys should spend a slice of the pool, not dump it. */
-  attackStaminaMul: 0.85,
+  /** A Pulse magazine, not an endless hose. About a dozen shots before she eases off. */
+  attackStaminaMul: 1.4,
   dashMaxCharges: 3,
 } as const satisfies HeroCombatConfig;

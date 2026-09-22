@@ -44,6 +44,16 @@ export const playUltimateShake = (scene: Phaser.Scene): void => {
   scene.cameras.main.shake(220, 0.012);
 };
 
+/** Small punch for finishers, clashes, and perfect shields. Normal hits stay still. */
+export const playImpactShake = (
+  scene: Phaser.Scene,
+  kind: 'finisher' | 'clash' | 'perfect',
+): void => {
+  const duration = kind === 'finisher' ? 70 : 60;
+  const intensity = kind === 'finisher' ? 0.0042 : 0.0034;
+  scene.cameras.main.shake(duration, intensity);
+};
+
 const spawnShards = (scene: Phaser.Scene, x: number, y: number, color: number, big: boolean): void => {
   const count = big ? 7 : 5;
   for (let i = 0; i < count; i += 1) {

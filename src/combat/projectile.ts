@@ -41,6 +41,7 @@ export class Projectile {
     maxRange = Number.POSITIVE_INFINITY,
     rangeFrom?: { x: number; y: number },
     team?: TeamId,
+    private readonly hitLift = 0,
   ) {
     this.style = style;
     this.originX = rangeFrom?.x ?? x;
@@ -111,7 +112,7 @@ export class Projectile {
       if (enemy.down) {
         continue;
       }
-      if (Math.hypot(enemy.x - this.x, enemy.y - this.y) <= this.radius + enemy.stats.bodyRadius) {
+      if (Math.hypot(enemy.x - this.x, enemy.y - this.hitLift - this.y) <= this.radius + enemy.stats.bodyRadius) {
         const hit = { target: enemy, x: this.x, y: this.y };
         this.destroy();
         return hit;

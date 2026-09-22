@@ -1,5 +1,17 @@
 import Phaser from 'phaser';
-import { COMBAT, ComboStep, comboStepOf, lightAttackStaminaCost } from '../config/combat';
+import {
+  COMBAT,
+  ComboStep,
+  attackCommitMoveMul,
+  attackCycleMs,
+  attackStartupMs,
+  comboStepOf,
+  hitReactionFor,
+  hitStopFor,
+  inputBufferMs,
+  lightAttackStaminaCost,
+} from '../config/combat';
+import { isTouchPrimary } from '../device';
 import { COLE_ATTACK, COLE_SHOCKWAVE } from '../heroes/abilities/cole/tunables';
 import { DEATH_ATTACK } from '../heroes/abilities/death/tunables';
 import { ROPE_SHOT } from '../heroes/abilities/rope/tunables';
@@ -37,17 +49,16 @@ type PendingImpact = {
 };
 
 /**
- * Hold = repeating light swings. Distinct taps within the combo window
- * step 1 → 2, then the chain resets. There is no tap finisher.
+ * Hold queues the next light swing after recovery. It does not skip startup.
+ * Distinct taps within the combo window step 1 → 2 → 3. Step 3 is the finisher.
+ * A press slightly before recovery ends is buffered. Extra taps do not stack.
  *
- * Stamina is spent when the swing starts. Physical lunge + hit
- * resolve at impact.
+ * Stamina is spent when the swing starts. Physical lunge + hit resolve at impact.
  */
 export class QuickAttack {
   private nextSwingAt = 0;
-  private pendingTaps = 0;
-  private lastPendingAt = 0;
-  private wasHeld = false;
+  private lastPressAt = -99999;
+  private consumedPressAt = -99999;
   private pendingImpact?: PendingImpact;
   private readonly combo = new ComboTracker();
   lastSwingAt = -9999;
@@ -77,7 +88,8 @@ export class QuickAttack {
 
   interrupt(now: number): void {
     this.combo.interrupt(now);
-    this.pendingTaps = 0;
+    this.lastPressAt = -99999;
+    this.consumedPressAt = -99999;
     this.pendingImpact = undefined;
     this.deathBurstPending = false;
     this.clearRopeShots();
@@ -107,35 +119,19 @@ export class QuickAttack {
     this.tickWitchBarrage(now, attacker, enemies, defenderBlock);
     this.resolveImpactIfReady(now, attacker, enemies, defenderBlock);
 
-    const tapQueued = this.pendingTaps > 0;
-    this.combo.expire(now, COMBAT.comboWindowMs, held || tapQueued || pressed);
-    if (
-      pressed &&
-      attacker.heroId !== 'witch' &&
-      attacker.heroId !== 'rope' &&
-      attacker.heroId !== 'shadow' &&
-      attacker.heroId !== 'mender' &&
-      attacker.heroId !== 'demon' &&
-      attacker.heroId !== 'death'
-    ) {
-      this.pendingTaps = Math.min(2, this.pendingTaps + 1);
-      this.lastPendingAt = now;
+    if (pressed) {
+      this.lastPressAt = now;
     }
-    if (this.pendingTaps > 0 && now - this.lastPendingAt > COMBAT.comboWindowMs) {
-      this.pendingTaps = 0;
-    }
-    if (this.wasHeld && !held) {
-      this.combo.holdReleased(now, COMBAT.comboWindowMs);
-    }
-    this.wasHeld = held;
-
-    this.marker?.setAttacking((held || this.pendingTaps > 0) && attacker.canAttack(now));
+    const bufferMs = inputBufferMs(isTouchPrimary());
+    const freshPress = this.lastPressAt > this.consumedPressAt && now - this.lastPressAt <= bufferMs;
+    const holdRepeat = held && !freshPress;
+    this.combo.expire(now, COMBAT.comboWindowMs, held || freshPress);
+    this.marker?.setAttacking((held || freshPress) && attacker.canAttack(now));
 
     if (this.pendingImpact) {
       return;
     }
     if (attacker.heroId === 'death' && now < this.deathPairLockUntil) {
-      this.pendingTaps = 0;
       return;
     }
     const deathFollow = attacker.heroId === 'death' && this.deathBurstPending;
@@ -145,11 +141,13 @@ export class QuickAttack {
     if (attacker.status.cannotAttack(now) && !deathFollow) {
       return;
     }
-    if ((!held && this.pendingTaps === 0 && !deathFollow) || now < this.nextSwingAt) {
+    if ((!freshPress && !holdRepeat && !deathFollow) || now < this.nextSwingAt) {
       return;
     }
 
-    const step = deathFollow ? 2 : this.nextComboStep(now, attacker);
+    const bigDemon = isBigDemon(attacker);
+    const tapping = freshPress && this.usesTapCombo(attacker) && !deathFollow;
+    const step = deathFollow ? 2 : tapping ? comboStepOf(this.combo.preview(now, COMBAT.comboWindowMs)) : 1;
     const staminaCost = lightAttackStaminaCost(step, attacker.stats.attackStaminaMul ?? 1);
     if (!deathFollow) {
       if (!attacker.hasAttackStamina(staminaCost, now)) {
@@ -159,7 +157,6 @@ export class QuickAttack {
     } else if (attacker.hasAttackStamina(staminaCost, now)) {
       attacker.trySpendStamina(staminaCost, now);
     }
-    const profile = COMBAT.combo[step];
     if (attacker.heroId === 'death') {
       spawnCombatCallout(
         this.scene,
@@ -168,26 +165,37 @@ export class QuickAttack {
         step === 2 ? 'HIT 2' : 'HIT 1',
         COLORS.orange,
       );
-    } else if (this.pendingTaps > 0) {
+    } else if (tapping) {
       this.combo.tap(now, COMBAT.comboWindowMs);
-      this.pendingTaps -= 1;
-      if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch' && attacker.heroId !== 'shadow' && attacker.heroId !== 'mender' && attacker.heroId !== 'demon') {
+      if (step >= 2) {
         spawnCombatCallout(
           this.scene,
           attacker.x,
           attacker.y,
-          step === 2 ? 'HIT 2' : `HIT ${step}`,
-          COLORS.orange,
+          step === 3 ? 'FINISHER' : 'COMBO',
+          step === 3 ? COLORS.yellow : COLORS.orange,
         );
       }
-    } else {
-      this.combo.reset();
+    } else if (!deathFollow) {
+      this.combo.drop();
     }
+    this.consumedPressAt = this.lastPressAt;
 
     const delay = Math.round(
-      attacker.stats.attackCooldownMs * COMBAT.attackCooldownMultiplier * attacker.status.attackSlowMultiplier(now),
+      attackCycleMs(attacker.stats.attackCooldownMs, {
+        heroId: attacker.heroId,
+        bigDemon,
+        step,
+        holdRepeat: holdRepeat && !deathFollow,
+      }) * attacker.status.attackSlowMultiplier(now),
     );
     this.nextSwingAt = now + delay;
+    const startup = attackStartupMs(step, attacker.heroId, bigDemon);
+    attacker.status.applyAttackRecovery(now, delay);
+    const commit = attackCommitMoveMul(attacker.heroId, bigDemon);
+    if (commit < 1 && attacker.heroId !== 'cole') {
+      attacker.status.applyCommitSlow(now, startup, commit);
+    }
     this.lastSwingAt = now;
     this.lastSwingStep = step;
     playLightAttack(attacker);
@@ -200,9 +208,7 @@ export class QuickAttack {
         armLiftRight: Math.min(1, frac * 1.7),
         swayX: Math.sin(frac * Math.PI) * 3,
       }));
-      if (step === 3) {
-        spawnShockwaveRing(this.scene, attacker.x, attacker.y, COLE_SHOCKWAVE.radius);
-      } else {
+      if (step !== 3) {
         const half = (attacker.stats.attackArcDegrees * Math.PI) / 360;
         spawnLightningArc(this.scene, attacker.x, attacker.y, attacker.aim.x, attacker.aim.y, COLE_ATTACK.range, half);
       }
@@ -216,7 +222,6 @@ export class QuickAttack {
         this.deathBurstPending = false;
         this.deathPairLockUntil = now + DEATH_ATTACK.pairDelayMs;
         this.nextSwingAt = this.deathPairLockUntil;
-        this.pendingTaps = 0;
         this.combo.reset();
       }
     } else if (attacker.heroId === 'rope') {
@@ -238,21 +243,16 @@ export class QuickAttack {
       this.spawnWhiteLineSlice(attacker, step);
     }
     if (attacker.heroId !== 'rope' && attacker.heroId !== 'witch' && attacker.heroId !== 'mender' && !(attacker.heroId === 'demon' && !isBigDemon(attacker))) {
-      this.pendingImpact = { at: now + profile.impactDelayMs, step };
+      this.pendingImpact = { at: now + startup, step };
     }
   }
 
-  private nextComboStep(now: number, attacker: NinjaBody): ComboStep {
-    if (attacker.heroId === 'rope' || attacker.heroId === 'witch' || attacker.heroId === 'shadow' || attacker.heroId === 'mender' || attacker.heroId === 'demon') {
-      return 1;
+  /** Melee kits chain taps. Death keeps his pair. Ranged kits stay on single shots. */
+  private usesTapCombo(attacker: NinjaBody): boolean {
+    if (attacker.heroId === 'ninja' || attacker.heroId === 'cole' || attacker.heroId === 'shadow') {
+      return true;
     }
-    if (attacker.heroId === 'death') {
-      return this.deathBurstPending ? 2 : 1;
-    }
-    if (this.pendingTaps > 0) {
-      return comboStepOf(this.combo.preview(now, COMBAT.comboWindowMs));
-    }
-    return 1;
+    return attacker.heroId === 'demon' && isBigDemon(attacker);
   }
 
   private fireRopeLight(now: number, attacker: NinjaBody): void {
@@ -308,6 +308,7 @@ export class QuickAttack {
       Number.POSITIVE_INFINITY,
       undefined,
       attacker.team,
+      MENDER_PULSE.hitLift,
     );
     this.menderShots.push(shot);
     spawnBarrelExplosion(this.scene, origin.x, origin.y, sx, sy);
@@ -360,6 +361,8 @@ export class QuickAttack {
           dirY: result.target.y - attacker.y,
           step: 1,
           heavy: false,
+          hitReactionMs: hitReactionFor(1, 'mender'),
+          hitStopMs: hitStopFor(1, 'mender'),
           sourceKind: 'light',
         },
         defenderBlock,
@@ -448,7 +451,8 @@ export class QuickAttack {
           dirY: result.target.y - attacker.y,
           step: 1,
           heavy: false,
-          hitReactionMs: DEMON_ATTACK.hitReactionMs,
+          hitReactionMs: hitReactionFor(1, 'demon'),
+          hitStopMs: hitStopFor(1, 'demon'),
           sourceKind: 'light',
         },
         defenderBlock,
@@ -614,6 +618,8 @@ export class QuickAttack {
           dirY,
           step: 1,
           heavy: false,
+          hitReactionMs: hitReactionFor(1, 'rope'),
+          hitStopMs: hitStopFor(1, 'rope'),
           sourceKind: 'light',
         },
         defenderBlock,
@@ -768,6 +774,7 @@ export class QuickAttack {
     enemies: NinjaBody[],
     defenderBlock?: BlockController,
   ): void {
+    spawnShockwaveRing(this.scene, attacker.x, attacker.y, COLE_SHOCKWAVE.radius);
     let connected = false;
     for (const enemy of enemies) {
       if (enemy.down) {
@@ -822,7 +829,7 @@ export class QuickAttack {
       if (enemy.down) {
         continue;
       }
-      const kind = resolveMelee(this.scene, now, attacker, enemy, step === 3 ? 3 : 1, defenderBlock, {
+      const kind = resolveMelee(this.scene, now, attacker, enemy, step, defenderBlock, {
         alreadyClashed: connected,
         knockbackMul,
         damageMul,

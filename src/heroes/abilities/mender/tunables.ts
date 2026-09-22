@@ -15,6 +15,8 @@ export const MENDER_PULSE = {
   spreadRad: 0.038,
   armOffsetRad: 0.014,
   armReach: 16,
+  /** Muzzle sits above the body point. Hits use this so level shots meet the target. */
+  hitLift: 24,
   knockbackMul: 0.42,
   staminaDamage: 2,
   hitSlowMul: 0.88,

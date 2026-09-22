@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
-import { COMBAT, ComboStep } from '../config/combat';
+import { COMBAT, ComboStep, hitReactionFor, hitStopFor } from '../config/combat';
 import { applyDefense } from './damage';
 import { emitCombatBlocked } from './damageEvents';
 import { isInAttackArc } from './hitDetection';
-import { playHitJuice } from '../effects/hitJuice';
+import { playHitJuice, playImpactShake } from '../effects/hitJuice';
 import { spawnHitSpark } from '../effects/hitSpark';
 import { spawnCombatCallout } from '../effects/combatCallout';
 import { COLORS } from '../ui/theme';
@@ -86,14 +86,17 @@ export const resolveMelee = (
       inArc(defender, attacker);
     if (bothSwinging) {
       applyClash(scene, now, attacker, defender, step);
-      playMeleeConnect('clash', attacker, defender, step === 3);
+      playMeleeConnect('clash', attacker, defender, step);
+      if (attacker.playerControlled || defender.playerControlled) {
+        playImpactShake(scene, 'clash');
+      }
       return 'clash';
     }
   }
 
   const block = defenderBlock?.tryAbsorb(now, defender, attacker.x, attacker.y);
   if (block?.absorbed) {
-    const heavy = step === 3;
+    const heavy = step >= 2;
     const profile = COMBAT.combo[step];
     const blockedDamage = applyDefense(
       attacker.stats.attackDamage *
@@ -111,17 +114,20 @@ export const resolveMelee = (
     if (block.perfect) {
       attacker.playBlockRecoil(now, true);
       attacker.status.applyBlockStun(now, COMBAT.perfectShieldStunMs);
-      attacker.status.applyHitStop(now, COMBAT.hitStopBlockMs);
+      attacker.status.applyHitStop(now, COMBAT.hitStopPerfectMs);
       defender.applyRecoil(-defender.aim.x, -defender.aim.y, 10);
       spawnCombatCallout(scene, defender.x, defender.y, 'PERFECT', COLORS.yellow);
       playHitJuice(scene, defender.x, defender.y, {
         damage: 0,
         blocked: true,
-        finisher: heavy,
+        finisher: step === 3,
         perfect: true,
         shake: attacker.playerControlled || defender.playerControlled,
       });
-      playMeleeConnect('perfect-block', attacker, defender, heavy);
+      playMeleeConnect('perfect-block', attacker, defender, step);
+      if (attacker.playerControlled || defender.playerControlled) {
+        playImpactShake(scene, 'perfect');
+      }
       return 'perfect-block';
     }
 
@@ -134,11 +140,11 @@ export const resolveMelee = (
     playHitJuice(scene, defender.x, defender.y, {
       damage: 0,
       blocked: true,
-      finisher: heavy,
+      finisher: step === 3,
       perfect: false,
       shake: attacker.playerControlled || defender.playerControlled,
     });
-    playMeleeConnect('blocked', attacker, defender, heavy);
+    playMeleeConnect('blocked', attacker, defender, step);
     return 'blocked';
   }
 
@@ -151,6 +157,9 @@ export const resolveMelee = (
   );
   const dirX = options.dirX ?? attacker.aim.x;
   const dirY = options.dirY ?? attacker.aim.y;
+  const bigDemon = attacker.heroId === 'demon' && attacker.demonForm === 'big';
+  const reactionMs = hitReactionFor(step, attacker.heroId, bigDemon);
+  const stopMs = hitStopFor(step, attacker.heroId, bigDemon);
   defender.takeHit({
     damage,
     dirX,
@@ -162,19 +171,26 @@ export const resolveMelee = (
       attacker.status.knockbackMultiplier(now),
     staminaDamage: profile.staminaDamage,
     step,
+    hitReactionMs: reactionMs,
+    hitStopMs: stopMs,
     launchCap: options.launchCap,
     source: { attacker, kind: 'light' },
   });
+  attacker.applyRecoil(-dirX, -dirY, profile.attackerRecoil);
+  attacker.playConnectPunch(step);
+  attacker.status.applyHitStop(now, stopMs);
   spawnHitSpark(scene, defender.x + attacker.aim.x * 12, defender.y + attacker.aim.y * 12, {
-    heavy: step === 3,
+    heavy: step >= 2,
   });
   playHitJuice(scene, defender.x, defender.y, {
     damage,
     finisher: step === 3,
     shake: attacker.playerControlled || defender.playerControlled,
   });
-  attacker.status.applyHitStop(now, step === 3 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs);
-  playMeleeConnect('hit', attacker, defender, step === 3);
+  if (step === 3 && (attacker.playerControlled || defender.playerControlled)) {
+    playImpactShake(scene, 'finisher');
+  }
+  playMeleeConnect('hit', attacker, defender, step);
   return 'hit';
 };
 
@@ -203,6 +219,7 @@ const applyClash = (
     knockback: COMBAT.clashRecoil,
     staminaDamage: Math.max(2, Math.round(profile.staminaDamage * 0.5)),
     step,
+    hitStopMs: COMBAT.hitStopClashMs,
     clash: true,
     source: { attacker: a, kind: 'light' },
   });
@@ -213,6 +230,7 @@ const applyClash = (
     knockback: COMBAT.clashRecoil,
     staminaDamage: Math.max(2, Math.round(otherProfile.staminaDamage * 0.5)),
     step: otherStep,
+    hitStopMs: COMBAT.hitStopClashMs,
     clash: true,
     source: { attacker: b, kind: 'light' },
   });

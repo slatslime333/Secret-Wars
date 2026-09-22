@@ -6,6 +6,7 @@ export const CONTROL_LAYOUT_STORAGE_KEY = 'secret-wars-control-layout-v2';
 export const CONTROL_IDS = [
   'leftStick',
   'rightStick',
+  'attack',
   'block',
   'dash',
   'ability1',
@@ -26,6 +27,7 @@ export type SavedControlLayout = Partial<Record<ControlId, ControlPlacement>>;
 export const CONTROL_LABEL: Record<ControlId, string> = {
   leftStick: 'MOVE',
   rightStick: 'AIM',
+  attack: 'ATK',
   block: 'SHIELD',
   dash: 'DASH',
   ability1: 'A1',
@@ -86,6 +88,7 @@ export const defaultControlPlacement = (width: number, height: number): Record<C
   return {
     leftStick: toPlacement(layout.leftStick, width, height),
     rightStick: toPlacement(layout.rightStick, width, height),
+    attack: toPlacement(layout.attack, width, height),
     block: toPlacement(layout.block, width, height),
     dash: toPlacement(layout.dash, width, height),
     ability1: toPlacement(layout.ability1, width, height),
@@ -124,6 +127,8 @@ const radiusOf = (id: ControlId, layout: TouchControlLayout, scale: number): num
   const base =
     id === 'leftStick' || id === 'rightStick'
       ? layout.radius
+      : id === 'attack'
+        ? layout.attackRadius
       : id === 'ultimate'
         ? layout.ultimateRadius
         : id === 'ability1' || id === 'ability2'
@@ -137,6 +142,7 @@ export type ResolvedControl = Point & { r: number };
 const BASE_POINT: Record<ControlId, (layout: TouchControlLayout) => Point> = {
   leftStick: (layout) => layout.leftStick,
   rightStick: (layout) => layout.rightStick,
+  attack: (layout) => layout.attack,
   block: (layout) => layout.block,
   dash: (layout) => layout.dash,
   ability1: (layout) => layout.ability1,
@@ -181,6 +187,7 @@ export const getBattleControlLayout = (width: number, height: number): TouchCont
     ultimateRadius: resolved.ultimate.r,
     leftStick: { x: resolved.leftStick.x, y: resolved.leftStick.y },
     rightStick: { x: resolved.rightStick.x, y: resolved.rightStick.y },
+    attack: { x: resolved.attack.x, y: resolved.attack.y },
     block: { x: resolved.block.x, y: resolved.block.y },
     dash: { x: resolved.dash.x, y: resolved.dash.y },
     ability1: { x: resolved.ability1.x, y: resolved.ability1.y },

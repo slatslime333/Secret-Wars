@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { COMBAT, ComboStep } from '../../config/combat';
 import { applyDefense } from '../../combat/damage';
 import { emitCombatBlocked } from '../../combat/damageEvents';
-import { playHitJuice } from '../../effects/hitJuice';
+import { playHitJuice, playImpactShake } from '../../effects/hitJuice';
 import { spawnHitSpark } from '../../effects/hitSpark';
 import { spawnCombatCallout } from '../../effects/combatCallout';
 import { COLORS } from '../../ui/theme';
@@ -63,7 +63,10 @@ export const resolveAbilityHit = (
     if (block.perfect) {
       attacker.playBlockRecoil(now, true);
       attacker.status.applyBlockStun(now, COMBAT.perfectShieldStunMs);
-      attacker.status.applyHitStop(now, COMBAT.hitStopBlockMs);
+      attacker.status.applyHitStop(now, COMBAT.hitStopPerfectMs);
+      if (attacker.playerControlled || defender.playerControlled) {
+        playImpactShake(scene, 'perfect');
+      }
       spawnCombatCallout(scene, defender.x, defender.y, 'PERFECT', COLORS.yellow);
       playHitJuice(scene, defender.x, defender.y, {
         damage: 0,

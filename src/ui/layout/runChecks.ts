@@ -29,6 +29,7 @@ const checkSize = (label: string, width: number, height: number): Check[] => {
   const leftBand = width * 0.32;
   const controlsRight =
     layout.rightStick.x > rightBand &&
+    layout.attack.x > rightBand &&
     layout.block.x > rightBand &&
     layout.dash.x > rightBand &&
     layout.ability1.x > rightBand &&
@@ -64,7 +65,7 @@ const checkSize = (label: string, width: number, height: number): Check[] => {
     {
       name: `${label} buttons stay on the right`,
       ok: controlsRight && ultNotCenter,
-      detail: `ult=${layout.ultimate.x.toFixed(0)} a1=${layout.ability1.x.toFixed(0)} block=${layout.block.x.toFixed(0)} dash=${layout.dash.x.toFixed(0)}`,
+      detail: `ult=${layout.ultimate.x.toFixed(0)} a1=${layout.ability1.x.toFixed(0)} atk=${layout.attack.x.toFixed(0)} block=${layout.block.x.toFixed(0)} dash=${layout.dash.x.toFixed(0)}`,
     },
     {
       name: `${label} info centered map on the right`,

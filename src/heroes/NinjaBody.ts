@@ -382,13 +382,22 @@ export class NinjaBody {
     }
     this.lastDrawnFlash = true;
     this.redrawIdle();
-    this.view.setScale(options.step === 3 ? 1.22 : 1.12);
+    const punch = options.clash ? 1.16 : options.step === 3 ? 1.22 : options.step === 2 ? 1.14 : 1.08;
+    const recoil = options.clash ? 7 : options.step === 3 ? 8 : options.step === 2 ? 5 : 3;
+    this.view.setScale(punch);
+    this.art.setPosition((-options.dirX / length) * recoil, (-options.dirY / length) * recoil);
     this.scene.tweens.add({
       targets: this.view,
       scale: 1,
-      duration: options.step === 3 ? 150 : 110,
-      ease: 'Stepped',
-      easeParams: [3],
+      duration: options.step === 3 ? 150 : options.step === 2 ? 120 : 90,
+      ease: 'Quad.Out',
+    });
+    this.scene.tweens.add({
+      targets: this.art,
+      x: 0,
+      y: 0,
+      duration: options.step === 3 ? 140 : 90,
+      ease: 'Quad.Out',
     });
     if (this.down) {
       this.stop();
@@ -404,6 +413,19 @@ export class NinjaBody {
         playDeath(this);
       }
     }
+  }
+
+  /** Tiny scale punch so the attacker feels the connect. */
+  playConnectPunch(step: ComboStep): void {
+    const punch = step === 3 ? 1.07 : step === 2 ? 1.045 : 1.028;
+    this.view.setScale(punch);
+    this.scene.tweens.add({
+      targets: this.view,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 70,
+      ease: 'Quad.Out',
+    });
   }
 
   applyRecoil(dirX: number, dirY: number, power: number): void {
@@ -523,8 +545,8 @@ export class NinjaBody {
       targets: swordAnimState,
       angleOffset: endAngle,
       lungeFrac: 1,
-      duration: duration * (comboStep === 3 ? 0.7 : 0.6),
-      ease: comboStep === 3 ? 'Back.Out' : 'Cubic.Out',
+      duration: duration * (comboStep === 3 ? 0.72 : 0.64),
+      ease: comboStep === 3 ? 'Back.Out' : 'Quad.In',
       yoyo: true,
       onUpdate: () => {
         if (!this.present) {

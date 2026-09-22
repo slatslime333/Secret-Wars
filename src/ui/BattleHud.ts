@@ -242,7 +242,7 @@ export class BattleHud {
       : this.touch
         ? `DASH ${dash.chargeCount}/${dash.maxCharges}`
         : `SHIFT DASH ${dash.chargeCount}/${dash.maxCharges}`;
-    const abilityBit = this.touch ? '' : '   Q E F AIM  ·  LMB FIRE';
+    const abilityBit = this.touch ? '   ATK' : '   Q E F AIM  ·  LMB FIRE';
     this.verbText.setText(`${shieldBit}   ${dashBit}${abilityBit}`);
   }
 }
@@ -252,7 +252,7 @@ const comboLabel = (step: number): string => {
     return 'HIT 1';
   }
   if (step === 2) {
-    return 'HIT 2';
+    return 'COMBO';
   }
   if (step === 3) {
     return 'FINISHER';

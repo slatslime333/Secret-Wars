@@ -18,8 +18,20 @@ export const COMBAT = {
   /** Kept for the unused Chaser practice enemy files. */
   chaserWindupMs: 280,
 
-  /** Slightly slower than the converted cooldown so each swing can read. */
-  attackCooldownMultiplier: 1.22,
+  /**
+   * Attack-speed ratings stay 0–99. This compresses the raw cooldown into a
+   * readable decision window: fast kits stay fast, heavy kits stay heavy.
+   * Hold repeats use holdCycleMul. Tap steps 2 and 3 stretch the cycle.
+   */
+  cycleBaseMs: 170,
+  cycleScale: 0.63,
+  cycleMinMs: 200,
+  cycleMaxMs: 560,
+  holdCycleMul: 0.9,
+  tapStepCycleMul: { 1: 1, 2: 1.14, 3: 1.3 },
+  /** Forgiveness so a press just before recovery ends still comes out. */
+  inputBufferPcMs: 90,
+  inputBufferMobileMs: 140,
 
   /** Holding the shield spends shield HP, not stamina. */
   blockDrainPerSecond: 16,
@@ -43,59 +55,67 @@ export const COMBAT = {
 
   /** Three charges, each recovering through the same recharge timer. */
   dashMaxCharges: 3,
-  dashRechargeMs: 1500,
+  /** Slightly longer recharge so a dash is a spend, not a second attack button. */
+  dashRechargeMs: 1700,
   dashDistance: 118,
   dashDurationMs: 120,
 
-  comboWindowMs: 720,
+  /** Long enough to land a deliberate third tap after a heavier second hit. */
+  comboWindowMs: 860,
   comboFinisherDamageMultiplier: 2.15,
   /** Step 3 uses combo[3].staminaCostMultiplier (14 stamina at the base cost). */
   comboFinisherStaminaMultiplier: 2,
   comboFinisherKnockbackMultiplier: 1.55,
 
   /**
-   * Per-step attack identity. Hold-repeat always uses step 1.
+   * Per-step attack identity.
+   * Hold-repeat stays on step 1 (quicker, lighter).
+   * Distinct taps advance 1 → 2 → 3 and pay the higher cost.
    * Knockback/lunge values are velocities (px/s), applied at the impact frame.
+   * Ordinary travel is lower than before; weight comes from hit-stop and reaction.
    */
   combo: {
     1: {
       damageMultiplier: 1,
-      knockbackMultiplier: 2.05,
+      knockbackMultiplier: 1.64,
       staminaCostMultiplier: 1,
       lungeDistance: 12,
       lungeImpulse: 210,
       lungeLockMs: 95,
-      recoveryMs: 110,
+      recoveryMs: 150,
       staminaDamage: 4,
-      hitReactionMs: 190,
-      impactDelayMs: 70,
+      hitReactionMs: 120,
+      impactDelayMs: 82,
       shieldDamage: 8,
+      attackerRecoil: 46,
     },
     2: {
       damageMultiplier: 1.28,
-      knockbackMultiplier: 2.35,
+      knockbackMultiplier: 2.02,
       staminaCostMultiplier: 9 / 7,
       lungeDistance: 18,
       lungeImpulse: 270,
       lungeLockMs: 110,
-      recoveryMs: 150,
+      recoveryMs: 190,
       staminaDamage: 6,
-      hitReactionMs: 250,
-      impactDelayMs: 90,
+      hitReactionMs: 165,
+      impactDelayMs: 102,
       shieldDamage: 13,
+      attackerRecoil: 68,
     },
     3: {
       damageMultiplier: 2.15,
-      knockbackMultiplier: 2.55,
+      knockbackMultiplier: 2.3,
       staminaCostMultiplier: 2,
       lungeDistance: 26,
       lungeImpulse: 340,
-      lungeLockMs: 130,
-      recoveryMs: 220,
+      lungeLockMs: 140,
+      recoveryMs: 250,
       staminaDamage: 10,
-      hitReactionMs: 320,
-      impactDelayMs: 110,
+      hitReactionMs: 220,
+      impactDelayMs: 118,
       shieldDamage: 20,
+      attackerRecoil: 92,
     },
   },
 
@@ -111,12 +131,14 @@ export const COMBAT = {
   hitFlashMs: 140,
 
   /** Tiny freeze on connect. Finishers / perfect shields / clashes use the long end. */
-  hitStopLightMs: 55,
-  hitStopHeavyMs: 85,
-  hitStopBlockMs: 70,
-  hitStopClashMs: 80,
+  hitStopLightMs: 48,
+  hitStopHeavyMs: 68,
+  hitStopFinisherMs: 86,
+  hitStopBlockMs: 64,
+  hitStopPerfectMs: 96,
+  hitStopClashMs: 82,
   /** Shared ability-impact freeze. Short enough to read as weight, not lag. */
-  hitStopImpactMs: 100,
+  hitStopImpactMs: 96,
 
   /** Ultimates recharge on this timer instead of once per match. */
   ultimateCooldownMs: 45_000,
@@ -148,3 +170,73 @@ export const lightAttackStaminaCost = (step: ComboStep, staminaMul = 1): number 
 /** Personal block-shield pool. Scales with the fighter's max health. */
 export const blockShieldMaxFor = (maxHealth: number): number =>
   Math.max(24, Math.round(maxHealth * COMBAT.blockShieldRatio));
+
+export type AttackCadence = {
+  heroId: string;
+  bigDemon?: boolean;
+  step: ComboStep;
+  holdRepeat: boolean;
+};
+
+type HeroFeel = {
+  /** Scales the shared attack cycle. 1 keeps the rating curve. */
+  cycle: number;
+  hitStop: number;
+  reaction: number;
+  startup: number;
+  /** Move multiplier during attack startup. 1 leaves walking untouched. */
+  commitMove: number;
+};
+
+/**
+ * Character rhythm on top of the 0–99 ratings.
+ * Ratings still set the order. These only keep each kit's job readable.
+ */
+export const HERO_COMBAT_FEEL: Record<string, HeroFeel> = {
+  ninja: { cycle: 1, hitStop: 0.9, reaction: 0.84, startup: 0.9, commitMove: 0.94 },
+  cole: { cycle: 1.02, hitStop: 1.16, reaction: 1.12, startup: 1.14, commitMove: 1 },
+  death: { cycle: 0.96, hitStop: 1.28, reaction: 1.22, startup: 1.02, commitMove: 0.7 },
+  rope: { cycle: 1, hitStop: 0.82, reaction: 0.7, startup: 0.85, commitMove: 1 },
+  witch: { cycle: 1.08, hitStop: 1.05, reaction: 1.02, startup: 1.08, commitMove: 1 },
+  shadow: { cycle: 1.04, hitStop: 1.14, reaction: 1.16, startup: 1.12, commitMove: 0.84 },
+  mender: { cycle: 0.72, hitStop: 0.62, reaction: 0.55, startup: 0.7, commitMove: 1 },
+  demon: { cycle: 1, hitStop: 0.86, reaction: 0.78, startup: 0.92, commitMove: 1 },
+  'demon-big': { cycle: 1.1, hitStop: 1.24, reaction: 1.18, startup: 1.12, commitMove: 0.76 },
+};
+
+export const feelKey = (heroId: string, bigDemon = false): string =>
+  heroId === 'demon' && bigDemon ? 'demon-big' : heroId;
+
+const heroFeel = (heroId: string, bigDemon = false): HeroFeel =>
+  HERO_COMBAT_FEEL[feelKey(heroId, bigDemon)] ?? HERO_COMBAT_FEEL.ninja;
+
+const clampMs = (value: number, min: number, max: number): number =>
+  Math.round(Math.min(max, Math.max(min, value)));
+
+/** Time from one legal swing to the next. Ratings drive it; steps and hold shape it. */
+export const attackCycleMs = (cooldownMs: number, cadence: AttackCadence): number => {
+  const feel = heroFeel(cadence.heroId, cadence.bigDemon);
+  const compressed = COMBAT.cycleBaseMs + cooldownMs * COMBAT.cycleScale;
+  const stepMul =
+    cadence.holdRepeat && cadence.step === 1 ? COMBAT.holdCycleMul : COMBAT.tapStepCycleMul[cadence.step];
+  return clampMs(compressed * feel.cycle * stepMul, COMBAT.cycleMinMs, COMBAT.cycleMaxMs);
+};
+
+export const inputBufferMs = (touch: boolean): number =>
+  touch ? COMBAT.inputBufferMobileMs : COMBAT.inputBufferPcMs;
+
+/** Visible windup before the hit frame. */
+export const attackStartupMs = (step: ComboStep, heroId: string, bigDemon = false): number =>
+  clampMs(COMBAT.combo[step].impactDelayMs * heroFeel(heroId, bigDemon).startup, 55, 130);
+
+export const hitStopFor = (step: ComboStep, heroId: string, bigDemon = false): number => {
+  const base = step === 3 ? COMBAT.hitStopFinisherMs : step === 2 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs;
+  return clampMs(base * heroFeel(heroId, bigDemon).hitStop, 28, 110);
+};
+
+export const hitReactionFor = (step: ComboStep, heroId: string, bigDemon = false): number =>
+  clampMs(COMBAT.combo[step].hitReactionMs * heroFeel(heroId, bigDemon).reaction, 50, 280);
+
+/** Plant the feet only during startup. 1 means the hero keeps full move speed. */
+export const attackCommitMoveMul = (heroId: string, bigDemon = false): number =>
+  heroFeel(heroId, bigDemon).commitMove;

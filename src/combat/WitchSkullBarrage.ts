@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { playWorld } from '../audio';
+import { hitReactionFor, hitStopFor } from '../config/combat';
 import { WITCH_SKULL } from '../heroes/abilities/witch/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { resolveAbilityHit } from '../heroes/abilities/resolveAbilityHit';
@@ -176,6 +177,8 @@ export class WitchSkullBarrage {
           dirY: this.aimY,
           step: 1,
           heavy: false,
+          hitReactionMs: hitReactionFor(1, 'witch'),
+          hitStopMs: hitStopFor(1, 'witch'),
           sourceKind: 'light',
         },
         defenderBlock,

@@ -62,6 +62,8 @@ export class BattleInput {
   private rightStick?: VirtualThumbstick;
   private readonly blockPad?: VirtualAimPad;
   private readonly dashButton?: CombatButton;
+  private readonly attackButton?: CombatButton;
+  private attackTouchHeld = false;
   private ability1Button?: AbilityButton;
   private ability1Pad?: VirtualAimPad;
   private readonly ability1Aim = new Phaser.Math.Vector2();
@@ -150,6 +152,19 @@ export class BattleInput {
       this.dashButton.setRadius(layout.dash.r);
       this.dashButton.setCharges(dashMaxCharges, dashMaxCharges);
       this.dashButton.setRecovered(1);
+      this.attackButton = new CombatButton(scene, layout.attack.x, layout.attack.y, {
+        label: 'ATK',
+        accent: COLORS.redBright,
+        holdable: true,
+        onPress: () => {
+          this.attackTouchHeld = true;
+          this.attackLatched = true;
+        },
+        onRelease: () => {
+          this.attackTouchHeld = false;
+        },
+      });
+      this.attackButton.setRadius(layout.attack.r);
 
       if (kit) {
         if (kit.ability1.aimOnRelease) {
@@ -389,8 +404,10 @@ export class BattleInput {
     }
     this.blockPad?.setRadius(layout.block.r);
     this.dashButton?.setRadius(layout.dash.r);
+    this.attackButton?.setRadius(layout.attack.r);
     this.blockPad?.setPosition(layout.block.x, layout.block.y);
     this.dashButton?.setPosition(layout.dash.x, layout.dash.y);
+    this.attackButton?.setPosition(layout.attack.x, layout.attack.y);
     this.ability1Button?.setRadius(layout.ability1.r);
     this.ability1Pad?.setRadius(layout.ability1.r);
     this.ability2Button?.setRadius(layout.ability2.r);
@@ -406,7 +423,8 @@ export class BattleInput {
   sample(originX: number, originY: number): BattleFrame {
     const move = this.readMove();
     const right = this.rightStick?.getValue() ?? new Phaser.Math.Vector2();
-    const rightActive = Boolean(this.rightStick?.active && right.length() >= INPUT.rightDeadzone);
+    const aimDeadzone = this.touch ? INPUT.touchRightDeadzone : INPUT.rightDeadzone;
+    const rightActive = Boolean(this.rightStick?.active && right.length() >= aimDeadzone);
     const zooming = !this.combatVisible;
     const zoom = zooming && this.rightStick?.active ? right.y : 0;
 
@@ -439,7 +457,8 @@ export class BattleInput {
       !zooming &&
       !aimingAbility &&
       !this.suppressAttack &&
-      (rightActive || Boolean(this.keys?.attack.isDown) || pointerAttack);
+      (this.attackTouchHeld || Boolean(this.keys?.attack.isDown) || pointerAttack);
+    this.attackButton?.setHeldVisual(this.attackTouchHeld);
     const attackPressed =
       !zooming &&
       !this.suppressAttack &&
@@ -449,7 +468,7 @@ export class BattleInput {
     this.wasAttackHeld = attackHeld || this.suppressAttack;
 
     const now = this.scene.time.now;
-    const attackEdge = attackPressed && now - this.lastAttackPressAt >= 90;
+    const attackEdge = attackPressed && now - this.lastAttackPressAt >= 50;
     if (attackEdge) {
       this.lastAttackPressAt = now;
     }
@@ -739,6 +758,7 @@ export class BattleInput {
     this.rightStick?.destroy();
     this.blockPad?.destroy();
     this.dashButton?.destroy();
+    this.attackButton?.destroy();
     this.ability1Button?.destroy();
     this.ability1Pad?.destroy();
     this.ability2Button?.destroy();
@@ -751,6 +771,7 @@ export class BattleInput {
     this.combatVisible = visible;
     this.blockPad?.setVisible(visible);
     this.dashButton?.setVisible(visible);
+    this.attackButton?.setVisible(visible);
     this.ability1Button?.setVisible(visible);
     this.ability1Pad?.setVisible(visible);
     this.ability2Button?.setVisible(visible);
@@ -784,7 +805,8 @@ export class BattleInput {
   private readMove(): Phaser.Math.Vector2 {
     const move = new Phaser.Math.Vector2();
     const left = this.leftStick?.getValue();
-    if (left && left.length() >= INPUT.leftDeadzone) {
+    const moveDeadzone = this.touch ? INPUT.touchLeftDeadzone : INPUT.leftDeadzone;
+    if (left && left.length() >= moveDeadzone) {
       move.copy(left);
     }
 

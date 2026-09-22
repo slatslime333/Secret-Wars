@@ -1,4 +1,5 @@
 import { audio } from './AudioManager';
+import type { ComboStep } from '../config/combat';
 import type { PlayOptions, SoundId } from './types';
 
 type AudioBody = {
@@ -85,14 +86,18 @@ export const playMeleeConnect = (
   kind: 'hit' | 'blocked' | 'perfect-block' | 'clash' | 'whiff',
   attacker: AudioBody,
   defender: AudioBody,
-  heavy: boolean,
+  step: ComboStep,
 ): void => {
   const where = at(defender);
   if (kind === 'clash') {
     audio.play('combat-clash', where);
     return;
   }
-  if (kind === 'blocked' || kind === 'perfect-block') {
+  if (kind === 'perfect-block') {
+    audio.play('combat-perfect', where);
+    return;
+  }
+  if (kind === 'blocked') {
     audio.play('combat-block', where);
     return;
   }
@@ -103,8 +108,9 @@ export const playMeleeConnect = (
     audio.play('minion-hit', where);
     return;
   }
-  audio.play(heavy ? 'combat-hit-heavy' : 'combat-hit', where);
-  if (heavy) {
+  const sound = step === 3 ? 'combat-hit-finisher' : step === 2 ? 'combat-hit-heavy' : 'combat-hit';
+  audio.play(sound, where);
+  if (step === 3) {
     audio.play('combat-knockback', where);
   }
 };
@@ -116,7 +122,11 @@ export const playAbilityConnect = (
   options: { heavy?: boolean; sourceKind?: string } = {},
 ): void => {
   const where = at(defender);
-  if (kind === 'blocked' || kind === 'perfect-block') {
+  if (kind === 'perfect-block') {
+    audio.play('combat-perfect', where);
+    return;
+  }
+  if (kind === 'blocked') {
     audio.play('combat-block', where);
     return;
   }
@@ -129,7 +139,9 @@ export const playAbilityConnect = (
   }
   if ((options.sourceKind ?? 'ability') === 'light') {
     audio.play(options.heavy ? 'combat-hit-heavy' : 'combat-hit', where);
+    return;
   }
+  audio.play(options.heavy ? 'combat-hit-finisher' : 'combat-ability-hit', where);
 };
 
 export const startAbilityAudio = (abilityId: string, caster: AudioBody): string | undefined => {

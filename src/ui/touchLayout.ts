@@ -8,8 +8,10 @@ export type TouchControlLayout = {
   buttonRadius: number;
   abilityRadius: number;
   ultimateRadius: number;
+  attackRadius: number;
   leftStick: Point;
   rightStick: Point;
+  attack: Point;
   block: Point;
   dash: Point;
   ability1: Point;
@@ -54,9 +56,10 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
   let ultimateRadius = Math.round(
     clamp(radius * 0.52, tablet ? 28 : isPortrait ? 26 : 24, tablet ? 36 : isPortrait ? 32 : 30),
   );
+  let attackRadius = Math.round(clamp(radius * 0.86, 36, 64));
 
-  const fits = (stickR: number, btnR: number, abilR: number, ultR: number): boolean => {
-    const packed = pack(stickR, btnR, abilR, ultR, {
+  const fits = (stickR: number, btnR: number, abilR: number, ultR: number, atkR: number): boolean => {
+    const packed = pack(stickR, btnR, abilR, ultR, atkR, {
       isPortrait,
       gap,
       rightMin,
@@ -64,18 +67,20 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
       bottom,
       top,
       left: inset.left,
+      attackMinX: rightMin,
     });
     return !packOverlaps(packed) && packInBand(packed, rightMin, width, inset.left, top, rightEdge, bottom);
   };
 
-  while (radius > 36 && !fits(radius, buttonRadius, abilityRadius, ultimateRadius)) {
+  while (radius > 36 && !fits(radius, buttonRadius, abilityRadius, ultimateRadius, attackRadius)) {
     radius -= 1;
     buttonRadius = Math.round(clamp(radius * 0.56, 22, 32));
     abilityRadius = Math.round(clamp(radius * 0.58, 24, 34));
     ultimateRadius = Math.round(clamp(radius * 0.52, 22, 32));
+    attackRadius = Math.round(clamp(radius * 0.86, 30, 64));
   }
 
-  const packed = pack(radius, buttonRadius, abilityRadius, ultimateRadius, {
+  const packed = pack(radius, buttonRadius, abilityRadius, ultimateRadius, attackRadius, {
     isPortrait,
     gap,
     rightMin,
@@ -83,6 +88,7 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
     bottom,
     top,
     left: inset.left,
+    attackMinX: rightMin,
   });
 
   return {
@@ -91,8 +97,10 @@ export function getTouchControlLayout(width: number, height: number): TouchContr
     buttonRadius,
     abilityRadius,
     ultimateRadius,
+    attackRadius: packed.attack.r,
     leftStick: point(packed.move),
     rightStick: point(packed.aim),
+    attack: point(packed.attack),
     block: point(packed.block),
     dash: point(packed.dash),
     ability1: point(packed.ability1),
@@ -109,6 +117,7 @@ type PackOpts = {
   bottom: number;
   top: number;
   left: number;
+  attackMinX: number;
 };
 
 type Packed = {
@@ -119,6 +128,7 @@ type Packed = {
   ability1: Circle;
   ability2: Circle;
   ultimate: Circle;
+  attack: Circle;
 };
 
 const pack = (
@@ -126,6 +136,7 @@ const pack = (
   btnR: number,
   abilR: number,
   ultR: number,
+  attackR: number,
   opts: PackOpts,
 ): Packed => {
   const { isPortrait, gap, rightMin, rightEdge, bottom, top, left } = opts;
@@ -139,6 +150,7 @@ const pack = (
     y: bottom - stickR,
     r: stickR,
   };
+  const attack = placeAttack(aim, attackR, gap, opts.attackMinX);
   const colSpan = Math.max(btnR, abilR) * 2 + gap;
   const dash: Circle = {
     x: aim.x,
@@ -192,12 +204,24 @@ const pack = (
       };
     }
   }
-  return { move, aim, dash, block, ability1, ability2, ultimate };
+  return { move, aim, attack, dash, block, ability1, ability2, ultimate };
+};
+
+/** Large attack button just inside the aim stick, still on the right thumb. */
+const placeAttack = (aim: Circle, attackR: number, gap: number, minCenter: number): Circle => {
+  let r = attackR;
+  let x = aim.x - aim.r - r - gap;
+  while (x < minCenter && r > 30) {
+    r -= 1;
+    x = aim.x - aim.r - r - gap;
+  }
+  return { x: Math.max(minCenter, x), y: aim.y, r };
 };
 
 const packList = (packed: Packed): Circle[] => [
   packed.move,
   packed.aim,
+  packed.attack,
   packed.dash,
   packed.block,
   packed.ability1,
@@ -226,7 +250,7 @@ const packInBand = (
   rightEdge: number,
   bottom: number,
 ): boolean => {
-  const right = [packed.aim, packed.dash, packed.block, packed.ability1, packed.ability2, packed.ultimate];
+  const right = [packed.aim, packed.attack, packed.dash, packed.block, packed.ability1, packed.ability2, packed.ultimate];
   for (const circle of right) {
     if (circle.x < rightMin) {
       return false;
@@ -260,6 +284,7 @@ export const findLayoutOverlaps = (width: number, height: number): string[] => {
   const named: [string, Circle][] = [
     ['MOVE', { ...layout.leftStick, r: layout.radius }],
     ['AIM', { ...layout.rightStick, r: layout.radius }],
+    ['ATK', { ...layout.attack, r: layout.attackRadius }],
     ['SHIELD', { ...layout.block, r: layout.buttonRadius }],
     ['DASH', { ...layout.dash, r: layout.buttonRadius }],
     ['A1', { ...layout.ability1, r: layout.abilityRadius }],
