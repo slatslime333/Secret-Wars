@@ -28,6 +28,14 @@ import { absorbGuardianAngel, clearGuardian } from './abilities/mender/shieldSta
 import { tickBurn, isBurning, clearBurn, drawBurnFlames } from './abilities/demon/burnFx';
 import { resetDemonForm, type DemonForm } from './abilities/demon/form';
 import { DEV_CHEATS } from '../debug/devCheats';
+import {
+  drawHurtGlow,
+  drawHurtMark,
+  hurtFlashMs,
+  hurtPulse,
+  HURT_MARK_MS,
+  isLowHealth,
+} from './hurtFeedback';
 import { MATCH } from '../config/match';
 import { MINION } from '../config/minion';
 
@@ -97,6 +105,13 @@ export class NinjaBody {
   private holdAttackPose = false;
   /** Sheet slash stays upright. Procedural tilt is for drawn heroes only. */
   private ninjaSheetAttack = false;
+  private hurtGlow?: Phaser.GameObjects.Graphics;
+  private hurtMark?: Phaser.GameObjects.Graphics;
+  private hurtTint?: Phaser.GameObjects.Sprite;
+  private hurtFlashUntil = 0;
+  private hurtMarkUntil = 0;
+  private hurtDirX = 1;
+  private hurtDirY = 0;
   private armLiftLeft = 0;
   private armLiftRight = 0;
   private wrapGfx?: Phaser.GameObjects.Graphics;
@@ -213,6 +228,18 @@ export class NinjaBody {
       this.sparks = scene.add.graphics();
       this.view.add(this.sparks);
     }
+    this.hurtGlow = scene.add.graphics();
+    this.hurtGlow.setBlendMode(Phaser.BlendModes.ADD);
+    this.view.addAt(this.hurtGlow, 1);
+    if (this.spriteArt) {
+      this.hurtTint = scene.add.sprite(this.spriteArt.x, this.spriteArt.y, this.spriteArt.texture.key, this.spriteArt.frame.name);
+      this.hurtTint.setOrigin(this.spriteArt.originX, this.spriteArt.originY);
+      this.hurtTint.setTintFill(0xff2430);
+      this.hurtTint.setVisible(false);
+      this.view.add(this.hurtTint);
+    }
+    this.hurtMark = scene.add.graphics();
+    this.view.add(this.hurtMark);
     this.redrawIdle();
     this.scene.physics.world.on('worldstep', this.containInArena, this);
   }
@@ -271,6 +298,7 @@ export class NinjaBody {
       this.art.setY(-hop);
     }
     this.syncPixelSprite(now);
+    this.syncHurtFeedback(now);
     const flashing = this.status.isFlashingHit(now);
     if (flashing !== this.lastDrawnFlash && this.now() >= this.attackingUntil) {
       this.lastDrawnFlash = flashing;
@@ -384,6 +412,12 @@ export class NinjaBody {
     }
     this.lastDrawnFlash = true;
     this.redrawIdle();
+    if (applied > 0) {
+      this.hurtFlashUntil = now + hurtFlashMs();
+      this.hurtMarkUntil = now + HURT_MARK_MS;
+      this.hurtDirX = dirX;
+      this.hurtDirY = dirY;
+    }
     const squashY = options.clash ? 0.8 : options.step === 3 ? 0.76 : options.step === 2 ? 0.84 : 0.9;
     const stretchX = options.clash ? 1.12 : options.step === 3 ? 1.14 : options.step === 2 ? 1.08 : 1.04;
     const recoil = options.clash ? 8 : options.step === 3 ? 11 : options.step === 2 ? 7 : 4;
@@ -1628,6 +1662,61 @@ export class NinjaBody {
       hitFlash: this.status.isFlashingHit(now),
       now,
     });
+  }
+
+  private syncHurtFeedback(now: number): void {
+    const low = isLowHealth(this.health, this.stats.maxHealth, this.down);
+    const pulse = hurtPulse(now);
+    const glow = this.hurtGlow;
+    if (glow) {
+      if (low && !this.fairyForm) {
+        drawHurtGlow(glow, pulse);
+      } else {
+        glow.clear();
+      }
+    }
+    this.syncHurtTint(now, low, pulse);
+    const mark = this.hurtMark;
+    if (!mark) {
+      return;
+    }
+    if (now >= this.hurtMarkUntil || this.fairyForm) {
+      mark.clear();
+      return;
+    }
+    const progress = 1 - (this.hurtMarkUntil - now) / HURT_MARK_MS;
+    drawHurtMark(mark, progress, this.hurtDirX, this.hurtDirY, !this.hurtTint);
+  }
+
+  private syncHurtTint(now: number, low: boolean, pulse: number): void {
+    const copy = this.hurtTint;
+    const source = this.spriteArt;
+    if (!copy || !source || this.fairyForm || !source.visible) {
+      copy?.setVisible(false);
+      return;
+    }
+    if (copy.texture.key !== source.texture.key) {
+      copy.setTexture(source.texture.key);
+    }
+    copy.setFrame(source.frame.name);
+    copy.setTintFill(0xff2430);
+    copy.setPosition(source.x, source.y);
+    copy.setScale(source.scaleX, source.scaleY);
+    copy.setRotation(source.rotation);
+    copy.setFlip(source.flipX, source.flipY);
+    const flash = now < this.hurtFlashUntil ? (this.hurtFlashUntil - now) / hurtFlashMs() : 0;
+    if (flash > 0) {
+      copy.setVisible(true);
+      copy.setAlpha(0.5 + flash * 0.5);
+      return;
+    }
+    if (low) {
+      copy.setVisible(true);
+      copy.setAlpha(0.08 + pulse * 0.48);
+      return;
+    }
+    copy.setVisible(false);
+    copy.setAlpha(0);
   }
 
   /** Run cycle faces travel. Aim still aims the slash. */
