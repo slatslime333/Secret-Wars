@@ -58,6 +58,21 @@ export class MovementCommit {
   }
 }
 
+/** Point a chase at a door before combat strafe can pull the aim back into a wall. */
+export const aimThroughDoor = (
+  x: number,
+  y: number,
+  goalX: number,
+  goalY: number,
+  query: WalkQuery | undefined,
+): { x: number; y: number; door: boolean } => {
+  const door = query?.doorStep?.(x, y, goalX, goalY);
+  if (door) {
+    return { x: door.x - x, y: door.y - y, door: true };
+  }
+  return { x: goalX - x, y: goalY - y, door: false };
+};
+
 export const resolveCpuWalk = (
   now: number,
   x: number,

@@ -8,7 +8,7 @@ import type { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { CombatDriver } from './combatDriver';
 import { TacticalField } from './tactical/field';
 import { TacticalMind } from './tactical/mind';
-import { MovementCommit, resolveCpuWalk } from './tactical/locomotion';
+import { MovementCommit, aimThroughDoor, resolveCpuWalk } from './tactical/locomotion';
 import { moveGoal } from './tactical/move';
 import { SwingIntent } from './tactical/swingIntent';
 import type { TacticalDebugInfo } from './tactical/types';
@@ -202,10 +202,11 @@ export class HeroPilot {
       body.stop();
       return;
     }
-    let dx = goal.x - body.x;
-    let dy = goal.y - body.y;
+    const aimed = aimThroughDoor(body.x, body.y, goal.x, goal.y, battlefieldOf(scene)?.query);
+    let dx = aimed.x;
+    let dy = aimed.y;
     const strafe = this.combat.strafeDir(now);
-    if (strafe) {
+    if (strafe && !aimed.door) {
       dx = dx * 0.35 + strafe.x * 80;
       dy = dy * 0.35 + strafe.y * 80;
     }
