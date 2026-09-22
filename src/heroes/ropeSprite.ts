@@ -8,14 +8,14 @@ export const ROPE_SHEET_ALPHA = 'rope-sheet-alpha';
 export const ROPE_SHEET_BRAVO = 'rope-sheet-bravo';
 export const ROPE_FRAME_W = 80;
 export const ROPE_FRAME_H = 80;
-/** idle, 8-frame run, left shot, right shot, punch, grab, grab with both arms. */
-export const ROPE_COLS = 14;
-export const ROPE_WALK_FRAMES = 8;
-const ROPE_COL_SHOT_L = 9;
-const ROPE_COL_SHOT_R = 10;
-const ROPE_COL_PUNCH = 11;
-const ROPE_COL_GRAB = 12;
-const ROPE_COL_GRAB_BOTH = 13;
+/** idle, the two drawn run poses, left shot, right shot, punch, grab, grab with both arms. */
+export const ROPE_COLS = 8;
+export const ROPE_WALK_FRAMES = 2;
+const ROPE_COL_SHOT_L = 3;
+const ROPE_COL_SHOT_R = 4;
+const ROPE_COL_PUNCH = 5;
+const ROPE_COL_GRAB = 6;
+const ROPE_COL_GRAB_BOTH = 7;
 export const ROPE_WORLD_SCALE = 0.92;
 export const ROPE_FEET_Y = 16;
 

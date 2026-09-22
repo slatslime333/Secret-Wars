@@ -1457,7 +1457,7 @@ export class NinjaBody {
       moving: this.witchMoving,
       walkFrame:
         this.spriteKind === 'rope'
-          ? Math.floor(this.witchWalkPx / 10) % ROPE_WALK_FRAMES
+          ? Math.floor(this.witchWalkPx / 22) % ROPE_WALK_FRAMES
           : Math.floor(this.witchWalkPx / 14) % 4,
       hitFlash: this.status.isFlashingHit(now),
       now,
