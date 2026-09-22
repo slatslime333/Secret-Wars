@@ -130,8 +130,8 @@ export const assertFoundationalStatLock = (): void => {
   if (SHADOW.attackDamage !== 16) {
     mismatches.push(`shadow attackDamage ${SHADOW.attackDamage} !== 16`);
   }
-  if (SHADOW.attackRange !== 145) {
-    mismatches.push(`shadow attackRange ${SHADOW.attackRange} !== 145`);
+  if (SHADOW.attackRange !== 109) {
+    mismatches.push(`shadow attackRange ${SHADOW.attackRange} !== 109`);
   }
   if (SHADOW_CLAW.radius !== 186) {
     mismatches.push(`shadow claw radius ${SHADOW_CLAW.radius} !== 186`);

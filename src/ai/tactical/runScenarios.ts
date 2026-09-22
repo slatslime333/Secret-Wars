@@ -599,11 +599,11 @@ if (SHADOW.ratings.damage !== 68 || SHADOW.ratings.defense !== 39) {
 } else {
   console.log('ok  shadow ratings  damage 68 / defense 39');
 }
-if (SHADOW_HIT_MARKER_RANGE !== Math.round(SHADOW.attackRange * 2.15) || SHADOW_HIT_MARKER_RANGE <= SHADOW.attackRange * 2) {
+if (SHADOW_HIT_MARKER_RANGE !== SHADOW.attackRange) {
   failed += 1;
   console.log(`FAIL  shadow hit marker  ${SHADOW_HIT_MARKER_RANGE} vs attack ${SHADOW.attackRange}`);
 } else {
-  console.log(`ok  shadow hit marker  ${SHADOW_HIT_MARKER_RANGE} independent of cole`);
+  console.log(`ok  shadow hit marker matches attack ${SHADOW.attackRange}`);
 }
 if (
   ROPE.ratings.damage !== 39 ||

@@ -65,6 +65,10 @@ export const adoptHud = (scene: Phaser.Scene, ...objects: Phaser.GameObjects.Gam
       continue;
     }
     object.cameraFilter &= ~ui.id;
+    // Containers are parents: Camera.ignore only flags children, so the
+    // container itself stayed on the world camera. Its zoomed hit box then
+    // sat on the health bar and score and opened the pause menu.
+    object.cameraFilter |= scene.cameras.main.id;
     scene.cameras.main.ignore(object);
     const nested = object as Phaser.GameObjects.Container;
     if (Array.isArray(nested.list)) {

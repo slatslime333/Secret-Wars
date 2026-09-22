@@ -552,7 +552,16 @@ export class QuickAttack {
         swayX: nx * (wind ? -5 : 12) * Math.min(1, frac * 1.8),
       };
     });
-    spawnShadowSlash(this.scene, attacker.x, attacker.y, nx, ny, attacker.stats.attackRange);
+    spawnShadowSlash(
+      this.scene,
+      attacker.x,
+      attacker.y,
+      nx,
+      ny,
+      attacker.stats.attackRange,
+      false,
+      (attacker.stats.attackArcDegrees * Math.PI) / 360,
+    );
   }
 
   private resolveShadowImpact(
@@ -570,6 +579,7 @@ export class QuickAttack {
       const result = resolveMelee(this.scene, now, attacker, defender, step, defenderBlock, {
         alreadyClashed: connected,
         knockbackMul: SHADOW_ATTACK.knockbackMul,
+        forgiveness: 0,
       });
       if (result === 'hit') {
         connected = true;
@@ -666,7 +676,8 @@ export class QuickAttack {
       now,
       damage: attacker.stats.attackDamage * profile.damageMultiplier,
       reach:
-        (attacker.heroId === 'cole' ? COLE_ATTACK.range : attacker.stats.attackRange) + COMBAT.hitForgiveness,
+        (attacker.heroId === 'cole' ? COLE_ATTACK.range : attacker.stats.attackRange) +
+        (attacker.heroId === 'shadow' ? 0 : COMBAT.hitForgiveness),
       kind: 'melee',
       dirX: attacker.aim.x,
       dirY: attacker.aim.y,

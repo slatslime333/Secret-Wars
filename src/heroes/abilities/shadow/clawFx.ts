@@ -55,10 +55,12 @@ export const spawnShadowSlash = (
   dirY: number,
   radius: number,
   giant = false,
+  halfArc?: number,
 ): void => {
   const g = scene.add.graphics().setDepth(20);
   const angle = Math.atan2(dirY, dirX);
-  const half = giant ? 1.05 : 0.78;
+  const half = halfArc ?? (giant ? 1.05 : 0.78);
+  const tip = halfArc === undefined ? radius * (giant ? 1.18 : 1.04) : radius;
   const anim = { t: 0, alpha: 1 };
   g.setPosition(x, y);
   scene.tweens.add({
@@ -90,7 +92,7 @@ export const spawnShadowSlash = (
       for (let i = 0; i < marks; i += 1) {
         const a = claw + (i - (marks - 1) / 2) * spread;
         const inner = radius * (giant ? 0.28 : 0.45);
-        const outer = radius * (giant ? 1.18 : 1.04);
+        const outer = tip;
         g.lineStyle(giant ? 7 : 2.8, 0x1a0c22, 0.62 * persist);
         g.lineBetween(Math.cos(a) * inner, Math.sin(a) * inner, Math.cos(a) * outer, Math.sin(a) * outer);
         g.lineStyle(giant ? 3.4 : 1.6, 0xd8c4ff, 0.95 * persist);
