@@ -72,12 +72,19 @@ export const resolveCpuWalk = (
   mates?: WalkMate[],
   role?: string,
 ): { x: number; y: number; stop: boolean } => {
-  const len = Math.hypot(desiredX, desiredY) || 1;
+  let aimX = desiredX;
+  let aimY = desiredY;
+  const door = query?.doorStep?.(x, y, x + desiredX, y + desiredY);
+  if (door) {
+    aimX = door.x - x;
+    aimY = door.y - y;
+  }
+  const len = Math.hypot(aimX, aimY) || 1;
   if (len < 12 && !loco.stuck.recovering) {
     loco.reset();
     return { x: 0, y: 0, stop: true };
   }
-  const committed = loco.heading(now, desiredX / len, desiredY / len, personality);
+  const committed = loco.heading(now, aimX / len, aimY / len, personality);
   const steered = query?.steer(x, y, committed.x, committed.y) ?? committed;
   const dir = loco.stuck.filter(
     now,

@@ -1,6 +1,6 @@
 import { ARENA } from '../config/arena';
 import { MAP } from './config';
-import { circleHitsRect, pointInRect } from './geometry';
+import { circleHitsRect, pointInRect, segmentHitsRect } from './geometry';
 import type { MapLayout, MapObstacle, MapRegionId, Point, Rect } from './types';
 
 export class MapQuery {
@@ -134,6 +134,65 @@ export class MapQuery {
     return this.hasApproaches(x, y, radius);
   }
 
+  /**
+   * Next walk point when a straight line would cross a house. Door points sit
+   * in the opening, so the CPU leaves through a gap instead of a brick.
+   */
+  doorStep(x: number, y: number, goalX: number, goalY: number): Point | undefined {
+    const reach = 20;
+    for (const home of this.enterableHomes()) {
+      const room = home.interior;
+      const doors = home.doors;
+      if (!room || !doors || doors.length < 2) {
+        continue;
+      }
+      const fromIn = pointInRect(x, y, room);
+      const toIn = pointInRect(goalX, goalY, room);
+      if (fromIn && toIn) {
+        continue;
+      }
+      const walls = this.layout.obstacles.filter(
+        (obs) => obs.blocksMovement && obs.id.startsWith(`${home.id}-`),
+      );
+      const crossesWall = walls.some((wall) => segmentHitsRect(x, y, goalX, goalY, wall.collision));
+      if (!fromIn && !toIn && (!crossesWall || !segmentHitsRect(x, y, goalX, goalY, room))) {
+        continue;
+      }
+      const nearest = (px: number, py: number) => {
+        let best = doors[0];
+        let bestD = Infinity;
+        for (const door of doors) {
+          const d = Math.hypot(px - door.x, py - door.y);
+          if (d < bestD) {
+            best = door;
+            bestD = d;
+          }
+        }
+        return best;
+      };
+      if (fromIn) {
+        const door = nearest(goalX, goalY);
+        if (Math.hypot(x - door.x, y - door.y) > reach) {
+          return { x: door.x, y: door.y };
+        }
+        return undefined;
+      }
+      const enter = nearest(x, y);
+      if (Math.hypot(x - enter.x, y - enter.y) > reach) {
+        return { x: enter.x, y: enter.y };
+      }
+      if (toIn) {
+        return undefined;
+      }
+      const exit = doors.find((door) => door !== enter) ?? doors[1];
+      if (Math.hypot(x - exit.x, y - exit.y) > reach) {
+        return { x: exit.x, y: exit.y };
+      }
+      return undefined;
+    }
+    return undefined;
+  }
+
   /** Nudge a desired walk vector around nearby solids. */
   steer(x: number, y: number, dx: number, dy: number, look = 34): Point {
     if (this.blocksMovement(x, y, 8)) {
@@ -171,17 +230,27 @@ export const steerAround = (
   const length = Math.hypot(dx, dy) || 1;
   const nx = dx / length;
   const ny = dy / length;
-  if (!blocked(x + nx * look, y + ny * look, radius)) {
+  const pathBlocked = (dirX: number, dirY: number, distance: number): boolean => {
+    const steps = Math.max(1, Math.ceil(distance / 10));
+    for (let i = 1; i <= steps; i += 1) {
+      const d = (distance * i) / steps;
+      if (blocked(x + dirX * d, y + dirY * d, radius)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  if (!pathBlocked(nx, ny, look)) {
     return { x: nx, y: ny };
   }
   let best: Point | undefined;
   let bestScore = -1e9;
   for (const ang of RECOVER_ANGLES) {
     const dir = rotate(nx, ny, ang);
-    if (blocked(x + dir.x * look, y + dir.y * look, radius)) {
+    if (pathBlocked(dir.x, dir.y, look)) {
       continue;
     }
-    const far = !blocked(x + dir.x * look * 1.55, y + dir.y * look * 1.55, radius);
+    const far = !pathBlocked(dir.x, dir.y, look * 1.55);
     const align = dir.x * nx + dir.y * ny;
     const score = align * 1.15 + (far ? 0.4 : 0);
     if (score > bestScore) {

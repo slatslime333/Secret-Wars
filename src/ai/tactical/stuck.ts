@@ -4,6 +4,8 @@ import type { KitProfile, Personality } from './types';
 export type WalkQuery = {
   blocksMovement: (x: number, y: number, radius?: number) => boolean;
   steer: (x: number, y: number, dx: number, dy: number, look?: number) => { x: number; y: number };
+  /** When a walk would cross a house, the next point in a door opening. */
+  doorStep?: (x: number, y: number, goalX: number, goalY: number) => { x: number; y: number } | undefined;
 };
 
 export type WalkMate = { x: number; y: number };
@@ -132,13 +134,25 @@ export class StuckTracker {
       this.begin(now, x, y, desired, query, personality, kit, openSide(x, y, desired, query), 'strafe');
     }
 
+    const slide = (): { x: number; y: number } => {
+      if (steered.x !== 0 || steered.y !== 0) {
+        return steered;
+      }
+      if (!query) {
+        return desired;
+      }
+      const side = openSide(x, y, desired, query);
+      const nlen = hypot(desired.x, desired.y) || 1;
+      return { x: (-desired.y / nlen) * side, y: (desired.x / nlen) * side };
+    };
+
     if (this.phase === 'clear') {
-      return steered.x === 0 && steered.y === 0 ? desired : steered;
+      return slide();
     }
 
     if (!inside && dist > Math.max(11, speed * 0.045) && this.stillMs < trigger * 0.45) {
       this.clear();
-      return steered.x === 0 && steered.y === 0 ? desired : steered;
+      return slide();
     }
 
     if (now >= this.phaseUntil) {

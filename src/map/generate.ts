@@ -270,35 +270,46 @@ const openHome = (obs: MapObstacle, obstacles: MapObstacle[]): void => {
   obs.blocksProjectiles = false;
   obs.blocksLos = false;
   obs.collision = { x: obs.x - 4, y: obs.y - 4, w: 8, h: 8 };
-  const wall = ENV_WORLD.houseWall;
   const door = ENV_WORLD.houseDoor;
   const v = obs.visual;
+  // Shell bricks are 14px. Collision is thicker so a body cannot step the seam.
+  const brick = 14;
+  const thick = 22;
+  const half = thick / 2;
+  const northCenter = v.y + 28 + brick / 2;
+  const southCenter = v.y + (v.h - 28) + brick / 2;
+  const westCenter = v.x + 8 + brick / 2;
+  const eastCenter = v.x + v.w - 22 + brick / 2;
+  const midX = v.x + v.w / 2;
+  const doorLeft = midX - door / 2;
+  const doorRight = midX + door / 2;
+  const innerWest = westCenter + half;
+  const innerEast = eastCenter - half;
+  const northBottom = northCenter + half;
+  const southTop = southCenter - half;
+  const sideH = southTop - northBottom;
+  const sideY = (northBottom + southTop) / 2;
+  const leftLen = doorLeft - innerWest;
+  const rightLen = innerEast - doorRight;
+  const leftX = (innerWest + doorLeft) / 2;
+  const rightX = (doorRight + innerEast) / 2;
   obs.interior = {
-    x: v.x + wall + 6,
-    y: v.y + 32,
-    w: v.w - wall * 2 - 12,
-    h: Math.max(56, v.h - 56),
+    x: innerWest,
+    y: northBottom,
+    w: innerEast - innerWest,
+    h: sideH,
   };
-  const southY = v.y + v.h - wall / 2 - 6;
-  const northY = v.y + 28 + wall / 2;
-  const westX = v.x + wall / 2 + 4;
-  const eastX = v.x + v.w - wall / 2 - 4;
-  const midX = obs.x;
-  const side = (v.w - door) / 2;
-  const leftLen = Math.max(28, side - wall - 10);
-  const rightLen = Math.max(28, side - wall - 10);
-  const wallH = Math.max(36, v.h - 64);
   obstacles.push(
-    houseWall(`${obs.id}-n-l`, midX - door / 2 - leftLen / 2, northY, leftLen, wall),
-    houseWall(`${obs.id}-n-r`, midX + door / 2 + rightLen / 2, northY, rightLen, wall),
-    houseWall(`${obs.id}-s-l`, midX - door / 2 - leftLen / 2, southY, leftLen, wall),
-    houseWall(`${obs.id}-s-r`, midX + door / 2 + rightLen / 2, southY, rightLen, wall),
-    houseWall(`${obs.id}-w`, westX, obs.y + 8, wall, wallH),
-    houseWall(`${obs.id}-e`, eastX, obs.y + 8, wall, wallH),
+    houseWall(`${obs.id}-n-l`, leftX, northCenter, leftLen, thick),
+    houseWall(`${obs.id}-n-r`, rightX, northCenter, rightLen, thick),
+    houseWall(`${obs.id}-s-l`, leftX, southCenter, leftLen, thick),
+    houseWall(`${obs.id}-s-r`, rightX, southCenter, rightLen, thick),
+    houseWall(`${obs.id}-w`, westCenter, sideY, thick, sideH),
+    houseWall(`${obs.id}-e`, eastCenter, sideY, thick, sideH),
   );
   obs.doors = [
-    { side: 'front', x: midX, y: southY + 20 },
-    { side: 'back', x: midX, y: northY - 20 },
+    { side: 'front', x: midX, y: southCenter },
+    { side: 'back', x: midX, y: northCenter },
   ];
   const room = obs.interior;
   for (const other of obstacles) {
@@ -313,6 +324,31 @@ const openHome = (obs: MapObstacle, obstacles: MapObstacle[]): void => {
       other.blocksMovement = false;
       other.blocksProjectiles = false;
       other.blocksLos = false;
+    }
+  }
+};
+
+/** Props planted after the shell can sit in the opening. The mouth stays walkable. */
+const clearDoorMouths = (obstacles: MapObstacle[]): void => {
+  const gap = ENV_WORLD.houseDoor;
+  const mouthH = 22;
+  for (const home of obstacles) {
+    if (!home.enterable || !home.doors) {
+      continue;
+    }
+    for (const door of home.doors) {
+      const mouth = { x: door.x - gap / 2, y: door.y - mouthH / 2, w: gap, h: mouthH };
+      for (const other of obstacles) {
+        if (!other.blocksMovement || other.id === home.id || other.id.startsWith(`${home.id}-`)) {
+          continue;
+        }
+        if (!rectsOverlap(other.collision, mouth)) {
+          continue;
+        }
+        other.blocksMovement = false;
+        other.blocksProjectiles = false;
+        other.blocksLos = false;
+      }
     }
   }
 };
@@ -472,6 +508,7 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
   obstacles.push(...plantTreesBeside(obstacles, reserved, obstacles));
   obstacles.push(...plantFencesBeside(obstacles, reserved, obstacles));
   obstacles.push(...plantFencesAlong(roads, reserved, obstacles));
+  clearDoorMouths(obstacles);
   decorations.push(...scatterFieldDetails(new SeededRNG(seed ^ 0x7e2a), obstacles));
 
   const layout: MapLayout = {
