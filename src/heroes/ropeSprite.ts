@@ -8,7 +8,14 @@ export const ROPE_SHEET_ALPHA = 'rope-sheet-alpha';
 export const ROPE_SHEET_BRAVO = 'rope-sheet-bravo';
 export const ROPE_FRAME_W = 80;
 export const ROPE_FRAME_H = 80;
-export const ROPE_COLS = 10;
+/** idle, 8-frame run, left shot, right shot, punch, grab, grab with both arms. */
+export const ROPE_COLS = 14;
+export const ROPE_WALK_FRAMES = 8;
+const ROPE_COL_SHOT_L = 9;
+const ROPE_COL_SHOT_R = 10;
+const ROPE_COL_PUNCH = 11;
+const ROPE_COL_GRAB = 12;
+const ROPE_COL_GRAB_BOTH = 13;
 export const ROPE_WORLD_SCALE = 0.92;
 export const ROPE_FEET_Y = 16;
 
@@ -127,16 +134,16 @@ export const ropeFrameIndex = (pose: RopeSpritePose): number => {
   if (pose.attacking) {
     const action = pose.ropeAction ?? 'shot';
     if (action === 'punch') {
-      col = 7;
+      col = ROPE_COL_PUNCH;
     } else if (action === 'grab') {
       const left = pose.armLiftLeft ?? 0;
       const right = pose.armLiftRight ?? 0;
-      col = left > 0.7 && right > 0.7 ? 9 : 8;
+      col = left > 0.7 && right > 0.7 ? ROPE_COL_GRAB_BOTH : ROPE_COL_GRAB;
     } else {
-      col = (pose.armLiftRight ?? 0) > (pose.armLiftLeft ?? 0) ? 6 : 5;
+      col = (pose.armLiftRight ?? 0) > (pose.armLiftLeft ?? 0) ? ROPE_COL_SHOT_R : ROPE_COL_SHOT_L;
     }
   } else if (pose.moving) {
-    col = 1 + ((pose.walkFrame ?? 0) % 4);
+    col = 1 + ((pose.walkFrame ?? 0) % ROPE_WALK_FRAMES);
   }
   return row * ROPE_COLS + col;
 };

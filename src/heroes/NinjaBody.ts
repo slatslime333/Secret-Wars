@@ -14,7 +14,7 @@ import type { HeroDrawFn, HeroDrawOptions } from './heroDraw';
 import { applyWitchSprite, createWitchSprite, WITCH_FEET_Y, WITCH_WORLD_SCALE } from './witchSprite';
 import { applyColeSprite, createColeSprite, COLE_FEET_Y, COLE_WORLD_SCALE } from './coleSprite';
 import { applyNinjaSprite, createNinjaSprite, NINJA_FEET_Y, NINJA_WORLD_SCALE } from './ninjaSprite';
-import { applyRopeSprite, createRopeSprite, ROPE_FEET_Y, ROPE_WORLD_SCALE } from './ropeSprite';
+import { applyRopeSprite, createRopeSprite, ROPE_FEET_Y, ROPE_WALK_FRAMES, ROPE_WORLD_SCALE } from './ropeSprite';
 import { applyDeathSprite, createDeathSprite, DEATH_FEET_Y, DEATH_WORLD_SCALE } from './deathSprite';
 import { applyMenderSprite, createMenderSprite, MENDER_FEET_Y, MENDER_WORLD_SCALE } from './menderSprite';
 import { applyShadowSprite, createShadowSprite, SHADOW_FEET_Y, SHADOW_WORLD_SCALE } from './shadowSprite';
@@ -1455,7 +1455,10 @@ export class NinjaBody {
     this.applyPixelSprite({
       facing: this.facing,
       moving: this.witchMoving,
-      walkFrame: Math.floor(this.witchWalkPx / 14) % 4,
+      walkFrame:
+        this.spriteKind === 'rope'
+          ? Math.floor(this.witchWalkPx / 10) % ROPE_WALK_FRAMES
+          : Math.floor(this.witchWalkPx / 14) % 4,
       hitFlash: this.status.isFlashingHit(now),
       now,
     });
