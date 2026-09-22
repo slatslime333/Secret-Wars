@@ -121,15 +121,23 @@ export const resolveAbilityHit = (
   if (!profile.skipSpark) {
     spawnHitSpark(scene, defender.x + (profile.dirX / length) * 12, defender.y + (profile.dirY / length) * 12, {
       heavy: Boolean(profile.heavy),
+      finisher: Boolean(profile.heavy),
+      dirX: profile.dirX / length,
+      dirY: profile.dirY / length,
     });
   }
   playHitJuice(scene, defender.x, defender.y, {
     damage,
     finisher: Boolean(profile.heavy),
+    heavy: Boolean(profile.heavy),
     shake: attacker.playerControlled || defender.playerControlled,
   });
-  if (profile.hitStopMs !== 0) {
-    attacker.status.applyHitStop(now, profile.hitStopMs ?? (profile.heavy ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs));
+  if (profile.hitStopMs !== 0 && (profile.sourceKind ?? 'ability') !== 'light') {
+    const stop = profile.hitStopMs ?? (profile.heavy ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs);
+    attacker.freezeForHitStop(now, stop);
+    if (profile.heavy && (attacker.playerControlled || defender.playerControlled)) {
+      playImpactShake(scene, 'ability');
+    }
   }
   playAbilityConnect('hit', attacker, defender, { heavy: profile.heavy, sourceKind: profile.sourceKind });
   if (isDemon(attacker) && (profile.sourceKind ?? 'ability') === 'ability') {

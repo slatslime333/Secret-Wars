@@ -27,6 +27,13 @@ export class CombatStatus {
   private slowMul = 1;
   private commitSlowUntil = 0;
   private commitSlowMul = 1;
+  private moveStartupUntil = 0;
+  private moveActiveUntil = 0;
+  private moveRecoverUntil = 0;
+  private moveStartupMul = 1;
+  private moveActiveMul = 1;
+  private moveRecoverMul = 1;
+  private steerLockUntil = 0;
   private hasteUntil = 0;
   private hasteMoveMul = 1;
   private hasteAttackMul = 1;
@@ -70,7 +77,8 @@ export class CombatStatus {
     const duration = reactionMs ?? COMBAT.combo[step].hitReactionMs;
     this.hitReactionUntil = now + duration;
     this.attackSlowUntil = Math.min(now + COMBAT.hitSlowMaxMs, now + duration + 80);
-    this.hitFlashUntil = now + COMBAT.hitFlashMs;
+    const flash = step === 3 ? 190 : step === 2 ? 155 : COMBAT.hitFlashMs;
+    this.hitFlashUntil = now + flash;
   }
 
   applyStun(now: number, durationMs: number): void {
@@ -193,6 +201,30 @@ export class CombatStatus {
   applyCommitSlow(now: number, durationMs: number, moveMul: number): void {
     this.commitSlowUntil = now + durationMs;
     this.commitSlowMul = moveMul;
+  }
+
+  /**
+   * Three movement windows for one swing.
+   * Startup stays responsive, contact commits, recovery eases back to a run.
+   */
+  beginAttackMove(
+    now: number,
+    startupMs: number,
+    activeMs: number,
+    recoveryMs: number,
+    move: { startup: number; active: number; recovery: number },
+  ): void {
+    this.moveStartupUntil = now + Math.max(0, startupMs);
+    this.moveActiveUntil = this.moveStartupUntil + Math.max(0, activeMs);
+    this.moveRecoverUntil = this.moveActiveUntil + Math.max(0, recoveryMs);
+    this.moveStartupMul = move.startup;
+    this.moveActiveMul = move.active;
+    this.moveRecoverMul = move.recovery;
+  }
+
+  /** Keep a queued recoil from being overwritten by walk input. Does not block attacks. */
+  applySteerLock(now: number, durationMs: number): void {
+    this.steerLockUntil = Math.max(this.steerLockUntil, now + durationMs);
   }
 
   /** Temporary +move / +attack-speed buff. Refresh duration; do not stack. */
@@ -399,7 +431,8 @@ export class CombatStatus {
       this.isHitStopping(now) ||
       this.isClashLocked(now) ||
       this.isControlLocked(now) ||
-      this.isParalyzed(now)
+      this.isParalyzed(now) ||
+      now < this.steerLockUntil
     );
   }
 
@@ -424,14 +457,28 @@ export class CombatStatus {
     const commit = now < this.commitSlowUntil ? this.commitSlowMul : 1;
     const haste = now < this.hasteUntil ? this.hasteMoveMul : 1;
     const cripple = now < this.crippleUntil ? 1 - this.crippleAmount : 1;
+    const swing = this.attackMoveMul(now);
     const eventMove = this.eventMoveMul * this.carryMoveMul;
     if (this.isBlockStunned(now) || this.isHitStopping(now)) {
-      return 0.2 * this.zone.moveMul * eventMove * slow * commit * haste * cripple;
+      return 0.2 * this.zone.moveMul * eventMove * slow * commit * haste * cripple * swing;
     }
     if (this.isHitReacting(now)) {
-      return COMBAT.hitMoveMultiplier * this.zone.moveMul * eventMove * slow * commit * haste * cripple;
+      return COMBAT.hitMoveMultiplier * this.zone.moveMul * eventMove * slow * commit * haste * cripple * swing;
     }
-    return this.zone.moveMul * eventMove * slow * commit * haste * cripple;
+    return this.zone.moveMul * eventMove * slow * commit * haste * cripple * swing;
+  }
+
+  private attackMoveMul(now: number): number {
+    if (now < this.moveStartupUntil) {
+      return this.moveStartupMul;
+    }
+    if (now < this.moveActiveUntil) {
+      return this.moveActiveMul;
+    }
+    if (now < this.moveRecoverUntil) {
+      return this.moveRecoverMul;
+    }
+    return 1;
   }
 
   extraSwingDelay(now: number): number {

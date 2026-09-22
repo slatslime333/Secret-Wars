@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import {
   COMBAT,
   ComboStep,
-  attackCommitMoveMul,
   attackCycleMs,
+  attackMoveFeel,
   attackStartupMs,
   comboStepOf,
   hitReactionFor,
@@ -192,22 +192,27 @@ export class QuickAttack {
     this.nextSwingAt = now + delay;
     const startup = attackStartupMs(step, attacker.heroId, bigDemon);
     attacker.status.applyAttackRecovery(now, delay);
-    const commit = attackCommitMoveMul(attacker.heroId, bigDemon);
-    if (commit < 1 && attacker.heroId !== 'cole') {
-      attacker.status.applyCommitSlow(now, startup, commit);
-    }
+    const move = attackMoveFeel(attacker.heroId, bigDemon);
+    const activeMs = COMBAT.attackActiveMs;
+    attacker.status.beginAttackMove(now, startup, activeMs, Math.max(0, delay - startup - activeMs), move);
     this.lastSwingAt = now;
     this.lastSwingStep = step;
     playLightAttack(attacker);
 
     if (attacker.heroId === 'cole') {
       const span = COLE_ATTACK.animMs;
-      attacker.status.applySlow(now, span, COLE_ATTACK.lightSlowMul);
-      attacker.playCustomAttack(now, span, (frac) => ({
-        armLiftLeft: Math.min(1, frac * 1.7),
-        armLiftRight: Math.min(1, frac * 1.7),
-        swayX: Math.sin(frac * Math.PI) * 3,
-      }));
+      const reach = step === 3 ? 9 : step === 2 ? 6 : 4;
+      attacker.playCustomAttack(now, span, (frac) => {
+        const wind = frac < 0.28;
+        const contact = frac >= 0.28 && frac < 0.58;
+        return {
+          armLiftLeft: Math.min(1, frac * 1.7),
+          armLiftRight: Math.min(1, frac * 1.7),
+          swayX: attacker.aim.x * (wind ? -reach : contact ? reach * 1.6 : reach * 0.4),
+          scaleX: contact ? (step === 3 ? 1.12 : 1.06) : 1,
+          scaleY: contact ? (step === 3 ? 0.84 : 0.9) : wind ? 1.04 : 1,
+        };
+      });
       if (step !== 3) {
         const half = (attacker.stats.attackArcDegrees * Math.PI) / 360;
         spawnLightningArc(this.scene, attacker.x, attacker.y, attacker.aim.x, attacker.aim.y, COLE_ATTACK.range, half);
@@ -277,13 +282,18 @@ export class QuickAttack {
     );
     shot.team = attacker.team;
     this.ropeShots.push(shot);
-    attacker.playCustomAttack(now, 280, () => ({
-      armLiftLeft: arm === -1 ? 0.95 : 0.06,
-      armLiftRight: arm === 1 ? 0.95 : 0.06,
-      jumpY: 0,
-      swayX: 0,
-      ropeAction: 'shot' as const,
-    }));
+    attacker.playCustomAttack(now, 280, (frac) => {
+      const kick = Math.sin(Math.min(1, frac * 2.4) * Math.PI);
+      return {
+        armLiftLeft: arm === -1 ? 0.95 : 0.06,
+        armLiftRight: arm === 1 ? 0.95 : 0.06,
+        jumpY: 0,
+        swayX: -sx * 7 * kick,
+        scaleX: 1 + kick * 0.04,
+        scaleY: 1 - kick * 0.06,
+        ropeAction: 'shot' as const,
+      };
+    });
   }
 
   private fireMenderLight(now: number, attacker: NinjaBody): void {
@@ -312,11 +322,15 @@ export class QuickAttack {
     );
     this.menderShots.push(shot);
     spawnBarrelExplosion(this.scene, origin.x, origin.y, sx, sy);
-    attacker.playCustomAttack(now, 230, (frac) => ({
-      armLiftLeft: 0.88 + Math.sin(frac * Math.PI) * 0.12,
-      armLiftRight: 0.88 + Math.sin(frac * Math.PI) * 0.12,
-      swayX: attacker.aim.x * 3 * Math.sin(frac * Math.PI),
-    }));
+    attacker.playCustomAttack(now, 230, (frac) => {
+      const kick = Math.sin(Math.min(1, frac * 2.6) * Math.PI);
+      return {
+        armLiftLeft: 0.88 + Math.sin(frac * Math.PI) * 0.12,
+        armLiftRight: 0.88 + Math.sin(frac * Math.PI) * 0.12,
+        swayX: -sx * 5 * kick,
+        scaleY: 1 - kick * 0.05,
+      };
+    });
   }
 
   private tickMenderShots(
@@ -475,11 +489,17 @@ export class QuickAttack {
     const len = Math.hypot(attacker.aim.x, attacker.aim.y) || 1;
     const nx = attacker.aim.x / len;
     const ny = attacker.aim.y / len;
-    attacker.playCustomAttack(now, DEMON_CLAW.animMs, (frac) => ({
-      armLiftRight: frac < 0.4 ? 0.3 + frac * 2 : Math.max(0.18, 1.2 - (frac - 0.4) * 1.8),
-      armLiftLeft: 0.2 + Math.sin(frac * Math.PI) * 0.7,
-      swayX: nx * (frac < 0.35 ? -4 : 10) * Math.min(1, frac * 1.7),
-    }));
+    attacker.playCustomAttack(now, DEMON_CLAW.animMs, (frac) => {
+      const wind = frac < 0.32;
+      const contact = frac >= 0.32 && frac < 0.62;
+      return {
+        armLiftRight: wind ? 0.2 + frac * 2 : Math.max(0.18, 1.25 - (frac - 0.32) * 1.6),
+        armLiftLeft: 0.2 + Math.sin(frac * Math.PI) * 0.7,
+        swayX: nx * (wind ? -10 : contact ? 16 : 6),
+        scaleX: contact ? 1.12 : 1,
+        scaleY: contact ? 0.82 : wind ? 1.05 : 1,
+      };
+    });
     spawnShadowSlash(this.scene, attacker.x, attacker.y, nx, ny, attacker.stats.attackRange, true);
   }
 
@@ -544,12 +564,14 @@ export class QuickAttack {
     const nx = attacker.aim.x / len;
     const ny = attacker.aim.y / len;
     attacker.playCustomAttack(now, SHADOW_ATTACK.animMs, (frac) => {
-      const wind = frac < 0.18;
-      const slash = frac >= 0.36;
+      const wind = frac < 0.28;
+      const slash = frac >= 0.28 && frac < 0.62;
       return {
-        armLiftRight: wind ? 0.2 : slash ? 0.95 : 0.55,
+        armLiftRight: wind ? 0.15 : slash ? 1 : 0.4,
         armLiftLeft: 0.04,
-        swayX: nx * (wind ? -5 : 12) * Math.min(1, frac * 1.8),
+        swayX: nx * (wind ? -9 : slash ? 16 : 5),
+        scaleX: slash ? 1.1 : 1,
+        scaleY: slash ? 0.84 : wind ? 1.04 : 1,
       };
     });
     spawnShadowSlash(
@@ -884,7 +906,9 @@ export class QuickAttack {
           swordAngleOffset: angle - idle,
           batScale: scale,
           armLiftRight: frac < 0.26 ? (frac / 0.26) * 0.5 : Math.max(0.08, 0.5 - (frac - 0.26) * 0.45),
-          swayX: Math.sin(Math.min(1, frac * 1.2) * Math.PI) * (death.aim.x >= 0 ? 4 : -4),
+          swayX: Math.sin(Math.min(1, frac * 1.2) * Math.PI) * (death.aim.x >= 0 ? 1 : -1) * (step === 3 ? 12 : 8),
+          scaleX: frac > 0.2 && frac < 0.62 ? (step === 3 ? 1.12 : 1.06) : 1,
+          scaleY: frac > 0.2 && frac < 0.62 ? (step === 3 ? 0.82 : 0.9) : 1,
         };
       },
       'Linear',
