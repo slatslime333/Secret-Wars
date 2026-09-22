@@ -570,18 +570,37 @@ export function synthesize(ctx: AudioContext, dest: AudioNode, id: SoundId): voi
 
     case 'combat-hit':
       playRecipe(ctx, dest, [
-        { kind: 'triangle', freq: v(180, 20), duration: 0.07, gain: 0.15 },
-        { kind: 'noise', freq: 0, duration: 0.05, gain: 0.07 },
+        { kind: 'triangle', freq: v(210, 16), endFreq: 90, duration: 0.07, gain: 0.16 },
+        { kind: 'square', freq: v(140, 10), duration: 0.04, gain: 0.05 },
+        { kind: 'noise', freq: 0, duration: 0.045, gain: 0.07 },
       ]);
       return;
     case 'combat-hit-heavy':
       playRecipe(ctx, dest, [
-        { kind: 'triangle', freq: 90, duration: 0.12, gain: 0.2 },
-        { kind: 'noise', freq: 0, duration: 0.08, gain: 0.11 },
+        { kind: 'triangle', freq: 110, endFreq: 55, duration: 0.12, gain: 0.22 },
+        { kind: 'sine', freq: 70, duration: 0.1, gain: 0.1 },
+        { kind: 'noise', freq: 0, duration: 0.08, gain: 0.1 },
+      ]);
+      return;
+    case 'combat-hit-finisher':
+      playRecipe(ctx, dest, [
+        { kind: 'triangle', freq: 80, endFreq: 40, duration: 0.16, gain: 0.26 },
+        { kind: 'sawtooth', freq: 160, endFreq: 50, duration: 0.1, gain: 0.08 },
+        { kind: 'noise', freq: 0, duration: 0.1, gain: 0.12 },
       ]);
       return;
     case 'combat-block':
-      playRecipe(ctx, dest, [{ kind: 'square', freq: 320, duration: 0.05, gain: 0.09 }]);
+      playRecipe(ctx, dest, [
+        { kind: 'square', freq: 340, endFreq: 180, duration: 0.05, gain: 0.09 },
+        { kind: 'noise', freq: 0, duration: 0.03, gain: 0.04 },
+      ]);
+      return;
+    case 'combat-perfect':
+      playRecipe(ctx, dest, [
+        { kind: 'square', freq: 520, endFreq: 220, duration: 0.07, gain: 0.1 },
+        { kind: 'triangle', freq: 880, duration: 0.08, gain: 0.08 },
+        { kind: 'noise', freq: 0, duration: 0.04, gain: 0.05 },
+      ]);
       return;
     case 'combat-clash':
       playRecipe(ctx, dest, [

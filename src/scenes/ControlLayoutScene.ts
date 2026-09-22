@@ -175,6 +175,7 @@ export class ControlLayoutScene extends Phaser.Scene {
     const accents: Record<ControlId, number> = {
       leftStick: COLORS.cyan,
       rightStick: COLORS.redBright,
+      attack: COLORS.redBright,
       block: COLORS.cyan,
       dash: COLORS.orange,
       ability1: COLORS.paper,

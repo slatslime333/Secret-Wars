@@ -793,6 +793,16 @@ export const SOUND_CATALOG: Record<SoundId, SoundDef> = {
     group: 'combat-hit',
     asset: 'assets/audio/combat/hit-heavy.wav',
   }),
+  'combat-hit-finisher': def({
+    id: 'combat-hit-finisher',
+    bus: 'combat',
+    priority: 'high',
+    volume: 0.42,
+    cooldownMs: 110,
+    spatial: true,
+    group: 'combat-hit',
+    asset: 'assets/audio/combat/hit-finisher.wav',
+  }),
   'combat-block': def({
     id: 'combat-block',
     bus: 'combat',
@@ -802,6 +812,15 @@ export const SOUND_CATALOG: Record<SoundId, SoundDef> = {
     spatial: true,
     group: 'combat-block',
     asset: 'assets/audio/combat/block.wav',
+  }),
+  'combat-perfect': def({
+    id: 'combat-perfect',
+    bus: 'combat',
+    priority: 'high',
+    volume: 0.4,
+    cooldownMs: 90,
+    spatial: true,
+    asset: 'assets/audio/combat/perfect.wav',
   }),
   'combat-clash': def({
     id: 'combat-clash',

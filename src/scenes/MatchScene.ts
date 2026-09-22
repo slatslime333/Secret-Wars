@@ -5,6 +5,7 @@ import { DEV_CHEATS, resetDevCheats } from '../debug/devCheats';
 import { MinionWorld } from '../minions/MinionWorld';
 import { PLAYABLE_HEROES, getSelectedHeroId, setSelectedHeroId, type HeroId } from '../heroes/roster';
 import { HitMarker } from '../combat/HitMarker';
+import { softenAim } from '../combat/aimAssist';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { ensureAbilityIcons } from '../heroes/abilities/icons';
 import { COLE_ATTACK, COLE_BALL } from '../heroes/abilities/cole/tunables';
@@ -863,7 +864,16 @@ export class MatchScene extends Phaser.Scene {
     } else if (frame.blockHeld && frame.blockAimActive) {
       this.player.body.setAim(frame.blockAim);
     } else if (frame.aimActive || frame.aim.lengthSq() > 0.01) {
-      this.player.body.setAim(frame.aim);
+      const body = this.player.body;
+      if (frame.aimActive && isTouchPrimary()) {
+        const foes = this.heroes
+          .filter((hero) => hero.team !== this.player.team && hero.alive)
+          .map((hero) => ({ x: hero.body.x, y: hero.body.y, down: hero.body.down }));
+        const aim = softenAim(frame.aim, body, foes, body.stats.attackRange);
+        this.player.body.setAim(aim.x, aim.y);
+      } else {
+        this.player.body.setAim(frame.aim);
+      }
     }
   }
 

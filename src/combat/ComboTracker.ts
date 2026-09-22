@@ -1,7 +1,8 @@
 /**
- * Two-tap chain. Count only rises on distinct presses, not hold-repeats.
+ * Three-tap chain. Count only rises on distinct presses, not hold-repeats.
  * Window is from the previous tap, not the start of the string.
- * Holding attack pauses expiry so a long key-down does not kill the chain.
+ * Holding attack pauses expiry so a long key-down does not kill the chain
+ * until the hold actually repeats a light swing.
  */
 export class ComboTracker {
   private count = 0;
@@ -13,7 +14,7 @@ export class ComboTracker {
     if (now - this.lastTapAt > windowMs) {
       return 1;
     }
-    if (this.count >= 2) {
+    if (this.count >= 3) {
       return 1;
     }
     return this.count + 1;
@@ -56,6 +57,13 @@ export class ComboTracker {
   reset(): void {
     this.count = 0;
     this.lastTapAt = 0;
+  }
+
+  /** Hold-repeat is not a combo. Hide the tap indicator immediately. */
+  drop(): void {
+    this.reset();
+    this.shown = 0;
+    this.shownUntil = 0;
   }
 
   interrupt(now: number): void {

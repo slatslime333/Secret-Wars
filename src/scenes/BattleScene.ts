@@ -17,6 +17,7 @@ import { BlockController } from '../combat/BlockController';
 import { DashController } from '../combat/DashController';
 import { HitMarker } from '../combat/HitMarker';
 import { QuickAttack } from '../combat/QuickAttack';
+import { softenAim } from '../combat/aimAssist';
 import { AbilityController } from '../heroes/abilities/AbilityController';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { AbilityContext } from '../heroes/abilities/types';
@@ -439,6 +440,14 @@ export class BattleScene extends Phaser.Scene {
       this.ninja.setAim(frame.ability1Aim);
     } else if (frame.blockHeld && frame.blockAimActive) {
       this.ninja.setAim(frame.blockAim);
+    } else if (frame.aimActive && isTouchPrimary() && this.rival && !this.rival.down) {
+      const aim = softenAim(
+        frame.aim,
+        this.ninja,
+        [{ x: this.rival.x, y: this.rival.y, down: this.rival.down }],
+        this.ninja.stats.attackRange,
+      );
+      this.ninja.setAim(aim.x, aim.y);
     } else {
       this.ninja.setAim(frame.aim);
     }
@@ -1091,6 +1100,8 @@ export class BattleScene extends Phaser.Scene {
     (window as Window & { secretWarsPlaytest?: object }).secretWarsPlaytest = {
       spawnCpu: () => this.spawnCpu(false),
       spawnDummy: () => this.spawnCpu(true),
+      setPlayer: (id: HeroId) => this.swapHero(id),
+      setCpu: (id: HeroId) => this.setCpuHero(id),
       spawnMixed: (team: 'alpha' | 'bravo' = 'bravo') => this.minions.spawnMixed(team),
       toggleAi: () => {
         DEV_CHEATS.showAi = !DEV_CHEATS.showAi;
