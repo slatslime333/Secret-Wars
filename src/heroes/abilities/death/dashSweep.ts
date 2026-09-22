@@ -3,6 +3,7 @@ import { COMBAT } from '../../../config/combat';
 import { DEATH_DASH } from './tunables';
 import { sweepKnockback, swingSignFor } from './sweep';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { AbilityWorld } from '../AbilityWorld';
 import { NinjaBody } from '../../NinjaBody';
 import { BlockController } from '../../../combat/BlockController';
@@ -25,6 +26,16 @@ export const startDeathDashSweep = (
   const hit = new Set<NinjaBody>();
   const endsAt = now + COMBAT.dashDurationMs + 40;
   spawnDashArc(scene, caster, dir, sign);
+  breakProps({
+    attacker: caster,
+    now,
+    damage: DEATH_DASH.damage,
+    reach: COMBAT.dashDistance + caster.stats.attackRange * 0.35,
+    dirX: dir.x,
+    dirY: dir.y,
+    halfArc: ((caster.stats.attackArcDegrees * Math.PI) / 360) * 1.2,
+    impulse: 1.45,
+  });
   caster.playCustomAttack(now, COMBAT.dashDurationMs + 40, (frac) => ({
     swordAngleOffset: -0.9 * sign + 1.8 * sign * frac,
     batScale: 1.15,

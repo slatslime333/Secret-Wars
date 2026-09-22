@@ -3,8 +3,8 @@ import { CRATE } from '../config/crate';
 import { ENV_WORLD } from '../config/environment';
 import { audio } from '../audio';
 import { isInAttackArc } from '../combat/hitDetection';
-import { listProjectilePoses } from '../combat/projectileRegistry';
-import { pointInRect } from './geometry';
+import type { TeamId } from '../config/hero';
+import { circleHitsRect, closestPointOnRect, pointInRect } from './geometry';
 import type { NinjaBody } from '../heroes/NinjaBody';
 import type { XpOrbWorld } from '../match/XpOrbWorld';
 import { onWorldStrike, type WorldStrikeEvent } from '../match/objectives/worldStrike';
@@ -114,6 +114,7 @@ export class EnvironmentWorld {
   private readonly fx: Fx[] = [];
   private readonly swingHits = new WeakMap<NinjaBody, Map<string, number>>();
   private readonly shotHits = new Set<string>();
+  private readonly craters: Phaser.GameObjects.Graphics[] = [];
   private offStrike?: () => void;
   private hooks: CrateHooks = { heroes: () => [] };
 
@@ -203,7 +204,6 @@ export class EnvironmentWorld {
   }
 
   update(now: number, delta: number): void {
-    this.collectProjectiles();
     this.tickPhysics(now, delta);
     this.tickRoofs();
     this.tickSmoke(now);
@@ -223,6 +223,10 @@ export class EnvironmentWorld {
       item.view.destroy();
     }
     this.fx.length = 0;
+    for (const crater of this.craters) {
+      crater.destroy();
+    }
+    this.craters.length = 0;
     this.props.length = 0;
   }
 
@@ -265,56 +269,97 @@ export class EnvironmentWorld {
   }
 
   private inReach(event: WorldStrikeEvent, prop: LiveProp): boolean {
-    const halfArc = (event.attacker.stats.attackArcDegrees * Math.PI) / 360;
-    const radius = Math.max(prop.obs.collision.w, prop.obs.collision.h) * 0.48;
-    return isInAttackArc(
-      event.attacker.x,
-      event.attacker.y,
-      event.dirX ?? event.attacker.aim.x,
-      event.dirY ?? event.attacker.aim.y,
-      prop.obs.x,
-      prop.obs.y,
-      event.reach,
-      halfArc,
-      radius,
+    const rect = prop.obs.collision;
+    const originX = event.originX ?? event.attacker.x;
+    const originY = event.originY ?? event.attacker.y;
+    const aimX = event.dirX ?? event.attacker.aim.x;
+    const aimY = event.dirY ?? event.attacker.aim.y;
+    const halfArc = event.halfArc ?? (event.attacker.stats.attackArcDegrees * Math.PI) / 360;
+    const samples = [
+      closestPointOnRect(originX, originY, rect),
+      { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 },
+      { x: rect.x, y: rect.y },
+      { x: rect.x + rect.w, y: rect.y },
+      { x: rect.x, y: rect.y + rect.h },
+      { x: rect.x + rect.w, y: rect.y + rect.h },
+    ];
+    return samples.some((point) =>
+      isInAttackArc(originX, originY, aimX, aimY, point.x, point.y, event.reach, halfArc, 6),
     );
   }
 
-  private collectProjectiles(): void {
-    for (const pose of listProjectilePoses()) {
-      if (!pose.team) {
+  /**
+   * A shot damages every destructible prop its travel segment touches, then
+   * stops when that prop blocks projectiles. Sampling the segment catches thin walls.
+   */
+  absorbShot(shot: {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+    radius: number;
+    team?: TeamId;
+    damage: number;
+    token: number;
+  }): boolean {
+    let blocked = false;
+    const owner = shot.team
+      ? this.hooks.heroes().find((hero) => hero.team === shot.team && hero.isPresent && !hero.down)
+      : undefined;
+    const attacker = owner ?? this.hooks.heroes().find((hero) => hero.isPresent && !hero.down);
+    const damage = shot.damage > 0 ? shot.damage : Math.max(6, owner?.stats.attackDamage ?? attacker?.stats.attackDamage ?? 8);
+    for (const prop of this.props) {
+      if (prop.gone || prop.arming || prop.state === 'knocked' || prop.hp <= 0) {
         continue;
       }
-      for (const prop of this.props) {
-        if (prop.gone) {
-          continue;
-        }
-        const key = `${pose.id}:${prop.obs.id}`;
-        if (this.shotHits.has(key)) {
-          continue;
-        }
-        const radius = Math.max(prop.obs.collision.w, prop.obs.collision.h) * 0.45;
-        if (Math.hypot(pose.x - prop.obs.x, pose.y - prop.obs.y) > radius + pose.radius) {
-          continue;
-        }
-        this.shotHits.add(key);
-        const owner = this.hooks.heroes().find((hero) => hero.team === pose.team && hero.isPresent && !hero.down);
-        const dummy: WorldStrikeEvent = {
-          attacker: owner ?? this.hooks.heroes()[0],
-          now: this.scene.time.now,
-          damage: Math.max(8, (owner?.stats.attackDamage ?? 12) * 0.85),
-          reach: 8,
-          kind: 'ability',
-          dirX: pose.x - prop.obs.x,
-          dirY: pose.y - prop.obs.y,
-          impulse: 1.15,
-        };
-        if (!dummy.attacker) {
-          continue;
-        }
-        this.hit(prop, dummy.damage, dummy, owner);
+      if (!this.segmentHitsProp(shot.x0, shot.y0, shot.x1, shot.y1, shot.radius, prop)) {
+        continue;
+      }
+      if (prop.obs.blocksProjectiles) {
+        blocked = true;
+      }
+      if (!prop.obs.destructible && prop.physics !== 'explosive') {
+        continue;
+      }
+      const key = `${shot.token}:${prop.obs.id}`;
+      if (this.shotHits.has(key) || !attacker) {
+        continue;
+      }
+      this.shotHits.add(key);
+      const dx = shot.x1 - shot.x0;
+      const dy = shot.y1 - shot.y0;
+      const strike: WorldStrikeEvent = {
+        attacker,
+        now: this.scene.time.now,
+        damage,
+        reach: shot.radius,
+        kind: 'ability',
+        dirX: Math.abs(dx) + Math.abs(dy) > 0.01 ? dx : prop.obs.x - shot.x1,
+        dirY: Math.abs(dx) + Math.abs(dy) > 0.01 ? dy : prop.obs.y - shot.y1,
+        impulse: 1.2,
+      };
+      this.hit(prop, damage, strike, owner);
+    }
+    return blocked;
+  }
+
+  private segmentHitsProp(
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    radius: number,
+    prop: LiveProp,
+  ): boolean {
+    const dist = Math.hypot(x1 - x0, y1 - y0);
+    const steps = Math.max(1, Math.ceil(dist / 8));
+    for (let i = 0; i <= steps; i += 1) {
+      const t = i / steps;
+      if (circleHitsRect(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, radius + 2, prop.obs.collision)) {
+        return true;
       }
     }
+    return false;
   }
 
   private hit(prop: LiveProp, amount: number, event: WorldStrikeEvent, attacker?: NinjaBody): void {
@@ -458,12 +503,14 @@ export class EnvironmentWorld {
     const damage = car ? ENV_WORLD.carDamage : ENV_WORLD.barrelDamage;
     const knock = car ? ENV_WORLD.carKnockback : ENV_WORLD.barrelKnockback;
     this.destroyProp(prop, attacker);
+    this.scorch(x, y, car);
     this.burst(x, y, radius);
     for (const other of this.props) {
       if (other.gone || other === prop || other.arming) {
         continue;
       }
-      const dist = Math.hypot(other.obs.x - x, other.obs.y - y);
+      const nearest = closestPointOnRect(x, y, other.obs.collision);
+      const dist = Math.hypot(nearest.x - x, nearest.y - y);
       if (dist > radius + 8) {
         continue;
       }
@@ -545,23 +592,29 @@ export class EnvironmentWorld {
     return this.hooks.heroes().some((hero) => hero.isPresent && Math.hypot(hero.x - x, hero.y - y) < pad);
   }
 
-  private tickPhysics(now: number, delta: number): void {
+  private tickPhysics(_now: number, delta: number): void {
     const dt = Math.min(0.05, delta / 1000);
     for (const prop of this.props) {
       if (prop.gone) {
         continue;
       }
       if (prop.state === 'knocked') {
-        this.tickKnocked(prop, now, dt);
+        this.tickKnocked(prop, dt);
       }
       this.pushFromWalkers(prop, dt);
     }
   }
 
-  private tickKnocked(prop: LiveProp, now: number, dt: number): void {
+  /** Fallen props stay on the ground. Collision is already cleared when they topple. */
+  private tickKnocked(prop: LiveProp, dt: number): void {
     prop.vx *= Math.max(0, 1 - ENV_WORLD.treeDrag * dt);
     prop.vy *= Math.max(0, 1 - ENV_WORLD.treeDrag * dt);
     prop.angVel *= Math.max(0, 1 - ENV_WORLD.treeAngularDrag * dt);
+    if (Math.hypot(prop.vx, prop.vy) < 6 && Math.abs(prop.angVel) < 0.35) {
+      prop.vx = 0;
+      prop.vy = 0;
+      prop.angVel = 0;
+    }
     prop.obs.x += prop.vx * dt;
     prop.obs.y += prop.vy * dt;
     prop.ang += prop.angVel * dt;
@@ -570,19 +623,33 @@ export class EnvironmentWorld {
     prop.obs.y = Math.max(playable.y + 18, Math.min(playable.y + playable.h - 18, prop.obs.y));
     if (prop.sprite) {
       prop.sprite.setPosition(prop.obs.x, prop.obs.y);
+      prop.sprite.setAlpha(1);
       prop.sprite.angle += prop.angVel * dt * 12;
     }
-    const lived = now - prop.knockedAt;
-    const life = prop.obs.kind === 'vehicle' ? ENV_WORLD.wreckLifeMs : ENV_WORLD.knockedLifetimeMs;
-    if (prop.obs.kind === 'vehicle' && lived > 1600 && prop.obs.blocksMovement) {
-      this.world.setBlocking(prop.obs.id, false);
-    }
-    if (lived > life - ENV_WORLD.knockFadeMs && prop.sprite) {
-      prop.sprite.setAlpha(Math.max(0, 1 - (lived - (life - ENV_WORLD.knockFadeMs)) / ENV_WORLD.knockFadeMs));
-    }
-    if (lived >= life) {
-      this.destroyProp(prop);
-    }
+  }
+
+  private scorch(x: number, y: number, wide: boolean): void {
+    const g = this.scene.add.graphics().setDepth(3);
+    const rx = wide ? 92 : 70;
+    const ry = wide ? 46 : 40;
+    g.fillStyle(0x1a120e, 0.98);
+    g.fillEllipse(x, y + 4, rx * 2.15, ry * 2.15);
+    g.fillStyle(ENV.burn, 1);
+    g.fillEllipse(x, y + 3, rx * 1.7, ry * 1.55);
+    g.fillStyle(0x0c0806, 1);
+    g.fillEllipse(x - 2, y + 5, rx * 1.15, ry * 0.95);
+    g.fillStyle(ENV.burnLite, 0.9);
+    g.fillEllipse(x + 14, y - 2, rx * 0.55, ry * 0.38);
+    g.lineStyle(3, 0x0a0706, 1);
+    g.lineBetween(x - rx * 0.7, y + 2, x + rx * 0.22, y + 8);
+    g.lineBetween(x - 10, y - ry * 0.4, x + rx * 0.5, y + ry * 0.35);
+    g.lineBetween(x + 4, y, x + rx * 0.62, y - ry * 0.12);
+    g.fillStyle(ENV.fire, 0.85);
+    g.fillCircle(x + rx * 0.18, y - 1, 4);
+    g.fillCircle(x - rx * 0.28, y + 6, 3);
+    g.fillStyle(0xc48a40, 0.7);
+    g.fillCircle(x + 6, y + 8, 2);
+    this.craters.push(g);
   }
 
   private pushFromWalkers(prop: LiveProp, dt: number): void {

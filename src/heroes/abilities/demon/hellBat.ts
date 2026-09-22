@@ -2,6 +2,7 @@ import { playWorld } from '../../../audio';
 import { COMBAT } from '../../../config/combat';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { DEMON_HELL_BAT, demonHellBatRecoil } from './tunables';
@@ -173,6 +174,15 @@ class HellBatAbility implements ActiveAbility {
     const { caster, now, enemies, scene, rivalBlock } = ctx;
     playWorld('ninja-smoke', caster);
     spawnCombatCallout(scene, caster.x, caster.y, 'BURST', 0xffc030);
+    breakProps({
+      attacker: caster,
+      now,
+      damage: DEMON_HELL_BAT.damage,
+      reach: DEMON_HELL_BAT.radius,
+      dirX: this.dirX,
+      dirY: this.dirY,
+      impulse: 1.7,
+    });
     for (const enemy of enemies) {
       if (enemy.down) {
         continue;

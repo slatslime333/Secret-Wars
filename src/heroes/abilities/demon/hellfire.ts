@@ -3,6 +3,7 @@ import { playWorld } from '../../../audio';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { Projectile } from '../../../combat/projectile';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import type { AbilityWorld } from '../AbilityWorld';
 import { AbilityContext, AbilityDef, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
@@ -87,11 +88,26 @@ const beginHellfire = (
   explodeHellfire(scene, now, caster, x, y, fighters, rivalBlock);
   const field = new HellfireField(scene, x, y, now);
   const hitAt = new WeakMap<NinjaBody, number>();
+  let nextPropAt = now;
   world.addTicker({
     update: (tickNow, _delta, live) => {
       field.redraw(tickNow);
       if (tickNow >= now + DEMON_HELLFIRE.durationMs) {
         return false;
+      }
+      if (tickNow >= nextPropAt) {
+        nextPropAt = tickNow + DEMON_HELLFIRE.tickMs;
+        breakProps({
+          attacker: caster,
+          now: tickNow,
+          damage: DEMON_HELLFIRE.tickDamage,
+          reach: DEMON_HELLFIRE.radius,
+          dirX: 0,
+          dirY: 1,
+          originX: x,
+          originY: y,
+          impulse: 1.15,
+        });
       }
       for (const enemy of live) {
         if (enemy.down || enemy.team === caster.team) {
@@ -143,6 +159,17 @@ const explodeHellfire = (
 ): void => {
   playWorld('ninja-smoke', caster);
   spawnCombatCallout(scene, x, y, 'FIRE', 0xffc030);
+  breakProps({
+    attacker: caster,
+    now,
+    damage: DEMON_HELLFIRE.explodeDamage,
+    reach: DEMON_HELLFIRE.radius,
+    dirX: 0,
+    dirY: 1,
+    originX: x,
+    originY: y,
+    impulse: 1.4,
+  });
   for (const enemy of fighters) {
     if (enemy.down || enemy.team === caster.team) {
       continue;

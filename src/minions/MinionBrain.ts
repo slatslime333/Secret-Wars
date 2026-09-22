@@ -5,6 +5,7 @@ import { MINION, MinionKind, RANGER_MINION, SWORD_MINION, minionAdvanceX } from 
 import { WITCH_TOMBSTONE } from '../heroes/abilities/witch/tunables';
 import { NinjaBody } from '../heroes/NinjaBody';
 import { resolveAbilityHit } from '../heroes/abilities/resolveAbilityHit';
+import { breakProps } from '../match/objectives/worldStrike';
 import { Projectile } from '../combat/projectile';
 import { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import { distanceBetween } from '../heroes/abilities/geometry';
@@ -347,6 +348,18 @@ export class MinionBrain {
     playWorld('minion-attack', this.body);
     scene.time.delayedCall(this.windupMs, () => {
       this.attacking = false;
+      if (!this.body.down) {
+        const aimLen = Math.hypot(this.body.aim.x, this.body.aim.y) || 1;
+        breakProps({
+          attacker: this.body,
+          now: scene.time.now,
+          damage: spec.attackDamage,
+          reach: spec.attackRange,
+          dirX: this.body.aim.x / aimLen,
+          dirY: this.body.aim.y / aimLen,
+          halfArc: (spec.attackArcDegrees * Math.PI) / 360,
+        });
+      }
       if (this.body.down || target.down) {
         return;
       }

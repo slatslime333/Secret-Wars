@@ -3,6 +3,7 @@ import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../t
 import { ABILITY_ICON } from '../icons';
 import { SHADOW } from '../../../config/shadow';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { isInAttackArc } from '../../../combat/hitDetection';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { spawnShadowSlash } from './clawFx';
@@ -69,6 +70,16 @@ class ShadowClawAbility implements ActiveAbility {
     const { caster } = ctx;
     spawnShadowSlash(ctx.scene, caster.x, caster.y, this.dirX, this.dirY, SHADOW_CLAW.radius, true);
     playWorld('shadow-claw-whoosh', caster);
+    breakProps({
+      attacker: caster,
+      now: ctx.now,
+      damage: SHADOW_CLAW.damage,
+      reach: SHADOW_CLAW.radius,
+      dirX: this.dirX,
+      dirY: this.dirY,
+      halfArc: SHADOW_CLAW.halfArc,
+      impulse: 1.8,
+    });
     let hit = false;
     for (const enemy of ctx.enemies) {
       if (enemy.down) {

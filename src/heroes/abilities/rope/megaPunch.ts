@@ -4,6 +4,7 @@ import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../t
 import { ABILITY_ICON } from '../icons';
 import { ROPE_PUNCH } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { spawnShockwaveRing } from '../../../effects/lightning';
 import { COLORS } from '../../../ui/theme';
@@ -93,6 +94,15 @@ class MegaPunchAbility implements ActiveAbility {
     this.burst = true;
     spawnShockwaveRing(ctx.scene, ctx.caster.x, ctx.caster.y, ROPE_PUNCH.radius * 0.72);
     playWorld('rope-punch-impact', ctx.caster);
+    breakProps({
+      attacker: ctx.caster,
+      now: ctx.now,
+      damage: ROPE_PUNCH.damage,
+      reach: ROPE_PUNCH.radius,
+      dirX: this.dirX,
+      dirY: this.dirY,
+      impulse: 1.8,
+    });
     for (const enemy of ctx.enemies) {
       if (enemy.down || this.hit.has(enemy)) {
         continue;
