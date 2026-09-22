@@ -1,5 +1,5 @@
 import { ComboTracker } from '../combat/ComboTracker';
-import { attackCycleMs, attackStartupMs, hitStopFor } from './combat';
+import { attackCycleMs, attackMoveFeel, attackStartupMs, hitStopFor } from './combat';
 import { COLE } from './cole';
 import { DEATH } from './death';
 import { DEMON, DEMON_BIG } from './demon';
@@ -36,32 +36,41 @@ const ropeTap = cycle(ROPE, 1, false);
 const littleTap = cycle(DEMON, 1, false);
 const bigTap = cycle(DEMON_BIG, 1, false, true);
 
-expectRange('ninja hold', ninjaHold, 250, 320);
-expectRange('ninja tap', ninjaTap, 270, 340);
-expectRange('ninja finisher', ninjaFinish, 340, 460);
+expectRange('ninja hold', ninjaHold, 290, 340);
+expectRange('ninja tap', ninjaTap, 300, 360);
+expectRange('ninja finisher', ninjaFinish, 460, 560);
 expectRange('cole tap', coleTap, 400, 500);
-expectRange('death tap', deathTap, 270, 340);
-expectRange('mender tap', menderTap, 190, 260);
+expectRange('death tap', deathTap, 290, 350);
+expectRange('mender tap', menderTap, 220, 300);
 expectRange('witch tap', witchTap, 400, 520);
 expectRange('shadow tap', shadowTap, 400, 520);
-expectRange('rope tap', ropeTap, 300, 390);
-expectRange('little demon', littleTap, 340, 440);
-expectRange('big demon', bigTap, 300, 420);
+expectRange('rope tap', ropeTap, 290, 370);
+expectRange('little demon', littleTap, 320, 420);
+expectRange('big demon', bigTap, 400, 520);
 
 if (!(ninjaHold < ninjaTap && ninjaTap < ninjaFinish)) {
   throw new Error('ninja combo should get slower as it finishes');
 }
-if (!(ninjaTap < coleTap && deathTap < coleTap && menderTap < coleTap)) {
-  throw new Error('fast kits should swing sooner than Cole');
+if (!(ninjaTap < coleTap && deathTap <= ninjaTap + 20 && menderTap < ninjaTap)) {
+  throw new Error('fast kits should stay ahead of Cole, and Mender should stay the quickest shot');
 }
-if (!(bigTap < littleTap)) {
-  throw new Error('big demon should swing faster than little demon');
+if (!(bigTap > littleTap + 40)) {
+  throw new Error('big demon should swing slower than little demon');
 }
 if (!(attackStartupMs(1, 'ninja') < attackStartupMs(1, 'cole'))) {
   throw new Error('Cole should wind up longer than Ninja');
 }
-if (!(hitStopFor(1, 'death') > hitStopFor(1, 'ninja') && hitStopFor(3, 'ninja') > hitStopFor(1, 'ninja'))) {
+if (!(hitStopFor(1, 'death') > hitStopFor(1, 'ninja') + 10 && hitStopFor(3, 'ninja') > hitStopFor(1, 'ninja') + 30)) {
   throw new Error('hit-stop should follow the weight hierarchy');
+}
+const ninjaMove = attackMoveFeel('ninja');
+const coleMove = attackMoveFeel('cole');
+const menderMove = attackMoveFeel('mender');
+if (!(ninjaMove.startup > 0.85 && ninjaMove.active < 0.32 && ninjaMove.recovery > 0.5 && ninjaMove.recovery < 0.75)) {
+  throw new Error('ninja attack movement should commit only on contact');
+}
+if (!(coleMove.active < ninjaMove.active && menderMove.active > 0.65)) {
+  throw new Error('Cole should plant harder than Ninja, and Mender should keep moving');
 }
 
 const chain = new ComboTracker();

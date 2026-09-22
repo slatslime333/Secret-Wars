@@ -111,13 +111,15 @@ export const resolveMelee = (
     spawnHitSpark(scene, defender.x + defender.aim.x * 16, defender.y + defender.aim.y * 16, {
       blocked: true,
       heavy: heavy || block.perfect,
+      finisher: block.perfect,
+      dirX: defender.aim.x,
+      dirY: defender.aim.y,
     });
 
     if (block.perfect) {
-      attacker.playBlockRecoil(now, true);
-      attacker.status.applyBlockStun(now, COMBAT.perfectShieldStunMs);
-      attacker.status.applyHitStop(now, COMBAT.hitStopPerfectMs);
-      defender.applyRecoil(-defender.aim.x, -defender.aim.y, 10);
+      attacker.playBlockRecoil(now, true, COMBAT.hitStopPerfectMs);
+      defender.freezeForHitStop(now, COMBAT.hitStopPerfectMs);
+      defender.queueLaunch(-defender.aim.x, -defender.aim.y, 10);
       spawnCombatCallout(scene, defender.x, defender.y, 'PERFECT', COLORS.yellow);
       playHitJuice(scene, defender.x, defender.y, {
         damage: 0,
@@ -137,8 +139,12 @@ export const resolveMelee = (
     if (defender.blockShield <= 0) {
       defenderBlock?.breakShield(defender);
     }
-    attacker.applyRecoil(-attacker.aim.x, -attacker.aim.y, heavy ? COMBAT.shieldHitRecoilHeavy : COMBAT.shieldHitRecoilLight);
-    defender.applyRecoil(-defender.aim.x, -defender.aim.y, heavy ? COMBAT.blockPushHeavy : COMBAT.blockPushLight);
+    const blockStop = COMBAT.hitStopBlockMs;
+    attacker.freezeForHitStop(now, blockStop);
+    defender.freezeForHitStop(now, blockStop);
+    attacker.queueLaunch(-attacker.aim.x, -attacker.aim.y, heavy ? COMBAT.shieldHitRecoilHeavy : COMBAT.shieldHitRecoilLight);
+    defender.queueLaunch(-defender.aim.x, -defender.aim.y, heavy ? COMBAT.blockPushHeavy : COMBAT.blockPushLight);
+    attacker.status.applySteerLock(now, blockStop + 40);
     playHitJuice(scene, defender.x, defender.y, {
       damage: 0,
       blocked: true,
@@ -178,19 +184,24 @@ export const resolveMelee = (
     launchCap: options.launchCap,
     source: { attacker, kind: 'light' },
   });
-  attacker.applyRecoil(-dirX, -dirY, profile.attackerRecoil);
-  attacker.playConnectPunch(step);
-  attacker.status.applyHitStop(now, stopMs);
-  spawnHitSpark(scene, defender.x + attacker.aim.x * 12, defender.y + attacker.aim.y * 12, {
+  attacker.freezeForHitStop(now, stopMs);
+  attacker.queueLaunch(-dirX, -dirY, profile.attackerRecoil);
+  attacker.status.applySteerLock(now, stopMs + (step === 3 ? 110 : step === 2 ? 80 : 55));
+  attacker.playConnectPunch(step, stopMs);
+  spawnHitSpark(scene, defender.x + dirX * 12, defender.y + dirY * 12, {
     heavy: step >= 2,
+    finisher: step === 3,
+    dirX,
+    dirY,
   });
   playHitJuice(scene, defender.x, defender.y, {
     damage,
     finisher: step === 3,
+    heavy: step === 2,
     shake: attacker.playerControlled || defender.playerControlled,
   });
-  if (step === 3 && (attacker.playerControlled || defender.playerControlled)) {
-    playImpactShake(scene, 'finisher');
+  if ((attacker.playerControlled || defender.playerControlled) && step >= 2) {
+    playImpactShake(scene, step === 3 ? 'finisher' : 'strong');
   }
   playMeleeConnect('hit', attacker, defender, step);
   return 'hit';
@@ -238,7 +249,13 @@ const applyClash = (
   });
   a.status.applyClashLock(now);
   b.status.applyClashLock(now);
-  spawnHitSpark(scene, (a.x + b.x) / 2, (a.y + b.y) / 2, { clash: true, heavy: true });
+  spawnHitSpark(scene, (a.x + b.x) / 2, (a.y + b.y) / 2, {
+    clash: true,
+    heavy: true,
+    finisher: true,
+    dirX: a.aim.x,
+    dirY: a.aim.y,
+  });
   playHitJuice(scene, (a.x + b.x) / 2, (a.y + b.y) / 2, {
     damage: damageA,
     clash: true,

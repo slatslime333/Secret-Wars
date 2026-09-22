@@ -23,15 +23,17 @@ export const COMBAT = {
    * readable decision window: fast kits stay fast, heavy kits stay heavy.
    * Hold repeats use holdCycleMul. Tap steps 2 and 3 stretch the cycle.
    */
-  cycleBaseMs: 170,
-  cycleScale: 0.63,
-  cycleMinMs: 200,
+  cycleBaseMs: 228,
+  cycleScale: 0.48,
+  cycleMinMs: 240,
   cycleMaxMs: 560,
-  holdCycleMul: 0.9,
-  tapStepCycleMul: { 1: 1, 2: 1.14, 3: 1.3 },
+  holdCycleMul: 0.94,
+  tapStepCycleMul: { 1: 1, 2: 1.16, 3: 1.48 },
   /** Forgiveness so a press just before recovery ends still comes out. */
   inputBufferPcMs: 90,
   inputBufferMobileMs: 140,
+  /** Contact window after startup. Movement drops here, then eases in recovery. */
+  attackActiveMs: 96,
 
   /** Holding the shield spends shield HP, not stamina. */
   blockDrainPerSecond: 16,
@@ -130,13 +132,13 @@ export const COMBAT = {
   hitSlowMaxMs: 380,
   hitFlashMs: 140,
 
-  /** Tiny freeze on connect. Finishers / perfect shields / clashes use the long end. */
-  hitStopLightMs: 48,
-  hitStopHeavyMs: 68,
-  hitStopFinisherMs: 86,
+  /** Freeze on connect, before knockback is released. Finishers sit at the long end. */
+  hitStopLightMs: 52,
+  hitStopHeavyMs: 72,
+  hitStopFinisherMs: 100,
   hitStopBlockMs: 64,
-  hitStopPerfectMs: 96,
-  hitStopClashMs: 82,
+  hitStopPerfectMs: 100,
+  hitStopClashMs: 84,
   /** Shared ability-impact freeze. Short enough to read as weight, not lag. */
   hitStopImpactMs: 96,
 
@@ -178,14 +180,22 @@ export type AttackCadence = {
   holdRepeat: boolean;
 };
 
+export type AttackMoveFeel = {
+  /** Startup still lets the hero steer. */
+  startup: number;
+  /** Contact window. Melee commits; ranged kits stay mobile. */
+  active: number;
+  /** After the swing, before full movement returns. */
+  recovery: number;
+};
+
 type HeroFeel = {
   /** Scales the shared attack cycle. 1 keeps the rating curve. */
   cycle: number;
   hitStop: number;
   reaction: number;
   startup: number;
-  /** Move multiplier during attack startup. 1 leaves walking untouched. */
-  commitMove: number;
+  move: AttackMoveFeel;
 };
 
 /**
@@ -193,15 +203,15 @@ type HeroFeel = {
  * Ratings still set the order. These only keep each kit's job readable.
  */
 export const HERO_COMBAT_FEEL: Record<string, HeroFeel> = {
-  ninja: { cycle: 1, hitStop: 0.9, reaction: 0.84, startup: 0.9, commitMove: 0.94 },
-  cole: { cycle: 1.02, hitStop: 1.16, reaction: 1.12, startup: 1.14, commitMove: 1 },
-  death: { cycle: 0.96, hitStop: 1.28, reaction: 1.22, startup: 1.02, commitMove: 0.7 },
-  rope: { cycle: 1, hitStop: 0.82, reaction: 0.7, startup: 0.85, commitMove: 1 },
-  witch: { cycle: 1.08, hitStop: 1.05, reaction: 1.02, startup: 1.08, commitMove: 1 },
-  shadow: { cycle: 1.04, hitStop: 1.14, reaction: 1.16, startup: 1.12, commitMove: 0.84 },
-  mender: { cycle: 0.72, hitStop: 0.62, reaction: 0.55, startup: 0.7, commitMove: 1 },
-  demon: { cycle: 1, hitStop: 0.86, reaction: 0.78, startup: 0.92, commitMove: 1 },
-  'demon-big': { cycle: 1.1, hitStop: 1.24, reaction: 1.18, startup: 1.12, commitMove: 0.76 },
+  ninja: { cycle: 1, hitStop: 0.92, reaction: 0.84, startup: 0.9, move: { startup: 0.92, active: 0.28, recovery: 0.68 } },
+  cole: { cycle: 1, hitStop: 1.2, reaction: 1.12, startup: 1.14, move: { startup: 0.86, active: 0.16, recovery: 0.52 } },
+  death: { cycle: 0.94, hitStop: 1.42, reaction: 1.22, startup: 1.02, move: { startup: 0.88, active: 0.18, recovery: 0.58 } },
+  rope: { cycle: 0.9, hitStop: 0.82, reaction: 0.7, startup: 0.85, move: { startup: 0.94, active: 0.58, recovery: 0.78 } },
+  witch: { cycle: 1.06, hitStop: 1.05, reaction: 1.02, startup: 1.08, move: { startup: 0.88, active: 0.42, recovery: 0.64 } },
+  shadow: { cycle: 1.04, hitStop: 1.18, reaction: 1.16, startup: 1.12, move: { startup: 0.86, active: 0.18, recovery: 0.54 } },
+  mender: { cycle: 0.78, hitStop: 0.62, reaction: 0.55, startup: 0.7, move: { startup: 0.96, active: 0.72, recovery: 0.86 } },
+  demon: { cycle: 0.9, hitStop: 0.86, reaction: 0.78, startup: 0.92, move: { startup: 0.94, active: 0.52, recovery: 0.76 } },
+  'demon-big': { cycle: 1.26, hitStop: 1.32, reaction: 1.18, startup: 1.12, move: { startup: 0.84, active: 0.16, recovery: 0.5 } },
 };
 
 export const feelKey = (heroId: string, bigDemon = false): string =>
@@ -231,12 +241,12 @@ export const attackStartupMs = (step: ComboStep, heroId: string, bigDemon = fals
 
 export const hitStopFor = (step: ComboStep, heroId: string, bigDemon = false): number => {
   const base = step === 3 ? COMBAT.hitStopFinisherMs : step === 2 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs;
-  return clampMs(base * heroFeel(heroId, bigDemon).hitStop, 28, 110);
+  return clampMs(base * heroFeel(heroId, bigDemon).hitStop, 28, 115);
 };
 
 export const hitReactionFor = (step: ComboStep, heroId: string, bigDemon = false): number =>
   clampMs(COMBAT.combo[step].hitReactionMs * heroFeel(heroId, bigDemon).reaction, 50, 280);
 
-/** Plant the feet only during startup. 1 means the hero keeps full move speed. */
-export const attackCommitMoveMul = (heroId: string, bigDemon = false): number =>
-  heroFeel(heroId, bigDemon).commitMove;
+/** Startup / contact / recovery movement. Does not change walk speed outside a swing. */
+export const attackMoveFeel = (heroId: string, bigDemon = false): AttackMoveFeel =>
+  heroFeel(heroId, bigDemon).move;

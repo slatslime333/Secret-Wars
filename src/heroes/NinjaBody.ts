@@ -93,7 +93,8 @@ export class NinjaBody {
   private currentAttackTween?: Phaser.Tweens.Tween;
   private lastDrawnFlash = false;
   private frozenUntil = 0;
-  private pendingLaunch?: { x: number; y: number };
+  private pendingLaunch?: { x: number; y: number; cap: number };
+  private holdAttackPose = false;
   private armLiftLeft = 0;
   private armLiftRight = 0;
   private wrapGfx?: Phaser.GameObjects.Graphics;
@@ -368,8 +369,10 @@ export class NinjaBody {
     const hitStopMs =
       options.hitStopMs ??
       (options.clash || options.step === 3 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs);
-    body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
-    this.launch(options.dirX / length, options.dirY / length, power, options.launchCap ?? COMBAT.launchSpeedCap);
+    const dirX = options.dirX / length;
+    const dirY = options.dirY / length;
+    const launchCap = options.launchCap ?? COMBAT.launchSpeedCap;
+    this.deferOrLaunch(now, dirX, dirY, power, launchCap, hitStopMs);
     if (minion) {
       this.status.applyStun(now, options.hitReactionMs ?? MINION.hitReactionMs);
     } else if (options.stun) {
@@ -377,26 +380,31 @@ export class NinjaBody {
     } else {
       this.status.applyHitReaction(now, options.step, options.hitReactionMs);
     }
-    if (hitStopMs > 0) {
-      this.status.applyHitStop(now, hitStopMs);
-    }
     this.lastDrawnFlash = true;
     this.redrawIdle();
-    const punch = options.clash ? 1.16 : options.step === 3 ? 1.22 : options.step === 2 ? 1.14 : 1.08;
-    const recoil = options.clash ? 7 : options.step === 3 ? 8 : options.step === 2 ? 5 : 3;
-    this.view.setScale(punch);
-    this.art.setPosition((-options.dirX / length) * recoil, (-options.dirY / length) * recoil);
+    const squashY = options.clash ? 0.8 : options.step === 3 ? 0.76 : options.step === 2 ? 0.84 : 0.9;
+    const stretchX = options.clash ? 1.12 : options.step === 3 ? 1.14 : options.step === 2 ? 1.08 : 1.04;
+    const recoil = options.clash ? 8 : options.step === 3 ? 11 : options.step === 2 ? 7 : 4;
+    const lean = options.step === 3 ? 0.22 : options.step === 2 ? 0.14 : 0.08;
+    this.view.setScale(stretchX, squashY);
+    this.view.setRotation(dirX >= 0 ? lean : -lean);
+    this.art.setPosition(-dirX * recoil, -dirY * recoil);
+    const settle = options.step === 3 ? 160 : options.step === 2 ? 120 : 90;
     this.scene.tweens.add({
       targets: this.view,
-      scale: 1,
-      duration: options.step === 3 ? 150 : options.step === 2 ? 120 : 90,
+      scaleX: 1,
+      scaleY: 1,
+      rotation: 0,
+      delay: hitStopMs,
+      duration: settle,
       ease: 'Quad.Out',
     });
     this.scene.tweens.add({
       targets: this.art,
       x: 0,
       y: 0,
-      duration: options.step === 3 ? 140 : 90,
+      delay: hitStopMs,
+      duration: settle,
       ease: 'Quad.Out',
     });
     if (this.down) {
@@ -415,15 +423,27 @@ export class NinjaBody {
     }
   }
 
-  /** Tiny scale punch so the attacker feels the connect. */
-  playConnectPunch(step: ComboStep): void {
-    const punch = step === 3 ? 1.07 : step === 2 ? 1.045 : 1.028;
-    this.view.setScale(punch);
+  /** Contact squash. Holds through hit-stop, then eases back. */
+  playConnectPunch(step: ComboStep, holdMs = 0): void {
+    const sy = step === 3 ? 0.8 : step === 2 ? 0.86 : 0.92;
+    const sx = step === 3 ? 1.1 : step === 2 ? 1.06 : 1.03;
+    const kick = step === 3 ? 8 : step === 2 ? 5 : 3;
+    this.view.setScale(sx, sy);
+    this.art.setPosition(-this.aim.x * kick, -this.aim.y * kick);
     this.scene.tweens.add({
       targets: this.view,
       scaleX: 1,
       scaleY: 1,
-      duration: 70,
+      delay: holdMs,
+      duration: step === 3 ? 140 : 90,
+      ease: 'Quad.Out',
+    });
+    this.scene.tweens.add({
+      targets: this.art,
+      x: 0,
+      y: 0,
+      delay: holdMs,
+      duration: step === 3 ? 130 : 80,
       ease: 'Quad.Out',
     });
   }
@@ -443,20 +463,65 @@ export class NinjaBody {
    * A queued launch fires the moment the freeze ends.
    */
   freezeForHitStop(now: number, durationMs: number): void {
+    if (durationMs <= 0) {
+      return;
+    }
     this.status.applyHitStop(now, durationMs);
     this.frozenUntil = Math.max(this.frozenUntil, now + durationMs);
     this.physics()?.setVelocity(0, 0);
+    const tween = this.currentAttackTween;
+    if (tween?.isPlaying()) {
+      tween.pause();
+      this.holdAttackPose = true;
+    }
   }
 
-  queueLaunch(dirX: number, dirY: number, power: number): void {
+  queueLaunch(dirX: number, dirY: number, power: number, launchCap: number = COMBAT.launchSpeedCap): void {
+    if (power <= 0) {
+      return;
+    }
     const length = Math.hypot(dirX, dirY) || 1;
-    this.pendingLaunch = { x: (dirX / length) * power, y: (dirY / length) * power };
+    this.pendingLaunch = { x: (dirX / length) * power, y: (dirY / length) * power, cap: launchCap };
+  }
+
+  /**
+   * A live freeze holds the body still and stores the launch.
+   * hitStopMs 0 after the freeze has ended launches immediately.
+   */
+  private deferOrLaunch(
+    now: number,
+    dirX: number,
+    dirY: number,
+    power: number,
+    launchCap: number,
+    hitStopMs: number,
+  ): void {
+    const stillFrozen = now < this.frozenUntil;
+    if (hitStopMs > 0 || stillFrozen) {
+      this.queueLaunch(dirX, dirY, power, launchCap);
+      if (hitStopMs > 0) {
+        this.freezeForHitStop(now, hitStopMs);
+      }
+      return;
+    }
+    const body = this.physics();
+    if (!body) {
+      return;
+    }
+    body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
+    this.launch(dirX, dirY, power, launchCap);
   }
 
   private tickHitStop(now: number): void {
     if (now < this.frozenUntil) {
       this.physics()?.setVelocity(0, 0);
       return;
+    }
+    if (this.holdAttackPose) {
+      this.holdAttackPose = false;
+      if (this.currentAttackTween?.isPaused()) {
+        this.currentAttackTween.resume();
+      }
     }
     if (!this.pendingLaunch) {
       return;
@@ -468,7 +533,7 @@ export class NinjaBody {
       return;
     }
     body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
-    this.launch(launch.x, launch.y, Math.hypot(launch.x, launch.y));
+    this.launch(launch.x, launch.y, Math.hypot(launch.x, launch.y), launch.cap);
   }
 
   private launch(dirX: number, dirY: number, power: number, launchCap: number = COMBAT.launchSpeedCap): void {
@@ -529,33 +594,49 @@ export class NinjaBody {
   playAttackAnimation(now: number, step: ComboStep | boolean): void {
     const comboStep = typeof step === 'boolean' ? comboStepOf(step ? 3 : 1) : step;
     const profile = COMBAT.combo[comboStep];
-    const duration = 110 + comboStep * 48;
+    const startup = 70 + comboStep * 28;
+    const duration = startup + profile.recoveryMs;
     this.attackingUntil = now + duration;
     this.status.markSwing(now, comboStep);
 
-    const lungeX = this.aim.x * profile.lungeDistance;
-    const lungeY = this.aim.y * profile.lungeDistance;
-    const tiltDirection = this.aim.x >= 0 ? 0.12 + comboStep * 0.06 : -(0.12 + comboStep * 0.06);
-    const startAngle = comboStep === 1 ? -0.55 : comboStep === 2 ? -0.85 : -1.15;
-    const endAngle = comboStep === 1 ? 0.85 : comboStep === 2 ? 1.25 : 1.65;
+    const lungeX = this.aim.x * (profile.lungeDistance + 6);
+    const lungeY = this.aim.y * (profile.lungeDistance + 6);
+    const tilt = (this.aim.x >= 0 ? 1 : -1) * (0.28 + comboStep * 0.1);
+    const windAngle = comboStep === 1 ? -0.7 : comboStep === 2 ? -1.05 : -1.35;
+    const strikeAngle = comboStep === 1 ? 0.95 : comboStep === 2 ? 1.35 : 1.8;
+    const contactScale = comboStep === 3 ? 1.1 : comboStep === 2 ? 1.06 : 1.03;
 
+    this.holdAttackPose = false;
     this.currentAttackTween?.stop();
-    const swordAnimState = { angleOffset: startAngle, lungeFrac: 0 };
+    const swordAnimState = { frac: 0 };
     this.currentAttackTween = this.scene.tweens.add({
       targets: swordAnimState,
-      angleOffset: endAngle,
-      lungeFrac: 1,
-      duration: duration * (comboStep === 3 ? 0.72 : 0.64),
-      ease: comboStep === 3 ? 'Back.Out' : 'Quad.In',
-      yoyo: true,
+      frac: 1,
+      duration,
+      ease: 'Linear',
       onUpdate: () => {
         if (!this.present) {
           return;
         }
+        const frac = swordAnimState.frac;
+        let pose = 0;
+        let reach = 0;
+        if (frac < 0.34) {
+          pose = windAngle * (frac / 0.34);
+          reach = -0.25 * (frac / 0.34);
+        } else if (frac < 0.62) {
+          const t = (frac - 0.34) / 0.28;
+          pose = windAngle + (strikeAngle - windAngle) * t;
+          reach = -0.25 + 1.25 * t;
+        } else {
+          const t = (frac - 0.62) / 0.38;
+          pose = strikeAngle * (1 - t);
+          reach = 1 - t;
+        }
         this.paintHero({
           facing: this.facing,
           attacking: true,
-          swordAngleOffset: swordAnimState.angleOffset,
+          swordAngleOffset: pose,
           comboStep,
           hitFlash: this.status.isFlashingHit(this.now()),
           rival: this.rival,
@@ -563,12 +644,10 @@ export class NinjaBody {
           fairyForm: this.fairyForm,
           demonForm: this.demonForm,
         });
-        this.art.setPosition(
-          lungeX * swordAnimState.lungeFrac,
-          lungeY * swordAnimState.lungeFrac,
-        );
-        this.art.setRotation(tiltDirection * swordAnimState.lungeFrac);
-        this.art.setScale(1 + (comboStep - 1) * 0.06 * swordAnimState.lungeFrac);
+        this.art.setPosition(lungeX * reach, lungeY * reach);
+        this.art.setRotation(tilt * Math.max(0, reach));
+        const squash = reach > 0.65 ? contactScale : 1;
+        this.art.setScale(squash, reach > 0.65 ? 2 - contactScale : 1);
       },
       onComplete: () => {
         if (!this.present) {
@@ -596,9 +675,12 @@ export class NinjaBody {
       showUzi?: boolean;
       staffRaise?: number;
       ropeAction?: 'shot' | 'punch' | 'grab';
+      scaleX?: number;
+      scaleY?: number;
     },
     ease: string = 'Sine.InOut',
   ): void {
+    this.holdAttackPose = false;
     this.currentAttackTween?.stop();
     this.attackingUntil = now + durationMs;
     const anim = { frac: 0 };
@@ -633,6 +715,7 @@ export class NinjaBody {
           demonForm: this.demonForm,
         });
         this.art.setPosition(pose.swayX ?? 0, pose.jumpY ?? 0);
+        this.art.setScale(pose.scaleX ?? 1, pose.scaleY ?? 1);
       },
       onComplete: () => {
         if (!this.present) {
@@ -641,6 +724,7 @@ export class NinjaBody {
         this.armLiftLeft = 0;
         this.armLiftRight = 0;
         this.art.setPosition(0, 0);
+        this.art.setScale(1);
         this.redrawIdle();
       },
     });
@@ -743,9 +827,16 @@ export class NinjaBody {
     });
   }
 
-  playBlockRecoil(now: number, heavy: boolean): void {
+  playBlockRecoil(now: number, heavy: boolean, holdMs = 0): void {
     this.status.applyBlockStun(now, heavy ? COMBAT.perfectShieldStunMs : COMBAT.perfectShieldStunMs * 0.75);
-    this.applyRecoil(-this.aim.x, -this.aim.y, heavy ? 120 : 70);
+    const power = heavy ? 120 : 70;
+    if (holdMs > 0) {
+      this.freezeForHitStop(now, holdMs);
+      this.queueLaunch(-this.aim.x, -this.aim.y, power);
+      this.status.applySteerLock(now, holdMs + 50);
+    } else {
+      this.applyRecoil(-this.aim.x, -this.aim.y, power);
+    }
     this.view.setRotation(this.aim.x >= 0 ? -0.18 : 0.18);
     this.scene.tweens.add({
       targets: this.view,
