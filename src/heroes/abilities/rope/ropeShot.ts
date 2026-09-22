@@ -20,6 +20,7 @@ export const spawnRopeProjectile = (args: {
   maxRange?: number;
   onHit?: (hit: ProjectileHit, now: number) => void;
   onMiss?: () => void;
+  worldDamage?: number;
 }): Projectile => {
   const len = Math.hypot(args.dirX, args.dirY) || 1;
   const nx = args.dirX / len;
@@ -38,6 +39,7 @@ export const spawnRopeProjectile = (args: {
     args.maxRange ?? Number.POSITIVE_INFINITY,
   );
   shot.team = args.caster.team;
+  shot.worldDamage = args.worldDamage ?? 0;
   let settled = false;
   args.world.addTicker({
     update: (now, delta, fighters) => {

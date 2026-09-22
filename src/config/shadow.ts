@@ -29,11 +29,13 @@ export const SHADOW = {
   ratings: SHADOW_RATINGS,
   ...shadowGameplay,
   /**
-   * Previous live swipe, then −25%.
+   * Previous live swipe (109), then +18%.
    * Light attack, hit marker, and the swing graphic all use this radius.
-   * Claw radius is frozen separately so this does not shrink the ability.
+   * Claw radius stays frozen so this does not grow the ability.
    */
-  attackRange: Math.round(Math.round(Math.round(Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.25) * 0.9) * 0.9) * 0.75),
+  attackRange: Math.round(
+    Math.round(Math.round(Math.round(Math.round(Math.round(COLE_CONVERTED_RANGE * 0.75) * 1.25) * 0.9) * 0.9) * 0.75) * 1.18,
+  ),
   attackArcDegrees: 68,
   bodyRadius: NINJA.bodyRadius,
   /** Moderately fast — quicker than Death’s 16/s, not Ninja-fast. Rage still multiplies this. */

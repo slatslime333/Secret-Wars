@@ -4,6 +4,7 @@ import { SHADOW } from '../../../config/shadow';
 import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { segmentHitsCircle } from '../geometry';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { spawnShadowSlash } from './clawFx';
@@ -60,6 +61,16 @@ class ShadowDashAbility implements ActiveAbility {
       swayX: this.dirX * 8 * frac,
     }));
     spawnShadowSlash(ctx.scene, caster.x, caster.y, this.dirX, this.dirY, SHADOW.attackRange * 1.15);
+    breakProps({
+      attacker: caster,
+      now,
+      damage: SHADOW_DASH.damage,
+      reach: SHADOW_DASH.distance,
+      dirX: this.dirX,
+      dirY: this.dirY,
+      halfArc: 0.7,
+      impulse: 1.7,
+    });
   }
 
   update(ctx: AbilityContext): boolean {

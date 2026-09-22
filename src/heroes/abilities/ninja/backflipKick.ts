@@ -9,6 +9,7 @@ import { NinjaBody } from '../../NinjaBody';
 import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { segmentHitsCircle } from '../geometry';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { ABILITY_ICON } from '../icons';
 import { NINJA_KICK } from './tunables';
 
@@ -65,6 +66,16 @@ class BackflipKickAbility implements ActiveAbility {
     );
     caster.playKickPose(NINJA_KICK.dashDurationMs + NINJA_KICK.hitStopMs);
     spawnCombatCallout(ctx.scene, caster.x, caster.y, 'KICK', COLORS.orange);
+    breakProps({
+      attacker: caster,
+      now,
+      damage: NINJA_KICK.damage,
+      reach: NINJA_KICK.dashDistance,
+      dirX: this.dirX,
+      dirY: this.dirY,
+      halfArc: 0.65,
+      impulse: 1.7,
+    });
   }
 
   update(ctx: AbilityContext): boolean {

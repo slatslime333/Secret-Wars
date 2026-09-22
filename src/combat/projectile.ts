@@ -5,6 +5,8 @@ import { battlefieldOf } from '../map';
 import type { TeamId } from '../config/hero';
 import { registerProjectile, unregisterProjectile } from './projectileRegistry';
 
+let nextShotToken = 1;
+
 export type ProjectileHit = {
   target: NinjaBody;
   x: number;
@@ -27,6 +29,9 @@ export class Projectile {
   private readonly originY: number;
   private readonly maxRange: number;
   team?: TeamId;
+  /** Ability shots pass their own damage. 0 uses the owner's light-attack damage. */
+  worldDamage = 0;
+  private readonly token = nextShotToken++;
 
   constructor(
     scene: Phaser.Scene,
@@ -81,6 +86,8 @@ export class Projectile {
     if (!this.alive) {
       return 'dead';
     }
+    const prevX = this.x;
+    const prevY = this.y;
     this.x += this.vx * dt;
     this.y += this.vy * dt;
     this.view.setPosition(this.x, this.y);
@@ -96,6 +103,16 @@ export class Projectile {
     }
     const traveled = Math.hypot(this.x - this.originX, this.y - this.originY);
     const map = battlefieldOf(this.view.scene);
+    const hitProp = map?.environment.absorbShot({
+      x0: prevX,
+      y0: prevY,
+      x1: this.x,
+      y1: this.y,
+      radius: this.radius,
+      team: this.team,
+      damage: this.worldDamage,
+      token: this.token,
+    });
     if (
       now >= this.endsAt ||
       traveled >= this.maxRange ||
@@ -103,6 +120,7 @@ export class Projectile {
       this.y < 0 ||
       this.x > ARENA.width ||
       this.y > ARENA.height ||
+      hitProp ||
       map?.query.blocksProjectile(this.x, this.y, this.radius)
     ) {
       this.destroy();

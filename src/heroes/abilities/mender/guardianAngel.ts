@@ -7,6 +7,7 @@ import { NinjaBody } from '../../NinjaBody';
 import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { ABILITY_ICON } from '../icons';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { distanceBetween } from '../geometry';
 import { MENDER_ANGEL } from './tunables';
 import { allyAlongAim } from './targeting';
@@ -151,6 +152,17 @@ const resolveGuardianBurst = (ctx: AbilityContext, target: NinjaBody, absorbed: 
   const radius = Math.round(MENDER_ANGEL.baseRadius + (MENDER_ANGEL.maxRadius - MENDER_ANGEL.baseRadius) * t);
   spawnShockwaveRing(ctx.scene, target.x, target.y, radius);
   spawnCombatCallout(ctx.scene, target.x, target.y, absorbed > 0 ? 'BURST' : 'FADE', 0x7ecbff);
+  breakProps({
+    attacker: ctx.caster,
+    now: ctx.now,
+    damage: MENDER_ANGEL.explodeDamage,
+    reach: radius,
+    dirX: target.x - ctx.caster.x,
+    dirY: target.y - ctx.caster.y,
+    originX: target.x,
+    originY: target.y,
+    impulse: 1.5,
+  });
   playWorld('cole-discharge', target);
 
   if (absorbed > 0 && !target.down && target.isPresent) {

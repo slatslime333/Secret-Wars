@@ -3,6 +3,7 @@ import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../t
 import { ABILITY_ICON } from '../icons';
 import { DEATH_SMASH } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { COLORS } from '../../../ui/theme';
 import { smashBatHits, smashCrashOffsets, smashSwingAngle } from './smashHit';
@@ -143,6 +144,16 @@ class BatSmashAbility implements ActiveAbility {
       this.burst = true;
       spawnSmashBurst(scene, caster.x, caster.y, this.aimAngle);
       playWorld('death-smash-impact', caster);
+      breakProps({
+        attacker: caster,
+        now,
+        damage: DEATH_SMASH.damage,
+        reach: DEATH_SMASH.radius,
+        dirX: this.dirX,
+        dirY: this.dirY,
+        halfArc: (DEATH_SMASH.windupRad + DEATH_SMASH.followRad) / 2,
+        impulse: 1.85,
+      });
     }
     const angle = smashSwingAngle(this.aimAngle, this.frac(now));
     for (const enemy of ctx.enemies) {

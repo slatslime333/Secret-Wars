@@ -5,6 +5,7 @@ import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../t
 import { ABILITY_ICON } from '../icons';
 import { COLE_STORM } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { spawnLightningBolt, spawnStormWarning } from '../../../effects/lightning';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { playUltimateShake } from '../../../effects/hitJuice';
@@ -68,6 +69,17 @@ class ThunderstormAbility implements ActiveAbility {
       const strike = this.pending.splice(i, 1)[0];
       spawnLightningBolt(ctx.scene, caster.x, caster.y - 10, strike.x, strike.y, { heavy: true, life: 160 });
       playWorld('cole-storm-strike', { x: strike.x, y: strike.y, playerControlled: caster.playerControlled });
+      breakProps({
+        attacker: caster,
+        now,
+        damage: COLE_STORM.damage,
+        reach: COLE_STORM.strikeRadius,
+        dirX: 0,
+        dirY: 1,
+        originX: strike.x,
+        originY: strike.y,
+        impulse: 1.6,
+      });
       for (const enemy of ctx.enemies) {
         if (enemy.down) {
           continue;

@@ -1,3 +1,4 @@
+import { ENV_WORLD } from '../config/environment';
 import { ENV, fillPx, strokePx } from './palette';
 
 const box = (
@@ -213,23 +214,27 @@ const drawBuildingInterior = (ctx: CanvasRenderingContext2D, style: 'shop' | 'st
     fillPx(ctx, ENV.wood, 110, 118, 40, 20);
     fillPx(ctx, ENV.crate, 114, 122, 14, 10);
   }
-  const doorW = 48;
+  const doorW = ENV_WORLD.houseDoor;
   const doorX = Math.floor(w / 2) - Math.floor(doorW / 2);
   fillPx(ctx, ENV.concrete, 12, h - 28, w - 24, 12);
-  fillPx(ctx, ENV.inkSoft, doorX, h - 32, doorW, 20);
-  fillPx(ctx, ENV.woodDark, doorX + 4, h - 28, doorW - 8, 14);
-  fillPx(ctx, ENV.inkSoft, doorX, 24, doorW, 18);
-  fillPx(ctx, ENV.woodDark, doorX + 4, 28, doorW - 8, 12);
+  fillPx(ctx, 0x49dce1, doorX, 22, doorW, 22);
+  fillPx(ctx, ENV.ink, doorX + 4, 26, doorW - 8, 14);
+  fillPx(ctx, 0xe0b060, doorX, h - 36, doorW, 24);
+  fillPx(ctx, ENV.ink, doorX + 4, h - 32, doorW - 8, 16);
 };
 
-const drawDoorGap = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void => {
-  fillPx(ctx, ENV.ink, x - 3, y - 2, w + 6, h + 4);
-  fillPx(ctx, ENV.woodDark, x - 1, y, w + 2, h);
-  fillPx(ctx, ENV.inkSoft, x + 3, y + 3, w - 6, h - 6);
-  fillPx(ctx, ENV.ink, x + 5, y + 5, w - 14, h - 10);
-  fillPx(ctx, ENV.wood, x + 4, y + 4, 8, h - 10);
-  fillPx(ctx, ENV.woodLite, x + 5, y + 6, 3, h - 14);
-  fillPx(ctx, ENV.woodDark, x + w - 10, y + Math.floor(h / 2) - 3, 5, 8);
+const drawDoorGap = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  accent: number,
+): void => {
+  fillPx(ctx, ENV.ink, x - 5, y - 3, w + 10, h + 6);
+  fillPx(ctx, accent, x - 3, y - 1, w + 6, h + 2);
+  fillPx(ctx, ENV.ink, x + 2, y + 2, w - 4, h - 4);
+  fillPx(ctx, accent, x + Math.floor(w / 2) - 2, y + 4, 4, h - 8);
 };
 
 const drawStoop = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void => {
@@ -241,7 +246,7 @@ const drawStoop = (ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 
 const drawBuildingShell = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub' | 'house', w: number, h: number): void => {
   const wall = 14;
-  const doorW = 48;
+  const doorW = ENV_WORLD.houseDoor;
   const doorX = Math.floor(w / 2) - Math.floor(doorW / 2);
   const northY = 28;
   const southY = h - 28;
@@ -251,10 +256,10 @@ const drawBuildingShell = (ctx: CanvasRenderingContext2D, style: 'shop' | 'stub'
   paintBrickBody(ctx, w - 22, northY, wall, southY - northY + wall);
   paintBrickBody(ctx, 8, southY, doorX - 12, wall);
   paintBrickBody(ctx, doorX + doorW + 4, southY, w - (doorX + doorW) - 12, wall);
-  drawStoop(ctx, doorX - 4, 14, doorW + 8, 14);
-  drawDoorGap(ctx, doorX, northY - 4, doorW, wall + 10);
-  drawStoop(ctx, doorX - 4, h - 16, doorW + 8, 14);
-  drawDoorGap(ctx, doorX, southY - 6, doorW, wall + 10);
+  drawStoop(ctx, doorX - 8, 12, doorW + 16, 16);
+  drawDoorGap(ctx, doorX, northY - 4, doorW, wall + 12, 0x49dce1);
+  drawStoop(ctx, doorX - 8, h - 18, doorW + 16, 16);
+  drawDoorGap(ctx, doorX, southY - 8, doorW, wall + 14, 0xe0b060);
   if (style === 'shop') {
     fillPx(ctx, ENV.ink, 28, northY + wall + 8, 32, 22);
     fillPx(ctx, ENV.glass, 30, northY + wall + 10, 28, 18);

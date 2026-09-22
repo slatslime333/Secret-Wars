@@ -2,6 +2,7 @@ import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../t
 import { ABILITY_ICON } from '../icons';
 import { COLE_DISCHARGE } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { spawnLightningBolt, spawnShockwaveRing } from '../../../effects/lightning';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { COLORS } from '../../../ui/theme';
@@ -33,6 +34,15 @@ class DischargeAbility implements ActiveAbility {
     caster.status.applyControlLock(now, COLE_DISCHARGE.expandMs);
     spawnShockwaveRing(ctx.scene, caster.x, caster.y, COLE_DISCHARGE.radius);
     spawnCombatCallout(ctx.scene, caster.x, caster.y, 'DISCHARGE', COLORS.cyan);
+    breakProps({
+      attacker: caster,
+      now,
+      damage: COLE_DISCHARGE.damage,
+      reach: COLE_DISCHARGE.radius,
+      dirX: caster.aim.x,
+      dirY: caster.aim.y,
+      impulse: 1.7,
+    });
 
     for (const enemy of ctx.enemies) {
       if (enemy.down) {

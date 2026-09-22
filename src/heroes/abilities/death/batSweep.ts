@@ -5,6 +5,7 @@ import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../t
 import { ABILITY_ICON } from '../icons';
 import { DEATH_SWEEP } from './tunables';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { playUltimateShake } from '../../../effects/hitJuice';
 import { COLORS } from '../../../ui/theme';
@@ -32,6 +33,7 @@ class DeathBatSweepAbility implements ActiveAbility {
   readonly control = { move: false, attack: true, dash: true, block: true, abilities: true };
   private readonly endsAt: number;
   private readonly lastHitAt = new Map<NinjaBody, number>();
+  private nextPropAt = 0;
   private readonly fx: SweepFx;
 
   constructor(ctx: AbilityContext) {
@@ -70,6 +72,18 @@ class DeathBatSweepAbility implements ActiveAbility {
     const { caster, now, scene } = ctx;
     const spin = (now / DEATH_SWEEP.spinMs) * Math.PI * 2;
     const dir = sweepKnockback(Math.cos(spin), Math.sin(spin), 1);
+    if (now >= this.nextPropAt) {
+      this.nextPropAt = now + DEATH_SWEEP.hitCooldownMs;
+      breakProps({
+        attacker: caster,
+        now,
+        damage: DEATH_SWEEP.damage,
+        reach: DEATH_SWEEP.radius,
+        dirX: dir.x,
+        dirY: dir.y,
+        impulse: 1.7,
+      });
+    }
     for (const enemy of ctx.enemies) {
       if (enemy.down) {
         continue;

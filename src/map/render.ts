@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { ENV_WORLD } from '../config/environment';
-import { COLORS } from '../ui/theme';
+import { COLORS, FONTS } from '../ui/theme';
+import type { HouseDoor } from './types';
 import { createCalmGround, type GroundView } from './ground';
 import { buildingLayerKey, ensureObstacleTextures, fireTextureKey, textureKeyFor } from './obstacles';
 import type { MapLayout } from './types';
@@ -24,6 +25,47 @@ const depthFor = (kind: string, hierarchy: string, enterable = false): number =>
     return 4;
   }
   return 3;
+};
+
+const drawHousePortals = (
+  scene: Phaser.Scene,
+  doors: HouseDoor[],
+  visual: { h: number },
+  anchorY: number,
+  sprites: Phaser.GameObjects.GameObject[],
+): void => {
+  const gap = scene.add.graphics().setDepth(6);
+  const badge = scene.add.graphics().setDepth(12);
+  const top = anchorY - 0.78 * visual.h;
+  const bottom = anchorY + 0.22 * visual.h;
+  for (const door of doors) {
+    const inbound = door.side === 'front';
+    const accent = inbound ? 0xe0b060 : 0x49dce1;
+    const wallY = inbound ? door.y - 20 : door.y + 20;
+    const matY = inbound ? bottom + 18 : top - 20;
+    gap.lineStyle(6, 0x101410, 1);
+    gap.strokeRect(door.x - 42, wallY - 14, 84, 28);
+    gap.lineStyle(3, accent, 1);
+    gap.strokeRect(door.x - 36, wallY - 10, 72, 20);
+    badge.lineStyle(3, accent, 0.95);
+    badge.lineBetween(door.x, inbound ? wallY + 14 : wallY - 14, door.x, matY);
+    badge.fillStyle(0x101410, 0.96);
+    badge.fillRoundedRect(door.x - 28, matY - 14, 56, 28, 4);
+    badge.fillStyle(accent, 1);
+    badge.fillRoundedRect(door.x - 24, matY - 11, 48, 22, 3);
+    badge.fillStyle(0x101410, 1);
+    badge.fillTriangle(door.x - 16, matY - 2, door.x - 23, matY + 8, door.x - 9, matY + 8);
+    const label = scene.add
+      .text(door.x + 8, matY, inbound ? 'IN' : 'OUT', {
+        fontFamily: FONTS.display,
+        fontSize: '15px',
+        color: '#101410',
+      })
+      .setOrigin(0.5)
+      .setDepth(13);
+    sprites.push(label);
+  }
+  sprites.push(gap, badge);
 };
 
 const drawSpawnPads = (scene: Phaser.Scene, layout: MapLayout): Phaser.GameObjects.Graphics => {
@@ -84,6 +126,9 @@ export const renderMapLayout = (scene: Phaser.Scene, layout: MapLayout): MapView
       crateSprites.set(obs.id, image);
     }
     sprites.push(image);
+    if (obs.enterable && obs.doors && obs.doors.length > 0) {
+      drawHousePortals(scene, obs.doors, obs.visual, obs.y, sprites);
+    }
     if (obs.kind === 'building') {
       const roof = scene.add.image(obs.x, obs.y, buildingLayerKey(obs, 'roof')).setDepth(ENV_WORLD.roofDepth);
       roof.setOrigin(0.5, 0.78);

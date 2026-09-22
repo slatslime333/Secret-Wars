@@ -5,7 +5,7 @@ import { CRATE } from './crate';
  * Living-city tunables. Sparse landmarks, restrained destruction, no rubble piles.
  */
 export const ENV_WORLD = {
-  wallHp: Math.round(COLE.attackDamage * 7.2),
+  wallHp: Math.round(COLE.attackDamage * 4.5),
   treeHp: Math.round(COLE.attackDamage * 5.4),
   fenceHp: Math.round(COLE.attackDamage * 3.6),
   barricadeHp: Math.round(COLE.attackDamage * 6.2),
@@ -22,24 +22,21 @@ export const ENV_WORLD = {
   abilityPush: 260,
   dashPush: 240,
   dashHit: 9,
-  explosionPush: 520,
+  explosionPush: 780,
   treeMass: 1.15,
   treeDrag: 3.4,
   treeAngularDrag: 2.8,
   treeWalkSlow: 0.62,
-  knockedLifetimeMs: 20_000,
-  knockFadeMs: 900,
-  wreckLifeMs: 16_000,
   smokeGapMs: 380,
 
   barrelRadius: 142,
-  barrelDamage: 48,
-  barrelKnockback: 560,
+  barrelDamage: 78,
+  barrelKnockback: 920,
   barrelChainRadius: 80,
 
   carRadius: 128,
-  carDamage: 28,
-  carKnockback: 360,
+  carDamage: 56,
+  carKnockback: 680,
   carFlashCount: 3,
   carFlashMs: 220,
 

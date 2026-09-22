@@ -13,10 +13,14 @@ export const inflate = (rect: Rect, amount: number): Rect => ({
   h: rect.h + amount * 2,
 });
 
+export const closestPointOnRect = (x: number, y: number, rect: Rect): Point => ({
+  x: Math.max(rect.x, Math.min(x, rect.x + rect.w)),
+  y: Math.max(rect.y, Math.min(y, rect.y + rect.h)),
+});
+
 export const circleHitsRect = (x: number, y: number, radius: number, rect: Rect): boolean => {
-  const nearestX = Math.max(rect.x, Math.min(x, rect.x + rect.w));
-  const nearestY = Math.max(rect.y, Math.min(y, rect.y + rect.h));
-  return Math.hypot(x - nearestX, y - nearestY) < radius;
+  const nearest = closestPointOnRect(x, y, rect);
+  return Math.hypot(x - nearest.x, y - nearest.y) < radius;
 };
 
 export const gapBetween = (a: Rect, b: Rect): number => {

@@ -101,6 +101,7 @@ class RopeSprayAbility implements ActiveAbility {
         radius: ROPE_SHOT.radius,
         lifetimeMs: 900,
         maxRange: ROPE_SPRAY.range,
+        worldDamage: ROPE_SPRAY.damage,
         onHit: (hit, now) => {
           resolveAbilityHit(
             ctx.scene,

@@ -9,6 +9,7 @@ import { NinjaBody } from '../../NinjaBody';
 import { AbilityContext, AbilityDef, ActiveAbility, canStartAbility } from '../types';
 import { distanceBetween } from '../geometry';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { ABILITY_ICON } from '../icons';
 import { NINJA_TORNADO } from './tunables';
 
@@ -118,6 +119,15 @@ class NinjaTornadoAbility implements ActiveAbility {
     const { caster, now, scene } = ctx;
     spawnSlash(scene, caster);
     playWorld('ninja-tornado-slash', caster);
+    breakProps({
+      attacker: caster,
+      now,
+      damage: NINJA_TORNADO.damage,
+      reach: NINJA_TORNADO.radius,
+      dirX: caster.aim.x,
+      dirY: caster.aim.y,
+      impulse: 1.4,
+    });
     for (const enemy of ctx.enemies) {
       if (enemy.down) {
         continue;

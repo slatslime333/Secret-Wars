@@ -4,6 +4,7 @@ import { ABILITY_ICON } from '../icons';
 import { COLE_BALL } from './tunables';
 import { Projectile } from '../../../combat/projectile';
 import { resolveAbilityHit } from '../resolveAbilityHit';
+import { breakProps } from '../../../match/objectives/worldStrike';
 import { spawnLightningBolt, spawnShockwaveRing } from '../../../effects/lightning';
 import { spawnCombatCallout } from '../../../effects/combatCallout';
 import { NinjaBody } from '../../NinjaBody';
@@ -39,6 +40,7 @@ export const electricBallDef: AbilityDef = {
       0x4aa8ff,
     );
     shot.team = ctx.caster.team;
+    shot.worldDamage = COLE_BALL.damage;
     spawnCombatCallout(ctx.scene, ctx.caster.x, ctx.caster.y, 'BALL', 0x7ecbff);
     const caster = ctx.caster;
     const block = ctx.rivalBlock;
@@ -95,6 +97,17 @@ const resolveBallHit = (
 
   spawnLightningBolt(scene, caster.x, caster.y, primary.x, primary.y, { heavy: true, life: 180 });
   spawnShockwaveRing(scene, x, y, COLE_BALL.explodeRadius);
+  breakProps({
+    attacker: caster,
+    now,
+    damage: COLE_BALL.damage,
+    reach: COLE_BALL.explodeRadius,
+    dirX: primary.x - caster.x,
+    dirY: primary.y - caster.y,
+    originX: x,
+    originY: y,
+    impulse: 1.7,
+  });
 
   const chained: NinjaBody[] = [primary];
   const pool = enemies
