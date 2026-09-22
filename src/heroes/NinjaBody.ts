@@ -95,6 +95,8 @@ export class NinjaBody {
   private frozenUntil = 0;
   private pendingLaunch?: { x: number; y: number; cap: number };
   private holdAttackPose = false;
+  /** Sheet slash stays upright. Procedural tilt is for drawn heroes only. */
+  private ninjaSheetAttack = false;
   private armLiftLeft = 0;
   private armLiftRight = 0;
   private wrapGfx?: Phaser.GameObjects.Graphics;
@@ -425,6 +427,9 @@ export class NinjaBody {
 
   /** Contact squash. Holds through hit-stop, then eases back. */
   playConnectPunch(step: ComboStep, holdMs = 0): void {
+    if (this.spriteKind === 'ninja') {
+      return;
+    }
     const sy = step === 3 ? 0.8 : step === 2 ? 0.86 : 0.92;
     const sx = step === 3 ? 1.1 : step === 2 ? 1.06 : 1.03;
     const kick = step === 3 ? 8 : step === 2 ? 5 : 3;
@@ -598,6 +603,10 @@ export class NinjaBody {
     const duration = startup + profile.recoveryMs;
     this.attackingUntil = now + duration;
     this.status.markSwing(now, comboStep);
+    if (this.spriteKind === 'ninja') {
+      this.playNinjaSheetAttack(duration);
+      return;
+    }
 
     const lungeX = this.aim.x * (profile.lungeDistance + 6);
     const lungeY = this.aim.y * (profile.lungeDistance + 6);
@@ -661,6 +670,61 @@ export class NinjaBody {
     });
   }
 
+  /**
+   * Wind-up, strike, follow-through on the sheet. The slash is already drawn,
+   * so the sprite stays planted instead of tilting off its feet.
+   */
+  private playNinjaSheetAttack(duration: number): void {
+    this.holdAttackPose = false;
+    this.currentAttackTween?.stop();
+    this.ninjaSheetAttack = true;
+    this.art.setPosition(0, 0);
+    this.art.setRotation(0);
+    this.art.setScale(1);
+    const phase = { frac: 0 };
+    const paint = (frac: number) => {
+      const swordAngleOffset = frac < 0.34 ? -1 : frac < 0.62 ? 0 : 1;
+      this.paintHero({
+        facing: this.facing,
+        attacking: true,
+        swordAngleOffset,
+        comboStep: 1,
+        hitFlash: this.status.isFlashingHit(this.now()),
+        rival: this.rival,
+        team: this.team,
+        fairyForm: this.fairyForm,
+        demonForm: this.demonForm,
+      });
+    };
+    paint(0);
+    const tween = this.scene.tweens.add({
+      targets: phase,
+      frac: 1,
+      duration,
+      ease: 'Linear',
+      onUpdate: () => {
+        if (!this.present || this.currentAttackTween !== tween) {
+          return;
+        }
+        this.art.setPosition(0, 0);
+        this.art.setRotation(0);
+        this.art.setScale(1);
+        paint(phase.frac);
+      },
+      onComplete: () => {
+        if (!this.present || this.currentAttackTween !== tween) {
+          return;
+        }
+        this.ninjaSheetAttack = false;
+        this.art.setPosition(0, 0);
+        this.art.setRotation(0);
+        this.art.setScale(1);
+        this.redrawIdle();
+      },
+    });
+    this.currentAttackTween = tween;
+  }
+
   playCustomAttack(
     now: number,
     durationMs: number,
@@ -681,6 +745,7 @@ export class NinjaBody {
     ease: string = 'Sine.InOut',
   ): void {
     this.holdAttackPose = false;
+    this.ninjaSheetAttack = false;
     this.currentAttackTween?.stop();
     this.attackingUntil = now + durationMs;
     const anim = { frac: 0 };
@@ -731,6 +796,7 @@ export class NinjaBody {
   }
 
   playEvasiveLean(dirX: number, dirY: number, durationMs: number): void {
+    this.ninjaSheetAttack = false;
     this.currentAttackTween?.stop();
     this.view.setRotation(dirX >= 0 ? 0.22 : -0.22);
     this.art.setPosition(dirX * 6, dirY * 6);
@@ -750,6 +816,7 @@ export class NinjaBody {
   }
 
   playFrontFlip(dirX: number, dirY: number, durationMs: number, jumpHeight = 28): void {
+    this.ninjaSheetAttack = false;
     this.currentAttackTween?.stop();
     this.scene.tweens.killTweensOf(this.art);
     this.scene.tweens.killTweensOf(this.view);
@@ -782,6 +849,7 @@ export class NinjaBody {
   }
 
   playKickPose(durationMs: number): void {
+    this.ninjaSheetAttack = false;
     this.currentAttackTween?.stop();
     this.attackingUntil = this.now() + durationMs;
     const lean = this.aim.x >= 0 ? 0.35 : -0.35;
@@ -796,6 +864,7 @@ export class NinjaBody {
   }
 
   playBackflip(dirX: number, dirY: number, durationMs: number, jumpHeight = 34): void {
+    this.ninjaSheetAttack = false;
     this.currentAttackTween?.stop();
     this.scene.tweens.killTweensOf(this.art);
     this.scene.tweens.killTweensOf(this.view);
@@ -1518,9 +1587,15 @@ export class NinjaBody {
       !this.witchMoving && now >= this.attackingUntil && this.present && !this.down
         ? Math.sin(now / 280) * 0.8
         : 0;
-    figure.setPosition(this.art.x, this.art.y + this.spriteFeetY + bob);
-    figure.setRotation(this.art.rotation);
-    figure.setScale(this.art.scaleX * this.spriteScale, this.art.scaleY * this.spriteScale);
+    if (this.spriteKind === 'ninja' && this.ninjaSheetAttack) {
+      figure.setPosition(0, this.spriteFeetY);
+      figure.setRotation(0);
+      figure.setScale(this.spriteScale);
+    } else {
+      figure.setPosition(this.art.x, this.art.y + this.spriteFeetY + bob);
+      figure.setRotation(this.art.rotation);
+      figure.setScale(this.art.scaleX * this.spriteScale, this.art.scaleY * this.spriteScale);
+    }
     if (this.fairyForm) {
       figure.setVisible(false);
       return;
@@ -1544,7 +1619,7 @@ export class NinjaBody {
       return;
     }
     this.applyPixelSprite({
-      facing: this.facing,
+      facing: this.ninjaTravelFacing() ?? this.facing,
       moving: this.witchMoving,
       walkFrame:
         this.spriteKind === 'rope'
@@ -1553,6 +1628,23 @@ export class NinjaBody {
       hitFlash: this.status.isFlashingHit(now),
       now,
     });
+  }
+
+  /** Run cycle faces travel. Aim still aims the slash. */
+  private ninjaTravelFacing(): CardinalFacing | undefined {
+    if (this.spriteKind !== 'ninja' || !this.witchMoving || this.now() < this.attackingUntil) {
+      return undefined;
+    }
+    const velocity = this.body?.velocity;
+    const vx = velocity?.x ?? 0;
+    const vy = velocity?.y ?? 0;
+    if (vx * vx + vy * vy > 36) {
+      return facingFromAim(vx, vy);
+    }
+    if (this.steer.lengthSq() > 0.04) {
+      return facingFromAim(this.steer.x, this.steer.y);
+    }
+    return undefined;
   }
 
   private redrawIdle(): void {
