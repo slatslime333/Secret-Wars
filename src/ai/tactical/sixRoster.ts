@@ -301,18 +301,19 @@ const readControlZone = (
   let value = 0;
   if (state === 'free') {
     job = 'capture';
-    value = 98 - dist * 0.05;
+    // Travel costs a little. It must not erase the capture on a 6v6-sized field.
+    value = 112 - dist * 0.016;
     if (flags.cautious) {
       value += 6;
     }
-    if (dist > 1100) {
-      value *= 0.45;
+    if (flags.fightHandled || flags.nearestD > 320) {
+      value += 18;
     }
-    if (flags.selfIn && !flags.fightHandled && flags.nearestD < 240) {
-      value *= 0.42;
+    if (flags.selfIn && !flags.fightHandled && flags.nearestD < (self.attackRange ?? 70) * 1.4) {
+      value *= 0.55;
     }
     if (onZone) {
-      value += 8;
+      value += 10;
     }
   } else if (state === 'handled') {
     job = 'capture';
@@ -386,7 +387,7 @@ const readControlZone = (
   } else if (state === 'friendly' || state === 'handled') {
     stand = committed.size === 0 && !flags.ranged ? 'inside' : 'perimeter';
   } else if (state === 'free') {
-    stand = flags.ranged ? 'perimeter' : 'inside';
+    stand = 'inside';
   } else if (flags.flanker || flags.ranged) {
     stand = 'intercept';
   }
@@ -752,7 +753,8 @@ export const sixShouldReconsider = (
       holding.length === 0 &&
       approaching.length === 0 &&
       committed.size === 0;
-    if (free && dist < 720 && chasey && !engaged) {
+    const idle = chasey || action === 'hold_position' || action === 'wait_for_opening' || action === 'reposition';
+    if (free && dist < 4200 && idle && !engaged) {
       return true;
     }
     if (action === 'contest_objective' && context.intentZone === zone.id) {
@@ -828,7 +830,7 @@ export const applySixRoster = (
     Boolean(zoneFact) &&
     (choice.state === 'threatened' || choice.state === 'contested') &&
     choice.alliesOnZone < choice.recommended;
-  const takeFree = choice.state === 'free' && choice.job === 'capture' && choice.alliesOnZone === 0 && Boolean(zoneFact) && choice.dist < 980;
+  const takeFree = choice.state === 'free' && choice.job === 'capture' && choice.alliesOnZone === 0 && Boolean(zoneFact);
   let posted = choice.score;
   if (zoneFact && (takeFree || needsHelp)) {
     const lifted = liftOverDistantFights(out, count, situation, zoneFact, takeFree ? 'free' : 'help');
