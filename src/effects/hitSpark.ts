@@ -5,7 +5,15 @@ export const spawnHitSpark = (
   scene: Phaser.Scene,
   x: number,
   y: number,
-  options: { heavy?: boolean; finisher?: boolean; blocked?: boolean; clash?: boolean; dirX?: number; dirY?: number } = {},
+  options: {
+    heavy?: boolean;
+    finisher?: boolean;
+    blocked?: boolean;
+    clash?: boolean;
+    dirX?: number;
+    dirY?: number;
+    tint?: number;
+  } = {},
 ): void => {
   const heavy = Boolean(options.heavy);
   const finisher = Boolean(options.finisher);
@@ -13,7 +21,7 @@ export const spawnHitSpark = (
   const clash = Boolean(options.clash);
   const big = finisher || clash;
   const size = clash ? 20 : finisher ? 22 : heavy ? 16 : blocked ? 13 : 9;
-  const fill = blocked ? COLORS.cyan : clash ? COLORS.yellow : finisher ? COLORS.yellow : COLORS.paper;
+  const fill = options.tint ?? (blocked ? COLORS.cyan : clash ? COLORS.yellow : finisher ? COLORS.yellow : COLORS.paper);
   const stroke = blocked ? COLORS.paper : COLORS.orange;
   const spark = scene.add.rectangle(x, y, size, size, fill).setDepth(14);
   spark.setStrokeStyle(2, stroke);

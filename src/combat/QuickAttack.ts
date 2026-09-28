@@ -60,6 +60,7 @@ export class QuickAttack {
   private lastPressAt = -99999;
   private consumedPressAt = -99999;
   private pendingImpact?: PendingImpact;
+  private seenSwingBreak = 0;
   private readonly combo = new ComboTracker();
   lastSwingAt = -9999;
   lastSwingStep: ComboStep = 1;
@@ -113,6 +114,10 @@ export class QuickAttack {
     defenderBlock?: BlockController,
     allies: NinjaBody[] = [],
   ): void {
+    if (attacker.swingBreaks !== this.seenSwingBreak) {
+      this.seenSwingBreak = attacker.swingBreaks;
+      this.interrupt(now);
+    }
     this.tickRopeShots(now, attacker, enemies, defenderBlock);
     this.tickMenderShots(now, attacker, enemies, allies, defenderBlock);
     this.tickDemonShots(now, attacker, enemies, defenderBlock);

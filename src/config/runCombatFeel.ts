@@ -1,5 +1,6 @@
+import { CombatStatus } from '../combat/CombatStatus';
 import { ComboTracker } from '../combat/ComboTracker';
-import { attackCycleMs, attackMoveFeel, attackStartupMs, hitStopFor } from './combat';
+import { COMBAT, attackCycleMs, attackMoveFeel, attackStartupMs, hitReactionFor, hitStopFor, shieldChipOf } from './combat';
 import { COLE } from './cole';
 import { DEATH } from './death';
 import { DEMON, DEMON_BIG } from './demon';
@@ -71,6 +72,33 @@ if (!(ninjaMove.startup > 0.85 && ninjaMove.active < 0.32 && ninjaMove.recovery 
 }
 if (!(coleMove.active < ninjaMove.active && menderMove.active > 0.65)) {
   throw new Error('Cole should plant harder than Ninja, and Mender should keep moving');
+}
+
+expectRange('ninja light startup', attackStartupMs(1, 'ninja'), 90, 100);
+expectRange('ninja step2 startup', attackStartupMs(2, 'ninja'), 108, 118);
+expectRange('ninja finisher startup', attackStartupMs(3, 'ninja'), 140, 152);
+expectRange('cole light startup', attackStartupMs(1, 'cole'), 115, 125);
+expectRange('ninja light stop', hitStopFor(1, 'ninja'), 44, 50);
+expectRange('ninja step2 stop', hitStopFor(2, 'ninja'), 62, 70);
+expectRange('ninja finisher stop', hitStopFor(3, 'ninja'), 88, 96);
+expectRange('ninja light reaction', hitReactionFor(1, 'ninja'), 72, 80);
+expectRange('ninja step2 reaction', hitReactionFor(2, 'ninja'), 118, 128);
+expectRange('ninja finisher reaction', hitReactionFor(3, 'ninja'), 170, 184);
+if (shieldChipOf(10) !== 10.2) {
+  throw new Error(`shield chip should be 2% more, got ${shieldChipOf(10)}`);
+}
+const pressure = new CombatStatus();
+pressure.applyShieldPressure(0);
+pressure.applyShieldPressure(120);
+if (Math.abs(pressure.moveMultiplier(200) - COMBAT.shieldPressureMoveMul) > 0.001) {
+  throw new Error(`shield move mul ${pressure.moveMultiplier(200)}`);
+}
+if (Math.abs(pressure.attackSlowMultiplier(200) - 1 / COMBAT.shieldPressureAttackMul) > 0.001) {
+  throw new Error(`shield attack mul ${pressure.attackSlowMultiplier(200)}`);
+}
+pressure.applyShieldPressure(300);
+if (Math.abs(pressure.moveMultiplier(500) - 0.85) > 0.001 || pressure.moveMultiplier(800) !== 1) {
+  throw new Error('shield pressure should refresh once and then expire');
 }
 
 const chain = new ComboTracker();

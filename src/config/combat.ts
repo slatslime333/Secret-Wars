@@ -54,6 +54,12 @@ export const COMBAT = {
   shieldHitRecoilHeavy: 68,
   blockPushLight: 14,
   blockPushHeavy: 28,
+  /** Each normal shield hit chips this much more shield than the raw hit. */
+  shieldHitStaminaMul: 1.02,
+  /** Refreshed on every shield hit. Does not stack. Perfect shield skips it. */
+  shieldPressureMs: 400,
+  shieldPressureMoveMul: 0.85,
+  shieldPressureAttackMul: 0.85,
 
   /** Three charges, each recovering through the same recharge timer. */
   dashMaxCharges: 3,
@@ -86,8 +92,8 @@ export const COMBAT = {
       lungeLockMs: 95,
       recoveryMs: 150,
       staminaDamage: 4,
-      hitReactionMs: 120,
-      impactDelayMs: 82,
+      hitReactionMs: 90,
+      impactDelayMs: 105,
       shieldDamage: 8,
       attackerRecoil: 46,
     },
@@ -100,8 +106,8 @@ export const COMBAT = {
       lungeLockMs: 110,
       recoveryMs: 190,
       staminaDamage: 6,
-      hitReactionMs: 165,
-      impactDelayMs: 102,
+      hitReactionMs: 145,
+      impactDelayMs: 125,
       shieldDamage: 13,
       attackerRecoil: 68,
     },
@@ -114,8 +120,8 @@ export const COMBAT = {
       lungeLockMs: 140,
       recoveryMs: 250,
       staminaDamage: 10,
-      hitReactionMs: 220,
-      impactDelayMs: 118,
+      hitReactionMs: 210,
+      impactDelayMs: 160,
       shieldDamage: 20,
       attackerRecoil: 92,
     },
@@ -133,8 +139,8 @@ export const COMBAT = {
   hitFlashMs: 140,
 
   /** Freeze on connect, before knockback is released. Finishers sit at the long end. */
-  hitStopLightMs: 52,
-  hitStopHeavyMs: 72,
+  hitStopLightMs: 50,
+  hitStopHeavyMs: 70,
   hitStopFinisherMs: 100,
   hitStopBlockMs: 64,
   hitStopPerfectMs: 100,
@@ -189,6 +195,16 @@ export type AttackMoveFeel = {
   recovery: number;
 };
 
+export type ImpactFeel = {
+  /** Multiplies how far the body compresses on the contact frame. */
+  squash: number;
+  stretch: number;
+  recoil: number;
+  lean: number;
+  /** Multiplies how long the procedural settle takes. */
+  settle: number;
+};
+
 type HeroFeel = {
   /** Scales the shared attack cycle. 1 keeps the rating curve. */
   cycle: number;
@@ -196,6 +212,7 @@ type HeroFeel = {
   reaction: number;
   startup: number;
   move: AttackMoveFeel;
+  impact: ImpactFeel;
 };
 
 /**
@@ -203,15 +220,51 @@ type HeroFeel = {
  * Ratings still set the order. These only keep each kit's job readable.
  */
 export const HERO_COMBAT_FEEL: Record<string, HeroFeel> = {
-  ninja: { cycle: 1, hitStop: 0.92, reaction: 0.84, startup: 0.9, move: { startup: 0.92, active: 0.28, recovery: 0.68 } },
-  cole: { cycle: 1, hitStop: 1.2, reaction: 1.12, startup: 1.14, move: { startup: 0.86, active: 0.16, recovery: 0.52 } },
-  death: { cycle: 0.94, hitStop: 1.42, reaction: 1.22, startup: 1.02, move: { startup: 0.88, active: 0.18, recovery: 0.58 } },
-  rope: { cycle: 0.9, hitStop: 0.82, reaction: 0.7, startup: 0.85, move: { startup: 0.94, active: 0.58, recovery: 0.78 } },
-  witch: { cycle: 1.06, hitStop: 1.05, reaction: 1.02, startup: 1.08, move: { startup: 0.88, active: 0.42, recovery: 0.64 } },
-  shadow: { cycle: 1.04, hitStop: 1.18, reaction: 1.16, startup: 1.12, move: { startup: 0.86, active: 0.18, recovery: 0.54 } },
-  mender: { cycle: 0.78, hitStop: 0.62, reaction: 0.55, startup: 0.7, move: { startup: 0.96, active: 0.72, recovery: 0.86 } },
-  demon: { cycle: 0.9, hitStop: 0.86, reaction: 0.78, startup: 0.92, move: { startup: 0.94, active: 0.52, recovery: 0.76 } },
-  'demon-big': { cycle: 1.26, hitStop: 1.32, reaction: 1.18, startup: 1.12, move: { startup: 0.84, active: 0.16, recovery: 0.5 } },
+  ninja: {
+    cycle: 1, hitStop: 0.92, reaction: 0.84, startup: 0.9,
+    move: { startup: 0.92, active: 0.28, recovery: 0.68 },
+    impact: { squash: 0.72, stretch: 0.85, recoil: 0.7, lean: 0.8, settle: 0.72 },
+  },
+  cole: {
+    cycle: 1, hitStop: 1.2, reaction: 1.12, startup: 1.14,
+    move: { startup: 0.86, active: 0.16, recovery: 0.52 },
+    impact: { squash: 1.4, stretch: 0.9, recoil: 0.95, lean: 0.55, settle: 1.2 },
+  },
+  death: {
+    cycle: 0.94, hitStop: 1.42, reaction: 1.22, startup: 1.02,
+    move: { startup: 0.88, active: 0.18, recovery: 0.58 },
+    impact: { squash: 1.55, stretch: 1.05, recoil: 0.62, lean: 1.05, settle: 1.28 },
+  },
+  rope: {
+    cycle: 0.9, hitStop: 0.82, reaction: 0.7, startup: 0.85,
+    move: { startup: 0.94, active: 0.58, recovery: 0.78 },
+    impact: { squash: 0.7, stretch: 1.55, recoil: 1.2, lean: 1.25, settle: 0.78 },
+  },
+  witch: {
+    cycle: 1.06, hitStop: 1.05, reaction: 1.02, startup: 1.08,
+    move: { startup: 0.88, active: 0.42, recovery: 0.64 },
+    impact: { squash: 0.85, stretch: 1.15, recoil: 1.25, lean: 0.5, settle: 1.05 },
+  },
+  shadow: {
+    cycle: 1.04, hitStop: 1.18, reaction: 1.16, startup: 1.12,
+    move: { startup: 0.86, active: 0.18, recovery: 0.54 },
+    impact: { squash: 0.9, stretch: 1.05, recoil: 1.35, lean: 1.3, settle: 0.82 },
+  },
+  mender: {
+    cycle: 0.78, hitStop: 0.62, reaction: 0.55, startup: 0.7,
+    move: { startup: 0.96, active: 0.72, recovery: 0.86 },
+    impact: { squash: 0.65, stretch: 0.8, recoil: 1.2, lean: 0.85, settle: 0.68 },
+  },
+  demon: {
+    cycle: 0.9, hitStop: 0.86, reaction: 0.78, startup: 0.92,
+    move: { startup: 0.94, active: 0.52, recovery: 0.76 },
+    impact: { squash: 1.25, stretch: 1.15, recoil: 1.2, lean: 1.15, settle: 1.05 },
+  },
+  'demon-big': {
+    cycle: 1.26, hitStop: 1.32, reaction: 1.18, startup: 1.12,
+    move: { startup: 0.84, active: 0.16, recovery: 0.5 },
+    impact: { squash: 1.65, stretch: 1.1, recoil: 0.42, lean: 0.7, settle: 1.4 },
+  },
 };
 
 export const feelKey = (heroId: string, bigDemon = false): string =>
@@ -237,15 +290,21 @@ export const inputBufferMs = (touch: boolean): number =>
 
 /** Visible windup before the hit frame. */
 export const attackStartupMs = (step: ComboStep, heroId: string, bigDemon = false): number =>
-  clampMs(COMBAT.combo[step].impactDelayMs * heroFeel(heroId, bigDemon).startup, 55, 130);
+  clampMs(COMBAT.combo[step].impactDelayMs * heroFeel(heroId, bigDemon).startup, 48, 210);
 
 export const hitStopFor = (step: ComboStep, heroId: string, bigDemon = false): number => {
   const base = step === 3 ? COMBAT.hitStopFinisherMs : step === 2 ? COMBAT.hitStopHeavyMs : COMBAT.hitStopLightMs;
-  return clampMs(base * heroFeel(heroId, bigDemon).hitStop, 28, 115);
+  return clampMs(base * heroFeel(heroId, bigDemon).hitStop, 24, 160);
 };
 
 export const hitReactionFor = (step: ComboStep, heroId: string, bigDemon = false): number =>
-  clampMs(COMBAT.combo[step].hitReactionMs * heroFeel(heroId, bigDemon).reaction, 50, 280);
+  clampMs(COMBAT.combo[step].hitReactionMs * heroFeel(heroId, bigDemon).reaction, 40, 320);
+
+/** How far this body compresses, stretches, and settles. 1 is the shared step. */
+export const impactFeelFor = (heroId: string, bigDemon = false): ImpactFeel => heroFeel(heroId, bigDemon).impact;
+
+/** Shield chip after the 2% pressure multiplier. Not rounded, so 10 stays 10.2. */
+export const shieldChipOf = (amount: number): number => amount * COMBAT.shieldHitStaminaMul;
 
 /** Startup / contact / recovery movement. Does not change walk speed outside a swing. */
 export const attackMoveFeel = (heroId: string, bigDemon = false): AttackMoveFeel =>

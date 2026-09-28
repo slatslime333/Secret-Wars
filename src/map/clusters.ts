@@ -1,6 +1,6 @@
 import { CRATE } from '../config/crate';
 import { ENV_WORLD } from '../config/environment';
-import { ARENA } from '../config/arena';
+import { ARENA, matchFormatOf } from '../config/arena';
 import { decorateObstacle } from './envProps';
 import { PROP, visualForProp, type PropSpec } from './scale';
 import { inflate, rectsOverlap } from './geometry';
@@ -251,7 +251,11 @@ export const templateById = (id: ClusterId): ClusterTemplate => {
   return found;
 };
 
-const densityCap = (n: number): number => Math.max(n, Math.round(n * (ARENA.width / 2584)));
+const densityCap = (n: number): number => {
+  const widthMul = ARENA.width / 2584;
+  const mul = matchFormatOf() === '6v6' ? widthMul * (ARENA.height / 1504) : widthMul;
+  return Math.max(n, Math.round(n * mul));
+};
 
 const keepoutFor = (kind: ObstacleKind, collision: Rect): Rect => {
   if (kind === 'building' || kind === 'vehicle') {

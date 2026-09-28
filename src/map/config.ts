@@ -1,4 +1,4 @@
-import { ARENA } from '../config/arena';
+import { ARENA, matchFormatOf } from '../config/arena';
 
 export const MAP = {
   maxAttempts: 50,
@@ -37,5 +37,9 @@ export const chunkSize = () => {
   };
 };
 
-/** 6v6 stretches the same grid; allow more props without crowding 3v3. */
-export const maxObstaclesOf = (): number => Math.round(MAP.maxObstacles * (ARENA.width / 2584));
+/** 6v6 covers more ground, so the prop cap follows area instead of width alone. */
+export const maxObstaclesOf = (): number => {
+  const widthMul = ARENA.width / 2584;
+  const mul = matchFormatOf() === '6v6' ? widthMul * (ARENA.height / 1504) : widthMul;
+  return Math.round(MAP.maxObstacles * mul);
+};

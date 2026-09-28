@@ -245,17 +245,20 @@ export const runMapChecks = (): CheckResult[] => {
     detail: fencesOk ? 'yard/road fences planted' : 'too few fences',
   });
 
+  applyMatchFormat('3v3');
+  const three = generateBattlefield({ seed: 1001, log: false });
   applyMatchFormat('6v6');
   const six = generateBattlefield({ seed: 1001, log: false });
   const sixOk =
     ARENA.width === Math.round(2584 * 1.65) &&
     !six.usedFallback &&
     six.layout.playable.w > 4000 &&
-    six.layout.obstacles.some((obs) => obs.enterable && (obs.doors?.length ?? 0) >= 2);
+    six.layout.obstacles.some((obs) => obs.enterable && (obs.doors?.length ?? 0) >= 2) &&
+    six.layout.obstacles.length > three.layout.obstacles.length;
   results.push({
     name: '6v6 battlefield scales',
     ok: sixOk,
-    detail: `width=${six.layout.playable.w + 80} fallback=${six.usedFallback} doors=${six.layout.obstacles.some((obs) => obs.enterable)}`,
+    detail: `width=${six.layout.playable.w + 80} props=${six.layout.obstacles.length} vs3=${three.layout.obstacles.length} fallback=${six.usedFallback}`,
   });
   applyMatchFormat('3v3');
 

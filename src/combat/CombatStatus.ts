@@ -240,6 +240,16 @@ export class CombatStatus {
     this.asDebuffMul = cooldownMul;
   }
 
+  /**
+   * Shield pressure. Movement and attack rate drop to 0.85 and the window refreshes.
+   * A second hit does not multiply 0.85 by 0.85.
+   */
+  applyShieldPressure(now: number): void {
+    this.applySlow(now, COMBAT.shieldPressureMs, COMBAT.shieldPressureMoveMul);
+    const attackRate = COMBAT.shieldPressureAttackMul;
+    this.applyAttackSpeedSlow(now, COMBAT.shieldPressureMs, 1 / attackRate);
+  }
+
   /** Stacking move + attack-speed cut. Each hit adds `perHit` (0.06 = 6%) up to `cap`. */
   applyStackedCripple(now: number, durationMs: number, perHit: number, cap: number): void {
     if (now >= this.crippleUntil) {

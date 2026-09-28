@@ -51,9 +51,9 @@ export const playImpactShake = (
   scene: Phaser.Scene,
   kind: 'strong' | 'finisher' | 'clash' | 'perfect' | 'ability',
 ): void => {
-  const duration = kind === 'finisher' ? 90 : kind === 'strong' ? 42 : kind === 'ability' ? 80 : kind === 'perfect' ? 60 : 72;
+  const duration = kind === 'finisher' ? 100 : kind === 'strong' ? 48 : kind === 'ability' ? 80 : kind === 'perfect' ? 60 : 72;
   const intensity =
-    kind === 'finisher' ? 0.0054 : kind === 'strong' ? 0.0016 : kind === 'ability' ? 0.0046 : kind === 'perfect' ? 0.005 : 0.0062;
+    kind === 'finisher' ? 0.0068 : kind === 'strong' ? 0.0022 : kind === 'ability' ? 0.0046 : kind === 'perfect' ? 0.005 : 0.0062;
   scene.cameras.main.shake(duration, intensity);
 };
 

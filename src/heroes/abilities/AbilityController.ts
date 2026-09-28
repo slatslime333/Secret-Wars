@@ -141,7 +141,15 @@ export class AbilityController {
     return true;
   }
 
+  private seenSwingBreak = 0;
+
   update(ctx: AbilityContext): void {
+    if (ctx.caster.swingBreaks !== this.seenSwingBreak) {
+      this.seenSwingBreak = ctx.caster.swingBreaks;
+      if (this.active && !this.active.hyperArmor) {
+        this.interruptActive();
+      }
+    }
     if (this.kit.heroId === 'demon') {
       this.slots.ultimate.meter = ctx.caster.demonRage;
       tryAutoDemonRage(ctx, () => this.tryActivate('ultimate', ctx));

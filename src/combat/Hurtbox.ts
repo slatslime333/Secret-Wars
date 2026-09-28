@@ -34,6 +34,8 @@ export type TakeHitOptions = {
   launchCap?: number;
   /** Override MINION.hitKnockbackMul (1 = use the raw knockback value). */
   receivedKnockbackMul?: number;
+  /** Barrel or car blast. Falls sideways, then gets back up after the stun. */
+  blast?: boolean;
   /** Combat attribution for stats, assists, and minion last-hit credit. */
   source?: DamageSource;
 };
