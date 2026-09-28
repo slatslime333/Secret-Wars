@@ -1,3 +1,4 @@
+import type { MatchFormat } from './arena';
 import { COLE, COLE_CONVERTED_RANGE } from './cole';
 import { MATCH } from './match';
 
@@ -174,6 +175,29 @@ export const nextObjectiveKind = (recent: readonly ObjectiveKind[], rng: () => n
     return OBJECTIVE.openingKind;
   }
   return pickFairObjectiveKind(recent, rng);
+};
+
+/** 6v6 capture zones are a standing system, so they are not a rotating event. */
+export const objectiveKindsFor = (format: MatchFormat): readonly ObjectiveKind[] => {
+  if (format !== '6v6') {
+    return OBJECTIVE.kinds;
+  }
+  return OBJECTIVE.kinds.filter((kind) => kind !== 'capture_zone');
+};
+
+export const nextObjectiveKindFor = (
+  format: MatchFormat,
+  recent: readonly ObjectiveKind[],
+  rng: () => number,
+): ObjectiveKind => {
+  if (format !== '6v6') {
+    return nextObjectiveKind(recent, rng);
+  }
+  const kinds = objectiveKindsFor('6v6');
+  const blocked = new Set(recent.slice(-OBJECTIVE.antiRepeat));
+  const pool = kinds.filter((kind) => !blocked.has(kind));
+  const use = pool.length > 0 ? pool : kinds;
+  return use[Math.floor(rng() * use.length)] ?? 'golden_piggy';
 };
 
 export const pickEventGapMs = (rng: () => number): number =>

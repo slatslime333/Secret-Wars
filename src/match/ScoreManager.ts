@@ -104,6 +104,21 @@ export class ScoreManager {
     return value;
   }
 
+  /**
+   * Repeating team points, such as 6v6 zone ownership.
+   * Does not count as another completed objective.
+   */
+  addOngoingScore(team: TeamId, amount: number, reason: ScoreReason, now = 0): number {
+    const value = Math.round(amount);
+    if (value <= 0 || this.locked || !this.canScore()) {
+      return 0;
+    }
+    this.kills[team] += value;
+    this.byReason[reason][team] += value;
+    publishScore(this.kills, undefined, now);
+    return value;
+  }
+
   /** Hero kill with per-victim diminishing score. The kill still counts. */
   awardHeroKill(team: TeamId, victimId: string, now: number): number {
     if (this.locked || !this.canScore()) {

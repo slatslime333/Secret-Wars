@@ -13,6 +13,7 @@ type MinimapSource = {
   heroes: NinjaBody[];
   minions: NinjaBody[];
   objective?: { x: number; y: number; kind: string };
+  markers?: readonly { x: number; y: number; color: number }[];
 };
 
 /**
@@ -129,10 +130,29 @@ export class Minimap {
         this.art.strokeCircle(p.x, p.y, 5);
       }
     }
+
+    for (const mark of source.markers ?? []) {
+      const p = this.pin(mark.x, mark.y, player.x, player.y);
+      this.art.fillStyle(mark.color, 1);
+      this.art.fillCircle(p.x, p.y, 3.2);
+      this.art.lineStyle(1.4, COLORS.paper, 0.9);
+      this.art.strokeCircle(p.x, p.y, 5.5);
+    }
   }
 
   destroy(): void {
     this.root.destroy();
+  }
+
+  private pin(x: number, y: number, originX: number, originY: number): { x: number; y: number } {
+    const nx = (x - originX) / this.rangeX;
+    const ny = (y - originY) / this.rangeY;
+    const px = -this.width / 2 + nx * (this.width / 2 - 8);
+    const py = this.height / 2 + ny * (this.height / 2 - 8);
+    return {
+      x: Math.max(-this.width + 8, Math.min(-8, px)),
+      y: Math.max(8, Math.min(this.height - 8, py)),
+    };
   }
 
   private project(x: number, y: number, originX: number, originY: number): { x: number; y: number } | undefined {

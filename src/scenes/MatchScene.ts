@@ -58,6 +58,7 @@ import { CombatStatsTracker } from '../match/CombatStatsTracker';
 import { WaveDirector } from '../match/WaveDirector';
 import { XpOrbWorld } from '../match/XpOrbWorld';
 import { ObjectiveManager } from '../match/objectives/ObjectiveManager';
+import { SixZoneController } from '../match/objectives/SixZoneController';
 import type { ObjectiveKind } from '../config/objective';
 import { OBJECTIVE_SCORE, OBJECTIVE_REASON } from '../config/score';
 import { buildMatchGameState, type MatchGameState } from '../match/MatchQuery';
@@ -132,6 +133,7 @@ export class MatchScene extends Phaser.Scene {
   private waves!: WaveDirector;
   private orbs!: XpOrbWorld;
   private objectives?: ObjectiveManager;
+  private zones?: SixZoneController;
   private offDamage?: () => void;
   private offBlocked?: () => void;
   private offHeal?: () => void;
@@ -230,6 +232,18 @@ export class MatchScene extends Phaser.Scene {
       }
       this.orbs.spawn(event.x, event.y, event.killer, xpForMinion(event.kind), event.team);
     };
+
+    if (this.matchFormat === '6v6') {
+      this.zones = new SixZoneController({
+        scene: this,
+        score: this.score,
+        stats: this.stats,
+        query: battlefield.query,
+        seed: battlefield.result.seed,
+        heroes: () => this.heroes,
+        setZoneLine: (line) => this.objectives?.setZoneLine(line),
+      });
+    }
 
     this.heroes = [];
     this.emptyAllySlots = [];
@@ -347,6 +361,10 @@ export class MatchScene extends Phaser.Scene {
         () => this.minions.destroy(),
         () => this.orbs.destroy(),
         () => {
+          this.zones?.destroy();
+          this.zones = undefined;
+        },
+        () => {
           this.objectives?.destroy();
           this.objectives = undefined;
         },
@@ -394,6 +412,7 @@ export class MatchScene extends Phaser.Scene {
       this.score.lock();
       this.stats.lock();
       this.objectives?.endMatch();
+      this.zones?.endMatch();
       this.freezeField();
       this.liveBoard?.hide();
       this.syncHud(now);
@@ -406,6 +425,7 @@ export class MatchScene extends Phaser.Scene {
 
     this.waves.update(now);
     this.objectives?.update(now, delta);
+    this.zones?.update(now, delta, this.match.playing);
     this.battlefield?.update(now, delta);
     this.orbs.update(now, delta);
     this.abilityWorld.update(now, this.allCombatants(), delta);
@@ -1080,6 +1100,7 @@ export class MatchScene extends Phaser.Scene {
         heroes: this.heroes.map((unit) => unit.body),
         minions: this.minions.allBodies(),
         objective: this.objectives?.worldPip(),
+        markers: this.zones?.markers(),
       });
     }
     if (spectating) {
@@ -1370,6 +1391,7 @@ export class MatchScene extends Phaser.Scene {
       board: () => this.stats.allLines(),
       phase: () => this.match.snapshot(),
       spawnObjective: (kind?: ObjectiveKind) => this.objectives?.debugSpawn(kind),
+      sixZones: () => this.zones?.debug() ?? null,
       toggleAi: () => {
         DEV_CHEATS.showAi = !DEV_CHEATS.showAi;
         return DEV_CHEATS.showAi;

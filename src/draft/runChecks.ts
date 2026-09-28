@@ -1,4 +1,4 @@
-import { ARENA, LANES, applyMatchFormat } from '../config/arena';
+import { ARENA, LANES, applyMatchFormat, sixArenaSize } from '../config/arena';
 import { DRAFT_HERO_IDS, HERO_DRAFT_CLASS, otherHeroOfClass } from './classes';
 import {
   applyHeroPick,
@@ -140,7 +140,8 @@ const scenarioSixVSixDraft = (): CheckResult => {
     placed.playerTeam === 'bravo' &&
     placed.roster.bravo[LANES.indexOf('bottom')] === 'mender';
   applyMatchFormat('6v6');
-  const wide = ARENA.width === Math.round(2584 * 1.65) && ARENA.height === Math.round(1504 * 1.65);
+  const sixSize = sixArenaSize();
+  const wide = ARENA.width === sixSize.width && ARENA.height === sixSize.height;
   applyMatchFormat('3v3');
   return {
     name: '6v6 two of each class and bigger map',

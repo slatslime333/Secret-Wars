@@ -25,7 +25,9 @@ export type ScoreReason =
   | 'golden_pig'
   | 'bounty'
   | 'executioner'
-  | 'war_banner';
+  | 'war_banner'
+  | 'zone_capture'
+  | 'zone_hold';
 
 export const SCORE_REASONS: readonly ScoreReason[] = [
   'hero_kill',
@@ -36,7 +38,17 @@ export const SCORE_REASONS: readonly ScoreReason[] = [
   'bounty',
   'executioner',
   'war_banner',
+  'zone_capture',
+  'zone_hold',
 ] as const;
+
+/** 6v6 standing zones. 3v3 capture still uses WAR_SCORE.capture. */
+export const SIX_ZONE_SCORE = {
+  capture: 50,
+  holdPerSecond: 1,
+  activeMs: 60_000,
+  cooldownMs: 15_000,
+} as const;
 
 export const OBJECTIVE_SCORE: Partial<Record<string, number>> = {
   capture_zone: WAR_SCORE.capture,
