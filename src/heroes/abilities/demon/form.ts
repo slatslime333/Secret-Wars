@@ -29,7 +29,8 @@ export const grantDemonRage = (
 };
 
 export const applyDemonBigStats = (body: NinjaBody): void => {
-  if (body.demonScaled) {
+  // Every hero resets form on death and heal. Only Demon may rewrite combat stats.
+  if (!isDemon(body) || body.demonScaled) {
     return;
   }
   const oldMax = body.stats.maxHealth;
@@ -53,6 +54,11 @@ export const applyDemonBigStats = (body: NinjaBody): void => {
 };
 
 export const applyDemonLittleStats = (body: NinjaBody): void => {
+  // Shadow's light wedge and stamina cost live on the same stats object.
+  // Leaving this unguarded copies Demon's 28° arc onto Shadow after a respawn.
+  if (!isDemon(body)) {
+    return;
+  }
   if (!body.demonScaled) {
     body.stats.attackArcDegrees = DEMON.attackArcDegrees;
     body.stats.attackStaminaMul = DEMON.attackStaminaMul;

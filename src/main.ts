@@ -75,6 +75,7 @@ const game = new Phaser.Game({
 });
 
 installBackingStore(game);
+guardGameLoop(game);
 
 (window as Window & { secretWars?: Phaser.Game }).secretWars = game;
 
@@ -105,3 +106,31 @@ screenOrientation?.addEventListener?.('change', () => {
   onWindowResize();
   setTimeout(onWindowResize, 150);
 });
+
+/**
+ * Phaser schedules the next animation frame only after the step returns.
+ * A throw inside update or render leaves the loop running with no further frames.
+ * Rebind the frame callback to the guarded step; wake() later binds these methods.
+ */
+function guardGameLoop(game: Phaser.Game): void {
+  const loop = game.loop as Phaser.Core.TimeStep & {
+    _target: number;
+    step: (time: number) => void;
+    stepLimitFPS: (time: number) => void;
+  };
+  const protect = (run: (time: number) => void): ((time: number) => void) => {
+    const bound = run.bind(loop);
+    return (time: number) => {
+      try {
+        bound(time);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+  };
+  loop.step = protect(loop.step);
+  loop.stepLimitFPS = protect(loop.stepLimitFPS);
+  loop.raf.stop();
+  const next = loop.hasFpsLimit ? loop.stepLimitFPS.bind(loop) : loop.step.bind(loop);
+  loop.raf.start(next, loop.forceSetTimeOut, loop._target);
+}

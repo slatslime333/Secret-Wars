@@ -15,7 +15,7 @@ import { NINJA_KICK } from '../heroes/abilities/ninja/tunables';
 import { ROPE_GRAB, ROPE_PUNCH, ROPE_SHOT } from '../heroes/abilities/rope/tunables';
 import { witchHexAllyRange } from '../heroes/abilities/witch/tunables';
 import { WITCH_HIT_MARKER_LINE, WITCH_HIT_MARKER_RANGE } from '../config/witch';
-import { SHADOW_HIT_MARKER_RANGE } from '../config/shadow';
+import { SHADOW_HIT_MARKER_ARC, SHADOW_HIT_MARKER_RANGE } from '../config/shadow';
 import { SHADOW_CLAW, SHADOW_DASH } from '../heroes/abilities/shadow/tunables';
 import { MENDER_ANGEL, MENDER_HIT_MARKER_LINE, MENDER_PULSE, MENDER_SOUL } from '../heroes/abilities/mender/tunables';
 import { menderArmOrigin } from '../heroes/drawMender';
@@ -334,31 +334,45 @@ export class MatchScene extends Phaser.Scene {
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.bindDebugApi();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
-      this.input.keyboard?.off('keydown-ESC', this.togglePauseMenu, this);
-      this.input.keyboard?.off('keydown-TAB', this.onScoreboardKey, this);
-      this.offDamage?.();
-      this.offBlocked?.();
-      this.offHeal?.();
-      this.liveBoard?.destroy();
-      this.abilityWorld.destroy();
-      this.minions.destroy();
-      this.orbs.destroy();
-      this.objectives?.destroy();
-      this.objectives = undefined;
-      this.abilityTray?.destroy();
-      this.minimap?.destroy();
-      this.spectatorOverlay?.destroy();
-      this.pauseOverlay?.destroy();
-      this.feedback?.destroy();
-      this.battlefield?.destroy();
-      applyMatchFormat('3v3');
-      for (const unit of this.heroes) {
-        unit.destroy();
+      const steps: Array<() => void> = [
+        () => this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this),
+        () => this.input.keyboard?.off('keydown-ESC', this.togglePauseMenu, this),
+        () => this.input.keyboard?.off('keydown-TAB', this.onScoreboardKey, this),
+        () => this.offDamage?.(),
+        () => this.offBlocked?.(),
+        () => this.offHeal?.(),
+        () => this.liveBoard?.destroy(),
+        () => this.results.destroy(),
+        () => this.abilityWorld.destroy(),
+        () => this.minions.destroy(),
+        () => this.orbs.destroy(),
+        () => {
+          this.objectives?.destroy();
+          this.objectives = undefined;
+        },
+        () => this.abilityTray?.destroy(),
+        () => this.minimap?.destroy(),
+        () => this.spectatorOverlay?.destroy(),
+        () => this.pauseOverlay?.destroy(),
+        () => this.feedback?.destroy(),
+        () => this.battlefield?.destroy(),
+        () => applyMatchFormat('3v3'),
+        () => {
+          for (const unit of this.heroes) {
+            unit.destroy();
+          }
+        },
+        () => this.aiOverlay?.destroy(),
+        () => this.unbindDebugApi(),
+        () => audio.stopAllLoops(),
+      ];
+      for (const step of steps) {
+        try {
+          step();
+        } catch (error) {
+          console.error(error);
+        }
       }
-      this.aiOverlay?.destroy();
-      this.unbindDebugApi();
-      audio.stopAllLoops();
     });
   }
 
@@ -375,6 +389,8 @@ export class MatchScene extends Phaser.Scene {
     }
 
     if (this.match.finished) {
+      this.time.paused = false;
+      this.physics.world.resume();
       this.score.lock();
       this.stats.lock();
       this.objectives?.endMatch();
@@ -957,7 +973,8 @@ export class MatchScene extends Phaser.Scene {
           : ninja.heroId === 'cole'
             ? COLE_ATTACK.range
             : ninja.stats.attackRange;
-      this.marker.sync(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, range, ninja.stats.attackArcDegrees);
+      const arc = ninja.heroId === 'shadow' ? SHADOW_HIT_MARKER_ARC : ninja.stats.attackArcDegrees;
+      this.marker.sync(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, range, arc);
     }
     if (ninja.heroId === 'cole') {
       this.marker.syncBallAim(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, COLE_BALL.explodeRadius, frame.ability1Aiming);

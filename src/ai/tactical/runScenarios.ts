@@ -17,7 +17,7 @@ import { COLE, COLE_CONVERTED_RANGE } from '../../config/cole';
 import { DEATH } from '../../config/death';
 import { ROPE } from '../../config/rope';
 import { WITCH, WITCH_HIT_MARKER_LINE, WITCH_HIT_MARKER_RANGE, WITCH_LIGHT_RANGE_BASE } from '../../config/witch';
-import { SHADOW, SHADOW_HIT_MARKER_RANGE } from '../../config/shadow';
+import { SHADOW, SHADOW_HIT_MARKER_ARC, SHADOW_HIT_MARKER_RANGE } from '../../config/shadow';
 import { DEMON_HELLFIRE, DEMON_HELL_BAT, DEMON_RAGE } from '../../heroes/abilities/demon/tunables';
 import { demonRageFromLightDamage, demonRageFromAbilityDamage } from '../../heroes/abilities/demon/form';
 import { SHADOW_CLAW, SHADOW_DASH } from '../../heroes/abilities/shadow/tunables';
@@ -599,11 +599,13 @@ if (SHADOW.ratings.damage !== 68 || SHADOW.ratings.defense !== 39) {
 } else {
   console.log('ok  shadow ratings  damage 68 / defense 39');
 }
-if (SHADOW_HIT_MARKER_RANGE !== SHADOW.attackRange) {
+if (SHADOW_HIT_MARKER_RANGE !== SHADOW.attackRange || SHADOW_HIT_MARKER_ARC !== SHADOW.attackArcDegrees) {
   failed += 1;
-  console.log(`FAIL  shadow hit marker  ${SHADOW_HIT_MARKER_RANGE} vs attack ${SHADOW.attackRange}`);
+  console.log(
+    `FAIL  shadow hit marker  range ${SHADOW_HIT_MARKER_RANGE} vs ${SHADOW.attackRange}, arc ${SHADOW_HIT_MARKER_ARC} vs ${SHADOW.attackArcDegrees}`,
+  );
 } else {
-  console.log(`ok  shadow hit marker matches attack ${SHADOW.attackRange}`);
+  console.log(`ok  shadow hit marker matches attack ${SHADOW.attackRange} / ${SHADOW.attackArcDegrees}°`);
 }
 if (
   ROPE.ratings.damage !== 39 ||
