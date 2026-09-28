@@ -19,7 +19,10 @@ import { pickRetreatGoal, type RetreatGoal } from './retreat';
 import { scanProjectileThreat } from './shots';
 import { GamePlanController } from './strategy';
 import { assessSupport } from './supportSense';
+import { matchFormatOf } from '../../config/arena';
 import { objectiveHintFor } from '../../match/objectives/board';
+import { postSixIntent, sixShouldReconsider, type SixJob } from './sixRoster';
+import { sixZoneFacts } from '../../match/objectives/sixZoneBoard';
 import { scoreHintFor } from '../../match/scoreBoard';
 import { assessObjective } from './objectiveIntel';
 import { assessTeam } from './teamIntel';
@@ -225,21 +228,22 @@ export class TacticalMind {
             : kit?.stance === 'ranged'
               ? 'attack'
               : undefined,
-      objective: this.situation.objective
-        ? {
-            kind: this.situation.objective.kind,
-            x: this.situation.objective.x,
-            y: this.situation.objective.y,
-            radius: this.situation.objective.radius,
-            huntX: this.situation.objective.enemyX,
-            huntY: this.situation.objective.enemyY,
-            guardX: this.situation.objective.allyX,
-            guardY: this.situation.objective.allyY,
-            remainingMs: this.situation.objective.remainingMs,
-            hazards: this.situation.objective.hazards,
-          }
-        : undefined,
-      poi,
+      objective: sixObjective(this.intent.reason, this.situation) ??
+        (this.situation.objective
+          ? {
+              kind: this.situation.objective.kind,
+              x: this.situation.objective.x,
+              y: this.situation.objective.y,
+              radius: this.situation.objective.radius,
+              huntX: this.situation.objective.enemyX,
+              huntY: this.situation.objective.enemyY,
+              guardX: this.situation.objective.allyX,
+              guardY: this.situation.objective.allyY,
+              remainingMs: this.situation.objective.remainingMs,
+              hazards: this.situation.objective.hazards,
+            }
+          : undefined),
+      poi: sixPoi(this.intent.reason, this.situation) ?? poi,
     };
   }
 
@@ -317,7 +321,17 @@ export class TacticalMind {
 
     const nextTarget = this.resolve(picked.targetId, true);
     const nextAlly = this.resolve(picked.allyId, false);
+    const sixMapPick =
+      matchFormatOf() === '6v6' &&
+      this.kind === 'hero' &&
+      (/^(CAPTURE|DEFEND|CONTEST|ROTATE|SUPPORT) [AB]/.test(picked.reason) ||
+        (picked.action === 'farm_minions' && picked.reason.includes('FARM CRATE')));
+    const sixUrgent =
+      this.kind === 'hero' &&
+      sixShouldReconsider(this.intent.action, { x: self.x, y: self.y, team: self.team });
     const targetHeld =
+      !sixMapPick &&
+      !sixUrgent &&
       Boolean(this.intent.target) &&
       nextTarget !== this.intent.target &&
       this.intent.target &&
@@ -360,6 +374,17 @@ export class TacticalMind {
       ),
       goal: this.goalFor(picked.action, nextAlly),
     };
+    if (matchFormatOf() === '6v6' && this.kind === 'hero') {
+      const plan = this.situation.sixPlan;
+      const zoneMove = Boolean(plan?.zoneId && /^(CAPTURE|DEFEND|CONTEST|ROTATE|SUPPORT) [AB]/.test(picked.reason));
+      const farmMove = picked.action === 'farm_minions' && picked.reason.includes('FARM CRATE');
+      postSixIntent({
+        id: selfFact.id,
+        job: (zoneMove && plan ? plan.job : farmMove ? 'farm' : picked.action === 'flank' ? 'flank' : 'fight') as SixJob,
+        zoneId: zoneMove ? plan?.zoneId : undefined,
+        at: now,
+      });
+    }
   }
 
   debugInfo(self: NinjaBody): TacticalDebugInfo {
@@ -415,7 +440,8 @@ export class TacticalMind {
       clusterRisk: `${levelOf(cluster)} (${cluster.toFixed(2)})`,
       joinValue: join,
       combatValue: combat,
-      objectiveValue: obj ? levelOf(obj.urgency) : 'Low',
+      objectiveValue: this.situation.sixPlan ? levelOf(Math.min(1, this.intent.score / 70)) : obj ? levelOf(obj.urgency) : 'Low',
+      sixNote: this.situation.sixPlan?.debug,
       positionValue: occupancy > 0.4 ? 'Low' : occupancy > 0.22 ? 'Medium' : 'High',
       desiredSpacing: `${Math.round((this.kit?.stance === 'ranged' || this.kit?.stance === 'support' ? 70 : 48) + occupancy * 40)}`,
       ultDecision: this.ultNote ? this.ultNote.decision.toUpperCase() : this.director?.savedUlt ? 'SAVE' : undefined,
@@ -690,6 +716,9 @@ export class TacticalMind {
     if (this.situation.objective && this.situation.objective.urgency >= 0.75 && (intent.action === 'farm_minions' || intent.action === 'advance' || intent.action === 'search_for_target')) {
       return true;
     }
+    if (sixShouldReconsider(intent.action, { x: self.x, y: self.y, team: self.team })) {
+      return true;
+    }
     if (this.situation.lastSurvivor && AGGRESSIVE.has(intent.action) && intent.action !== 'finish_target') {
       return true;
     }
@@ -786,6 +815,29 @@ export class TacticalMind {
     return this.rngState.s / 4294967296;
   }
 }
+
+const SIX_MOVE = /^(CAPTURE|DEFEND|CONTEST|ROTATE|SUPPORT) [AB]/;
+
+const sixObjective = (reason: string, situation: Situation): NonNullable<MoveHint['objective']> | undefined => {
+  const plan = situation.sixPlan;
+  if (!plan?.zoneId || !SIX_MOVE.test(reason)) {
+    return undefined;
+  }
+  const fact = sixZoneFacts().find((zone) => zone.id === plan.zoneId);
+  if (!fact) {
+    return undefined;
+  }
+  return { kind: 'capture_zone', x: fact.x, y: fact.y, radius: fact.radius };
+};
+
+const sixPoi = (reason: string, situation: Situation): NonNullable<MoveHint['poi']> | undefined => {
+  const plan = situation.sixPlan;
+  if (!plan?.zoneId || plan.stand === 'inside' || !SIX_MOVE.test(reason)) {
+    return undefined;
+  }
+  const gap = Math.hypot(situation.self.x - plan.x, situation.self.y - plan.y);
+  return { x: plan.x, y: plan.y, halt: gap < 28 };
+};
 
 const hashInt = (seed: string): number => {
   let h = 2166136261;

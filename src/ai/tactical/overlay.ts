@@ -51,6 +51,9 @@ export class TacticalOverlay {
       if (info.team) {
         lines.push(info.team);
       }
+      if (info.sixNote) {
+        lines.push(info.sixNote);
+      }
       if (info.objective) {
         lines.push(info.objective);
       }

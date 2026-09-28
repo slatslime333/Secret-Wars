@@ -227,6 +227,16 @@ export type Situation = {
   environment?: EnvSnapshot;
   /** Which door this CPU used to enter the current house, if any. */
   houseStay?: { id: string; door: HouseDoorSide; enteredAt: number };
+  /** 6v6 team job chosen alongside the scored actions. Absent in 3v3. */
+  sixPlan?: {
+    job: string;
+    zoneId?: 'A' | 'B';
+    stand: 'inside' | 'perimeter' | 'intercept';
+    x: number;
+    y: number;
+    radius: number;
+    debug: string;
+  };
 };
 
 export type TacticalDebugInfo = {
@@ -257,6 +267,8 @@ export type TacticalDebugInfo = {
   desiredSpacing?: string;
   ultDecision?: string;
   ultReason?: string;
+  /** 6v6 role line, such as "CAPTURE B | obj 71 | combat 39 | 1 ally committed". */
+  sixNote?: string;
 };
 
 export const NEUTRAL_PERSONALITY: Personality = {
