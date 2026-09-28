@@ -25,6 +25,7 @@ import { assessTeam, biasAction, type TeamIntel } from './teamIntel';
 import { assessWar, isAoeFarmer, minionPackSize, objectiveScoreValue, warBiasAction } from './warSense';
 import { applyDemonBias } from './demonSense';
 import { applyEnvBias } from './envSense';
+import { applySixRoster } from './sixRoster';
 import { assessSupport } from './supportSense';
 import { pickHealMinion } from './retreat';
 import type {
@@ -1734,6 +1735,10 @@ export const scoreSituation = (situation: Situation, out: ScoredAction[]): numbe
 
   if (plan && kind === 'hero') {
     count = applyPlanBias(out, count, plan, visibleHeroes, personality);
+  }
+
+  if (kind === 'hero') {
+    count = applySixRoster(out, count, situation, write);
   }
 
   return count;
