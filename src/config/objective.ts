@@ -18,9 +18,13 @@ export const OBJECTIVE = {
    * cutoff — it tracks MATCH.durationMs so the 4-minute window stays honest.
    */
   latestStartMs: MATCH.durationMs,
-  /** Short gap after an event ends before the next fair-random pick. */
-  gapMinMs: 2_500,
-  gapMaxMs: 4_500,
+  /**
+   * Quiet time after an event ends. The next event cannot start during this
+   * cooldown, and it does not start on the exact 15s mark: the spawn is random
+   * inside the window above the cooldown.
+   */
+  gapMinMs: 15_000,
+  gapMaxMs: 35_000,
   /** Exclude this many most-recent kinds from the next fair pick. */
   antiRepeat: 2,
   announcementMs: 3_200,

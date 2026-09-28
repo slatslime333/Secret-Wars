@@ -232,6 +232,16 @@ export type Situation = {
   combatPose?: CombatPose;
   shieldPlan?: ShieldPlan;
   swingReason?: SwingReason;
+  /** 6v6 team job chosen alongside the scored actions. Absent in 3v3. */
+  sixPlan?: {
+    job: string;
+    zoneId?: 'A' | 'B';
+    stand: 'inside' | 'perimeter' | 'intercept';
+    x: number;
+    y: number;
+    radius: number;
+    debug: string;
+  };
 };
 
 export type TacticalDebugInfo = {
@@ -268,6 +278,8 @@ export type TacticalDebugInfo = {
   shieldPlan?: string;
   habitNote?: string;
   personalityNote?: string;
+  /** 6v6 role read, such as "FREE ZONE B" plus distance, commitments, and the decision. */
+  sixNote?: string;
 };
 
 export const NEUTRAL_PERSONALITY: Personality = {

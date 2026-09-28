@@ -10,6 +10,8 @@ import type { NinjaBody } from '../../heroes/NinjaBody';
 import type { CombatStatsTracker } from '../CombatStatsTracker';
 import type { ScoreManager } from '../ScoreManager';
 import type { CaptureOccupancy } from './captureLogic';
+import { clearSixZoneFacts, setSixZoneFacts } from './sixZoneBoard';
+import { clearSixIntents } from '../../ai/tactical/sixRoster';
 import {
   freshSixZone,
   pickSixZoneSite,
@@ -251,6 +253,8 @@ export class SixZoneController {
     }
     this.closed = true;
     this.setZoneLine('');
+    clearSixZoneFacts();
+    clearSixIntents();
   }
 
   destroy(): void {
@@ -372,6 +376,20 @@ export class SixZoneController {
       return;
     }
     this.setZoneLine(this.zones.map((zone) => `${zone.id} ${zoneStatusLabel(zone.model, zone.contested)}`).join('    '));
+    setSixZoneFacts(
+      this.zones.map((zone) => ({
+        id: zone.id,
+        x: zone.model.x,
+        y: zone.model.y,
+        radius: this.radius,
+        phase: zone.model.phase,
+        owner: zone.model.snap.owner,
+        secured: zone.model.secured,
+        progress: zone.model.snap.progress,
+        contested: zone.contested,
+        leftMs: zone.model.leftMs,
+      })),
+    );
   }
 }
 
