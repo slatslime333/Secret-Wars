@@ -9,6 +9,15 @@ import type { AbilityWorld } from '../heroes/abilities/AbilityWorld';
 import type { NinjaBody } from '../heroes/NinjaBody';
 import { evaluateUltimate, scoreKitSlot } from './tactical/kitTactics';
 import { isShadowDry } from './tactical/kitProfile';
+import { combatIdentityOf } from './tactical/combatIdentity';
+import {
+  blankPose,
+  habitBand,
+  pickPose,
+  type FightFlag,
+  type FightSample,
+  type PoseRead,
+} from './tactical/combatPose';
 import { FightSense } from './tactical/fightSense';
 import type { TacticalMind } from './tactical/mind';
 import { dodgeDirFor, scanProjectileThreat } from './tactical/shots';
@@ -74,6 +83,49 @@ export class CombatDriver {
   readonly reactions = { block: 0, dash: 0, strafe: 0 };
   private pattern = emptyPattern();
   readonly sense = new FightSense();
+  private readonly pose: PoseRead = blankPose();
+  private readonly flags: FightFlag[] = [];
+  private readonly sample: FightSample = {
+    dist: 999,
+    selfRange: 80,
+    foeRange: 80,
+    closing: 0,
+    foeAttacking: false,
+    foeStartup: false,
+    foeActive: false,
+    foeRecoveryMs: 0,
+    foeHitReactMs: 0,
+    foeBlocking: false,
+    foeShield: 1,
+    foeStamina: 1,
+    foeDash: 2,
+    foeRecentDash: false,
+    foeRecentAbility: false,
+    foeWhiff: false,
+    foeRecentHit: false,
+    foeHp: 1,
+    foeAlliesNear: 0,
+    foePressured: false,
+    selfHp: 1,
+    selfStamina: 1,
+    selfBlocking: false,
+    selfDash: 2,
+    selfAbilityReady: true,
+    selfRecovering: false,
+    alliesNear: 0,
+    enemiesNear: 0,
+    allyDanger: false,
+    allyCritical: false,
+    knock: 'none',
+  };
+  private nextPoseAt = 0;
+  private nextHabitAt = 0;
+  private lastWhiffSwing = -1;
+  private approachSeen = false;
+  private approachSeenAt = -9999;
+  private lastFinisherAt = -1;
+  private lastShieldCheck = -1;
+  private foeAbilityWas = true;
   private dashWasActive = false;
   private dashLanded = false;
   private nextOffensiveDashAt = 0;
@@ -96,6 +148,7 @@ export class CombatDriver {
     const p = mind.personality;
     let usedAbility = false;
     this.sense.observe(now, body, mind.target);
+    this.refreshPose(now, body, mind, foes, rng);
     const dashing = dash.isActive(now);
     if (this.dashWasActive && !dashing) {
       this.sense.noteDashLand(now);
@@ -204,7 +257,39 @@ export class CombatDriver {
       }
     }
 
+    const poseName = this.pose.pose;
+    const punishDash =
+      mind.target &&
+      Math.hypot(mind.target.x - body.x, mind.target.y - body.y) > body.stats.attackRange * 0.92 &&
+      (this.pose.shield === 'dash-around' ||
+        ((poseName === 'PUNISH' || poseName === 'FINISH') && this.pose.punishTake));
     if (
+      punishDash &&
+      now >= this.nextDashAt &&
+      dash.chargeCount > 0 &&
+      !dash.isActive(now) &&
+      !abilities?.control.dash &&
+      mind.target
+    ) {
+      const foe = mind.target;
+      const side = this.pose.shield === 'dash-around' ? (rng() < 0.5 ? 1 : -1) : 0;
+      this.dashDir.set(foe.x - body.x + -(foe.y - body.y) * side * 0.45, foe.y - body.y + (foe.x - body.x) * side * 0.45);
+      if (this.dashDir.lengthSq() > 4 && dash.tryStart(now, this.dashDir, body.aim, body)) {
+        this.noteDeathDash(now, body, dash, world, scene, foes);
+        this.blockUntil = 0;
+        this.nextDashAt = now + 640 + rng() * 180;
+        this.nextOffensiveDashAt = now + 800;
+        mind.noteCombat(this.pose.shield === 'dash-around' ? 'dash-around' : 'dash-punish');
+        block.setHeld(now, body, false);
+        return { blocking: false, usedAbility };
+      }
+    }
+
+    if (
+      poseName !== 'DISENGAGE' &&
+      poseName !== 'BAIT' &&
+      poseName !== 'RESET' &&
+      poseName !== 'DEFEND' &&
       !mind.wantsEscape() &&
       now >= this.nextDashAt &&
       now >= this.nextOffensiveDashAt &&
@@ -595,6 +680,298 @@ export class CombatDriver {
       this.blockUntil = Math.min(this.blockUntil, now + 40);
       this.nextShieldAt = now + 140 + rng() * 220;
     }
+  }
+
+  private refreshPose(
+    now: number,
+    body: NinjaBody,
+    mind: TacticalMind,
+    foes: NinjaBody[],
+    rng: () => number,
+  ): void {
+    const foe = mind.target;
+    const situation = mind.situationView();
+    let foeAllies = 0;
+    if (foe) {
+      for (const other of foes) {
+        if (other !== foe && !other.down && Math.hypot(other.x - foe.x, other.y - foe.y) < 170) {
+          foeAllies += 1;
+        }
+      }
+      this.watchWhiff(now, body, foe, situation);
+    }
+    this.sense.noteKnock(now, body, foe, foeAllies);
+    if (foe && now >= this.nextHabitAt) {
+      this.watchHabits(now, body, foe);
+      this.nextHabitAt = now + 220;
+    }
+    if (foe) {
+      this.watchAlternate(now, body, mind, foes, situation);
+    }
+    const whiffNow = Boolean(foe && this.sense.whiffOpen(now, foe));
+    if (now < this.nextPoseAt && !whiffNow) {
+      return;
+    }
+    this.nextPoseAt = now + 90;
+    if (!foe) {
+      this.pose.pose = 'APPROACH';
+      this.pose.swing = 'hold';
+      this.pose.reason = 'no target';
+      mind.notePose(this.pose, '');
+      return;
+    }
+    this.fillSample(now, body, foe, situation, foeAllies);
+    const identity = combatIdentityOf(body.heroId, body.demonForm);
+    const habits = this.sense.habitRead(now, foe);
+    pickPose({
+      now,
+      sample: this.sample,
+      personality: mind.personality,
+      identity,
+      habits,
+      previous: this.pose,
+      rng,
+      out: this.pose,
+      flags: this.flags,
+    });
+    const lead = this.leadHabit(habits);
+    mind.notePose(this.pose, lead);
+    if (this.pose.punishTake && (this.pose.pose === 'PUNISH' || this.pose.pose === 'FINISH')) {
+      const delay = 48 + (1 - mind.personality.reactionQuality) * 170 + rng() * 40;
+      this.sense.openCounter(now, delay);
+    }
+    if (this.pose.swing === 'hold' && (this.pose.pose === 'BAIT' || this.pose.pose === 'DISENGAGE' || this.pose.pose === 'RESET')) {
+      this.sense.openSpace(now, 220 + rng() * 120);
+    }
+  }
+
+  private fillSample(
+    now: number,
+    body: NinjaBody,
+    foe: NinjaBody,
+    situation: ReturnType<TacticalMind['situationView']>,
+    foeAllies: number,
+  ): void {
+    const dx = body.x - foe.x;
+    const dy = body.y - foe.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const vx = foe.body?.velocity.x ?? 0;
+    const vy = foe.body?.velocity.y ?? 0;
+    const speed = Math.hypot(vx, vy);
+    const closing = speed < 16 ? 0 : (vx * dx + vy * dy) / (speed * dist);
+    const swingAt = foe.status.lastAttackAt;
+    const since = swingAt > 0 ? now - swingAt : 9999;
+    const recovery = foe.status.remainingRecoveryMs(now);
+    const react = foe.status.remainingHitReactionMs(now);
+    const sample = this.sample;
+    sample.dist = dist;
+    sample.selfRange = body.stats.attackRange;
+    sample.foeRange = foe.stats.attackRange;
+    sample.closing = closing;
+    sample.foeAttacking = since < 280;
+    sample.foeStartup = since >= 0 && since < 100 && recovery < 24 && react < 24;
+    sample.foeActive = since >= 36 && since < 220 && recovery < 28;
+    sample.foeRecoveryMs = recovery;
+    sample.foeHitReactMs = react;
+    sample.foeBlocking = foe.blocking;
+    sample.foeShield = foe.blockShield / Math.max(1, foe.maxBlockShield);
+    sample.foeStamina = foe.stamina / Math.max(1, foe.stats.maxStamina);
+    sample.foeDash = foe.kitDashCharges;
+    sample.foeRecentDash = speed > 320 && since < 420;
+    sample.foeRecentAbility = !foe.kitAbilityReady && since < 900;
+    sample.foeWhiff = this.sense.whiffOpen(now, foe);
+    sample.foeRecentHit = now - foe.lastAttackerAt < 420;
+    sample.foeHp = foe.health / Math.max(1, foe.stats.maxHealth);
+    sample.foeAlliesNear = foeAllies;
+    sample.foePressured = foe.status.remainingSlowMs(now) > 40 && (foe.blocking || sample.foeShield < 0.9);
+    sample.selfHp = body.health / Math.max(1, body.stats.maxHealth);
+    sample.selfStamina = body.stamina / Math.max(1, body.stats.maxStamina);
+    sample.selfBlocking = body.blocking;
+    sample.selfDash = body.kitDashCharges;
+    sample.selfAbilityReady = body.kitAbilityReady;
+    sample.selfRecovering = body.status.isHitReacting(now);
+    let allies = 0;
+    let allyDanger = false;
+    let allyCritical = false;
+    for (const ally of situation.allies) {
+      if (ally.kind !== 'hero' || Math.hypot(ally.x - body.x, ally.y - body.y) > 280) {
+        continue;
+      }
+      allies += 1;
+      const hurt = ally.hpRatio < 0.46 && (ally.recentlyHit || ally.hpRatio < 0.32);
+      if (hurt) {
+        allyDanger = true;
+        if (ally.heroId === 'mender' || ally.role === 'support' || ally.hpRatio < 0.28) {
+          allyCritical = true;
+        }
+      }
+    }
+    sample.alliesNear = allies;
+    sample.enemiesNear = foeAllies + 1;
+    sample.allyDanger = allyDanger;
+    sample.allyCritical = allyCritical;
+    sample.knock = now < 1 ? 'none' : this.sense.knock;
+  }
+
+  private watchWhiff(
+    now: number,
+    body: NinjaBody,
+    foe: NinjaBody,
+    situation: ReturnType<TacticalMind['situationView']>,
+  ): void {
+    const swingAt = foe.status.lastAttackAt;
+    const recovery = foe.status.remainingRecoveryMs(now);
+    if (swingAt <= 0 || swingAt === this.lastWhiffSwing || recovery < 48 || now - swingAt > 720) {
+      return;
+    }
+    const hitSelf = body.lastAttacker === foe && now - body.lastAttackerAt < 200;
+    const foeId = situation.enemies.find((enemy) => enemy.heroId === foe.heroId && Math.hypot(enemy.x - foe.x, enemy.y - foe.y) < 8)?.id;
+    let hitAlly = false;
+    if (foeId !== undefined) {
+      for (const ally of situation.allies) {
+        if (ally.lastAttackerId === foeId && ally.recentlyHit) {
+          hitAlly = true;
+          break;
+        }
+      }
+    }
+    const dist = Math.hypot(foe.x - body.x, foe.y - body.y);
+    const outside = dist > foe.stats.attackRange * 1.06;
+    this.lastWhiffSwing = swingAt;
+    if (!hitSelf && !hitAlly && (outside || recovery > 70)) {
+      this.sense.noteWhiff(now, foe, recovery);
+    }
+  }
+
+  private watchHabits(now: number, body: NinjaBody, foe: NinjaBody): void {
+    const dist = Math.hypot(foe.x - body.x, foe.y - body.y);
+    const closing = this.sense.closingOn(body, foe);
+    const attacked = now - foe.status.lastAttackAt < 260 && foe.status.lastAttackAt > 0;
+    if (closing && dist < body.stats.attackRange * 1.6) {
+      if (!this.approachSeen) {
+        this.approachSeen = true;
+        this.approachSeenAt = now;
+      }
+    }
+    if (this.approachSeen && (attacked || now - this.approachSeenAt > 680)) {
+      this.sense.noteHabit(now, foe, 'attack-on-approach', attacked && now - this.approachSeenAt < 460);
+      this.approachSeen = false;
+    }
+    const recovery = foe.status.remainingRecoveryMs(now);
+    if (recovery > 145 && foe.status.lastAttackAt !== this.lastFinisherAt) {
+      this.lastFinisherAt = foe.status.lastAttackAt;
+      this.sense.noteHabit(now, foe, 'finisher', true);
+    }
+    if (foe.lastAttackerAt > 0 && foe.lastAttackerAt !== this.lastShieldCheck && now - foe.lastAttackerAt > 340 && now - foe.lastAttackerAt < 760) {
+      this.lastShieldCheck = foe.lastAttackerAt;
+      this.sense.noteHabit(now, foe, 'shield-after-hit', foe.blocking);
+      if (foe.health / Math.max(1, foe.stats.maxHealth) < 0.4) {
+        this.sense.noteHabit(now, foe, 'shield-low-hp', foe.blocking);
+      }
+    }
+    const vx = foe.body?.velocity.x ?? 0;
+    const vy = foe.body?.velocity.y ?? 0;
+    const speed = Math.hypot(vx, vy);
+    if (speed > 300) {
+      const away = vx * (foe.x - body.x) + vy * (foe.y - body.y);
+      this.sense.noteHabit(now, foe, 'dash-back', away > 0);
+    }
+    if (this.foeAbilityWas && !foe.kitAbilityReady) {
+      this.sense.noteHabit(now, foe, 'same-ability', true);
+    }
+    this.foeAbilityWas = foe.kitAbilityReady;
+  }
+
+  private watchAlternate(
+    now: number,
+    body: NinjaBody,
+    mind: TacticalMind,
+    foes: NinjaBody[],
+    situation: ReturnType<TacticalMind['situationView']>,
+  ): void {
+    const current = mind.target;
+    let best: NinjaBody | undefined;
+    let bestScore = 0;
+    let punish = false;
+    let finish = false;
+    let peel = false;
+    for (const enemy of foes) {
+      if (enemy.down || enemy === current) {
+        continue;
+      }
+      const d = Math.hypot(enemy.x - body.x, enemy.y - body.y);
+      if (d > body.stats.attackRange * 2.8) {
+        continue;
+      }
+      let score = 10;
+      const recovery = enemy.status.remainingRecoveryMs(now);
+      const react = enemy.status.remainingHitReactionMs(now);
+      const hp = enemy.health / Math.max(1, enemy.stats.maxHealth);
+      const enemyPunish = recovery > 80 || react > 100;
+      const enemyFinish = hp < 0.2;
+      if (enemyPunish) {
+        score += 18;
+      }
+      if (hp < 0.25) {
+        score += 14;
+      }
+      let guards = 0;
+      for (const other of foes) {
+        if (other !== enemy && Math.hypot(other.x - enemy.x, other.y - enemy.y) < 150) {
+          guards += 1;
+        }
+      }
+      if (guards > 0) {
+        score -= 8;
+      }
+      let enemyPeel = false;
+      for (const ally of situation.allies) {
+        if (ally.kind !== 'hero' || ally.hpRatio > 0.42 || !ally.recentlyHit) {
+          continue;
+        }
+        if (Math.hypot(ally.x - enemy.x, ally.y - enemy.y) < 150) {
+          score += ally.heroId === 'mender' || ally.role === 'support' ? 16 : 8;
+          enemyPeel = true;
+        }
+      }
+      score -= d * 0.02;
+      if (score > bestScore) {
+        bestScore = score;
+        best = enemy;
+        punish = enemyPunish;
+        finish = enemyFinish;
+        peel = enemyPeel;
+      }
+    }
+    if (best && bestScore > 22) {
+      mind.offerTarget(now, best, bestScore, peel ? 'peel' : finish ? 'finish' : 'punish-switch', {
+        punish,
+        finish,
+        peel,
+      });
+    }
+  }
+
+  private leadHabit(habits: ReturnType<FightSense['habitRead']>): string {
+    const pairs: Array<[string, number]> = [
+      ['approach', habits.attackOnApproach],
+      ['finisher', habits.finisher],
+      ['shield', habits.shieldAfterHit],
+      ['dash-back', habits.dashBack],
+      ['ability', habits.sameAbility],
+    ];
+    let name = '';
+    let best = 0.38;
+    for (const [label, value] of pairs) {
+      if (value > best) {
+        best = value;
+        name = label;
+      }
+    }
+    if (!name) {
+      return '';
+    }
+    return `${name} ${habitBand(best)} ${best.toFixed(2)}`;
   }
 
   private noteLight(now: number, foe: NinjaBody): void {

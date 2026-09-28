@@ -12,6 +12,18 @@ export { GamePlanController } from './strategy';
 export { FightSense } from './fightSense';
 export { readFightShape, pocketRadius, threatZoneCost, opportunityOf, mobilityLockOf } from './fightRead';
 export { SwingIntent } from './swingIntent';
+export { combatIdentityOf } from './combatIdentity';
+export {
+  blankPose,
+  classifyFlags,
+  habitBand,
+  habitConfidence,
+  pickPose,
+  punishRead,
+  shieldPlanOf,
+  shouldSwitchTarget,
+  swingReasonOf,
+} from './combatPose';
 export { NEUTRAL_PERSONALITY } from './types';
 export { assessSupport, scoreAllyNeed, pickBestSupportAlly } from './supportSense';
 export type {

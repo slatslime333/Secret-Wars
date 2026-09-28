@@ -1,6 +1,7 @@
 import { defHasAllySupport, type AbilityDef, type AbilityRole, type AbilitySlot, type AbilityTactics } from '../../heroes/abilities/types';
 import { scoreSupportAbility } from './supportSense';
 import { scoreDemonAbility } from './demonSense';
+import { poseAbilityNudge } from './combatPose';
 import { mobilityLockOf } from './fightRead';
 import { looksLikeWideHitter } from './spacing';
 import type { CombatantView, Situation } from './types';
@@ -577,6 +578,14 @@ export const scoreKitSlot = (
   }
 
   score += scoreDemonAbility(def, situation);
+  score += poseAbilityNudge(situation.combatPose, {
+    damage: hasRole(tactics, 'damage'),
+    burst: hasRole(tactics, 'burst'),
+    finish: hasRole(tactics, 'finish'),
+    peel: hasRole(tactics, 'peel'),
+    escape: escape,
+    defense: defensive,
+  });
 
   return score;
 };

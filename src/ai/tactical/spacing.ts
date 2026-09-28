@@ -1,5 +1,62 @@
 import type { KitStance, TacticalAction, TacticalKind } from './types';
 
+export type FormationLane = 'front' | 'left' | 'right' | 'ranged' | 'support' | 'retreat';
+
+/**
+ * Temporary fight slot so several CPUs do not walk the same line.
+ * Only one or two melee fighters take the front.
+ */
+export const formationLaneOf = (args: {
+  self: { x: number; y: number; id?: number; attackRange: number; role: string; hpRatio?: number };
+  allies: ReadonlyArray<{ x: number; y: number; id?: number; attackRange?: number; role?: string; kind?: string }>;
+  focus?: { x: number; y: number };
+  stance?: KitStance;
+}): FormationLane => {
+  const { self, allies, focus, stance } = args;
+  if ((self.hpRatio ?? 1) < 0.26) {
+    return 'retreat';
+  }
+  if (stance === 'support' || self.role === 'support') {
+    return 'support';
+  }
+  if (stance === 'ranged' || self.role === 'ranged' || self.role === 'ranged-tank' || self.attackRange >= 170) {
+    return 'ranged';
+  }
+  if (!focus) {
+    return 'front';
+  }
+  const sx = focus.x - self.x;
+  const sy = focus.y - self.y;
+  const slen = Math.hypot(sx, sy) || 1;
+  let meleeAhead = 0;
+  for (const ally of allies) {
+    if (ally.id === self.id || ally.kind === 'minion') {
+      continue;
+    }
+    const ranged = (ally.attackRange ?? 80) >= 170 || ally.role === 'ranged' || ally.role === 'support';
+    if (ranged) {
+      continue;
+    }
+    const ax = focus.x - ally.x;
+    const ay = focus.y - ally.y;
+    const ad = Math.hypot(ax, ay);
+    if (ad > slen + 36) {
+      continue;
+    }
+    const dot = (sx * ax + sy * ay) / (slen * (ad || 1));
+    const beside = Math.hypot(ally.x - self.x, ally.y - self.y) < 84 && ad <= slen + 18;
+    const earlier = (ally.id ?? 0) < (self.id ?? 0);
+    if ((dot > 0.72 && ad < slen - 6) || (beside && earlier)) {
+      meleeAhead += 1;
+    }
+  }
+  if (meleeAhead < 2) {
+    return 'front';
+  }
+  const side = hash01((self.id ?? 1) * 17) > 0.5 ? 'left' : 'right';
+  return side;
+};
+
 export type CrowdMate = {
   x: number;
   y: number;
@@ -283,6 +340,7 @@ export const combatStand = (
   stance?: KitStance,
   clusterRisk = 0,
   preferred = 80,
+  lane?: FormationLane,
 ): { x: number; y: number } => {
   const dx = target.x - body.x;
   const dy = target.y - body.y;
@@ -295,12 +353,14 @@ export const combatStand = (
     body.role === 'support' ||
     body.role === 'ranged' ||
     body.role === 'ranged-tank';
+  const laneStand =
+    lane === 'ranged' || lane === 'support' ? 1.12 : lane === 'left' || lane === 'right' ? 0.92 : lane === 'retreat' ? 1.28 : 0.74;
   const stand =
     action === 'flank'
       ? preferred * 0.58
       : action === 'finish_target' || action === 'chase'
         ? preferred * (ranged ? 0.82 : 0.58)
-        : preferred * (ranged ? 0.9 : 0.7);
+        : preferred * (ranged ? 0.9 : laneStand);
   const heading = Math.atan2(ny, nx);
   const angles = [0, 0.62 * flankSign, -0.78 * flankSign, 1.12 * flankSign, -1.22 * flankSign, ranged ? 0.28 : 2.2 * flankSign];
   let bestX = target.x - nx * stand;
@@ -315,6 +375,15 @@ export const combatStand = (
     let score = 18 - i * 1.2;
     if (i === favorite) {
       score += 9;
+    }
+    if (lane === 'left' && (i === 1 || i === 3)) {
+      score += 16;
+    } else if (lane === 'right' && (i === 2 || i === 4)) {
+      score += 16;
+    } else if ((lane === 'ranged' || lane === 'support' || lane === 'retreat') && Math.abs(angles[i]) > 1) {
+      score += 14;
+    } else if (lane === 'front' && i === 0) {
+      score += 8;
     }
     if (mates) {
       for (const mate of mates) {

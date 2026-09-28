@@ -1,7 +1,7 @@
 import { ARENA, atFarEdge, nearestLane, roamHuntPoint } from '../../config/arena';
 import type { ObjectiveKind } from '../../config/objective';
 import type { KitStance, TacticalAction } from './types';
-import { clearanceFor, combatStand, nudgeOffMates, protectStand, regroupStand, type CrowdMate } from './spacing';
+import { clearanceFor, combatStand, nudgeOffMates, protectStand, regroupStand, type CrowdMate, type FormationLane } from './spacing';
 
 export type MoveSample = {
   x: number;
@@ -56,6 +56,8 @@ export type MoveHint = {
   };
   /** Walk point for crates, house doors, and interiors. Local slide still steers. */
   poi?: { x: number; y: number; halt?: boolean };
+  /** Shared fight slot so melee teammates do not stack on one line. */
+  lane?: FormationLane;
 };
 
 const isRangedMove = (body: MoveBody, hint?: MoveHint): boolean => {
@@ -436,6 +438,7 @@ export const moveGoal = (
     hint?.stance,
     hint?.clusterRisk ?? 0,
     range,
+    hint?.lane,
   );
   const gx = picked.x;
   const gy = picked.y;

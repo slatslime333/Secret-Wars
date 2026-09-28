@@ -134,6 +134,7 @@ export class HeroPilot {
       sense: this.combat.sense,
       blocking: unit.block.isActive(now),
       rng: Math.random,
+      pose: this.mind.combatPose(),
     });
 
     const smashRange =
