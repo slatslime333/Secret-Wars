@@ -22,6 +22,16 @@ const BASE_LANE_Y = { top: 294, mid: 752, bottom: 1210 };
 const BASE_TEAM_SPAWN_X = { alpha: 258, bravo: 2326 };
 const BASE_MINION_SPAWN_X = { alpha: 470, bravo: 2114 };
 const SCALE_6V6 = 1.65;
+/** Extra growth on top of the current 6v6 field. 3v3 ignores this. */
+const SIX_GROW = 1.15;
+
+/** Current 6v6 coordinate, then 15% larger. Rounding matches the live arena. */
+const sixCoord = (base: number): number => Math.round(Math.round(base * SCALE_6V6) * SIX_GROW);
+
+export const sixArenaSize = (): { width: number; height: number } => ({
+  width: sixCoord(BASE_WIDTH),
+  height: sixCoord(BASE_HEIGHT),
+});
 /** Stay this far inside the walls when pushing a lane with nobody to fight. */
 const EDGE_INSET = 180;
 
@@ -116,16 +126,28 @@ export const ARENA = {
 
 export const applyMatchFormat = (format: MatchFormat): void => {
   currentFormat = format;
-  const s = format === '6v6' ? SCALE_6V6 : 1;
-  ARENA.width = Math.round(BASE_WIDTH * s);
-  ARENA.height = Math.round(BASE_HEIGHT * s);
-  ARENA.laneY.top = Math.round(BASE_LANE_Y.top * s);
-  ARENA.laneY.mid = Math.round(BASE_LANE_Y.mid * s);
-  ARENA.laneY.bottom = Math.round(BASE_LANE_Y.bottom * s);
-  ARENA.teamSpawnX.alpha = Math.round(BASE_TEAM_SPAWN_X.alpha * s);
-  ARENA.teamSpawnX.bravo = Math.round(ARENA.width - (BASE_WIDTH - BASE_TEAM_SPAWN_X.bravo) * s);
-  ARENA.minionSpawnX.alpha = Math.round(BASE_MINION_SPAWN_X.alpha * s);
-  ARENA.minionSpawnX.bravo = Math.round(ARENA.width - (BASE_WIDTH - BASE_MINION_SPAWN_X.bravo) * s);
+  if (format === '6v6') {
+    ARENA.width = sixCoord(BASE_WIDTH);
+    ARENA.height = sixCoord(BASE_HEIGHT);
+    ARENA.laneY.top = sixCoord(BASE_LANE_Y.top);
+    ARENA.laneY.mid = sixCoord(BASE_LANE_Y.mid);
+    ARENA.laneY.bottom = sixCoord(BASE_LANE_Y.bottom);
+    ARENA.teamSpawnX.alpha = sixCoord(BASE_TEAM_SPAWN_X.alpha);
+    ARENA.teamSpawnX.bravo = ARENA.width - sixCoord(BASE_WIDTH - BASE_TEAM_SPAWN_X.bravo);
+    ARENA.minionSpawnX.alpha = sixCoord(BASE_MINION_SPAWN_X.alpha);
+    ARENA.minionSpawnX.bravo = ARENA.width - sixCoord(BASE_WIDTH - BASE_MINION_SPAWN_X.bravo);
+  } else {
+    const s = 1;
+    ARENA.width = Math.round(BASE_WIDTH * s);
+    ARENA.height = Math.round(BASE_HEIGHT * s);
+    ARENA.laneY.top = Math.round(BASE_LANE_Y.top * s);
+    ARENA.laneY.mid = Math.round(BASE_LANE_Y.mid * s);
+    ARENA.laneY.bottom = Math.round(BASE_LANE_Y.bottom * s);
+    ARENA.teamSpawnX.alpha = Math.round(BASE_TEAM_SPAWN_X.alpha * s);
+    ARENA.teamSpawnX.bravo = Math.round(ARENA.width - (BASE_WIDTH - BASE_TEAM_SPAWN_X.bravo) * s);
+    ARENA.minionSpawnX.alpha = Math.round(BASE_MINION_SPAWN_X.alpha * s);
+    ARENA.minionSpawnX.bravo = Math.round(ARENA.width - (BASE_WIDTH - BASE_MINION_SPAWN_X.bravo) * s);
+  }
   TEAM_LANE_SPAWNS.alpha.top = laneSpawn('alpha', 'top');
   TEAM_LANE_SPAWNS.alpha.mid = laneSpawn('alpha', 'mid');
   TEAM_LANE_SPAWNS.alpha.bottom = laneSpawn('alpha', 'bottom');

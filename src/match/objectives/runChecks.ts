@@ -14,6 +14,7 @@ import { shrineControlOf } from './shrineLogic';
 import { pickBountyTargets } from './bountyPick';
 import { xpShareOfCurrentLevel } from './rewards';
 import type { HeroRuntime } from '../HeroRuntime';
+import { runSixZoneChecks } from './runSixZones';
 
 export type CheckResult = { name: string; ok: boolean; detail: string };
 
@@ -290,4 +291,5 @@ export const runObjectiveChecks = (): CheckResult[] => [
   scenarioXpShare(),
   scenarioShrineContest(),
   scenarioBountyPick(),
+  ...runSixZoneChecks(),
 ];

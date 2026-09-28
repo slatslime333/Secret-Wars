@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
+import { matchFormatOf } from '../../config/arena';
 import {
   canStartObjective,
-  nextObjectiveKind,
+  nextObjectiveKindFor,
   OBJECTIVE,
   pickEventGapMs,
   type ObjectiveKind,
@@ -111,7 +112,7 @@ export class ObjectiveManager {
       this.cooldownUntil = this.nextAt;
     }
     if (this.nextAt !== undefined && elapsed >= this.nextAt && canStartObjective(elapsed, this.cooldownUntil, false)) {
-      this.spawn(nextObjectiveKind(this.recent, this.rng), now);
+      this.spawn(nextObjectiveKindFor(matchFormatOf(), this.recent, this.rng), now);
     }
   }
 
@@ -126,12 +127,21 @@ export class ObjectiveManager {
     if (this.closed || this.active || this.match.finished || this.match.phase !== 'PLAYING') {
       return false;
     }
-    this.spawn(kind ?? nextObjectiveKind(this.recent, this.rng), now);
+    const picked = kind ?? nextObjectiveKindFor(matchFormatOf(), this.recent, this.rng);
+    if (matchFormatOf() === '6v6' && picked === 'capture_zone') {
+      return false;
+    }
+    this.spawn(picked, now);
     return true;
   }
 
   layout(width: number, height: number): void {
     this.hud.layout(width, height);
+  }
+
+  /** Standing 6v6 zone summary. 3v3 leaves this blank. */
+  setZoneLine(line: string): void {
+    this.hud.setZoneLine(line);
   }
 
   worldPip(): { x: number; y: number; kind: ObjectiveKind } | undefined {
@@ -155,7 +165,7 @@ export class ObjectiveManager {
   }
 
   private spawn(kind: ObjectiveKind, now: number): void {
-    if (this.active) {
+    if (this.active || (matchFormatOf() === '6v6' && kind === 'capture_zone')) {
       return;
     }
     const created = this.create(kind);
@@ -294,6 +304,9 @@ export class ObjectiveManager {
     const y = this.active?.y ?? 0;
     switch (event.kind) {
       case 'capture_zone':
+        if (matchFormatOf() === '6v6') {
+          break;
+        }
         this.score.awardObjective(winner, event.kind, now, `${event.kind}:${now}`);
         grantTeamXpShare(winner, heroes, this.grantXp, this.orbs, x, y, OBJECTIVE.capture.xpShare);
         applyObjectiveHasteToTeam(winner, heroes, now, OBJECTIVE.capture.buffMs, OBJECTIVE.capture.moveMul, 1);

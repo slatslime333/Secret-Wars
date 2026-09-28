@@ -1,4 +1,4 @@
-import { ARENA, applyMatchFormat } from '../config/arena';
+import { ARENA, applyMatchFormat, sixArenaSize } from '../config/arena';
 import { CRATE } from '../config/crate';
 import { maxObstaclesOf } from './config';
 import { HERO_VISUAL, PROP } from './scale';
@@ -249,8 +249,10 @@ export const runMapChecks = (): CheckResult[] => {
   const three = generateBattlefield({ seed: 1001, log: false });
   applyMatchFormat('6v6');
   const six = generateBattlefield({ seed: 1001, log: false });
+  const sixSize = sixArenaSize();
   const sixOk =
-    ARENA.width === Math.round(2584 * 1.65) &&
+    ARENA.width === sixSize.width &&
+    ARENA.height === sixSize.height &&
     !six.usedFallback &&
     six.layout.playable.w > 4000 &&
     six.layout.obstacles.some((obs) => obs.enterable && (obs.doors?.length ?? 0) >= 2) &&

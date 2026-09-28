@@ -57,6 +57,7 @@ export class ObjectiveHud {
   private targetX = 0;
   private targetY = 0;
   private active = false;
+  private zoneLine?: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -156,6 +157,33 @@ export class ObjectiveHud {
     });
   }
 
+  /** 6v6 standing-zone summary. Empty hides the line. 3v3 never sets it. */
+  setZoneLine(line: string): void {
+    const text = line.trim();
+    if (!text) {
+      this.zoneLine?.setVisible(false);
+      return;
+    }
+    if (!this.zoneLine) {
+      this.zoneLine = this.scene.add
+        .text(this.scene.scale.width / 2, 104, '', {
+          fontFamily: FONTS.display,
+          fontSize: '15px',
+          color: hex(COLORS.paper),
+          letterSpacing: 1,
+          stroke: hex(COLORS.ink),
+          strokeThickness: 5,
+          align: 'center',
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(205);
+      adoptHud(this.scene, this.zoneLine);
+    }
+    this.zoneLine.setText(text).setVisible(true);
+    this.placeZoneLine();
+  }
+
   sync(now: number, ui: ObjectiveUiState | undefined, camera: Phaser.Cameras.Scene2D.Camera): void {
     if (ui) {
       this.targetX = ui.x;
@@ -163,6 +191,7 @@ export class ObjectiveHud {
     }
     this.banner.setPosition(this.scene.scale.width / 2, this.scene.scale.height * 0.18);
     this.status.setPosition(this.scene.scale.width / 2, 78);
+    this.placeZoneLine();
     if (now >= this.hideBannerAt) {
       this.banner.setVisible(false);
     }
@@ -201,11 +230,17 @@ export class ObjectiveHud {
   layout(width: number, height: number): void {
     this.banner.setPosition(width / 2, height * 0.18);
     this.status.setPosition(width / 2, 78);
+    this.placeZoneLine();
   }
 
   destroy(): void {
     this.banner.destroy();
     this.status.destroy();
     this.arrow.destroy();
+    this.zoneLine?.destroy();
+  }
+
+  private placeZoneLine(): void {
+    this.zoneLine?.setPosition(this.scene.scale.width / 2, 104);
   }
 }
