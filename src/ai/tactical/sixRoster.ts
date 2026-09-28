@@ -7,6 +7,9 @@ import { NEUTRAL_PERSONALITY } from './types';
 
 export type SixJob = 'capture' | 'defend' | 'contest' | 'fight' | 'flank' | 'farm' | 'rotate' | 'support' | 'regroup';
 
+/** Explicit 6v6 control-zone read. Free means nobody owns the take. */
+export type SixZoneState = 'free' | 'friendly' | 'threatened' | 'contested' | 'handled' | 'cooldown';
+
 export type SixStand = 'inside' | 'perimeter' | 'intercept';
 
 export type SixBody = {
@@ -48,6 +51,11 @@ export type SixChoice = {
   alliesOnZone: number;
   alliesInFight: number;
   fightHandled: boolean;
+  state?: SixZoneState;
+  dist: number;
+  occupants: number;
+  approach: number;
+  recommended: number;
   debug: string;
   rejected: string;
 };
@@ -102,14 +110,17 @@ const foeOf = (team: TeamId): TeamId => (team === 'alpha' ? 'bravo' : 'alpha');
 
 type ZoneRead = {
   fact: SixZoneFact;
+  state: SixZoneState;
   job: SixJob;
   value: number;
   committed: number;
-  enemies: number;
+  occupants: number;
   approaching: SixBody[];
   stand: SixStand;
-  /** Still short a body. A staffed fight is not an urgent reason to ignore a crate. */
+  /** Still short of the bodies this state actually wants. */
   short: boolean;
+  recommended: number;
+  dist: number;
 };
 
 const committedIds = (
@@ -193,6 +204,210 @@ const readFight = (self: SixBody, allies: readonly SixBody[], enemies: readonly 
 
 const personalityOf = (personality?: Personality): Personality => personality ?? NEUTRAL_PERSONALITY;
 
+type ZoneFlags = {
+  foe: ReturnType<typeof foeOf>;
+  melee: boolean;
+  ranged: boolean;
+  flanker: boolean;
+  support: boolean;
+  cautious: boolean;
+  late: boolean;
+  behind: boolean;
+  selfIn: boolean;
+  fightHandled: boolean;
+  nearestD: number;
+  personality: Personality;
+};
+
+const heroVisible = (body: SixBody): boolean => (body.kind ?? 'hero') === 'hero' && body.visible !== false;
+
+/**
+ * Free / handled / threatened / contested / friendly.
+ * A free zone with nobody committed stays a capture. A safe claim drops to handled.
+ */
+const readControlZone = (
+  fact: SixZoneFact,
+  self: SixBody,
+  allies: readonly SixBody[],
+  enemies: readonly SixBody[],
+  intents: readonly SixIntentPost[],
+  flags: ZoneFlags,
+): ZoneRead | undefined => {
+  if (fact.phase !== 'active') {
+    return undefined;
+  }
+  const committed = committedIds(fact, allies, intents);
+  const dist = hypot(self.x, self.y, fact.x, fact.y);
+  const onZone = dist <= fact.radius + 70;
+  const holding = enemies.filter(
+    (enemy) => heroVisible(enemy) && hypot(enemy.x, enemy.y, fact.x, fact.y) <= fact.radius + 80,
+  );
+  const approaching = enemies.filter(
+    (enemy) =>
+      heroVisible(enemy) &&
+      hypot(enemy.x, enemy.y, fact.x, fact.y) < 640 &&
+      hypot(enemy.x, enemy.y, fact.x, fact.y) > fact.radius &&
+      movingToward(enemy, fact.x, fact.y),
+  );
+  const ours = fact.secured === self.team;
+  const enemyChannel = fact.owner === flags.foe && fact.progress > 0.04 && fact.secured !== self.team && fact.secured !== flags.foe;
+  const weChannel = fact.owner === self.team && fact.progress > 0.04 && !fact.secured;
+  let closerFriend = false;
+  for (const ally of allies) {
+    if (!committed.has(ally.id)) {
+      continue;
+    }
+    if (hypot(ally.x, ally.y, fact.x, fact.y) + 12 < dist) {
+      closerFriend = true;
+    }
+  }
+  const claimed = committed.size > 0 && (!onZone || closerFriend);
+  let state: SixZoneState;
+  if (holding.length > 0 || fact.contested) {
+    state = 'contested';
+  } else if (enemyChannel && fact.progress >= 0.12) {
+    state = 'threatened';
+  } else if (approaching.length > 0) {
+    state = 'threatened';
+  } else if (ours) {
+    state = 'friendly';
+  } else if (claimed || (weChannel && committed.size > 0 && !onZone)) {
+    state = 'handled';
+  } else {
+    state = 'free';
+  }
+  if (state === 'contested' && weChannel && fact.progress >= 0.82 && holding.length === 0 && approaching.length === 0) {
+    state = 'handled';
+  }
+
+  let recommended = 1;
+  if (state === 'threatened') {
+    recommended = Math.min(4, Math.max(2, approaching.length + (holding.length > 0 ? holding.length : 0)));
+    if (approaching.length >= 2) {
+      recommended = Math.min(4, approaching.length + 1);
+    }
+  } else if (state === 'contested') {
+    if (holding.length >= committed.size + 1) {
+      recommended = holding.length + 1;
+    } else if (holding.length >= 2 && committed.size >= holding.length) {
+      recommended = holding.length;
+    } else {
+      recommended = Math.max(2, holding.length + 1);
+    }
+  }
+
+  const short = (state === 'threatened' || state === 'contested') && committed.size < recommended;
+  let job: SixJob = 'capture';
+  let value = 0;
+  if (state === 'free') {
+    job = 'capture';
+    value = 98 - dist * 0.05;
+    if (flags.cautious) {
+      value += 6;
+    }
+    if (dist > 1100) {
+      value *= 0.45;
+    }
+    if (flags.selfIn && !flags.fightHandled && flags.nearestD < 240) {
+      value *= 0.42;
+    }
+    if (onZone) {
+      value += 8;
+    }
+  } else if (state === 'handled') {
+    job = 'capture';
+    value = 7;
+  } else if (state === 'friendly') {
+    job = 'defend';
+    value = 44 - dist / 160;
+    if (flags.late) {
+      value += 8;
+    }
+    if (committed.size === 0 && dist < fact.radius + 50) {
+      value += 28;
+    } else if (committed.size === 1) {
+      value = 36 - dist / 180;
+      if (dist > 280) {
+        value *= 0.35;
+      }
+    } else if (committed.size >= 2) {
+      value *= 0.12;
+    }
+    if (dist > 1000) {
+      value *= 0.4;
+    }
+  } else if (state === 'threatened') {
+    if ((ours || weChannel) && onZone) {
+      job = 'defend';
+    } else if (committed.size > 0 || ours || weChannel) {
+      job = 'rotate';
+    } else if (enemyChannel) {
+      job = 'contest';
+    } else {
+      job = 'capture';
+    }
+    value = 86 + approaching.length * 8 + holding.length * 10 - dist * 0.04;
+    if (committed.size >= recommended) {
+      value *= 0.22;
+    }
+    if (flags.support && committed.size > 0) {
+      value += 6 + flags.personality.protectionInstinct * 4;
+    }
+  } else {
+    job = 'contest';
+    const losing = holding.length >= committed.size + 1;
+    value = 92 + fact.progress * 20 + Math.max(0, holding.length - committed.size) * 12 - dist * 0.032;
+    if (losing) {
+      value += 18;
+    }
+    if (holding.length >= 2) {
+      value += 12;
+    }
+    if (flags.melee || flags.personality.aggression > 0.6) {
+      value += 6;
+    }
+    if (!losing && committed.size >= recommended && committed.size >= 2) {
+      value *= 0.18;
+    }
+  }
+  if (
+    (state === 'free' || (state === 'friendly' && committed.size === 0)) &&
+    (self.id + (flags.personality.independence > 0.55 ? 1 : 0)) % 2 === (fact.id === 'A' ? 0 : 1)
+  ) {
+    value += 11;
+  }
+  if (flags.behind && flags.late && (state === 'free' || state === 'contested' || state === 'threatened')) {
+    value += 10;
+  }
+
+  let stand: SixStand = 'inside';
+  if (state === 'threatened' && approaching.length > 0 && (flags.flanker || flags.ranged || committed.size >= 1)) {
+    stand = 'intercept';
+  } else if (state === 'friendly' || state === 'handled') {
+    stand = committed.size === 0 && !flags.ranged ? 'inside' : 'perimeter';
+  } else if (state === 'free') {
+    stand = flags.ranged ? 'perimeter' : 'inside';
+  } else if (flags.flanker || flags.ranged) {
+    stand = 'intercept';
+  }
+  if (flags.flanker && approaching.length > 0) {
+    stand = 'intercept';
+  }
+  return {
+    fact,
+    state,
+    job,
+    value,
+    committed: committed.size,
+    occupants: holding.length,
+    approaching,
+    stand,
+    short,
+    recommended,
+    dist,
+  };
+};
+
 /**
  * One hero's 6v6 job. Commitments already taken by teammates reduce the value
  * of joining the same fight or the same zone.
@@ -274,112 +489,28 @@ export const chooseSixRole = (input: {
 
   const zones: ZoneRead[] = [];
   for (const fact of input.zones) {
-    if (fact.phase !== 'active') {
-      continue;
+    const read = readControlZone(fact, self, input.allies, input.enemies, intents, {
+      foe,
+      melee,
+      ranged,
+      flanker,
+      support,
+      cautious,
+      late,
+      behind,
+      selfIn: fight.selfIn,
+      fightHandled: fight.handled,
+      nearestD,
+      personality,
+    });
+    if (read) {
+      zones.push(read);
     }
-    const committed = committedIds(fact, input.allies, intents);
-    const nearEnemies = input.enemies.filter(
-      (enemy) => (enemy.kind ?? 'hero') === 'hero' && enemy.visible !== false && hypot(enemy.x, enemy.y, fact.x, fact.y) < fact.radius + 220,
-    );
-    const approaching = input.enemies.filter(
-      (enemy) =>
-        (enemy.kind ?? 'hero') === 'hero' &&
-        enemy.visible !== false &&
-        hypot(enemy.x, enemy.y, fact.x, fact.y) < 620 &&
-        hypot(enemy.x, enemy.y, fact.x, fact.y) > fact.radius &&
-        movingToward(enemy, fact.x, fact.y),
-    );
-    const ours = fact.secured === self.team;
-    const enemyHeld = fact.secured === foe;
-    const enemyChannel = fact.owner === foe && fact.progress > 0.04 && fact.secured !== foe && fact.secured !== self.team;
-    const weChannel = fact.owner === self.team && fact.progress > 0.04 && !fact.secured;
-    const dist = hypot(self.x, self.y, fact.x, fact.y);
-    let job: SixJob = 'capture';
-    let value = 28 - dist / 95;
-    if (fact.contested || (nearEnemies.length > 0 && committed.size > 0)) {
-      job = 'contest';
-      value = 52 + fact.progress * 18 - dist / 110;
-      if (melee || personality.aggression > 0.6) {
-        value += 8;
-      }
-    } else if (enemyChannel) {
-      job = fact.progress >= 0.35 ? 'contest' : 'rotate';
-      value = 56 + fact.progress * 42 - dist / 120;
-    } else if (ours && (approaching.length > 0 || nearEnemies.length > 0)) {
-      job = 'defend';
-      value = 60 + approaching.length * 8 - dist / 120;
-    } else if (ours) {
-      job = 'defend';
-      value = 34 - dist / 140;
-      if (late) {
-        value += 8;
-      }
-    } else if (enemyHeld) {
-      job = 'capture';
-      value = 58 - dist / 100;
-    } else if (weChannel) {
-      job = 'support';
-      value = 40 + fact.progress * 20 - dist / 110;
-    } else {
-      job = 'capture';
-      value = 62 - dist / 100;
-    }
-    if (behind && late) {
-      value += 12;
-    }
-    if (cautious && job === 'capture' && nearEnemies.length === 0) {
-      value += 8;
-    }
-    if (support && (job === 'defend' || job === 'support') && committed.size > 0) {
-      value += 6 + personality.protectionInstinct * 6;
-    }
-    if (flanker && job === 'contest') {
-      value += 4;
-    }
-    if ((self.id + (personality.independence > 0.55 ? 1 : 0)) % 2 === (fact.id === 'A' ? 0 : 1)) {
-      value += 12;
-    }
-    const hot = fact.contested || enemyChannel || approaching.length > 0 || nearEnemies.length > 0;
-    const pressure = nearEnemies.length + approaching.length;
-    const zoneLosing = nearEnemies.length >= committed.size + 1;
-    const short = pressure > 0 && committed.size < Math.max(enemyChannel || fact.contested ? 2 : 1, pressure);
-    let stand: SixStand = 'inside';
-    if (hot) {
-      const want = Math.max(2, nearEnemies.length + (zoneLosing ? 1 : 0));
-      if (!zoneLosing && committed.size >= nearEnemies.length + 1 && committed.size >= 3) {
-        value *= 0.16;
-      } else if (!zoneLosing && committed.size >= nearEnemies.length && committed.size >= 3) {
-        value *= 0.34;
-      } else if (committed.size >= want + 2) {
-        value *= 0.15;
-      } else if (committed.size >= want + 1) {
-        value *= 0.4;
-      } else if (committed.size >= want) {
-        value *= 0.7;
-      }
-      stand = flanker || ranged ? 'intercept' : 'inside';
-    } else if (job === 'defend' && ours) {
-      if (committed.size === 1) {
-        value *= 0.78;
-      } else if (committed.size >= 2) {
-        value *= 0.18;
-      }
-      stand = committed.size === 0 && !ranged ? 'inside' : 'perimeter';
-    } else {
-      if (committed.size === 1) {
-        value *= 0.42;
-      } else if (committed.size >= 2) {
-        value *= 0.14;
-      }
-      stand = committed.size === 0 && !ranged ? 'inside' : 'perimeter';
-    }
-    if (flanker && approaching.length > 0) {
-      stand = 'intercept';
-    }
-    if (dist > 1400) {
-      value *= 0.55;
-    }
-    zones.push({ fact, job, value, committed: committed.size, enemies: pressure, approaching, stand, short });
+  }
+  const localFree = zones.find((zone) => zone.state === 'free' && zone.committed === 0 && zone.dist < 280);
+  const emergency = zones.find((zone) => (zone.state === 'contested' || zone.state === 'threatened') && zone.short);
+  if (localFree && emergency && emergency.dist > localFree.dist + 450 && emergency.occupants <= emergency.committed + 1) {
+    localFree.value = Math.max(localFree.value, emergency.value + 8);
   }
 
   zones.sort((a, b) => b.value - a.value);
@@ -418,11 +549,13 @@ export const chooseSixRole = (input: {
     }
   }
 
-  const critical = Boolean(
-    picked && (picked.job === 'contest' || picked.job === 'defend') && picked.short && picked.value > 48,
-  );
-  if (critical) {
-    farm = Math.min(farm, 10);
+  const openFree = Boolean(picked && picked.state === 'free' && picked.committed === 0 && picked.value > 16);
+  const critical = Boolean(picked && picked.short && picked.value > 48 && (picked.state === 'contested' || picked.state === 'threatened'));
+  if (critical || openFree) {
+    farm = Math.min(farm, openFree && !critical ? farm : 10);
+    if (openFree && !critical && farm < (picked?.value ?? 0) + 18) {
+      farm = Math.min(farm, 10);
+    }
   }
 
   let job: SixJob = 'fight';
@@ -434,9 +567,10 @@ export const chooseSixRole = (input: {
   let radius = 80;
   let alliesOnZone = 0;
   const rejected: string[] = [];
+  const handledNote = zones.find((zone) => zone.state === 'handled');
 
-  if (picked && picked.value >= score && picked.value > 16) {
-    job = picked.committed > 0 && picked.job === 'capture' ? 'rotate' : picked.job;
+  if (picked && picked.state !== 'handled' && picked.value >= score && picked.value > 16) {
+    job = picked.job;
     score = picked.value;
     zoneId = picked.fact.id;
     stand = picked.stand;
@@ -446,9 +580,9 @@ export const chooseSixRole = (input: {
     radius = picked.fact.radius;
     alliesOnZone = picked.committed;
   } else if (picked) {
-    rejected.push(`zone ${picked.fact.id} ${Math.round(picked.value)}`);
+    rejected.push(picked.state === 'handled' ? `ZONE ${picked.fact.id} ALREADY HANDLED` : `zone ${picked.fact.id} ${Math.round(picked.value)}`);
   }
-  if (farm > score && farm > 18 && !critical) {
+  if (farm > score && farm > 18 && !critical && !openFree) {
     rejected.push(zoneId ? `${job} ${zoneId}` : `fight ${Math.round(combat)}`);
     job = 'farm';
     score = farm;
@@ -461,9 +595,16 @@ export const chooseSixRole = (input: {
   }
   if (job === 'fight' && fightHandled) {
     job = flanker ? 'flank' : 'rotate';
-  }
-  if (job === 'fight') {
-    rejected.push('left the map jobs');
+    if (!zoneId && picked && picked.state === 'free') {
+      job = 'capture';
+      zoneId = picked.fact.id;
+      score = Math.max(score, picked.value);
+      stand = picked.stand;
+      const point = sixStandPoint(self, picked.fact, stand, picked.approaching[0]);
+      x = point.x;
+      y = point.y;
+      radius = picked.fact.radius;
+    }
   }
 
   const label =
@@ -474,11 +615,37 @@ export const chooseSixRole = (input: {
         : job === 'flank'
           ? 'FLANK'
           : `${job.toUpperCase()} ${zoneId ?? ''}`.trim();
-  const rejectNote = rejected.length > 0 ? ` | reject ${rejected.join('; ')}` : '';
-  const debug =
-    job === 'farm'
-      ? `FARM CRATE | XP value ${Math.round(farm)} | obj ${Math.round(picked?.value ?? 0)} | combat ${Math.round(combat)} | ${fightHandled ? `fight handled ${fight.allies}v${fight.enemies}` : 'no urgent objective'}${rejectNote}`
-      : `${label} | obj ${Math.round(picked?.value ?? 0)} | combat ${Math.round(combat)} | ${alliesOnZone} ally committed | fight ${fight.allies}v${fight.enemies}${fightHandled ? ' handled' : ''}${rejectNote}`;
+  const focus = zoneId ? zones.find((zone) => zone.fact.id === zoneId) ?? picked : picked;
+  const approachNote = focus && focus.approaching.length > 0 ? String(focus.approaching.length) : 'none';
+  const stateName = focus ? focus.state.toUpperCase() : 'NONE';
+  const decision =
+    focus?.state === 'handled' && job !== 'capture' && job !== 'contest' && job !== 'defend' && job !== 'rotate'
+      ? 'IGNORE'
+      : label;
+  const reasonLine =
+    decision === 'IGNORE'
+      ? 'REASON: ALREADY HANDLED'
+      : fightHandled && (job === 'capture' || job === 'rotate')
+        ? `fight handled ${fight.allies}v${fight.enemies}`
+        : openFree && (job === 'capture' || job === 'rotate')
+          ? 'nobody is taking it'
+          : rejected.length > 0
+            ? `reject ${rejected.join('; ')}`
+            : '';
+  const debug = [
+    focus?.state === 'free' ? `FREE ZONE ${focus.fact.id}` : `ZONE ${focus?.fact.id ?? '-'} ${stateName}`,
+    `distance: ${Math.round(focus?.dist ?? 0)}`,
+    `friendly commitments: ${focus?.committed ?? 0}`,
+    `enemy occupants: ${focus?.occupants ?? 0}`,
+    `enemy approach: ${approachNote}`,
+    `combat value: ${Math.round(combat)}`,
+    `objective value: ${Math.round(focus?.value ?? 0)}`,
+    `DECISION: ${decision}`,
+    reasonLine,
+    handledNote && decision !== 'IGNORE' ? `also handled ${handledNote.fact.id}` : '',
+  ]
+    .filter((line) => line.length > 0)
+    .join('\n');
 
   return {
     job,
@@ -493,6 +660,11 @@ export const chooseSixRole = (input: {
     alliesOnZone,
     alliesInFight: fight.allies,
     fightHandled,
+    state: focus?.state,
+    dist: focus?.dist ?? 0,
+    occupants: focus?.occupants ?? 0,
+    approach: focus?.approaching.length ?? 0,
+    recommended: focus?.recommended ?? 1,
     debug,
     rejected: rejected.join(', ') || 'none',
   };
@@ -517,27 +689,77 @@ export const sixStandPoint = (
   return { x: zone.x, y: zone.y };
 };
 
+export type SixReconsiderContext = {
+  intents?: readonly SixIntentPost[];
+  allies?: readonly SixBody[];
+  enemies?: readonly SixBody[];
+  intentZone?: 'A' | 'B';
+};
+
+const CHASE_ACTIONS: ReadonlySet<TacticalAction> = new Set([
+  'chase',
+  'attack',
+  'flank',
+  'farm_minions',
+  'advance',
+  'search_for_target',
+]);
+
 export const sixShouldReconsider = (
   action: TacticalAction,
-  self: { x: number; y: number; team: TeamId },
+  self: { x: number; y: number; team: TeamId; id?: number; attackRange?: number },
   zones: readonly SixZoneFact[] = sixZoneFacts(),
+  context: SixReconsiderContext = {},
 ): boolean => {
   if (matchFormatOf() !== '6v6') {
     return false;
   }
-  if (action === 'contest_objective') {
-    return false;
-  }
   const foe = foeOf(self.team);
+  const intents = context.intents ?? [];
+  const allies = context.allies ?? [];
+  const enemies = context.enemies ?? [];
+  const engaged = enemies.some(
+    (enemy) => heroVisible(enemy) && hypot(enemy.x, enemy.y, self.x, self.y) < (self.attackRange ?? 70) * 1.25,
+  );
   for (const zone of zones) {
     if (zone.phase !== 'active') {
       continue;
     }
+    const dist = hypot(self.x, self.y, zone.x, zone.y);
+    const holding = enemies.filter((enemy) => heroVisible(enemy) && hypot(enemy.x, enemy.y, zone.x, zone.y) <= zone.radius + 80);
+    const approaching = enemies.filter(
+      (enemy) =>
+        heroVisible(enemy) &&
+        hypot(enemy.x, enemy.y, zone.x, zone.y) < 640 &&
+        hypot(enemy.x, enemy.y, zone.x, zone.y) > zone.radius &&
+        movingToward(enemy, zone.x, zone.y),
+    );
+    const committed = committedIds(zone, allies, intents);
     const enemyTaking = zone.owner === foe && zone.progress >= 0.22 && zone.secured !== self.team;
-    const oursHot = (zone.secured === self.team || zone.owner === self.team) && zone.contested;
-    const far = hypot(self.x, self.y, zone.x, zone.y) > zone.radius + 180;
-    if ((enemyTaking || oursHot) && far && (action === 'chase' || action === 'attack' || action === 'flank' || action === 'farm_minions' || action === 'advance' || action === 'search_for_target')) {
+    const oursHot = (zone.secured === self.team || zone.owner === self.team) && (zone.contested || holding.length > 0);
+    const far = dist > zone.radius + 180;
+    const chasey = CHASE_ACTIONS.has(action);
+    if ((enemyTaking || oursHot || (approaching.length > 0 && (zone.secured === self.team || committed.size > 0))) && far && chasey) {
       return true;
+    }
+    if (holding.length >= Math.max(2, committed.size + 1) && far && chasey) {
+      return true;
+    }
+    const free =
+      zone.secured !== self.team &&
+      !enemyTaking &&
+      !zone.contested &&
+      holding.length === 0 &&
+      approaching.length === 0 &&
+      committed.size === 0;
+    if (free && dist < 720 && chasey && !engaged) {
+      return true;
+    }
+    if (action === 'contest_objective' && context.intentZone === zone.id) {
+      const yieldToClaim = committed.size > 0 && dist > zone.radius + 100 && holding.length === 0 && approaching.length === 0 && !enemyTaking;
+      if (yieldToClaim) {
+        return true;
+      }
     }
   }
   return false;
@@ -601,8 +823,22 @@ export const applySixRoster = (
     }
   }
 
+  const zoneFact = choice.zoneId ? zones.find((zone) => zone.id === choice.zoneId) : undefined;
+  const needsHelp =
+    Boolean(zoneFact) &&
+    (choice.state === 'threatened' || choice.state === 'contested') &&
+    choice.alliesOnZone < choice.recommended;
+  const takeFree = choice.state === 'free' && choice.job === 'capture' && choice.alliesOnZone === 0 && Boolean(zoneFact) && choice.dist < 980;
+  let posted = choice.score;
+  if (zoneFact && (takeFree || needsHelp)) {
+    const lifted = liftOverDistantFights(out, count, situation, zoneFact, takeFree ? 'free' : 'help');
+    if (!(takeFree && lifted.engaged)) {
+      posted = Math.max(posted, lifted.peak + 32);
+    }
+  }
+
   if (choice.job === 'farm' && situation.environment?.crate) {
-    return write(out, count, 'farm_minions', choice.score, `FARM CRATE | ${choice.debug}`, -1);
+    return write(out, count, 'farm_minions', posted, `FARM CRATE | ${choice.debug}`, -1);
   }
   if (choice.zoneId && (choice.job === 'capture' || choice.job === 'defend' || choice.job === 'contest' || choice.job === 'rotate' || choice.job === 'support')) {
     const prefix =
@@ -615,7 +851,50 @@ export const applySixRoster = (
             : choice.job === 'support'
               ? 'SUPPORT'
               : 'ROTATE';
-    return write(out, count, 'contest_objective', choice.score, `${prefix} ${choice.zoneId} | ${choice.debug}`);
+    return write(out, count, 'contest_objective', posted, `${prefix} ${choice.zoneId} | ${choice.debug}`);
   }
   return count;
+};
+
+/** A free or short-handed zone has to clear the pick band, not just tie a distant attack row. */
+const liftOverDistantFights = (
+  out: ScoredAction[],
+  count: number,
+  situation: Situation,
+  zone: { x: number; y: number; radius: number },
+  mode: 'free' | 'help',
+): { peak: number; engaged: boolean } => {
+  const self = situation.self;
+  let peak = 0;
+  let engaged = false;
+  for (let i = 0; i < count; i += 1) {
+    const row = out[i];
+    const fightish = FIGHT_ROWS.has(row.action) || row.action === 'advance' || row.action === 'search_for_target';
+    if (!fightish || row.action === 'finish_target') {
+      continue;
+    }
+    if (row.action === 'attack' && row.reason.includes('finish')) {
+      continue;
+    }
+    const enemy = situation.enemies.find((unit) => unit.id === row.targetId);
+    const enemyDist = enemy ? hypot(self.x, self.y, enemy.x, enemy.y) : 9999;
+    const onZone = Boolean(enemy && hypot(enemy.x, enemy.y, zone.x, zone.y) < zone.radius + 100);
+    const inFace = Boolean(
+      enemy && enemyDist < (self.attackRange || 70) * 1.2 && (self.recentlyHit || self.attacking || enemy.attacking),
+    );
+    if (inFace) {
+      engaged = true;
+      peak = Math.max(peak, row.score);
+      continue;
+    }
+    if (mode === 'help' && onZone) {
+      peak = Math.max(peak, row.score);
+      continue;
+    }
+    peak = Math.max(peak, row.score);
+    if (enemyDist > 240) {
+      row.score -= 36;
+    }
+  }
+  return { peak, engaged };
 };
