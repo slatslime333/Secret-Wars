@@ -126,9 +126,10 @@ const scenarioDefendSpread = (): SixAiCheck => {
     enemies: [],
     zones: [zone('A', 1000, 1000, { secured: 'alpha', owner: 'alpha', progress: 1 }), zone('B', 2400, 400, { secured: 'bravo' })],
   });
-  const spread = choice.zoneId === 'A' ? choice.stand !== 'inside' : choice.zoneId === 'B' || choice.job === 'capture' || choice.job === 'rotate';
-  const ok = spread && choice.stand !== 'inside';
-  return check('a held zone is guarded off the pin, not stacked', ok, `${choice.job} ${choice.zoneId ?? ''} ${choice.stand}`);
+  const heldOffPin = choice.zoneId === 'A' && choice.stand !== 'inside';
+  const takesEnemyZone = choice.zoneId === 'B' && choice.job === 'capture' && choice.stand === 'inside';
+  const ok = heldOffPin || takesEnemyZone;
+  return check('a held zone is not a pile, and an empty enemy zone is taken from inside', ok, `${choice.job} ${choice.zoneId ?? ''} ${choice.stand}`);
 };
 
 const scenarioCrateDuringFight = (): SixAiCheck => {
@@ -257,6 +258,31 @@ const scenarioThreeRosterStaysPut = (): SixAiCheck => {
   applyMatchFormat('3v3');
   const armed = sixCount === 1 && sixRows[0]?.action === 'contest_objective';
   return check('3v3 scoring skips the roster and 6v6 writes a zone row', quiet && armed, `3v3=${count} 6v6=${sixCount} ${sixRows[0]?.reason ?? ''}`);
+};
+
+const scenarioIdleCapturesFarZone = (): SixAiCheck => {
+  const self = hero(120, 200, 200, 'alpha', { role: 'ranged', stance: 'ranged', heroId: 'witch' });
+  const choice = chooseSixRole({
+    self,
+    allies: [],
+    enemies: [],
+    zones: [zone('A', 2400, 1600), zone('B', 2600, 400, { secured: 'bravo' })],
+  });
+  const ok = Boolean(choice.zoneId) && choice.job === 'capture' && choice.stand === 'inside' && choice.dist > 1500;
+  return check('with nobody to fight, a hero still walks to a far zone', ok, choice.debug.replaceAll('\n', ' | '));
+};
+
+const scenarioFightStillSendsCapturer = (): SixAiCheck => {
+  const blob = fightAt(400, 400, 4, 3);
+  const self = hero(121, 430, 430, 'alpha');
+  const choice = chooseSixRole({
+    self,
+    allies: blob.allies,
+    enemies: blob.enemies,
+    zones: [zone('A', 400, 400), zone('B', 2400, 1800)],
+  });
+  const ok = choice.zoneId === 'B' && choice.job === 'capture' && choice.stand === 'inside';
+  return check('a staffed fight still sends a hero to the empty zone', ok, choice.debug.replaceAll('\n', ' | '));
 };
 
 const scenarioFreeZone = (): SixAiCheck => {
@@ -455,6 +481,8 @@ export const runSixAiChecks = (): SixAiCheck[] => [
   scenarioCrateLosesToDefense(),
   scenarioIsolatedKill(),
   scenarioGiantFight(),
+  scenarioIdleCapturesFarZone(),
+  scenarioFightStillSendsCapturer(),
   scenarioFreeZone(),
   scenarioFreeBeatsDistantEnemy(),
   scenarioOneCapturer(),
