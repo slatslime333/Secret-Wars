@@ -36,10 +36,16 @@ export class MainMenuScene extends Phaser.Scene {
     this.createFooter(width, height);
     this.bindKeyboard();
 
-    const onResize = () => {
-      if (!this.leaving) {
-        this.scene.restart();
+    const onResize = (gameSize: Phaser.Structs.Size, ...rest: [Phaser.Structs.Size, Phaser.Structs.Size, number, number]) => {
+      if (this.leaving) {
+        return;
       }
+      const previousWidth = rest[2];
+      const previousHeight = rest[3];
+      if (Math.round(gameSize.width) === Math.round(previousWidth) && Math.round(gameSize.height) === Math.round(previousHeight)) {
+        return;
+      }
+      this.scene.restart();
     };
     this.scale.on(Phaser.Scale.Events.RESIZE, onResize);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {

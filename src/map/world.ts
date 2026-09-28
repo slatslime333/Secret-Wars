@@ -238,7 +238,7 @@ export class MapWorld {
   }
 
   destroy(): void {
-    this.scene.physics.world.off('worldstep', this.sweepMovers);
+    this.scene.physics?.world?.off('worldstep', this.sweepMovers);
     for (const collider of this.colliders) {
       collider.destroy();
     }

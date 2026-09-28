@@ -47,3 +47,6 @@ export const SHADOW = {
 
 /** Same radius as the light swipe and the hit test. */
 export const SHADOW_HIT_MARKER_RANGE = SHADOW.attackRange;
+
+/** Same wedge as the light swipe. Stays on this value after death and heal. */
+export const SHADOW_HIT_MARKER_ARC = SHADOW.attackArcDegrees;

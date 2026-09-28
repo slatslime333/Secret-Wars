@@ -206,11 +206,11 @@ export class ScrollPanel {
   }
 
   destroy(): void {
-    this.scene.input.off(Phaser.Input.Events.POINTER_DOWN, this.onDown);
-    this.scene.input.off(Phaser.Input.Events.POINTER_MOVE, this.onMove);
-    this.scene.input.off(Phaser.Input.Events.POINTER_UP, this.onUp);
-    this.scene.input.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onUp);
-    this.scene.input.off('wheel', this.onWheel);
+    this.scene.input?.off(Phaser.Input.Events.POINTER_DOWN, this.onDown);
+    this.scene.input?.off(Phaser.Input.Events.POINTER_MOVE, this.onMove);
+    this.scene.input?.off(Phaser.Input.Events.POINTER_UP, this.onUp);
+    this.scene.input?.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onUp);
+    this.scene.input?.off('wheel', this.onWheel);
     this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.onTick);
     this.root.clearMask(true);
     this.maskGfx.destroy();

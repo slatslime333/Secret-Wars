@@ -34,6 +34,7 @@ export class HitMarker {
     const half = (arcDegrees * Math.PI) / 360;
     const accent = COLORS.cyan;
     const g = this.graphics;
+    g.setScale(1, 1);
     g.clear();
     g.setPosition(x, y);
 

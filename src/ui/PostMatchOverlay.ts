@@ -21,6 +21,7 @@ export class PostMatchOverlay {
   private readonly root: Phaser.GameObjects.Container;
   private visible = false;
   private scroller?: ScrollPanel;
+  private actionTimer?: ReturnType<typeof window.setTimeout>;
 
   constructor(private readonly scene: Phaser.Scene, private readonly handlers: PostMatchHandlers) {
     this.root = scene.add.container(0, 0).setDepth(240).setScrollFactor(0).setVisible(false);
@@ -131,23 +132,37 @@ export class PostMatchOverlay {
     this.root.setVisible(true);
     this.visible = true;
     audio.play(result === 'VICTORY' ? 'ui-victory' : result === 'DEFEAT' ? 'ui-defeat' : 'ui-draw');
-    this.scene.time.delayedCall(MATCH.postMatch.actionDelayMs, () => {
+    const enable = (): void => {
       if (!this.visible) {
         return;
       }
       rematch.setVisible(true);
       menu.setVisible(true);
-      if (rematch.input) {
-        rematch.input.enabled = true;
-      }
-      if (menu.input) {
-        menu.input.enabled = true;
-      }
-    });
+      rematch.setInteractive({ useHandCursor: true });
+      menu.setInteractive({ useHandCursor: true });
+    };
+    this.scene.time.delayedCall(MATCH.postMatch.actionDelayMs, enable);
+    if (this.actionTimer !== undefined) {
+      window.clearTimeout(this.actionTimer);
+    }
+    this.actionTimer = window.setTimeout(() => {
+      this.actionTimer = undefined;
+      enable();
+    }, MATCH.postMatch.actionDelayMs);
   }
 
   destroy(): void {
-    this.scroller?.destroy();
+    this.visible = false;
+    if (this.actionTimer !== undefined) {
+      window.clearTimeout(this.actionTimer);
+      this.actionTimer = undefined;
+    }
+    try {
+      this.scroller?.destroy();
+    } catch (error) {
+      console.error(error);
+    }
+    this.scroller = undefined;
     this.root.destroy();
   }
 }
