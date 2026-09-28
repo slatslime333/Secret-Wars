@@ -21,7 +21,7 @@ import { GamePlanController } from './strategy';
 import { assessSupport } from './supportSense';
 import { matchFormatOf } from '../../config/arena';
 import { objectiveHintFor } from '../../match/objectives/board';
-import { postSixIntent, sixShouldReconsider, type SixJob } from './sixRoster';
+import { postSixIntent, sixIntents, sixShouldReconsider, type SixJob, type SixReconsiderContext } from './sixRoster';
 import { sixZoneFacts } from '../../match/objectives/sixZoneBoard';
 import { scoreHintFor } from '../../match/scoreBoard';
 import { assessObjective } from './objectiveIntel';
@@ -328,7 +328,12 @@ export class TacticalMind {
         (picked.action === 'farm_minions' && picked.reason.includes('FARM CRATE')));
     const sixUrgent =
       this.kind === 'hero' &&
-      sixShouldReconsider(this.intent.action, { x: self.x, y: self.y, team: self.team });
+      sixShouldReconsider(
+        this.intent.action,
+        { x: self.x, y: self.y, team: self.team, id: selfFact.id, attackRange: self.stats.attackRange },
+        sixZoneFacts(),
+        this.sixLook(now),
+      );
     const targetHeld =
       !sixMapPick &&
       !sixUrgent &&
@@ -716,7 +721,14 @@ export class TacticalMind {
     if (this.situation.objective && this.situation.objective.urgency >= 0.75 && (intent.action === 'farm_minions' || intent.action === 'advance' || intent.action === 'search_for_target')) {
       return true;
     }
-    if (sixShouldReconsider(intent.action, { x: self.x, y: self.y, team: self.team })) {
+    if (
+      sixShouldReconsider(
+        intent.action,
+        { x: self.x, y: self.y, team: self.team, id: this.situation.self.id, attackRange: self.stats.attackRange },
+        sixZoneFacts(),
+        this.sixLook(now),
+      )
+    ) {
       return true;
     }
     if (this.situation.lastSurvivor && AGGRESSIVE.has(intent.action) && intent.action !== 'finish_target') {
@@ -808,6 +820,16 @@ export class TacticalMind {
       return pickRetreatGoal(this.situation, 'any');
     }
     return undefined;
+  }
+
+  private sixLook(now: number): SixReconsiderContext {
+    const match = this.intent.reason.match(/^(?:CAPTURE|DEFEND|CONTEST|ROTATE|SUPPORT) ([AB])/);
+    return {
+      intents: sixIntents(now, this.situation.self.id),
+      allies: this.allies,
+      enemies: this.enemies,
+      intentZone: match ? (match[1] as 'A' | 'B') : undefined,
+    };
   }
 
   private nextRand(): number {

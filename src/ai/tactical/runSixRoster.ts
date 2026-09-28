@@ -259,6 +259,178 @@ const scenarioThreeRosterStaysPut = (): SixAiCheck => {
   return check('3v3 scoring skips the roster and 6v6 writes a zone row', quiet && armed, `3v3=${count} 6v6=${sixCount} ${sixRows[0]?.reason ?? ''}`);
 };
 
+const scenarioFreeZone = (): SixAiCheck => {
+  const blob = fightAt(400, 400, 3, 3);
+  const self = hero(40, 1500, 900, 'alpha');
+  const choice = chooseSixRole({
+    self,
+    allies: blob.allies,
+    enemies: blob.enemies,
+    zones: [zone('A', 400, 400), zone('B', 1620, 900)],
+  });
+  const ok = choice.zoneId === 'B' && choice.job === 'capture' && choice.state === 'free' && choice.debug.includes('FREE ZONE B') && choice.debug.includes('DECISION: CAPTURE B');
+  return check('an empty zone with nobody committed is taken', ok, choice.debug.replaceAll('\n', ' | '));
+};
+
+const scenarioFreeBeatsDistantEnemy = (): SixAiCheck => {
+  const self = hero(41, 500, 500, 'alpha');
+  const choice = chooseSixRole({
+    self,
+    allies: [hero(42, 1900, 1500, 'alpha')],
+    enemies: [hero(241, 2000, 1600, 'bravo')],
+    zones: [zone('A', 2100, 1700, { secured: 'alpha' }), zone('B', 560, 620)],
+  });
+  const ok = choice.zoneId === 'B' && choice.job === 'capture' && choice.score > choice.combat && choice.dist < 200;
+  return check('a zone 150px away beats an enemy across the map', ok, choice.debug.replaceAll('\n', ' | '));
+};
+
+const scenarioOneCapturer = (): SixAiCheck => {
+  const zones = [zone('A', 400, 400, { secured: 'alpha' }), zone('B', 1800, 900)];
+  const intents: SixIntentPost[] = [{ id: 1, job: 'capture', zoneId: 'B', at: 0 }];
+  const capturer = hero(1, 1800, 900, 'alpha');
+  const jobs: string[] = [];
+  for (let i = 0; i < 4; i += 1) {
+    const self = hero(50 + i, 900 + i * 40, 1400, 'alpha');
+    const choice = chooseSixRole({
+      self,
+      allies: [capturer],
+      enemies: [hero(260, 300, 300, 'bravo')],
+      zones,
+      intents,
+    });
+    jobs.push(`${choice.job}:${choice.zoneId ?? '-'}`);
+  }
+  const onB = jobs.filter((job) => job.endsWith(':B')).length;
+  return check('a safe capturer does not pull the rest of the team', onB === 0, jobs.join(' '));
+};
+
+const scenarioThreatenedHelp = (): SixAiCheck => {
+  const capturer = hero(1, 1600, 1000, 'alpha');
+  const e1 = hero(270, 1900, 1000, 'bravo', { vx: -80, vy: 0 });
+  const e2 = hero(271, 1880, 1120, 'bravo', { vx: -70, vy: -20 });
+  const local = hero(272, 280, 260, 'bravo', { hpRatio: 0.3 });
+  const zones = [zone('A', 200, 200, { secured: 'alpha' }), zone('B', 1600, 1000, { owner: 'alpha', progress: 0.35 })];
+  const intents: SixIntentPost[] = [{ id: 1, job: 'capture', zoneId: 'B', at: 0 }];
+  const selves = [hero(60, 1300, 1000, 'alpha'), hero(61, 1100, 1300, 'alpha'), hero(62, 200, 240, 'alpha')];
+  const choices = selves.map((self, index) =>
+    chooseSixRole({
+      self,
+      allies: [capturer],
+      enemies: index === 2 ? [e1, e2, local] : [e1, e2],
+      zones,
+      intents,
+    }),
+  );
+  const helpers = choices.filter((choice) => choice.zoneId === 'B').length;
+  const ok = helpers >= 1 && helpers < 3 && choices[2].zoneId !== 'B';
+  return check('an approached capture pulls one teammate, not the far hero', ok, choices.map((choice) => `${choice.job}:${choice.zoneId ?? '-'}`).join(' '));
+};
+
+const scenarioLosingCapture = (): SixAiCheck => {
+  const capturer = hero(1, 1500, 1000, 'alpha', { hpRatio: 0.42 });
+  const enemies = [0, 1, 2].map((i) => hero(280 + i, 1520 + i * 18, 1010, 'bravo'));
+  const selves = [hero(70, 1100, 1000, 'alpha'), hero(71, 1200, 1280, 'alpha'), hero(72, 980, 860, 'alpha')];
+  const choices = selves.map((self) =>
+    chooseSixRole({
+      self,
+      allies: [capturer],
+      enemies,
+      zones: [zone('A', 300, 300), zone('B', 1500, 1000, { owner: 'alpha', progress: 0.4 })],
+    }),
+  );
+  const helpers = choices.filter((choice) => choice.zoneId === 'B').length;
+  return check('an outnumbered capture becomes a team priority', helpers >= 2, choices.map((choice) => `${choice.job}:${choice.zoneId ?? '-'} ${choice.state}`).join(' '));
+};
+
+const scenarioFiveOnOneFreeZone = (): SixAiCheck => {
+  const blob = fightAt(400, 400, 5, 1);
+  const self = hero(80, 1700, 1200, 'alpha');
+  const choice = chooseSixRole({
+    self,
+    allies: blob.allies,
+    enemies: blob.enemies,
+    zones: [zone('A', 420, 420, { secured: 'alpha' }), zone('B', 1820, 1200)],
+  });
+  const ok = choice.zoneId === 'B' && choice.job === 'capture';
+  return check('a 5v1 does not get a sixth body while a zone is free', ok, choice.debug.replaceAll('\n', ' | '));
+};
+
+const scenarioEmergencyAndFree = (): SixAiCheck => {
+  const captor = hero(290, 500, 500, 'bravo');
+  const zones = [zone('A', 500, 500, { owner: 'bravo', progress: 0.55 }), zone('B', 1800, 500)];
+  const nearA = hero(90, 700, 520, 'alpha');
+  const nearB = hero(91, 1660, 520, 'alpha');
+  const stop = chooseSixRole({ self: nearA, allies: [], enemies: [captor], zones });
+  const take = chooseSixRole({ self: nearB, allies: [nearA], enemies: [captor], zones });
+  const ok = stop.zoneId === 'A' && (stop.job === 'contest' || stop.job === 'rotate') && take.zoneId === 'B' && take.job === 'capture';
+  return check('one hero stops the enemy zone while another takes the free zone', ok, `${stop.job}:${stop.zoneId} ${take.job}:${take.zoneId}`);
+};
+
+const scenarioZoneBeatsCrate = (): SixAiCheck => {
+  const self = hero(95, 800, 800, 'alpha', { level: 1, xpRatio: 0.85 });
+  const open = chooseSixRole({
+    self,
+    allies: [],
+    enemies: [],
+    zones: [zone('A', 2100, 1800, { secured: 'alpha' }), zone('B', 900, 860)],
+    crate: { x: 760, y: 820 },
+    personality: personality({ caution: 0.7, opportunism: 0.8 }),
+  });
+  const claimed = chooseSixRole({
+    self,
+    allies: [hero(96, 900, 860, 'alpha')],
+    enemies: [],
+    zones: [zone('A', 2100, 1800, { secured: 'alpha' }), zone('B', 900, 860)],
+    crate: { x: 760, y: 820 },
+    intents: [{ id: 96, job: 'capture', zoneId: 'B', at: 0 }],
+    personality: personality({ caution: 0.7, opportunism: 0.8 }),
+  });
+  const ok = open.zoneId === 'B' && open.job === 'capture' && open.score > open.farm && claimed.job === 'farm';
+  return check('a free zone beats a nearby crate until someone is already capturing', ok, `${open.job}:${open.zoneId} farm=${open.farm.toFixed(0)} then ${claimed.job}`);
+};
+
+const scenarioFreeClearsAttackRow = (): SixAiCheck => {
+  applyMatchFormat('6v6');
+  clearSixIntents();
+  setSixZoneFacts([zone('B', 500, 500), zone('A', 2200, 1800, { secured: 'alpha' })]);
+  const enemy = hero(300, 1800, 1500, 'bravo');
+  const live = {
+    kind: 'hero',
+    self: hero(96, 620, 560, 'alpha'),
+    allies: [hero(97, 1700, 1400, 'alpha')],
+    enemies: [enemy],
+    personality: NEUTRAL_PERSONALITY,
+    now: 1,
+  } as unknown as Situation;
+  const rows: ScoredAction[] = [{ action: 'attack', score: 78, reason: 'take the fight', targetId: 300, allyId: -1 }];
+  applySixRoster(rows, 1, live, (out, n, action, score, reason) => {
+    out[n] = { action, score, reason, targetId: -1, allyId: -1 };
+    return n + 1;
+  });
+  const attack = rows[0];
+  const capture = rows.find((row) => row.reason.startsWith('CAPTURE'));
+  clearSixZoneFacts();
+  clearSixIntents();
+  applyMatchFormat('3v3');
+  const ok = Boolean(capture && capture.score >= (attack?.score ?? 0) + 26);
+  return check('a free-zone row clears a distant attack score', ok, `attack=${attack?.score.toFixed(0)} capture=${capture?.score.toFixed(0) ?? 'none'}`);
+};
+
+const scenarioFreeReconsider = (): SixAiCheck => {
+  applyMatchFormat('3v3');
+  const ignored = sixShouldReconsider('chase', { x: 400, y: 400, team: 'alpha', attackRange: 70 }, [zone('B', 520, 430)]);
+  applyMatchFormat('6v6');
+  const pulls = sixShouldReconsider('chase', { x: 400, y: 400, team: 'alpha', attackRange: 70 }, [zone('B', 520, 430)]);
+  const engaged = sixShouldReconsider(
+    'attack',
+    { x: 400, y: 400, team: 'alpha', attackRange: 70 },
+    [zone('B', 520, 430)],
+    { enemies: [hero(310, 450, 430, 'bravo')] },
+  );
+  applyMatchFormat('3v3');
+  return check('a nearby free zone breaks a chase unless the hero is already in melee', !ignored && pulls && !engaged, `3v3=${ignored} free=${pulls} melee=${engaged}`);
+};
+
 const scenarioThreeStaysPut = (): SixAiCheck => {
   applyMatchFormat('3v3');
   const ignored = sixShouldReconsider('chase', { x: 0, y: 0, team: 'alpha' }, [
@@ -283,6 +455,16 @@ export const runSixAiChecks = (): SixAiCheck[] => [
   scenarioCrateLosesToDefense(),
   scenarioIsolatedKill(),
   scenarioGiantFight(),
+  scenarioFreeZone(),
+  scenarioFreeBeatsDistantEnemy(),
+  scenarioOneCapturer(),
+  scenarioThreatenedHelp(),
+  scenarioLosingCapture(),
+  scenarioFiveOnOneFreeZone(),
+  scenarioEmergencyAndFree(),
+  scenarioZoneBeatsCrate(),
+  scenarioFreeClearsAttackRow(),
+  scenarioFreeReconsider(),
   scenarioThreeRosterStaysPut(),
   scenarioThreeStaysPut(),
 ];

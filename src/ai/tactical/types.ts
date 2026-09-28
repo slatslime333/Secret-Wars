@@ -267,7 +267,7 @@ export type TacticalDebugInfo = {
   desiredSpacing?: string;
   ultDecision?: string;
   ultReason?: string;
-  /** 6v6 role line, such as "CAPTURE B | obj 71 | combat 39 | 1 ally committed". */
+  /** 6v6 role read, such as "FREE ZONE B" plus distance, commitments, and the decision. */
   sixNote?: string;
 };
 
