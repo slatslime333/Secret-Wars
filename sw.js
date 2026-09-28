@@ -1,7 +1,7 @@
 /* Secret Wars offline service worker.
  * Cache stamp is rewritten by scripts/copy-pages-bundle.mjs on each Pages build.
  * Scope is this directory (/Secret-Wars/ on GitHub Pages). */
-const CACHE_NAME = 'secret-wars-offline-v3a4a90da';
+const CACHE_NAME = 'secret-wars-offline-v7fbf2533';
 
 const PRECACHE_URLS = [
   './',
