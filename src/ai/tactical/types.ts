@@ -1,3 +1,4 @@
+import type { CombatPose, ShieldPlan, SwingReason } from './combatPose';
 import type { TeamId } from '../../config/hero';
 import type { HeroRole } from '../../heroes/HeroDefinition';
 import type { NinjaBody } from '../../heroes/NinjaBody';
@@ -227,6 +228,10 @@ export type Situation = {
   environment?: EnvSnapshot;
   /** Which door this CPU used to enter the current house, if any. */
   houseStay?: { id: string; door: HouseDoorSide; enteredAt: number };
+  /** Latest combat intent. Optional so older situation fixtures stay valid. */
+  combatPose?: CombatPose;
+  shieldPlan?: ShieldPlan;
+  swingReason?: SwingReason;
 };
 
 export type TacticalDebugInfo = {
@@ -257,6 +262,12 @@ export type TacticalDebugInfo = {
   desiredSpacing?: string;
   ultDecision?: string;
   ultReason?: string;
+  combatPose?: string;
+  punishConfidence?: string;
+  swingReason?: string;
+  shieldPlan?: string;
+  habitNote?: string;
+  personalityNote?: string;
 };
 
 export const NEUTRAL_PERSONALITY: Personality = {

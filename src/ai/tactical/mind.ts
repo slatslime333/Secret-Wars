@@ -12,7 +12,8 @@ import {
 } from './evaluate';
 import type { TacticalField } from './field';
 import { kitProfileOf, isRopeDisarmed, isShadowDry } from './kitProfile';
-import { clusterRiskOf, occupancyOf } from './spacing';
+import { clusterRiskOf, formationLaneOf, occupancyOf } from './spacing';
+import { blankPose, shouldSwitchTarget, type PoseRead } from './combatPose';
 import { pocketRadius } from './fightRead';
 import { personalityFromSeed } from './personality';
 import { pickRetreatGoal, type RetreatGoal } from './retreat';
@@ -113,6 +114,18 @@ export class TacticalMind {
   private director?: GamePlanController;
   private readonly teamBuf: UnitFact[] = [];
   private combatNote?: string;
+  private readonly pose = blankPose();
+  private habitNote = '';
+  private lastSwitchAt = -9999;
+  private offered?: {
+    ref: NinjaBody;
+    score: number;
+    reason: string;
+    punish: boolean;
+    finish: boolean;
+    peel: boolean;
+    at: number;
+  };
   private ultNote?: { decision: 'use' | 'save' | 'wait' | 'reposition'; reason: string; current: number; future: number };
 
   constructor(kind: TacticalKind, seed: string, homeX: number, homeY: number) {
@@ -240,6 +253,19 @@ export class TacticalMind {
           }
         : undefined,
       poi,
+      lane: formationLaneOf({
+        self: {
+          x: self.x,
+          y: self.y,
+          id: self.id,
+          attackRange: self.attackRange,
+          role: String(self.role),
+          hpRatio: self.hpRatio,
+        },
+        allies: mates,
+        focus: focus ? { x: focus.x, y: focus.y } : undefined,
+        stance: kit?.stance,
+      }),
     };
   }
 
@@ -262,6 +288,51 @@ export class TacticalMind {
 
   noteCombat(note: string): void {
     this.combatNote = note;
+  }
+
+  notePose(read: PoseRead, habitNote = ''): void {
+    this.pose.pose = read.pose;
+    this.pose.until = read.until;
+    this.pose.reason = read.reason;
+    this.pose.punishConfidence = read.punishConfidence;
+    this.pose.punishTake = read.punishTake;
+    this.pose.shield = read.shield;
+    this.pose.swing = read.swing;
+    this.pose.flagText = read.flagText;
+    this.situation.combatPose = read.pose;
+    this.situation.shieldPlan = read.shield;
+    this.situation.swingReason = read.swing;
+    this.habitNote = habitNote;
+  }
+
+  combatPose(): PoseRead {
+    return this.pose;
+  }
+
+  /** A better target noticed between thinks. Think still applies the cooldown. */
+  offerTarget(
+    now: number,
+    body: NinjaBody,
+    score: number,
+    reason: string,
+    flags: { punish?: boolean; finish?: boolean; peel?: boolean },
+  ): void {
+    if (body.down || body === this.intent.target) {
+      return;
+    }
+    const current = this.offered;
+    if (current && current.ref === body && now - current.at < 400 && current.score >= score) {
+      return;
+    }
+    this.offered = {
+      ref: body,
+      score,
+      reason,
+      punish: Boolean(flags.punish),
+      finish: Boolean(flags.finish),
+      peel: Boolean(flags.peel),
+      at: now,
+    };
   }
 
   think(now: number, self: NinjaBody, field: TacticalField, scene?: object, force = false): void {
@@ -315,6 +386,37 @@ export class TacticalMind {
       return;
     }
 
+    const offer = this.offered;
+    if (offer && (offer.ref.down || now - offer.at > 900)) {
+      this.offered = undefined;
+    } else if (offer && offer.ref !== this.intent.target) {
+      const currentPunish = this.pose.pose === 'PUNISH' && this.pose.punishTake;
+      if (
+        shouldSwitchTarget(
+          {
+            currentScore: this.intent.score,
+            nextScore: offer.score,
+            msSinceSwitch: now - this.lastSwitchAt,
+            currentPunish,
+            nextPunish: offer.punish,
+            nextFinish: offer.finish,
+            nextProtected: false,
+            allyNeedsPeel: offer.peel,
+          },
+          this.personality,
+        )
+      ) {
+        picked.action = offer.peel ? 'protect_ally' : offer.finish ? 'finish_target' : 'switch_target';
+        picked.reason = offer.reason;
+        picked.score = offer.score;
+        const offeredFact = this.enemies.find((enemy) => this.bodyById.get(enemy.id) === offer.ref);
+        if (offeredFact) {
+          picked.targetId = offeredFact.id;
+        }
+        this.lastSwitchAt = now;
+        this.offered = undefined;
+      }
+    }
     const nextTarget = this.resolve(picked.targetId, true);
     const nextAlly = this.resolve(picked.allyId, false);
     const targetHeld =
@@ -422,11 +524,30 @@ export class TacticalMind {
       ultReason: this.ultNote
         ? `${this.ultNote.reason}  now ${Math.round(this.ultNote.current)}  later ${Math.round(this.ultNote.future)}`
         : undefined,
+      combatPose: this.pose.pose,
+      punishConfidence: this.pose.punishConfidence.toFixed(2),
+      swingReason: this.pose.swing,
+      shieldPlan: this.pose.shield,
+      habitNote: this.habitNote || undefined,
+      personalityNote: `agg ${this.personality.aggression.toFixed(2)} cau ${this.personality.caution.toFixed(2)} pat ${this.personality.patience.toFixed(2)} tea ${this.personality.teamwork.toFixed(2)} rea ${this.personality.reactionQuality.toFixed(2)}`,
     };
   }
 
   wantsAttack(): boolean {
     const action = this.intent.action;
+    const pose = this.pose.pose;
+    const liveTarget = Boolean(this.target);
+    if (
+      liveTarget &&
+      action !== 'contest_objective' &&
+      action !== 'farm_minions' &&
+      (pose === 'BAIT' || pose === 'RESET' || pose === 'DISENGAGE' || pose === 'DEFEND' || pose === 'APPROACH')
+    ) {
+      return false;
+    }
+    if (liveTarget && (pose === 'PUNISH' || pose === 'FINISH' || pose === 'PRESSURE' || pose === 'PEEL')) {
+      return this.pose.swing !== 'hold';
+    }
     return (
       action === 'attack' ||
       action === 'finish_target' ||

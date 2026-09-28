@@ -1,8 +1,13 @@
 import type { NinjaBody } from '../../heroes/NinjaBody';
+import { habitConfidence, type HabitKind, type HabitRead } from './combatPose';
 import { isShadowDry } from './kitProfile';
 import type { KitProfile, Personality } from './types';
 
 export type FightMomentum = 'winning' | 'even' | 'losing';
+
+type HabitCell = { hits: number; misses: number; lastAt: number };
+
+const freshCell = (): HabitCell => ({ hits: 0, misses: 0, lastAt: -9999 });
 
 type FoeTrace = {
   ref: NinjaBody;
@@ -13,7 +18,24 @@ type FoeTrace = {
   lastAttackAt: number;
   lastSeenAt: number;
   aggression: number;
+  whiffUntil: number;
+  habits: Record<HabitKind, HabitCell>;
 };
+
+const emptyHabits = (): Record<HabitKind, HabitCell> => ({
+  'attack-on-approach': freshCell(),
+  finisher: freshCell(),
+  'attack-after-dash': freshCell(),
+  'attack-after-hit': freshCell(),
+  'same-ability': freshCell(),
+  'shield-after-hit': freshCell(),
+  'shield-low-hp': freshCell(),
+  'dash-back': freshCell(),
+  'retreat-dir': freshCell(),
+  'favor-side': freshCell(),
+  'retreat-direct': freshCell(),
+  'chase-direct': freshCell(),
+});
 
 const closingDot = (from: NinjaBody, toX: number, toY: number): number => {
   const vx = from.body?.velocity.x ?? 0;
@@ -46,6 +68,14 @@ export class FightSense {
   private lastSelfSwingAt = -9999;
   private connects = 0;
   private dashLandUntil = 0;
+  private whiffUntil = 0;
+  private knockUntil = 0;
+  knock: 'none' | 'self-far' | 'foe-far' | 'foe-isolated' | 'foe-react' = 'none';
+  private lastSelfX = 0;
+  private lastSelfY = 0;
+  private lastFoeX = 0;
+  private lastFoeY = 0;
+  private knockSampleAt = -9999;
   momentum: FightMomentum = 'even';
 
   observe(now: number, self: NinjaBody, target: NinjaBody | undefined): void {
@@ -106,6 +136,124 @@ export class FightSense {
 
   noteDashLand(now: number): void {
     this.dashLandUntil = now + 420;
+  }
+
+  noteWhiff(now: number, foe: NinjaBody, recoveryMs: number): void {
+    const trace = this.ensure(now, foe);
+    trace.whiffUntil = now + Math.max(280, recoveryMs);
+    this.whiffUntil = trace.whiffUntil;
+  }
+
+  whiffOpen(now: number, foe?: NinjaBody): boolean {
+    if (now >= this.whiffUntil) {
+      return false;
+    }
+    if (!foe) {
+      return true;
+    }
+    const trace = this.traces.get(foe);
+    return Boolean(trace && now < trace.whiffUntil);
+  }
+
+  /**
+   * A large displacement during a hit reaction changes the fight.
+   * Sampled on a short interval so it is not a per-frame cost.
+   */
+  noteKnock(now: number, self: NinjaBody, foe: NinjaBody | undefined, foeAlliesNear = 0): void {
+    if (now - this.knockSampleAt < 160) {
+      return;
+    }
+    const sx = self.x;
+    const sy = self.y;
+    const fx = foe?.x ?? this.lastFoeX;
+    const fy = foe?.y ?? this.lastFoeY;
+    if (this.knockSampleAt > 0) {
+      const selfMoved = Math.hypot(sx - this.lastSelfX, sy - this.lastSelfY);
+      const foeMoved = Math.hypot(fx - this.lastFoeX, fy - this.lastFoeY);
+      const selfReact = self.status.isHitReacting(now) || now - self.lastAttackerAt < 220;
+      const foeReact = Boolean(foe && (foe.status.isHitReacting(now) || now - foe.lastAttackerAt < 220));
+      if (selfReact && selfMoved > 78) {
+        this.knock = 'self-far';
+        this.knockUntil = now + 520;
+      } else if (foeReact && foe && foeMoved > 78) {
+        const isolated = foeAlliesNear <= 0 && foeMoved > 96;
+        const longReact = foe.status.remainingHitReactionMs(now) > 110;
+        this.knock = longReact ? 'foe-react' : isolated ? 'foe-isolated' : 'foe-far';
+        this.knockUntil = now + 560;
+      }
+    }
+    this.lastSelfX = sx;
+    this.lastSelfY = sy;
+    this.lastFoeX = fx;
+    this.lastFoeY = fy;
+    this.knockSampleAt = now;
+    if (now > this.knockUntil) {
+      this.knock = 'none';
+    }
+  }
+
+  noteHabit(now: number, foe: NinjaBody, kind: HabitKind, happened: boolean): void {
+    const trace = this.ensure(now, foe);
+    const cell = trace.habits[kind];
+    const age = now - cell.lastAt;
+    if (cell.lastAt > 0 && age > 2800) {
+      cell.hits *= 0.72;
+      cell.misses *= 0.72;
+    }
+    if (happened) {
+      cell.hits = Math.min(8, cell.hits + 1);
+    } else {
+      cell.misses = Math.min(8, cell.misses + 1);
+    }
+    cell.lastAt = now;
+  }
+
+  habitRead(now: number, foe: NinjaBody | undefined): HabitRead {
+    const empty = {
+      attackOnApproach: 0,
+      finisher: 0,
+      shieldAfterHit: 0,
+      dashBack: 0,
+      sameAbility: 0,
+    };
+    if (!foe) {
+      return empty;
+    }
+    const trace = this.traces.get(foe);
+    if (!trace) {
+      return empty;
+    }
+    const conf = (kind: HabitKind): number => {
+      const cell = trace.habits[kind];
+      return habitConfidence(cell.hits, cell.misses, now - cell.lastAt);
+    };
+    return {
+      attackOnApproach: conf('attack-on-approach'),
+      finisher: conf('finisher'),
+      shieldAfterHit: conf('shield-after-hit'),
+      dashBack: conf('dash-back'),
+      sameAbility: conf('same-ability'),
+    };
+  }
+
+  private ensure(now: number, foe: NinjaBody): FoeTrace {
+    let trace = this.traces.get(foe);
+    if (!trace) {
+      trace = {
+        ref: foe,
+        approaches: 0,
+        attacks: 0,
+        closes: 0,
+        lastCloseAt: -9999,
+        lastAttackAt: -9999,
+        lastSeenAt: now,
+        aggression: 0,
+        whiffUntil: 0,
+        habits: emptyHabits(),
+      };
+      this.traces.set(foe, trace);
+    }
+    return trace;
   }
 
   justEngaged(now: number): boolean {
@@ -315,20 +463,7 @@ export class FightSense {
   }
 
   private noteFoe(now: number, self: NinjaBody, foe: NinjaBody): void {
-    let trace = this.traces.get(foe);
-    if (!trace) {
-      trace = {
-        ref: foe,
-        approaches: 0,
-        attacks: 0,
-        closes: 0,
-        lastCloseAt: -9999,
-        lastAttackAt: -9999,
-        lastSeenAt: now,
-        aggression: 0,
-      };
-      this.traces.set(foe, trace);
-    }
+    const trace = this.ensure(now, foe);
     trace.lastSeenAt = now;
     const d = Math.hypot(foe.x - self.x, foe.y - self.y);
     const closing = this.closingOn(self, foe);

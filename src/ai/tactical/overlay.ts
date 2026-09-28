@@ -54,6 +54,17 @@ export class TacticalOverlay {
       if (info.objective) {
         lines.push(info.objective);
       }
+      if (info.combatPose) {
+        lines.push(
+          `${info.combatPose} ${info.swingReason ?? ''}  ${info.shieldPlan ?? ''}  pun ${info.punishConfidence ?? '0'}`,
+        );
+      }
+      if (info.habitNote) {
+        lines.push(`habit ${info.habitNote}`);
+      }
+      if (info.personalityNote) {
+        lines.push(info.personalityNote);
+      }
       if (info.combatNote) {
         lines.push(info.combatNote);
       }

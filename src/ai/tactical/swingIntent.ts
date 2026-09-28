@@ -1,3 +1,4 @@
+import type { PoseRead, SwingReason } from './combatPose';
 import type { FightSense } from './fightSense';
 import type { KitProfile, Personality, TacticalAction } from './types';
 import type { NinjaBody } from '../../heroes/NinjaBody';
@@ -32,12 +33,20 @@ export class SwingIntent {
     sense: FightSense;
     blocking: boolean;
     rng: () => number;
+    pose?: PoseRead;
   }): void {
     const { now, body, target, objective, action, personality, kit, sense, blocking, rng } = args;
     if (blocking || !body.canAttack(now) || now < this.pauseUntil) {
       return;
     }
     const smash = objectiveInHitRange(body, objective, action);
+    const reason: SwingReason | undefined = args.pose?.swing;
+    if (reason === 'hold' && !smash) {
+      this.pauseUntil = Math.max(this.pauseUntil, now + 90 + rng() * 80);
+      this.holdUntil = this.pauseUntil;
+      this.tapQueued = false;
+      return;
+    }
     if (!target) {
       if (!smash || now < this.holdUntil) {
         return;
@@ -103,7 +112,15 @@ export class SwingIntent {
       this.hitsIntoBlock = 0;
     }
 
-    if (sense.counterReady(now) || target.status.isBlockStunned(now) || target.status.isHitReacting(now)) {
+    if (
+      reason === 'punish' ||
+      reason === 'punish-recovery' ||
+      reason === 'finish' ||
+      reason === 'interrupt' ||
+      sense.counterReady(now) ||
+      target.status.isBlockStunned(now) ||
+      target.status.isHitReacting(now)
+    ) {
       this.tapQueued = rng() < 0.62;
       this.holdUntil = now + (this.tapQueued ? 70 : 160 + rng() * 80);
       sense.noteSelfSwing(now, true);
@@ -126,10 +143,18 @@ export class SwingIntent {
       return;
     }
 
-    const chain = sense.shouldChainLights(now, body, target, personality, kit, rng) || (engaged && kit?.stance !== 'ranged' && kit?.stance !== 'support');
+    const chain =
+      reason === 'combo' ||
+      reason === 'pressure' ||
+      reason === 'shield-pressure' ||
+      sense.shouldChainLights(now, body, target, personality, kit, rng) ||
+      (engaged && kit?.stance !== 'ranged' && kit?.stance !== 'support' && reason !== 'poke' && reason !== 'create-space');
     if (chain) {
       this.tapQueued = false;
-      const burst = 260 + rng() * 220 + (kit?.pressureBias ?? 0.5) * 240 + (body.heroId === 'shadow' ? 120 : 0);
+      const burst =
+        reason === 'shield-pressure' || reason === 'poke' || reason === 'force-reaction'
+          ? 150 + rng() * 90
+          : 260 + rng() * 220 + (kit?.pressureBias ?? 0.5) * 240 + (body.heroId === 'shadow' ? 120 : 0);
       this.holdUntil = now + burst;
       sense.startChain(now, burst);
       sense.noteSelfSwing(now, d <= range * 1.05);

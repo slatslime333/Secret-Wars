@@ -159,6 +159,7 @@ export class RivalBrain {
       sense: this.combat.sense,
       blocking: this.block.isActive(now),
       rng: Math.random,
+      pose: this.mind.combatPose(),
     });
     const smashRange =
       (this.mind.action === 'contest_objective' &&
