@@ -79,6 +79,8 @@ export type AbilityContext = {
 export type ActiveAbility = {
   readonly id: string;
   readonly control: AbilityControlFlags;
+  /** Hits do not cancel this instance. Ordinary attacks leave this unset. */
+  hyperArmor?: boolean;
   /** When `deferCooldown` is set, false skips the cooldown (missed Rope Grab). */
   consumeDeferred?: boolean;
   /** Same-slot press while this instance is live (Soul Dash exit). */

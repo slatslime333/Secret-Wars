@@ -500,8 +500,8 @@ export class EnvironmentWorld {
     const { x, y } = prop.obs;
     const car = prop.obs.kind === 'vehicle';
     const radius = car ? ENV_WORLD.carRadius : ENV_WORLD.barrelRadius;
-    const damage = car ? ENV_WORLD.carDamage : ENV_WORLD.barrelDamage;
-    const knock = car ? ENV_WORLD.carKnockback : ENV_WORLD.barrelKnockback;
+    const damage = ENV_WORLD.barrelDamage;
+    const knock = ENV_WORLD.barrelKnockback;
     this.destroyProp(prop, attacker);
     this.scorch(x, y, car);
     this.burst(x, y, radius);
@@ -546,9 +546,15 @@ export class EnvironmentWorld {
         damage: Math.round(damage * falloff),
         dirX: dx / len,
         dirY: dy / len,
-        knockback: knock * falloff,
+        knockback: knock * (0.62 + 0.38 * falloff),
         staminaDamage: 4,
         step: 2,
+        stun: true,
+        blast: true,
+        hitReactionMs: ENV_WORLD.blastStunMs,
+        hitStopMs: ENV_WORLD.blastHitStopMs,
+        launchCap: ENV_WORLD.blastLaunchCap,
+        source: attacker ? { attacker, kind: 'other' } : undefined,
       });
     }
   }

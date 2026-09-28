@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COMBAT, ComboStep } from '../../config/combat';
+import { COMBAT, ComboStep, shieldChipOf } from '../../config/combat';
 import { applyDefense } from '../../combat/damage';
 import { emitCombatBlocked } from '../../combat/damageEvents';
 import { playHitJuice, playImpactShake } from '../../effects/hitJuice';
@@ -77,13 +77,12 @@ export const resolveAbilityHit = (
       playAbilityConnect('perfect-block', attacker, defender, { heavy: profile.heavy, sourceKind: profile.sourceKind });
       return 'perfect-block';
     }
-    defender.drainBlockShield(
-      Math.max(
-        COMBAT.abilityShieldDamageMin,
-        Math.round(profile.staminaDamage * COMBAT.abilityShieldDamageMul),
-      ),
-      now,
+    const shieldChip = Math.max(
+      COMBAT.abilityShieldDamageMin,
+      Math.round(profile.staminaDamage * COMBAT.abilityShieldDamageMul),
     );
+    defender.drainBlockShield(shieldChipOf(shieldChip), now);
+    defender.status.applyShieldPressure(now);
     if (defender.blockShield <= 0) {
       defenderBlock?.breakShield(defender);
     }

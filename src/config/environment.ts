@@ -30,13 +30,17 @@ export const ENV_WORLD = {
   smokeGapMs: 380,
 
   barrelRadius: 142,
-  barrelDamage: 78,
-  barrelKnockback: 920,
+  /** 15% above the previous barrel hit. Cars use the same blast. */
+  barrelDamage: Math.round(78 * 1.15),
+  barrelKnockback: 1180,
   barrelChainRadius: 80,
 
   carRadius: 128,
-  carDamage: 56,
-  carKnockback: 680,
+  carDamage: Math.round(78 * 1.15),
+  carKnockback: 1180,
+  blastLaunchCap: 1180,
+  blastStunMs: 1500,
+  blastHitStopMs: 70,
   carFlashCount: 3,
   carFlashMs: 220,
 

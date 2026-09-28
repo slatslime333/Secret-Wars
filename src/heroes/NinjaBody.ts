@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { arenaInnerBounds } from '../config/arena';
 import { HeroCombatConfig, TeamId, teamOfRival } from '../config/hero';
 import { NINJA } from '../config/ninja';
-import { COMBAT, ComboStep, blockShieldMaxFor, comboStepOf, lightAttackStaminaCost } from '../config/combat';
+import { COMBAT, ComboStep, blockShieldMaxFor, comboStepOf, impactFeelFor, lightAttackStaminaCost } from '../config/combat';
 import { CombatStatus } from '../combat/CombatStatus';
 import { TakeHitOptions } from '../combat/Hurtbox';
 import { emitCombatBlocked, emitCombatDamage } from '../combat/damageEvents';
@@ -101,7 +101,9 @@ export class NinjaBody {
   private currentAttackTween?: Phaser.Tweens.Tween;
   private lastDrawnFlash = false;
   private frozenUntil = 0;
-  private pendingLaunch?: { x: number; y: number; cap: number };
+  private pendingLaunch?: { x: number; y: number; cap: number; readyAt: number; drag: number };
+  /** Bumps when a hit cancels the current swing. Attack and ability code each notice once. */
+  swingBreaks = 0;
   private holdAttackPose = false;
   /** Sheet slash stays upright. Procedural tilt is for drawn heroes only. */
   private ninjaSheetAttack = false;
@@ -402,14 +404,18 @@ export class NinjaBody {
     const dirX = options.dirX / length;
     const dirY = options.dirY / length;
     const launchCap = options.launchCap ?? COMBAT.launchSpeedCap;
-    this.deferOrLaunch(now, dirX, dirY, power, launchCap, hitStopMs);
-    if (minion) {
-      this.status.applyStun(now, options.hitReactionMs ?? MINION.hitReactionMs);
-    } else if (options.stun) {
-      this.status.applyStun(now, options.hitReactionMs ?? COMBAT.combo[options.step].hitReactionMs);
+    const reactionMs = minion
+      ? (options.hitReactionMs ?? MINION.hitReactionMs)
+      : (options.hitReactionMs ?? COMBAT.combo[options.step].hitReactionMs);
+    const releaseMs = options.blast || options.clash ? 0 : Math.round(reactionMs * 0.35);
+    this.deferOrLaunch(now, dirX, dirY, power, launchCap, hitStopMs, releaseMs, options.blast ? 0.38 : 1);
+    const lockMs = options.blast || options.clash ? reactionMs : hitStopMs + reactionMs;
+    if (minion || options.stun || options.blast) {
+      this.status.applyStun(now, options.blast ? reactionMs : lockMs);
     } else {
-      this.status.applyHitReaction(now, options.step, options.hitReactionMs);
+      this.status.applyHitReaction(now, options.step, lockMs);
     }
+    this.noteSwingBreak();
     this.lastDrawnFlash = true;
     this.redrawIdle();
     if (applied > 0) {
@@ -418,14 +424,54 @@ export class NinjaBody {
       this.hurtDirX = dirX;
       this.hurtDirY = dirY;
     }
-    const squashY = options.clash ? 0.8 : options.step === 3 ? 0.76 : options.step === 2 ? 0.84 : 0.9;
-    const stretchX = options.clash ? 1.12 : options.step === 3 ? 1.14 : options.step === 2 ? 1.08 : 1.04;
-    const recoil = options.clash ? 8 : options.step === 3 ? 11 : options.step === 2 ? 7 : 4;
-    const lean = options.step === 3 ? 0.22 : options.step === 2 ? 0.14 : 0.08;
+    this.scene.tweens.killTweensOf(this.view);
+    this.scene.tweens.killTweensOf(this.art);
+    if (options.blast) {
+      this.playBlastFall(dirX, hitStopMs, reactionMs);
+    } else {
+      this.playHitReactionPose(options.step, options.clash === true, dirX, dirY, hitStopMs);
+    }
+    if (this.down) {
+      this.stop();
+      this.clearTempShield();
+      this.clearMagicVortex();
+      this.clearClawMark();
+      this.clearRage();
+      this.setFairyForm(false);
+      resetDemonForm(this);
+      clearBurn(this);
+      dismissWitchSkeletons(this);
+      if (applied > 0) {
+        playDeath(this);
+      }
+    }
+  }
+
+  private noteSwingBreak(): void {
+    this.swingBreaks += 1;
+    this.holdAttackPose = false;
+    this.attackingUntil = 0;
+    this.currentAttackTween?.stop();
+    this.currentAttackTween = undefined;
+  }
+
+  /** Procedural contact pose. Hero feel scales compression, lean, and settle. */
+  private playHitReactionPose(step: ComboStep, clash: boolean, dirX: number, dirY: number, hitStopMs: number): void {
+    const big = this.heroId === 'demon' && this.demonForm === 'big';
+    const feel = impactFeelFor(this.heroId, big);
+    const baseSquash = clash ? 0.8 : step === 3 ? 0.74 : step === 2 ? 0.82 : 0.9;
+    const baseStretch = clash ? 1.12 : step === 3 ? 1.16 : step === 2 ? 1.1 : 1.05;
+    const baseRecoil = clash ? 8 : step === 3 ? 14 : step === 2 ? 9 : 5;
+    const baseLean = clash ? 0.16 : step === 3 ? 0.28 : step === 2 ? 0.18 : 0.1;
+    const baseSettle = clash ? 110 : step === 3 ? 180 : step === 2 ? 130 : 90;
+    const squashY = 1 - (1 - baseSquash) * feel.squash;
+    const stretchX = 1 + (baseStretch - 1) * feel.stretch;
+    const recoil = baseRecoil * feel.recoil;
+    const lean = baseLean * feel.lean * (dirX >= 0 ? 1 : -1);
+    const settle = Math.round(baseSettle * feel.settle);
     this.view.setScale(stretchX, squashY);
-    this.view.setRotation(dirX >= 0 ? lean : -lean);
-    this.art.setPosition(-dirX * recoil, -dirY * recoil);
-    const settle = options.step === 3 ? 160 : options.step === 2 ? 120 : 90;
+    this.view.setRotation(lean);
+    this.art.setPosition(-dirX * recoil, -dirY * recoil * 0.65);
     this.scene.tweens.add({
       targets: this.view,
       scaleX: 1,
@@ -443,38 +489,61 @@ export class NinjaBody {
       duration: settle,
       ease: 'Quad.Out',
     });
-    if (this.down) {
-      this.stop();
-      this.clearTempShield();
-      this.clearMagicVortex();
-      this.clearClawMark();
-      this.clearRage();
-      this.setFairyForm(false);
-      resetDemonForm(this);
-      clearBurn(this);
-      dismissWitchSkeletons(this);
-      if (applied > 0) {
-        playDeath(this);
-      }
-    }
+  }
+
+  /** Tip onto one side through the stun, then hop back onto both feet. */
+  private playBlastFall(dirX: number, hitStopMs: number, stunMs: number): void {
+    const fall = (dirX >= 0 ? 1 : -1) * (Math.PI / 2);
+    this.view.setScale(1.04, 0.92);
+    this.view.setRotation(fall * 0.12);
+    this.scene.tweens.add({
+      targets: this.view,
+      rotation: fall,
+      scaleX: 1.08,
+      scaleY: 0.78,
+      delay: hitStopMs,
+      duration: 160,
+      ease: 'Quad.Out',
+    });
+    this.scene.tweens.add({
+      targets: this.view,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1.14,
+      delay: hitStopMs + stunMs,
+      duration: 140,
+      ease: 'Back.Out',
+      onComplete: () => {
+        this.scene.tweens.add({
+          targets: this.view,
+          scaleY: 1,
+          duration: 90,
+          ease: 'Quad.Out',
+        });
+      },
+    });
   }
 
   /** Contact squash. Holds through hit-stop, then eases back. */
   playConnectPunch(step: ComboStep, holdMs = 0): void {
-    if (this.spriteKind === 'ninja') {
-      return;
-    }
-    const sy = step === 3 ? 0.8 : step === 2 ? 0.86 : 0.92;
-    const sx = step === 3 ? 1.1 : step === 2 ? 1.06 : 1.03;
-    const kick = step === 3 ? 8 : step === 2 ? 5 : 3;
+    const big = this.heroId === 'demon' && this.demonForm === 'big';
+    const feel = impactFeelFor(this.heroId, big);
+    const sheet = this.spriteKind === 'ninja' ? 0.55 : 1;
+    const sy = 1 - (1 - (step === 3 ? 0.78 : step === 2 ? 0.86 : 0.92)) * feel.squash * sheet;
+    const sx = 1 + ((step === 3 ? 1.12 : step === 2 ? 1.07 : 1.03) - 1) * feel.stretch * sheet;
+    const kick = (step === 3 ? 9 : step === 2 ? 6 : 3) * feel.recoil * sheet;
+    const lean = (step === 3 ? 0.08 : step === 2 ? 0.04 : 0.02) * feel.lean * (this.aim.x >= 0 ? 1 : -1) * sheet;
     this.view.setScale(sx, sy);
-    this.art.setPosition(-this.aim.x * kick, -this.aim.y * kick);
+    this.view.setRotation(lean);
+    this.art.setPosition(this.aim.x * kick, this.aim.y * kick);
+    const settle = Math.round((step === 3 ? 150 : step === 2 ? 110 : 70) * feel.settle);
     this.scene.tweens.add({
       targets: this.view,
       scaleX: 1,
       scaleY: 1,
+      rotation: 0,
       delay: holdMs,
-      duration: step === 3 ? 140 : 90,
+      duration: settle,
       ease: 'Quad.Out',
     });
     this.scene.tweens.add({
@@ -482,7 +551,7 @@ export class NinjaBody {
       x: 0,
       y: 0,
       delay: holdMs,
-      duration: step === 3 ? 130 : 80,
+      duration: Math.max(60, settle - 10),
       ease: 'Quad.Out',
     });
   }
@@ -520,7 +589,13 @@ export class NinjaBody {
       return;
     }
     const length = Math.hypot(dirX, dirY) || 1;
-    this.pendingLaunch = { x: (dirX / length) * power, y: (dirY / length) * power, cap: launchCap };
+    this.pendingLaunch = {
+      x: (dirX / length) * power,
+      y: (dirY / length) * power,
+      cap: launchCap,
+      readyAt: 0,
+      drag: COMBAT.bodyDrag,
+    };
   }
 
   /**
@@ -534,10 +609,17 @@ export class NinjaBody {
     power: number,
     launchCap: number,
     hitStopMs: number,
+    releaseMs = 0,
+    dragMul = 1,
   ): void {
     const stillFrozen = now < this.frozenUntil;
-    if (hitStopMs > 0 || stillFrozen) {
+    const drag = COMBAT.bodyDrag * dragMul;
+    if (hitStopMs > 0 || stillFrozen || releaseMs > 0) {
       this.queueLaunch(dirX, dirY, power, launchCap);
+      if (this.pendingLaunch) {
+        this.pendingLaunch.readyAt = now + hitStopMs + releaseMs;
+        this.pendingLaunch.drag = drag;
+      }
       if (hitStopMs > 0) {
         this.freezeForHitStop(now, hitStopMs);
       }
@@ -547,12 +629,13 @@ export class NinjaBody {
     if (!body) {
       return;
     }
-    body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
+    body.setDrag(drag, drag);
     this.launch(dirX, dirY, power, launchCap);
   }
 
   private tickHitStop(now: number): void {
-    if (now < this.frozenUntil) {
+    const holdingLaunch = Boolean(this.pendingLaunch && now < this.pendingLaunch.readyAt);
+    if (now < this.frozenUntil || holdingLaunch) {
       this.physics()?.setVelocity(0, 0);
       return;
     }
@@ -571,7 +654,7 @@ export class NinjaBody {
     if (!body) {
       return;
     }
-    body.setDrag(COMBAT.bodyDrag, COMBAT.bodyDrag);
+    body.setDrag(launch.drag, launch.drag);
     this.launch(launch.x, launch.y, Math.hypot(launch.x, launch.y), launch.cap);
   }
 

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COMBAT, ComboStep, hitReactionFor, hitStopFor } from '../config/combat';
+import { COMBAT, ComboStep, hitReactionFor, hitStopFor, shieldChipOf } from '../config/combat';
 import { applyDefense } from './damage';
 import { emitCombatBlocked } from './damageEvents';
 import { isInAttackArc } from './hitDetection';
@@ -135,7 +135,8 @@ export const resolveMelee = (
       return 'perfect-block';
     }
 
-    defender.drainBlockShield(profile.shieldDamage, now);
+    defender.drainBlockShield(shieldChipOf(profile.shieldDamage), now);
+    defender.status.applyShieldPressure(now);
     if (defender.blockShield <= 0) {
       defenderBlock?.breakShield(defender);
     }
@@ -193,6 +194,7 @@ export const resolveMelee = (
     finisher: step === 3,
     dirX,
     dirY,
+    tint: defender.heroId === 'witch' ? 0xb388ff : undefined,
   });
   playHitJuice(scene, defender.x, defender.y, {
     damage,

@@ -1,4 +1,4 @@
-import { ARENA } from '../config/arena';
+import { ARENA, matchFormatOf } from '../config/arena';
 import { CRATE } from '../config/crate';
 import { APPROACH_KINDS, CENTER_KINDS, SPAWN_KINDS, templateOf, type ChunkTemplate } from './chunks';
 import {
@@ -497,6 +497,26 @@ export const assemble = (seed: number, attempt: number): MapLayout => {
     if (stamp) {
       obstacles.push(...stamp.obstacles);
       decorations.push(...stamp.decorations);
+    }
+  }
+
+  if (matchFormatOf() === '6v6') {
+    const extra: Array<{ id: ClusterId; x: number; y: number; mirror: boolean }> = [
+      { id: 'parked-cars', x: Math.round(1040 * sx), y: Math.round(760 * sy), mirror: false },
+      { id: 'supply-dump', x: Math.round(1320 * sx), y: Math.round(280 * sy), mirror: false },
+      { id: 'wrecked-car', x: Math.round(1540 * sx), y: Math.round(1240 * sy), mirror: true },
+      { id: 'defensive-nest', x: Math.round(480 * sx), y: Math.round(900 * sy), mirror: false },
+      { id: 'abandoned-convoy', x: Math.round(2100 * sx), y: Math.round(700 * sy), mirror: true },
+      { id: 'overgrown-ruin', x: Math.round(860 * sx), y: Math.round(1180 * sy), mirror: false },
+      { id: 'corner-shop', x: Math.round(1280 * sx), y: Math.round(860 * sy), mirror: false },
+      { id: 'rubble-slide', x: Math.round(1900 * sx), y: Math.round(340 * sy), mirror: true },
+    ];
+    for (const [index, site] of extra.entries()) {
+      const stamp = stampCluster(templateById(site.id), site.x, site.y, site.mirror, reserved, obstacles, `six-${index}`);
+      if (stamp) {
+        obstacles.push(...stamp.obstacles);
+        decorations.push(...stamp.decorations);
+      }
     }
   }
 
