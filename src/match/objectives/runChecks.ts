@@ -210,7 +210,7 @@ const scenarioOpeningAndGap = (): CheckResult => {
     noCutoff &&
     MATCH.durationMs === 240_000;
   return {
-    name: 'opening capture and short gaps, no late cutoff',
+    name: 'opening capture, 15s event cooldown, then a random spawn',
     ok,
     detail: `open=${opening} gap=${gapLo}-${gapHi.toFixed(0)} latest=${OBJECTIVE.latestStartMs} match=${MATCH.durationMs}`,
   };
@@ -227,13 +227,21 @@ const scenarioCaptureRadius = (): CheckResult => {
 };
 
 const scenarioNoOldCooldown = (): CheckResult => {
-  const afterFirst = canStartObjective(8_000, 7_500, false);
-  const stillCool = !canStartObjective(7_000, 7_500, false);
-  const ok = afterFirst && stillCool && OBJECTIVE.gapMaxMs < 10_000;
+  const gapLo = pickEventGapMs(() => 0);
+  const gapHi = pickEventGapMs(() => 0.999);
+  const stillCool = !canStartObjective(10_000, OBJECTIVE.gapMinMs, false);
+  const afterCooldown = canStartObjective(OBJECTIVE.gapMinMs, OBJECTIVE.gapMinMs, false);
+  const ok =
+    stillCool &&
+    afterCooldown &&
+    gapLo === 15_000 &&
+    gapHi > gapLo &&
+    gapHi <= OBJECTIVE.gapMaxMs &&
+    OBJECTIVE.gapMaxMs - OBJECTIVE.gapMinMs >= 10_000;
   return {
-    name: 'no 60s global event cooldown',
+    name: 'events wait 15s, then spawn at a random time',
     ok,
-    detail: `afterFirst=${afterFirst} stillCool=${stillCool} gapMax=${OBJECTIVE.gapMaxMs}`,
+    detail: `gap=${gapLo}-${gapHi.toFixed(0)} cool=${stillCool} open=${afterCooldown}`,
   };
 };
 
