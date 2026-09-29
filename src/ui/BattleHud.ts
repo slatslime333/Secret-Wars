@@ -242,7 +242,7 @@ export class BattleHud {
       : this.touch
         ? `DASH ${dash.chargeCount}/${dash.maxCharges}`
         : `SHIFT DASH ${dash.chargeCount}/${dash.maxCharges}`;
-    const abilityBit = this.touch ? '   ATK' : '   Q E F AIM  ·  LMB FIRE';
+    const abilityBit = this.touch ? '   AIM STICK' : '   Q E F AIM  ·  LMB FIRE';
     this.verbText.setText(`${shieldBit}   ${dashBit}${abilityBit}`);
   }
 }
