@@ -83,6 +83,11 @@ export class QuickAttack {
     return this.combo.step;
   }
 
+  /** Active tap chain (1–3). Zero when the combo is cancelled, whiffed, or expired. */
+  get comboChain(): number {
+    return this.combo.chain;
+  }
+
   get nextRopeArm(): -1 | 1 {
     return this.ropeArm;
   }
@@ -205,22 +210,36 @@ export class QuickAttack {
     playLightAttack(attacker);
 
     if (attacker.heroId === 'cole') {
-      const span = COLE_ATTACK.animMs;
-      const reach = step === 3 ? 9 : step === 2 ? 6 : 4;
+      const span = COLE_ATTACK.animMs + (step - 1) * 50;
+      const reach = step === 3 ? 18 : step === 2 ? 11 : 5;
+      const sign = attacker.aim.x >= 0 ? 1 : -1;
+      const tilt = (step === 3 ? 0.48 : step === 2 ? 0.3 : 0.14) * sign;
       attacker.playCustomAttack(now, span, (frac) => {
-        const wind = frac < 0.28;
-        const contact = frac >= 0.28 && frac < 0.58;
+        const windUntil = step === 3 ? 0.34 : step === 2 ? 0.26 : 0.18;
+        const wind = frac < windUntil;
+        const contact = frac >= windUntil && frac < windUntil + 0.32;
+        const arm = wind ? (frac / windUntil) * 0.28 : Math.min(1, 0.32 + (frac - windUntil) * 3.4);
         return {
-          armLiftLeft: Math.min(1, frac * 1.7),
-          armLiftRight: Math.min(1, frac * 1.7),
-          swayX: attacker.aim.x * (wind ? -reach : contact ? reach * 1.6 : reach * 0.4),
-          scaleX: contact ? (step === 3 ? 1.12 : 1.06) : 1,
-          scaleY: contact ? (step === 3 ? 0.84 : 0.9) : wind ? 1.04 : 1,
+          armLiftLeft: arm,
+          armLiftRight: arm,
+          swayX: attacker.aim.x * (wind ? -reach : contact ? reach * 1.85 : reach * 0.3),
+          jumpY: wind ? -step * 2 : contact ? step : 0,
+          scaleX: contact ? (step === 3 ? 1.3 : step === 2 ? 1.18 : 1.06) : 1,
+          scaleY: contact ? (step === 3 ? 0.72 : step === 2 ? 0.82 : 0.92) : wind ? 1.06 : 1,
+          rotation: wind ? -tilt * 0.7 : contact ? tilt : tilt * 0.2,
         };
       });
       if (step !== 3) {
-        const half = (attacker.stats.attackArcDegrees * Math.PI) / 360;
-        spawnLightningArc(this.scene, attacker.x, attacker.y, attacker.aim.x, attacker.aim.y, COLE_ATTACK.range, half);
+        const half = (attacker.stats.attackArcDegrees * Math.PI) / 360 * (step === 2 ? 1.38 : 1);
+        spawnLightningArc(
+          this.scene,
+          attacker.x,
+          attacker.y,
+          attacker.aim.x,
+          attacker.aim.y,
+          COLE_ATTACK.range * (step === 2 ? 1.14 : 1),
+          half,
+        );
       }
     } else if (attacker.heroId === 'death') {
       this.playDeathLightSwing(attacker, now, step);
@@ -240,14 +259,14 @@ export class QuickAttack {
       this.fireMenderLight(now, attacker);
     } else if (attacker.heroId === 'demon') {
       if (isBigDemon(attacker)) {
-        this.playDemonClaw(attacker, now);
+        this.playDemonClaw(attacker, now, step);
       } else {
         this.fireDemonLight(now, attacker);
       }
     } else if (attacker.heroId === 'witch') {
       this.fireWitchLight(now, attacker);
     } else if (attacker.heroId === 'shadow') {
-      this.playShadowLight(attacker, now);
+      this.playShadowLight(attacker, now, step);
     } else {
       attacker.playAttackAnimation(now, step);
       this.spawnWhiteLineSlice(attacker, step);
@@ -490,22 +509,25 @@ export class QuickAttack {
     this.demonShots.length = 0;
   }
 
-  private playDemonClaw(attacker: NinjaBody, now: number): void {
+  private playDemonClaw(attacker: NinjaBody, now: number, step: ComboStep): void {
     const len = Math.hypot(attacker.aim.x, attacker.aim.y) || 1;
     const nx = attacker.aim.x / len;
     const ny = attacker.aim.y / len;
-    attacker.playCustomAttack(now, DEMON_CLAW.animMs, (frac) => {
-      const wind = frac < 0.32;
-      const contact = frac >= 0.32 && frac < 0.62;
+    const reach = step === 3 ? 28 : step === 2 ? 18 : 10;
+    const sign = nx >= 0 ? 1 : -1;
+    attacker.playCustomAttack(now, DEMON_CLAW.animMs + (step - 1) * 40, (frac) => {
+      const wind = frac < 0.3;
+      const contact = frac >= 0.3 && frac < 0.64;
       return {
-        armLiftRight: wind ? 0.2 + frac * 2 : Math.max(0.18, 1.25 - (frac - 0.32) * 1.6),
-        armLiftLeft: 0.2 + Math.sin(frac * Math.PI) * 0.7,
-        swayX: nx * (wind ? -10 : contact ? 16 : 6),
-        scaleX: contact ? 1.12 : 1,
-        scaleY: contact ? 0.82 : wind ? 1.05 : 1,
+        armLiftRight: wind ? 0.16 + frac : contact ? 1 : Math.max(0.2, 1.2 - (frac - 0.64) * 2),
+        armLiftLeft: 0.2 + Math.sin(frac * Math.PI) * (0.45 + step * 0.2),
+        swayX: nx * (wind ? -reach * 0.7 : contact ? reach : reach * 0.3),
+        scaleX: contact ? (step === 3 ? 1.28 : step === 2 ? 1.16 : 1.08) : 1,
+        scaleY: contact ? (step === 3 ? 0.74 : step === 2 ? 0.82 : 0.9) : wind ? 1.06 : 1,
+        rotation: (wind ? -0.28 : contact ? 0.55 : 0.12) * step * 0.28 * sign,
       };
     });
-    spawnShadowSlash(this.scene, attacker.x, attacker.y, nx, ny, attacker.stats.attackRange, true);
+    spawnShadowSlash(this.scene, attacker.x, attacker.y, nx, ny, attacker.stats.attackRange * (0.92 + step * 0.1), true, undefined, step);
   }
 
   private resolveDemonClaw(
@@ -564,30 +586,36 @@ export class QuickAttack {
     this.witchBarrages.length = 0;
   }
 
-  private playShadowLight(attacker: NinjaBody, now: number): void {
+  private playShadowLight(attacker: NinjaBody, now: number, step: ComboStep): void {
     const len = Math.hypot(attacker.aim.x, attacker.aim.y) || 1;
     const nx = attacker.aim.x / len;
     const ny = attacker.aim.y / len;
-    attacker.playCustomAttack(now, SHADOW_ATTACK.animMs, (frac) => {
-      const wind = frac < 0.28;
-      const slash = frac >= 0.28 && frac < 0.62;
+    const reach = step === 3 ? 24 : step === 2 ? 16 : 8;
+    const sign = nx >= 0 ? 1 : -1;
+    attacker.playCustomAttack(now, SHADOW_ATTACK.animMs + (step - 1) * 45, (frac) => {
+      const wind = frac < 0.3;
+      const slash = frac >= 0.3 && frac < 0.66;
+      const charge = wind ? (frac / 0.3) * 0.3 : slash ? 0.38 + ((frac - 0.3) / 0.36) * 0.62 : 0.7;
       return {
-        armLiftRight: wind ? 0.15 : slash ? 1 : 0.4,
-        armLiftLeft: 0.04,
-        swayX: nx * (wind ? -9 : slash ? 16 : 5),
-        scaleX: slash ? 1.1 : 1,
-        scaleY: slash ? 0.84 : wind ? 1.04 : 1,
+        armLiftRight: charge,
+        armLiftLeft: 0.04 + (slash ? step * 0.08 : 0),
+        swayX: nx * (wind ? -reach * 0.75 : slash ? reach : reach * 0.28),
+        scaleX: slash ? (step === 3 ? 1.26 : step === 2 ? 1.15 : 1.06) : 1,
+        scaleY: slash ? (step === 3 ? 0.74 : step === 2 ? 0.84 : 0.94) : wind ? 1.05 : 1,
+        rotation: (wind ? -0.4 : slash ? 0.62 : 0.16) * (0.45 + step * 0.28) * sign,
       };
     });
+    const half = ((attacker.stats.attackArcDegrees * Math.PI) / 360) * (step === 3 ? 1.5 : step === 2 ? 1.24 : 1);
     spawnShadowSlash(
       this.scene,
       attacker.x,
       attacker.y,
       nx,
       ny,
-      attacker.stats.attackRange,
+      attacker.stats.attackRange * (0.9 + step * 0.12),
       false,
-      (attacker.stats.attackArcDegrees * Math.PI) / 360,
+      half,
+      step,
     );
   }
 
@@ -911,9 +939,10 @@ export class QuickAttack {
           swordAngleOffset: angle - idle,
           batScale: scale,
           armLiftRight: frac < 0.26 ? (frac / 0.26) * 0.5 : Math.max(0.08, 0.5 - (frac - 0.26) * 0.45),
-          swayX: Math.sin(Math.min(1, frac * 1.2) * Math.PI) * (death.aim.x >= 0 ? 1 : -1) * (step === 3 ? 12 : 8),
-          scaleX: frac > 0.2 && frac < 0.62 ? (step === 3 ? 1.12 : 1.06) : 1,
-          scaleY: frac > 0.2 && frac < 0.62 ? (step === 3 ? 0.82 : 0.9) : 1,
+          swayX: Math.sin(Math.min(1, frac * 1.2) * Math.PI) * (death.aim.x >= 0 ? 1 : -1) * (step === 3 ? 24 : step === 2 ? 16 : 8),
+          scaleX: frac > 0.2 && frac < 0.62 ? (step === 3 ? 1.24 : step === 2 ? 1.14 : 1.05) : 1,
+          scaleY: frac > 0.2 && frac < 0.62 ? (step === 3 ? 0.74 : step === 2 ? 0.84 : 0.92) : 1,
+          rotation: Math.sin(Math.min(1, frac * 1.15) * Math.PI) * (death.aim.x >= 0 ? 1 : -1) * (step === 3 ? 0.55 : step === 2 ? 0.34 : 0.16),
         };
       },
       'Linear',
@@ -942,11 +971,11 @@ export class QuickAttack {
         const currentEnd = startAngle + totalArc * anim.sweepProgress;
         const a0 = sign >= 0 ? startAngle : currentEnd;
         const a1 = sign >= 0 ? currentEnd : startAngle;
-        graphics.lineStyle(step === 3 ? 14 : 9, 0x3a2410, 0.4 * anim.alpha);
+        graphics.lineStyle(step === 3 ? 22 : step === 2 ? 14 : 9, 0x3a2410, 0.4 * anim.alpha);
         graphics.beginPath();
         graphics.arc(0, 0, radius, a0, a1);
         graphics.strokePath();
-        graphics.lineStyle(step === 3 ? 6 : 4, 0xc68654, 0.95 * anim.alpha);
+        graphics.lineStyle(step === 3 ? 10 : step === 2 ? 6 : 4, 0xc68654, 0.95 * anim.alpha);
         graphics.beginPath();
         graphics.arc(0, 0, radius, a0, a1);
         graphics.strokePath();
@@ -979,8 +1008,8 @@ export class QuickAttack {
     const half = attackHalfFor(step);
     const startAngle = aimAngle - half;
     const totalArc = half * 2;
-    const radius = ninja.stats.attackRange * (0.82 + step * 0.08);
-    const duration = 160 + step * 44;
+    const radius = ninja.stats.attackRange * (step === 3 ? 1.22 : step === 2 ? 1.05 : 0.9);
+    const duration = step === 3 ? 340 : step === 2 ? 240 : 160;
     const rivalTint = ninja.rival;
 
     const anim = { sweepProgress: 0, alpha: 1 };
@@ -995,8 +1024,8 @@ export class QuickAttack {
         graphics.clear();
         const currentEndAngle = startAngle + totalArc * anim.sweepProgress;
         const trailStartAngle = Math.max(startAngle, currentEndAngle - totalArc * 0.75);
-        const glow = step === 1 ? 6 : step === 2 ? 9 : 13;
-        const core = step === 1 ? 3 : step === 2 ? 4 : 6;
+        const glow = step === 1 ? 8 : step === 2 ? 16 : 28;
+        const core = step === 1 ? 3 : step === 2 ? 7 : 12;
         const color = rivalTint ? 0xffe0c8 : 0xffffff;
 
         graphics.lineStyle(glow, color, 0.45 * anim.alpha);

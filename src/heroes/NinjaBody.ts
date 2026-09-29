@@ -106,7 +106,6 @@ export class NinjaBody {
   swingBreaks = 0;
   private holdAttackPose = false;
   /** Sheet slash stays upright. Procedural tilt is for drawn heroes only. */
-  private ninjaSheetAttack = false;
   private hurtGlow?: Phaser.GameObjects.Graphics;
   private hurtMark?: Phaser.GameObjects.Graphics;
   private hurtTint?: Phaser.GameObjects.Sprite;
@@ -721,16 +720,17 @@ export class NinjaBody {
     this.attackingUntil = now + duration;
     this.status.markSwing(now, comboStep);
     if (this.spriteKind === 'ninja') {
-      this.playNinjaSheetAttack(duration);
+      this.playNinjaSheetAttack(duration, comboStep);
       return;
     }
 
-    const lungeX = this.aim.x * (profile.lungeDistance + 6);
-    const lungeY = this.aim.y * (profile.lungeDistance + 6);
-    const tilt = (this.aim.x >= 0 ? 1 : -1) * (0.28 + comboStep * 0.1);
-    const windAngle = comboStep === 1 ? -0.7 : comboStep === 2 ? -1.05 : -1.35;
-    const strikeAngle = comboStep === 1 ? 0.95 : comboStep === 2 ? 1.35 : 1.8;
-    const contactScale = comboStep === 3 ? 1.1 : comboStep === 2 ? 1.06 : 1.03;
+    const tilt = (this.aim.x >= 0 ? 1 : -1) * (0.34 + comboStep * 0.22);
+    const windAngle = comboStep === 1 ? -0.95 : comboStep === 2 ? -1.45 : -1.95;
+    const strikeAngle = comboStep === 1 ? 1.15 : comboStep === 2 ? 1.75 : 2.35;
+    const contactScale = comboStep === 3 ? 1.28 : comboStep === 2 ? 1.16 : 1.06;
+    const lunge = (profile.lungeDistance + 8) * (comboStep === 3 ? 1.65 : comboStep === 2 ? 1.3 : 1);
+    const lungeX = this.aim.x * lunge;
+    const lungeY = this.aim.y * lunge;
 
     this.holdAttackPose = false;
     this.currentAttackTween?.stop();
@@ -788,30 +788,51 @@ export class NinjaBody {
   }
 
   /**
-   * Wind-up, strike, follow-through on the sheet. The slash is already drawn,
-   * so the sprite stays planted instead of tilting off its feet.
+   * Sheet frames still step wind-up, strike, follow-through.
+   * The body itself lunges and rotates harder on each combo step.
    */
-  private playNinjaSheetAttack(duration: number): void {
+  private playNinjaSheetAttack(duration: number, comboStep: ComboStep): void {
     this.holdAttackPose = false;
     this.currentAttackTween?.stop();
-    this.ninjaSheetAttack = true;
-    this.art.setPosition(0, 0);
-    this.art.setRotation(0);
-    this.art.setScale(1);
+    const sign = this.aim.x >= 0 ? 1 : -1;
+    const wind = comboStep === 1 ? -1.05 : comboStep === 2 ? -1.5 : -1.9;
+    const strike = comboStep === 1 ? 0.85 : comboStep === 2 ? 1.25 : 1.7;
+    const lunge = comboStep === 1 ? 10 : comboStep === 2 ? 18 : 28;
+    const tilt = sign * (comboStep === 1 ? 0.22 : comboStep === 2 ? 0.4 : 0.62);
+    const punch = comboStep === 1 ? 1.06 : comboStep === 2 ? 1.16 : 1.28;
+    const squash = comboStep === 1 ? 0.94 : comboStep === 2 ? 0.84 : 0.74;
     const phase = { frac: 0 };
     const paint = (frac: number) => {
-      const swordAngleOffset = frac < 0.34 ? -1 : frac < 0.62 ? 0 : 1;
+      let pose = 0;
+      let reach = 0;
+      if (frac < 0.28) {
+        const t = frac / 0.28;
+        pose = wind * t;
+        reach = -0.4 * t;
+      } else if (frac < 0.58) {
+        const t = (frac - 0.28) / 0.3;
+        pose = wind + (strike - wind) * t;
+        reach = -0.4 + 1.4 * t;
+      } else {
+        const t = (frac - 0.58) / 0.42;
+        pose = strike * (1 - t * 0.8);
+        reach = 1 - t;
+      }
       this.paintHero({
         facing: this.facing,
         attacking: true,
-        swordAngleOffset,
-        comboStep: 1,
+        swordAngleOffset: pose,
+        comboStep,
         hitFlash: this.status.isFlashingHit(this.now()),
         rival: this.rival,
         team: this.team,
         fairyForm: this.fairyForm,
         demonForm: this.demonForm,
       });
+      const contact = reach > 0.72;
+      this.art.setPosition(this.aim.x * lunge * reach, this.aim.y * lunge * reach);
+      this.art.setRotation(tilt * Math.max(0, reach));
+      this.art.setScale(contact ? punch : 1, contact ? squash : 1);
     };
     paint(0);
     const tween = this.scene.tweens.add({
@@ -823,16 +844,12 @@ export class NinjaBody {
         if (!this.present || this.currentAttackTween !== tween) {
           return;
         }
-        this.art.setPosition(0, 0);
-        this.art.setRotation(0);
-        this.art.setScale(1);
         paint(phase.frac);
       },
       onComplete: () => {
         if (!this.present || this.currentAttackTween !== tween) {
           return;
         }
-        this.ninjaSheetAttack = false;
         this.art.setPosition(0, 0);
         this.art.setRotation(0);
         this.art.setScale(1);
@@ -858,11 +875,11 @@ export class NinjaBody {
       ropeAction?: 'shot' | 'punch' | 'grab';
       scaleX?: number;
       scaleY?: number;
+      rotation?: number;
     },
     ease: string = 'Sine.InOut',
   ): void {
     this.holdAttackPose = false;
-    this.ninjaSheetAttack = false;
     this.currentAttackTween?.stop();
     this.attackingUntil = now + durationMs;
     const anim = { frac: 0 };
@@ -898,6 +915,7 @@ export class NinjaBody {
         });
         this.art.setPosition(pose.swayX ?? 0, pose.jumpY ?? 0);
         this.art.setScale(pose.scaleX ?? 1, pose.scaleY ?? 1);
+        this.art.setRotation(pose.rotation ?? 0);
       },
       onComplete: () => {
         if (!this.present) {
@@ -907,13 +925,13 @@ export class NinjaBody {
         this.armLiftRight = 0;
         this.art.setPosition(0, 0);
         this.art.setScale(1);
+        this.art.setRotation(0);
         this.redrawIdle();
       },
     });
   }
 
   playEvasiveLean(dirX: number, dirY: number, durationMs: number): void {
-    this.ninjaSheetAttack = false;
     this.currentAttackTween?.stop();
     this.view.setRotation(dirX >= 0 ? 0.22 : -0.22);
     this.art.setPosition(dirX * 6, dirY * 6);
@@ -933,7 +951,6 @@ export class NinjaBody {
   }
 
   playFrontFlip(dirX: number, dirY: number, durationMs: number, jumpHeight = 28): void {
-    this.ninjaSheetAttack = false;
     this.currentAttackTween?.stop();
     this.scene.tweens.killTweensOf(this.art);
     this.scene.tweens.killTweensOf(this.view);
@@ -966,7 +983,6 @@ export class NinjaBody {
   }
 
   playKickPose(durationMs: number): void {
-    this.ninjaSheetAttack = false;
     this.currentAttackTween?.stop();
     this.attackingUntil = this.now() + durationMs;
     const lean = this.aim.x >= 0 ? 0.35 : -0.35;
@@ -981,7 +997,6 @@ export class NinjaBody {
   }
 
   playBackflip(dirX: number, dirY: number, durationMs: number, jumpHeight = 34): void {
-    this.ninjaSheetAttack = false;
     this.currentAttackTween?.stop();
     this.scene.tweens.killTweensOf(this.art);
     this.scene.tweens.killTweensOf(this.view);
@@ -1704,15 +1719,9 @@ export class NinjaBody {
       !this.witchMoving && now >= this.attackingUntil && this.present && !this.down
         ? Math.sin(now / 280) * 0.8
         : 0;
-    if (this.spriteKind === 'ninja' && this.ninjaSheetAttack) {
-      figure.setPosition(0, this.spriteFeetY);
-      figure.setRotation(0);
-      figure.setScale(this.spriteScale);
-    } else {
-      figure.setPosition(this.art.x, this.art.y + this.spriteFeetY + bob);
-      figure.setRotation(this.art.rotation);
-      figure.setScale(this.art.scaleX * this.spriteScale, this.art.scaleY * this.spriteScale);
-    }
+    figure.setPosition(this.art.x, this.art.y + this.spriteFeetY + bob);
+    figure.setRotation(this.art.rotation);
+    figure.setScale(this.art.scaleX * this.spriteScale, this.art.scaleY * this.spriteScale);
     if (this.fairyForm) {
       figure.setVisible(false);
       return;

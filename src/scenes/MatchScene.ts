@@ -1103,6 +1103,7 @@ export class MatchScene extends Phaser.Scene {
         markers: this.zones?.markers(),
       });
     }
+    this.inputReader.setComboPulse(spectating ? 0 : this.player.attacks.comboChain);
     if (spectating) {
       this.abilityTray?.setVisible(false);
       return;

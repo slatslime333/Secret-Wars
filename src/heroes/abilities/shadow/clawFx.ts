@@ -56,46 +56,49 @@ export const spawnShadowSlash = (
   radius: number,
   giant = false,
   halfArc?: number,
+  weight = 1,
 ): void => {
   const g = scene.add.graphics().setDepth(20);
   const angle = Math.atan2(dirY, dirX);
-  const half = halfArc ?? (giant ? 1.05 : 0.78);
-  const tip = halfArc === undefined ? radius * (giant ? 1.18 : 1.04) : radius;
+  const heft = weight <= 1 ? 1 : weight;
+  const half = (halfArc ?? (giant ? 1.05 : 0.78)) * (heft === 1 ? 1 : 0.92 + heft * 0.08);
+  const tip = halfArc === undefined ? radius * (giant ? 1.18 : 1.04) : radius * (heft === 1 ? 1 : 0.9 + heft * 0.08);
+  const widthMul = heft === 1 ? 1 : 0.7 + heft * 0.38;
   const anim = { t: 0, alpha: 1 };
   g.setPosition(x, y);
   scene.tweens.add({
     targets: anim,
     t: 1,
     alpha: 0,
-    duration: giant ? 520 : 260,
+    duration: (giant ? 520 : 260) * (heft === 1 ? 1 : 0.85 + heft * 0.18),
     ease: 'Cubic.Out',
     onUpdate: () => {
       g.clear();
       const a0 = angle - half;
       const a1 = a0 + half * 2 * Math.min(1, anim.t * 1.15);
       const persist = giant ? Math.min(1, anim.alpha * 1.35) : anim.alpha;
-      g.lineStyle(giant ? 22 : 12, 0x120814, 0.5 * persist);
+      g.lineStyle((giant ? 22 : 12) * widthMul, 0x120814, 0.5 * persist);
       g.beginPath();
       g.arc(0, 0, radius, a0, a1);
       g.strokePath();
-      g.lineStyle(giant ? 13 : 7, 0x4a2870, 0.88 * persist);
+      g.lineStyle((giant ? 13 : 7) * widthMul, 0x4a2870, 0.88 * persist);
       g.beginPath();
       g.arc(0, 0, radius, a0, a1);
       g.strokePath();
-      g.lineStyle(giant ? 5 : 2.6, 0xe8d8ff, 0.95 * persist);
+      g.lineStyle((giant ? 5 : 2.6) * widthMul, 0xe8d8ff, 0.95 * persist);
       g.beginPath();
       g.arc(0, 0, radius - (giant ? 12 : 6), a0, a1);
       g.strokePath();
       const claw = a1;
-      const marks = giant ? 5 : 3;
+      const marks = (giant ? 5 : 3) + (heft >= 3 ? 2 : heft >= 2 ? 1 : 0);
       const spread = giant ? 0.2 : 0.18;
       for (let i = 0; i < marks; i += 1) {
         const a = claw + (i - (marks - 1) / 2) * spread;
         const inner = radius * (giant ? 0.28 : 0.45);
         const outer = tip;
-        g.lineStyle(giant ? 7 : 2.8, 0x1a0c22, 0.62 * persist);
+        g.lineStyle((giant ? 7 : 2.8) * widthMul, 0x1a0c22, 0.62 * persist);
         g.lineBetween(Math.cos(a) * inner, Math.sin(a) * inner, Math.cos(a) * outer, Math.sin(a) * outer);
-        g.lineStyle(giant ? 3.4 : 1.6, 0xd8c4ff, 0.95 * persist);
+        g.lineStyle((giant ? 3.4 : 1.6) * widthMul, 0xd8c4ff, 0.95 * persist);
         g.lineBetween(Math.cos(a) * inner, Math.sin(a) * inner, Math.cos(a) * outer, Math.sin(a) * outer);
       }
     },

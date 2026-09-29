@@ -74,4 +74,9 @@ export class ComboTracker {
   get step(): number {
     return this.shown;
   }
+
+  /** Live chain only. Drops to 0 the moment the combo is cancelled or expires. */
+  get chain(): number {
+    return this.count;
+  }
 }
