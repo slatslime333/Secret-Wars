@@ -24,6 +24,8 @@ export class VirtualThumbstick {
   private readonly label: Phaser.GameObjects.Text;
   private readonly zone: Phaser.GameObjects.Zone;
   private pointerId?: number;
+  private comboStep = 0;
+  private pulse?: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: VirtualThumbstickOptions) {
     this.scene = scene;
@@ -166,6 +168,8 @@ export class VirtualThumbstick {
   }
 
   destroy(): void {
+    this.pulse?.stop();
+    this.pulse = undefined;
     this.stopListening();
     this.scene.input?.off(Phaser.Input.Events.POINTER_DOWN, this.onSceneDown, this);
     this.base.destroy();
@@ -176,6 +180,53 @@ export class VirtualThumbstick {
 
   setLabel(text: string): void {
     this.label.setText(text);
+  }
+
+  /**
+   * Center knob grows and pulses while a tap combo is live.
+   * Step 0 (cancel, whiff, expiry, or a held repeat) snaps it back.
+   */
+  setComboPulse(step: number): void {
+    const next = step >= 3 ? 3 : step === 2 ? 2 : step === 1 ? 1 : 0;
+    if (next === this.comboStep) {
+      return;
+    }
+    this.comboStep = next;
+    this.pulse?.stop();
+    this.pulse = undefined;
+    if (next === 0 || !this.knob.active) {
+      this.resetKnobFace();
+      return;
+    }
+    const state = { t: 0 };
+    const paint = () => {
+      if (!this.knob.active) {
+        return;
+      }
+      const wave = Math.sin(state.t);
+      const grow = next === 1 ? 1.24 : next === 2 ? 1.58 : 1.96;
+      const amp = next === 1 ? 0.08 : next === 2 ? 0.14 : 0.2;
+      this.knob.setScale(grow + amp * wave);
+      const color = next === 3 ? COLORS.yellow : next === 2 ? COLORS.orange : this.accent;
+      this.knob.setStrokeStyle(next === 3 ? 5 : next === 2 ? 4 : 3, color, Math.min(1, (0.78 + 0.22 * wave) * TOUCH_CONTROL_ALPHA + 0.2));
+    };
+    paint();
+    this.pulse = this.scene.tweens.add({
+      targets: state,
+      t: Math.PI,
+      duration: next === 1 ? 460 : next === 2 ? 300 : 190,
+      yoyo: true,
+      repeat: -1,
+      onUpdate: paint,
+    });
+  }
+
+  private resetKnobFace(): void {
+    if (!this.knob.active) {
+      return;
+    }
+    this.knob.setScale(1);
+    this.knob.setStrokeStyle(3, this.accent, 0.95 * TOUCH_CONTROL_ALPHA);
   }
 
   setVisible(visible: boolean): void {

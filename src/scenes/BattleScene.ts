@@ -336,7 +336,8 @@ export class BattleScene extends Phaser.Scene {
     audio.setListener(this.ninja.x, this.ninja.y);
     this.drawSandboxDebug(now);
     if (this.sandboxPaused) {
-      this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
+      this.inputReader.setComboPulse(this.attacks.comboChain);
+    this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
       this.syncFeedback(now);
       this.cuePlayerCrowdControl(now);
       this.syncAbilityUi(now);
@@ -353,7 +354,8 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.round.isLocked) {
-      this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
+      this.inputReader.setComboPulse(this.attacks.comboChain);
+    this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
       this.syncFeedback(now);
       this.cuePlayerCrowdControl(now);
       this.syncAbilityUi(now);
@@ -694,6 +696,7 @@ export class BattleScene extends Phaser.Scene {
       );
     }
 
+    this.inputReader.setComboPulse(this.attacks.comboChain);
     this.hud.sync(this.ninja, this.rival, now, this.attacks.comboStep, this.block, this.dash);
     this.syncFeedback(now);
     this.cuePlayerCrowdControl(now);
