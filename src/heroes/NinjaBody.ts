@@ -48,6 +48,8 @@ export type FighterOptions = {
   playerControlled?: boolean;
 };
 
+const liveFighters = new Set<NinjaBody>();
+
 export class NinjaBody {
   readonly sprite: Phaser.Physics.Arcade.Image;
   readonly view: Phaser.GameObjects.Container;
@@ -243,6 +245,7 @@ export class NinjaBody {
     this.view.add(this.hurtMark);
     this.redrawIdle();
     this.scene.physics.world.on('worldstep', this.containInArena, this);
+    liveFighters.add(this);
   }
 
   get defense(): number {
@@ -1529,6 +1532,7 @@ export class NinjaBody {
   }
 
   destroy(): void {
+    liveFighters.delete(this);
     this.present = false;
     this.scene.physics.world?.off('worldstep', this.containInArena, this);
     this.currentAttackTween?.stop();
@@ -1857,6 +1861,13 @@ export class NinjaBody {
     });
   }
 }
+
+/** Every fighter still constructed, including minions. Destroy removes them. */
+export const forEachLiveFighter = (visit: (fighter: NinjaBody) => void): void => {
+  for (const fighter of liveFighters) {
+    visit(fighter);
+  }
+};
 
 /** Arcade processCallback: skip hero-hero collide while Soul Dash is ghosting or attached. */
 export const allowsHeroCollide = (a: object, b: object): boolean => {

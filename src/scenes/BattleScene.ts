@@ -449,8 +449,6 @@ export class BattleScene extends Phaser.Scene {
       this.ninja.setAim(frame.ability2Aim);
     } else if (frame.ability1Aiming && frame.ability1Aim.lengthSq() > 0) {
       this.ninja.setAim(frame.ability1Aim);
-    } else if (frame.blockHeld && frame.blockAimActive) {
-      this.ninja.setAim(frame.blockAim);
     } else if (frame.aimActive && isTouchPrimary() && this.rival && !this.rival.down) {
       const aim = softenAim(
         frame.aim,

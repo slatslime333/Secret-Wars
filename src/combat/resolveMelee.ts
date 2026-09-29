@@ -29,17 +29,12 @@ const inArc = (attacker: NinjaBody, defender: NinjaBody, rangeMul = 1, forgivene
 
 const flashBlockShield = (scene: Phaser.Scene, defender: NinjaBody, heavy: boolean, perfect: boolean): void => {
   const graphics = scene.add.graphics().setDepth(21);
-  const angle = Math.atan2(defender.aim.y, defender.aim.x);
   graphics.setPosition(defender.x, defender.y);
   graphics.lineStyle(perfect ? 12 : heavy ? 8 : 6, perfect ? 0xffc928 : 0x49dce1, 1);
-  graphics.beginPath();
-  graphics.arc(0, 0, 32, angle - 1.1, angle + 1.1);
-  graphics.strokePath();
+  graphics.strokeCircle(0, 0, 32);
   if (perfect) {
     graphics.lineStyle(4, 0xffffff, 0.95);
-    graphics.beginPath();
-    graphics.arc(0, 0, 38, angle - 1.2, angle + 1.2);
-    graphics.strokePath();
+    graphics.strokeCircle(0, 0, 38);
   }
   scene.tweens.add({
     targets: graphics,
@@ -51,7 +46,7 @@ const flashBlockShield = (scene: Phaser.Scene, defender: NinjaBody, heavy: boole
 
 /**
  * Shared melee resolution for player and CPU Ninja.
- * Handles connect, directional hold-shield, perfect shield, and clash.
+ * Handles connect, the 360 hold-shield, perfect shield, and clash.
  */
 export const resolveMelee = (
   scene: Phaser.Scene,
