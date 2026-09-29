@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
+import { audio } from '../audio';
 import { COMBAT } from '../config/combat';
-import { isInAttackArc } from './hitDetection';
 import { spawnCombatCallout } from '../effects/combatCallout';
-import { NinjaBody } from '../heroes/NinjaBody';
+import { forEachLiveFighter, NinjaBody } from '../heroes/NinjaBody';
 import { COLORS } from '../ui/theme';
 
 export type BlockAbsorbResult = {
@@ -10,18 +10,26 @@ export type BlockAbsorbResult = {
   perfect: boolean;
 };
 
+type BlastPush = {
+  body: NinjaBody;
+  dirX: number;
+  dirY: number;
+  power: number;
+};
+
 /**
- * Hold-to-block directional shield.
- * Holding and blocked hits drain the fighter's shield HP, not stamina.
+ * Hold-to-block shield. The ring covers every direction around the fighter.
+ * Holding and blocked hits drain shield HP, not stamina.
  * Walking remains allowed while the shield is up.
+ * Breaking the shield shoves nearby enemies, then waits out a cooldown.
  */
 export class BlockController {
   private holding = false;
   private raisedAt = -9999;
   private drainAcc = 0;
+  private lastBlastAt = -Infinity;
   private readonly shield: Phaser.GameObjects.Graphics;
   private drawn = false;
-  private lastAngle = 999;
   private lastPerfect = false;
 
   constructor(scene: Phaser.Scene) {
@@ -74,15 +82,13 @@ export class BlockController {
     return this.holding && now - this.raisedAt <= COMBAT.perfectShieldWindowMs;
   }
 
-  /** True when the held shield is up and facing the attacker. */
+  /** True when the held shield is up. Coverage is a full circle, so facing is ignored. */
   tryAbsorb(now: number, ninja: NinjaBody, fromX: number, fromY: number): BlockAbsorbResult {
     if (!this.holding || ninja.blockShield <= 0) {
       return { absorbed: false, perfect: false };
     }
-    const covered = isInAttackArc(ninja.x, ninja.y, ninja.aim.x, ninja.aim.y, fromX, fromY, 420, 0.95, 8);
-    if (!covered) {
-      return { absorbed: false, perfect: false };
-    }
+    void fromX;
+    void fromY;
     return { absorbed: true, perfect: this.isPerfect(now) };
   }
 
@@ -91,6 +97,7 @@ export class BlockController {
       return;
     }
     spawnCombatCallout(this.shield.scene, ninja.x, ninja.y, 'SHIELD BREAK', COLORS.orange);
+    this.blast(ninja);
     this.drop(ninja);
   }
 
@@ -106,29 +113,101 @@ export class BlockController {
       }
       return;
     }
-    const angle = Math.atan2(ninja.aim.y, ninja.aim.x);
     const perfect = this.isPerfect(now);
     this.shield.setPosition(ninja.x, ninja.y);
-    if (this.drawn && Math.abs(angle - this.lastAngle) < 0.03 && perfect === this.lastPerfect) {
+    if (this.drawn && perfect === this.lastPerfect) {
       return;
     }
-    this.lastAngle = angle;
     this.lastPerfect = perfect;
     this.drawn = true;
     this.shield.clear();
     this.shield.lineStyle(10, COLORS.paper, perfect ? 0.95 : 0.62);
-    this.shield.beginPath();
-    this.shield.arc(0, 0, 30, angle - 1.05, angle + 1.05);
-    this.shield.strokePath();
+    this.shield.strokeCircle(0, 0, 30);
     this.shield.lineStyle(5, perfect ? COLORS.yellow : COLORS.cyan, perfect ? 1 : 0.9);
-    this.shield.beginPath();
-    this.shield.arc(0, 0, 24, angle - 0.95, angle + 0.95);
-    this.shield.strokePath();
+    this.shield.strokeCircle(0, 0, 24);
   }
 
   private drop(ninja: NinjaBody): void {
     this.holding = false;
     this.drainAcc = 0;
     ninja.blocking = false;
+  }
+
+  /** Medium-small outward shove. The callout still plays when this is cooling down. */
+  private blast(ninja: NinjaBody): void {
+    const now = this.shield.scene.time.now;
+    if (now - this.lastBlastAt < COMBAT.shieldBreakBlastCooldownMs) {
+      return;
+    }
+    this.lastBlastAt = now;
+    const pushes = this.collectPushes(ninja);
+    if (pushes.length === 0) {
+      this.spawnBreakRing(ninja.x, ninja.y);
+      return;
+    }
+    this.spawnBreakRing(ninja.x, ninja.y);
+    audio.play('combat-knockback', { x: ninja.x, y: ninja.y });
+    const apply = (): void => {
+      for (const push of pushes) {
+        if (!push.body.sprite.active || push.body.down || !push.body.isPresent) {
+          continue;
+        }
+        push.body.applyRecoil(push.dirX, push.dirY, push.power);
+      }
+    };
+    apply();
+    // A breaking hit freezes the attacker and queues a smaller recoil after this returns.
+    this.shield.scene.time.delayedCall(COMBAT.hitStopBlockMs + 40, apply);
+  }
+
+  private collectPushes(ninja: NinjaBody): BlastPush[] {
+    const pushes: BlastPush[] = [];
+    const radius = COMBAT.shieldBreakBlastRadius;
+    forEachLiveFighter((other) => {
+      if (other === ninja || other.team === ninja.team || other.down || !other.isPresent) {
+        return;
+      }
+      if (other.isInvulnerable(this.shield.scene.time.now)) {
+        return;
+      }
+      const dx = other.x - ninja.x;
+      const dy = other.y - ninja.y;
+      const dist = Math.hypot(dx, dy);
+      const reach = radius + other.stats.bodyRadius;
+      if (dist > reach) {
+        return;
+      }
+      const dirX = dist > 1 ? dx / dist : 1;
+      const dirY = dist > 1 ? dy / dist : 0;
+      const t = dist / reach;
+      const power =
+        COMBAT.shieldBreakBlastKnockNear +
+        (COMBAT.shieldBreakBlastKnockFar - COMBAT.shieldBreakBlastKnockNear) * t;
+      pushes.push({ body: other, dirX, dirY, power });
+    });
+    return pushes;
+  }
+
+  private spawnBreakRing(x: number, y: number): void {
+    const scene = this.shield.scene;
+    const ring = scene.add.graphics().setDepth(16);
+    ring.setPosition(x, y);
+    const radius = COMBAT.shieldBreakBlastRadius;
+    const anim = { t: 0 };
+    scene.tweens.add({
+      targets: anim,
+      t: 1,
+      duration: 180,
+      ease: 'Cubic.Out',
+      onUpdate: () => {
+        ring.clear();
+        const r = 8 + anim.t * radius;
+        ring.lineStyle(5 - anim.t * 3, COLORS.orange, 0.85 * (1 - anim.t));
+        ring.strokeCircle(0, 0, r);
+        ring.lineStyle(2, COLORS.paper, 0.7 * (1 - anim.t));
+        ring.strokeCircle(0, 0, Math.max(4, r * 0.7));
+      },
+      onComplete: () => ring.destroy(),
+    });
   }
 }

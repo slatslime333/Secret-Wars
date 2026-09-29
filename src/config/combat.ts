@@ -49,6 +49,14 @@ export const COMBAT = {
   /** Raise window for Perfect Shield. Small on purpose — holding is not enough. */
   perfectShieldWindowMs: 110,
   perfectShieldStunMs: 280,
+  /**
+   * Shield break shoves nearby enemies a short way.
+   * Smaller than a light swing. The blast itself waits out this cooldown.
+   */
+  shieldBreakBlastRadius: 78,
+  shieldBreakBlastKnockNear: 250,
+  shieldBreakBlastKnockFar: 150,
+  shieldBreakBlastCooldownMs: 30_000,
   /** Hitting a normal shield still shoves the attacker a little, without stun. */
   shieldHitRecoilLight: 42,
   shieldHitRecoilHeavy: 68,

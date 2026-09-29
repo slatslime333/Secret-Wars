@@ -20,8 +20,6 @@ export type BattleFrame = {
   attackHeld: boolean;
   attackPressed: boolean;
   blockHeld: boolean;
-  blockAim: Phaser.Math.Vector2;
-  blockAimActive: boolean;
   dashPressed: boolean;
   ability1: boolean;
   ability1Aim: Phaser.Math.Vector2;
@@ -61,7 +59,7 @@ export class BattleInput {
   private readonly touch: boolean;
   private readonly leftStick?: VirtualThumbstick;
   private rightStick?: VirtualThumbstick;
-  private readonly blockPad?: VirtualAimPad;
+  private readonly blockButton?: CombatButton;
   private readonly dashButton?: CombatButton;
   private ability1Button?: AbilityButton;
   private ability1Pad?: VirtualAimPad;
@@ -128,11 +126,11 @@ export class BattleInput {
       }
 
       if (combatHud) {
-      this.blockPad = new VirtualAimPad(scene, layout.block.x, layout.block.y, {
+      this.blockButton = new CombatButton(scene, layout.block.x, layout.block.y, {
         label: 'SHIELD',
         accent: COLORS.cyan,
-        radius: layout.block.r,
         iconKey: CONTROL_ICON.shield,
+        holdable: true,
         onPress: () => {
           this.blockHeldTouch = true;
         },
@@ -140,6 +138,7 @@ export class BattleInput {
           this.blockHeldTouch = false;
         },
       });
+      this.blockButton.setRadius(layout.block.r);
       this.dashButton = new CombatButton(scene, layout.dash.x, layout.dash.y, {
         label: 'DASH',
         accent: COLORS.orange,
@@ -388,9 +387,9 @@ export class BattleInput {
     if (!this.touch) {
       return;
     }
-    this.blockPad?.setRadius(layout.block.r);
+    this.blockButton?.setRadius(layout.block.r);
     this.dashButton?.setRadius(layout.dash.r);
-    this.blockPad?.setPosition(layout.block.x, layout.block.y);
+    this.blockButton?.setPosition(layout.block.x, layout.block.y);
     this.dashButton?.setPosition(layout.dash.x, layout.dash.y);
     this.ability1Button?.setRadius(layout.ability1.r);
     this.ability1Pad?.setRadius(layout.ability1.r);
@@ -459,8 +458,6 @@ export class BattleInput {
     const blockHeld =
       this.blockHeldTouch ||
       Boolean(this.keys?.block.isDown);
-    const blockAim = this.blockPad?.getValue() ?? new Phaser.Math.Vector2();
-    const blockAimActive = Boolean(this.blockPad?.aiming());
     const dashPressed =
       this.consumeLatch('dashLatched') ||
       Boolean(this.keys && Phaser.Input.Keyboard.JustDown(this.keys.dash));
@@ -519,8 +516,6 @@ export class BattleInput {
       attackHeld,
       attackPressed: attackEdge,
       blockHeld,
-      blockAim,
-      blockAimActive,
       dashPressed,
       ability1,
       ability1Aim: this.ability1Aim.clone(),
@@ -557,9 +552,9 @@ export class BattleInput {
       state.dashRecharge * COMBAT.dashRechargeMs,
     );
     this.dashButton?.setDimmed(state.dashCharges <= 0);
-    this.blockPad?.setHeldVisual(state.blocking);
-    this.blockPad?.setRecovered(state.staminaRatio);
-    this.blockPad?.setDimmed(state.staminaRatio <= 0.02);
+    this.blockButton?.setHeldVisual(state.blocking);
+    this.blockButton?.setRecovered(state.staminaRatio);
+    this.blockButton?.setDimmed(state.staminaRatio <= 0.02);
   }
 
   syncAbilities(states: AbilitySlotState[]): void {
@@ -739,7 +734,7 @@ export class BattleInput {
   destroy(): void {
     this.leftStick?.destroy();
     this.rightStick?.destroy();
-    this.blockPad?.destroy();
+    this.blockButton?.destroy();
     this.dashButton?.destroy();
     this.ability1Button?.destroy();
     this.ability1Pad?.destroy();
@@ -751,7 +746,7 @@ export class BattleInput {
 
   setCombatVisible(visible: boolean): void {
     this.combatVisible = visible;
-    this.blockPad?.setVisible(visible);
+    this.blockButton?.setVisible(visible);
     this.dashButton?.setVisible(visible);
     this.ability1Button?.setVisible(visible);
     this.ability1Pad?.setVisible(visible);

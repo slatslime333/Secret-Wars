@@ -889,16 +889,11 @@ export class MatchScene extends Phaser.Scene {
     ability2Aim: Phaser.Math.Vector2;
     aimActive: boolean;
     aim: Phaser.Math.Vector2;
-    blockHeld: boolean;
-    blockAimActive: boolean;
-    blockAim: Phaser.Math.Vector2;
   }): void {
     if (frame.ability2Aiming && frame.ability2Aim.lengthSq() > 0) {
       this.player.body.setAim(frame.ability2Aim);
     } else if (frame.ability1Aiming && frame.ability1Aim.lengthSq() > 0) {
       this.player.body.setAim(frame.ability1Aim);
-    } else if (frame.blockHeld && frame.blockAimActive) {
-      this.player.body.setAim(frame.blockAim);
     } else if (frame.aimActive || frame.aim.lengthSq() > 0.01) {
       const body = this.player.body;
       if (frame.aimActive && isTouchPrimary()) {
